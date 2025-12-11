@@ -11,7 +11,8 @@ import { DeliveryMapSection } from '@/components/DeliveryMapSection';
 import { PromoBanner } from '@/components/PromoBanner';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
-import { ShoppingBag } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { ShoppingBag, Phone } from 'lucide-react';
 import heroPizza from '@/assets/hero-pizza.jpg';
 
 function MainApp() {
@@ -130,6 +131,34 @@ function MainApp() {
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
       </section>
 
+      {/* Call Now Section */}
+      <section className="py-8 bg-primary/10">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
+            <div className="flex items-center gap-2 text-lg font-semibold">
+              <Phone className="w-6 h-6 text-primary" />
+              <span>📞 Appelez-nous maintenant</span>
+            </div>
+            <div className="flex flex-wrap justify-center gap-4">
+              <a 
+                href="tel:0232112613" 
+                className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-all hover:scale-105 shadow-lg"
+              >
+                <Phone className="w-5 h-5" />
+                02 32 11 26 13
+              </a>
+              <a 
+                href="tel:0685852788" 
+                className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-all hover:scale-105 shadow-lg"
+              >
+                <Phone className="w-5 h-5" />
+                06 85 85 27 88
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Deals Carousel */}
       <section className="py-12 bg-gradient-to-b from-muted/30 to-background">
         <div className="container mx-auto px-4">
@@ -187,23 +216,31 @@ function MainApp() {
           <h2 className="text-3xl md:text-4xl font-display font-bold mb-8">
             <span className="text-amber-500">Contact</span> & Horaires
           </h2>
-          <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
-            <div className="p-6 rounded-2xl bg-card">
+          <div className="grid md:grid-cols-3 gap-8 max-w-3xl mx-auto">
+            <Card className="p-6">
               <span className="text-3xl mb-3 block">📍</span>
               <h3 className="font-semibold mb-2 text-lg">Adresse</h3>
               <p className="text-muted-foreground">
                 60 Rue Georges Clemenceau<br />
                 76530 Grand-Couronne
               </p>
-            </div>
-            <div className="p-6 rounded-2xl bg-card">
+            </Card>
+            <Card className="p-6">
+              <span className="text-3xl mb-3 block">📞</span>
+              <h3 className="font-semibold mb-2 text-lg">Téléphone</h3>
+              <p className="text-muted-foreground space-y-1">
+                <a href="tel:0232112613" className="block hover:text-primary transition-colors">02 32 11 26 13</a>
+                <a href="tel:0685852788" className="block hover:text-primary transition-colors">06 85 85 27 88</a>
+              </p>
+            </Card>
+            <Card className="p-6">
               <span className="text-3xl mb-3 block">🕐</span>
               <h3 className="font-semibold mb-2 text-lg">Horaires</h3>
               <p className="text-muted-foreground">
                 Mar - Dim: 11h30 - 14h30 / 18h - 22h30<br />
                 Lundi: Fermé
               </p>
-            </div>
+            </Card>
           </div>
         </div>
       </section>

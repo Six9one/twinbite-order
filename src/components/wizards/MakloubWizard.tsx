@@ -94,7 +94,8 @@ export function MakloubWizard({ onClose }: MakloubWizardProps) {
       id: `${makloubItem.id}-${Date.now()}`,
     };
 
-    addToCart(cartItem, 1, customization);
+    const calculatedPrice = calculatePrice();
+    addToCart(cartItem, 1, customization, calculatedPrice);
     
     const meatNames = selectedMeats.map(id => meatOptions.find(m => m.id === id)?.name).join(', ');
     toast({
