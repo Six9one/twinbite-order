@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { OrderType, CartItem, MenuItem, SouffletOrder } from '@/types/order';
+import { OrderType, CartItem, MenuItem, ProductCustomization, SouffletOrder } from '@/types/order';
 
 interface OrderContextType {
   orderType: OrderType;
   setOrderType: (type: OrderType) => void;
   cart: CartItem[];
-  addToCart: (item: MenuItem, quantity?: number, customization?: SouffletOrder) => void;
+  addToCart: (item: MenuItem, quantity?: number, customization?: ProductCustomization | SouffletOrder) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
@@ -19,7 +19,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [orderType, setOrderType] = useState<OrderType>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
 
-  const addToCart = (item: MenuItem, quantity = 1, customization?: SouffletOrder) => {
+  const addToCart = (item: MenuItem, quantity = 1, customization?: ProductCustomization | SouffletOrder) => {
     const cartItemId = customization 
       ? `${item.id}-${Date.now()}` 
       : item.id;
