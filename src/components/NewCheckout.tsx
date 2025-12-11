@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper } from 'lucide-react';
+import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
 
@@ -42,7 +42,7 @@ interface NewCheckoutProps {
 }
 
 export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
-  const { cart, orderType, clearCart, getTotal } = useOrder();
+  const { cart, orderType, clearCart } = useOrder();
   const createOrder = useCreateOrder();
   const [step, setStep] = useState<'info' | 'payment' | 'confirm' | 'success'>('info');
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
@@ -69,6 +69,12 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     emporter: 'À emporter',
     livraison: 'Livraison',
     surplace: 'Sur place',
+  };
+
+  const paymentMethodLabels = {
+    cb: 'Carte Bancaire',
+    especes: 'Espèces',
+    en_ligne: 'Paiement en ligne',
   };
 
   const validateInfo = () => {
@@ -139,6 +145,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           <p className="text-muted-foreground mb-6">
             Merci {customerInfo.name}! Votre commande a été envoyée.
             {paymentMethod === 'especes' && ' Paiement à la réception.'}
+            {paymentMethod === 'en_ligne' && ' Vous recevrez un lien de paiement.'}
           </p>
           <Button onClick={onComplete} className="w-full">
             Retour à l'accueil
@@ -235,21 +242,34 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         {step === 'payment' && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Mode de paiement</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
+              <Card
+                className={`p-4 cursor-pointer transition-all ${paymentMethod === 'en_ligne' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                onClick={() => setPaymentMethod('en_ligne')}
+              >
+                <div className="flex items-center gap-3">
+                  <Globe className="w-8 h-8 text-purple-600" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold">Paiement en ligne</h3>
+                    <p className="text-xs text-muted-foreground">Payez maintenant par carte</p>
+                  </div>
+                  {paymentMethod === 'en_ligne' && <Check className="w-5 h-5 text-primary" />}
+                </div>
+              </Card>
               <Card
                 className={`p-4 cursor-pointer transition-all ${paymentMethod === 'cb' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
                 onClick={() => setPaymentMethod('cb')}
               >
                 <div className="flex items-center gap-3">
                   <CreditCard className="w-8 h-8 text-primary" />
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-semibold">Carte Bancaire</h3>
                     <p className="text-xs text-muted-foreground">
                       {orderType === 'livraison' ? 'À la livraison' : 'Sur place'}
                     </p>
                   </div>
+                  {paymentMethod === 'cb' && <Check className="w-5 h-5 text-primary" />}
                 </div>
-                {paymentMethod === 'cb' && <Check className="w-5 h-5 text-primary mt-2" />}
               </Card>
               <Card
                 className={`p-4 cursor-pointer transition-all ${paymentMethod === 'especes' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
@@ -257,14 +277,14 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               >
                 <div className="flex items-center gap-3">
                   <Banknote className="w-8 h-8 text-green-600" />
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-semibold">Espèces</h3>
                     <p className="text-xs text-muted-foreground">
                       {orderType === 'livraison' ? 'À la livraison' : 'Sur place'}
                     </p>
                   </div>
+                  {paymentMethod === 'especes' && <Check className="w-5 h-5 text-primary" />}
                 </div>
-                {paymentMethod === 'especes' && <Check className="w-5 h-5 text-primary mt-2" />}
               </Card>
             </div>
           </div>
@@ -295,7 +315,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Paiement</span>
-                  <span>{paymentMethod === 'cb' ? 'Carte Bancaire' : 'Espèces'}</span>
+                  <span>{paymentMethodLabels[paymentMethod]}</span>
                 </div>
               </div>
             </Card>

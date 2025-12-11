@@ -400,7 +400,7 @@ export type Database = {
         | "completed"
         | "cancelled"
       order_type: "emporter" | "livraison" | "surplace"
-      payment_method: "cb" | "especes"
+      payment_method: "cb" | "especes" | "en_ligne"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -531,7 +531,7 @@ export const Constants = {
       app_role: ["admin", "staff"],
       order_status: ["pending", "preparing", "ready", "completed", "cancelled"],
       order_type: ["emporter", "livraison", "surplace"],
-      payment_method: ["cb", "especes"],
+      payment_method: ["cb", "especes", "en_ligne"],
     },
   },
 } as const

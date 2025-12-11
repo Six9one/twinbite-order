@@ -72,7 +72,7 @@ export interface Order {
   tva: number;
   delivery_fee: number;
   total: number;
-  payment_method: 'cb' | 'especes';
+  payment_method: 'cb' | 'especes' | 'en_ligne';
   created_at: string;
   updated_at: string;
 }

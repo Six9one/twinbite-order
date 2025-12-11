@@ -97,7 +97,7 @@ export interface CartItem {
 }
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
-export type PaymentMethod = 'cb' | 'especes';
+export type PaymentMethod = 'cb' | 'especes' | 'en_ligne';
 
 export interface CustomerInfo {
   name: string;

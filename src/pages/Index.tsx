@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
+import { OrderType } from '@/types/order';
 import { HeroOrderSelector } from '@/components/HeroOrderSelector';
 import { DealsCarousel } from '@/components/DealsCarousel';
 import { CategoryMenu } from '@/components/CategoryMenu';
@@ -8,6 +9,7 @@ import { NewCheckout } from '@/components/NewCheckout';
 import { Footer } from '@/components/Footer';
 import { DeliveryZones } from '@/components/DeliveryZones';
 import { PromoBanner } from '@/components/PromoBanner';
+import { Header } from '@/components/Header';
 import heroPizza from '@/assets/hero-pizza.jpg';
 
 function MainApp() {
@@ -32,6 +34,10 @@ function MainApp() {
   const handleOrderComplete = () => {
     setView('home');
     setOrderType(null);
+  };
+
+  const handleNavOrderTypeSelect = (type: OrderType) => {
+    setView('menu');
   };
 
   // Menu view
@@ -64,6 +70,16 @@ function MainApp() {
   // Home view
   return (
     <div className="min-h-screen bg-background">
+      {/* Header with Order Now */}
+      <Header onCartClick={() => setIsCartOpen(true)} onOrderTypeSelect={handleNavOrderTypeSelect} />
+
+      {/* Cart */}
+      <NewCart 
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        onCheckout={handleCheckout}
+      />
+
       {/* Promo Banner */}
       <PromoBanner />
 
