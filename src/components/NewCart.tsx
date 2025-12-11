@@ -93,7 +93,7 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-md flex flex-col">
+      <SheetContent className="w-full sm:max-w-md flex flex-col z-[99999]">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <ShoppingBag className="w-5 h-5" />
@@ -161,6 +161,13 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
             </div>
 
             <div className="border-t pt-4 space-y-3">
+              {pizzaPromo.supplementsTotal > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Suppléments pizza</span>
+                  <span>+{pizzaPromo.supplementsTotal.toFixed(2)}€</span>
+                </div>
+              )}
+              
               {pizzaPromo.promoDescription && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>{pizzaPromo.promoDescription}</span>
