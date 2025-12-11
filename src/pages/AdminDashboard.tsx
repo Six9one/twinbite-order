@@ -11,7 +11,7 @@ import {
   LogOut, Home, Search, RefreshCw, Download, Printer, 
   Clock, CheckCircle, XCircle, ChefHat, Package,
   MapPin, Phone, User, MessageSquare, CreditCard, Banknote,
-  Utensils, Droplet, Leaf, Plus, Trash2, Edit2
+  Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv
 } from 'lucide-react';
 
 type AdminTab = 'orders' | 'zones' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts';
@@ -222,6 +222,12 @@ export default function AdminDashboard() {
             </Link>
           </div>
           <div className="flex items-center gap-2">
+            <Link to="/tv" target="_blank">
+              <Button variant="outline" size="sm" className="gap-2 bg-amber-500 text-black hover:bg-amber-600">
+                <Tv className="w-4 h-4" />
+                Mode TV
+              </Button>
+            </Link>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="w-4 h-4" />
             </Button>
