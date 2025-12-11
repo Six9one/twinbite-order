@@ -1,96 +1,129 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Pizza, Lock, User } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { Lock, Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
-  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Note: This is a demo login. In production, use proper authentication with Supabase
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    
-    // Simulated delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Demo credentials - in production, validate against Supabase
-    if (credentials.username === 'admin' && credentials.password === 'twinpizza2024') {
-      sessionStorage.setItem('adminAuth', 'true');
-      toast.success('Connexion réussie');
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        toast.error('Email ou mot de passe incorrect');
+        setLoading(false);
+        return;
+      }
+
+      // Check if user has admin role
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (roleError || !roleData) {
+        toast.error('Accès non autorisé');
+        await supabase.auth.signOut();
+        setLoading(false);
+        return;
+      }
+
+      toast.success('Connexion réussie!');
       navigate('/admin/dashboard');
-    } else {
-      toast.error('Identifiants incorrects');
+    } catch (error) {
+      toast.error('Erreur de connexion');
     }
-    
-    setIsLoading(false);
+
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-            <Pizza className="w-9 h-9 text-primary-foreground" />
+        <div className="bg-card rounded-2xl shadow-2xl p-8 border">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-display font-bold mb-2">
+              <span className="text-amber-500">TWIN</span> Admin
+            </h1>
+            <p className="text-muted-foreground">Connectez-vous pour gérer votre restaurant</p>
           </div>
-          <h1 className="font-display text-3xl font-bold">Admin Twin Pizza</h1>
-          <p className="text-muted-foreground mt-2">Connectez-vous pour accéder au panneau d'administration</p>
+
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="admin@twinpizza.fr"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="h-12"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="flex items-center gap-2">
+                <Lock className="w-4 h-4" />
+                Mot de passe
+              </Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="h-12 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full h-12 text-lg" disabled={loading}>
+              {loading ? 'Connexion...' : 'Se connecter'}
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <Link to="/">
+              <Button variant="ghost">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Retour au site
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        <form onSubmit={handleLogin} className="bg-card rounded-2xl p-8 shadow-lg border border-border">
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Nom d'utilisateur</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="admin"
-                  value={credentials.username}
-                  onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">Mot de passe</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  value={credentials.password}
-                  onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-
-            <Button 
-              type="submit" 
-              className="w-full btn-primary py-3 rounded-xl font-semibold"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Connexion...' : 'Se connecter'}
-            </Button>
-          </div>
-
-          <p className="text-xs text-muted-foreground mt-4 text-center">
-            Demo: admin / twinpizza2024
-          </p>
-        </form>
-
-        <p className="text-center mt-6">
-          <a href="/" className="text-sm text-primary hover:underline">
-            ← Retour au site
-          </a>
+        <p className="text-center text-sm text-muted-foreground mt-6">
+          Accès réservé aux administrateurs Twin Pizza
         </p>
       </div>
     </div>
