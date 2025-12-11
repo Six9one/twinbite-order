@@ -49,13 +49,13 @@ export default function AdminDashboard() {
       .channel('orders-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
         refetch();
-        if (Notification.permission === 'granted') {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           new Notification('Nouvelle commande!', { body: 'Une nouvelle commande a été reçue.' });
         }
       })
       .subscribe();
 
-    if (Notification.permission === 'default') {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission();
     }
 
