@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MenuItem, PizzaCustomization, PizzaBase, PizzaSize } from '@/types/order';
-import { pizzasTomate, pizzasCreme, pizzaPrices } from '@/data/menu';
+import { pizzasTomate, pizzasCreme, pizzaPrices, cheeseSupplementOptions } from '@/data/menu';
 import { isMenuMidiTime, getMenuMidiRemainingTime } from '@/utils/promotions';
 import { useOrder } from '@/context/OrderContext';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Check, Pizza, Sun, Clock } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { ArrowLeft, Check, Pizza, Sun, Clock, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface PizzaWizardProps {
@@ -22,6 +23,7 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
   const [base, setBase] = useState<PizzaBase>('tomate');
   const [size, setSize] = useState<PizzaSize>('senior');
   const [isMenuMidi, setIsMenuMidi] = useState(false);
+  const [supplements, setSupplements] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [countdown, setCountdown] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
 
@@ -49,11 +51,29 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
     setStep('customize');
   };
 
-  const getPrice = () => {
-    if (isMenuMidi && showMenuMidi) {
-      return size === 'senior' ? pizzaPrices.menuMidiSenior : pizzaPrices.menuMidiMega;
+  const toggleSupplement = (supId: string) => {
+    if (supplements.includes(supId)) {
+      setSupplements(supplements.filter(s => s !== supId));
+    } else {
+      setSupplements([...supplements, supId]);
     }
-    return size === 'senior' ? pizzaPrices.senior : pizzaPrices.mega;
+  };
+
+  const getPrice = () => {
+    let basePrice = 0;
+    if (isMenuMidi && showMenuMidi) {
+      basePrice = size === 'senior' ? pizzaPrices.menuMidiSenior : pizzaPrices.menuMidiMega;
+    } else {
+      basePrice = size === 'senior' ? pizzaPrices.senior : pizzaPrices.mega;
+    }
+    
+    // Add supplements price
+    const supplementsPrice = supplements.reduce((total, supId) => {
+      const sup = cheeseSupplementOptions.find(s => s.id === supId);
+      return total + (sup?.price || 0);
+    }, 0);
+    
+    return basePrice + supplementsPrice;
   };
 
   const handleAddToCart = () => {
@@ -64,6 +84,7 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
       size,
       isMenuMidi: isMenuMidi && showMenuMidi,
       note: note || undefined,
+      supplements: supplements.length > 0 ? supplements : undefined,
     };
 
     const cartItem = {
@@ -71,7 +92,8 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
       id: `${selectedPizza.id}-${Date.now()}`,
     };
 
-    addToCart(cartItem, 1, customization);
+    const calculatedPrice = getPrice();
+    addToCart(cartItem, 1, customization, calculatedPrice);
     
     toast({
       title: 'Ajouté au panier',
@@ -82,6 +104,7 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
     setSelectedPizza(null);
     setSize('senior');
     setIsMenuMidi(false);
+    setSupplements([]);
     setNote('');
     setStep('select');
   };
@@ -207,10 +230,11 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
             <Button variant="ghost" size="icon" onClick={() => setStep('select')}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <div>
+            <div className="flex-1">
               <h1 className="text-2xl font-display font-bold">{selectedPizza?.name}</h1>
               <p className="text-sm text-muted-foreground">{selectedPizza?.description}</p>
             </div>
+            <span className="text-xl font-bold text-primary">{getPrice().toFixed(2)}€</span>
           </div>
         </div>
       </div>
@@ -307,6 +331,31 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
           </div>
         )}
 
+        <Separator />
+
+        {/* Pizza Supplements */}
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Plus className="w-5 h-5 text-primary" />
+            Suppléments Pizza (+1€ chacun)
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {cheeseSupplementOptions.map((sup) => (
+              <Card
+                key={sup.id}
+                className={`p-3 cursor-pointer transition-all ${supplements.includes(sup.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                onClick={() => toggleSupplement(sup.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{sup.name}</span>
+                  {supplements.includes(sup.id) && <Check className="w-5 h-5 text-primary" />}
+                </div>
+                <span className="text-sm text-primary font-semibold">+{sup.price}€</span>
+              </Card>
+            ))}
+          </div>
+        </div>
+
         {/* Notes */}
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">Notes / Remarques</h2>
@@ -330,13 +379,13 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
       </div>
 
       {/* Bottom Action */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
         <div className="container mx-auto">
           <Button 
             className="w-full h-14 text-lg" 
             onClick={handleAddToCart}
           >
-            Ajouter au panier - {getPrice()}€
+            Ajouter au panier - {getPrice().toFixed(2)}€
           </Button>
         </div>
       </div>

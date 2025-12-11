@@ -35,6 +35,7 @@ export interface PizzaCustomization {
   isMenuMidi?: boolean;
   promoApplied?: string;
   note?: string;
+  supplements?: string[]; // Cheese supplements
 }
 
 export interface TacosCustomization {
@@ -53,6 +54,7 @@ export interface SouffletCustomization {
   garnitures: string[];
   supplements: string[];
   menuOption: 'none' | 'frites' | 'boisson' | 'menu';
+  cheeseSupplements?: string[];
   note?: string;
 }
 
@@ -62,6 +64,7 @@ export interface MakloubCustomization {
   sauces: string[];
   garnitures: string[];
   supplements: string[];
+  cheeseSupplements?: string[];
   note?: string;
 }
 
@@ -88,12 +91,17 @@ export type ProductCustomization =
   | MlawiCustomization
   | PaniniCustomization;
 
-// Legacy support
+// Legacy support - Updated with new fields
 export interface SouffletOrder {
   meat: string | null;
+  sauces?: string[];
   sauce: string | null;
+  garnitures?: string[];
   toppings: string[];
+  cheeseSupplements?: string[];
+  menuOption?: 'none' | 'frites' | 'boisson' | 'menu';
   side: string | null;
+  note?: string;
 }
 
 export interface CartItem {

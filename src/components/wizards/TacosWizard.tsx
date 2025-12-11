@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { MenuItem, TacosCustomization } from '@/types/order';
-import { tacos, meatOptions, sauceOptions, menuOptionPrices, supplementOptions } from '@/data/menu';
+import { tacos, meatOptions, sauceOptions, menuOptionPrices, supplementOptions, cheeseSupplementOptions } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Plus, Minus } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
+import { ArrowLeft, Check, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface TacosWizardProps {
@@ -22,6 +24,7 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   const [selectedSauces, setSelectedSauces] = useState<string[]>([]);
   const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'menu'>('none');
   const [supplements, setSupplements] = useState<string[]>([]);
+  const [note, setNote] = useState('');
 
   const maxMeats = size === 'solo' ? 1 : size === 'double' ? 2 : 3;
   const tacosItem = tacos.find(t => t.id === `tacos-${size}`);
@@ -60,9 +63,9 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
       if (meat) price += meat.price;
     });
     
-    // Add other supplements
+    // Add other supplements (cheese)
     supplements.forEach(supId => {
-      const sup = supplementOptions.find(s => s.id === supId);
+      const sup = supplementOptions.find(s => s.id === supId) || cheeseSupplementOptions.find(s => s.id === supId);
       if (sup) price += sup.price;
     });
     
@@ -85,6 +88,7 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
       sauces: selectedSauces,
       menuOption,
       supplements,
+      note: note || undefined,
     };
 
     const cartItem = {
@@ -92,7 +96,8 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
       id: `${tacosItem.id}-${Date.now()}`,
     };
 
-    addToCart(cartItem, 1, customization);
+    const calculatedPrice = calculatePrice();
+    addToCart(cartItem, 1, customization, calculatedPrice);
     
     const meatNames = selectedMeats.map(id => meatOptions.find(m => m.id === id)?.name).join(', ');
     toast({
@@ -214,10 +219,15 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
               </div>
             </div>
 
+            <Separator />
+
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Suppléments</h2>
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Plus className="w-5 h-5 text-primary" />
+                Options supplémentaires (+1€ chacun)
+              </h2>
               <div className="grid grid-cols-2 gap-3">
-                {supplementOptions.map((sup) => (
+                {cheeseSupplementOptions.map((sup) => (
                   <Card
                     key={sup.id}
                     className={`p-3 cursor-pointer transition-all ${supplements.includes(sup.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
@@ -231,6 +241,20 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
                   </Card>
                 ))}
               </div>
+            </div>
+
+            <Separator />
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold">Notes / Remarques</h2>
+              <Textarea
+                placeholder="Ex: bien cuit, sans oignons..."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="resize-none"
+                rows={3}
+              />
             </div>
           </div>
         );
@@ -272,7 +296,7 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
       </div>
 
       {/* Bottom Action */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
         <div className="container mx-auto">
           {step < 4 ? (
             <Button 

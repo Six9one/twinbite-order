@@ -25,7 +25,7 @@ const creativeDeals = [
     id: 'deal-3', 
     title: '✨ Menu Midi', 
     subtitle: 'Pizza + Boisson = 10€',
-    description: 'Une offre imbattable !', 
+    description: 'De 11h à 15h - Une offre imbattable !', 
     image: deal3,
     icon: Sparkles
   },
@@ -54,20 +54,20 @@ export function DealsCarousel() {
   };
 
   return (
-    <div className="relative max-w-4xl mx-auto">
-      {/* Carousel Container */}
-      <div className="relative overflow-hidden rounded-2xl aspect-[16/9] shadow-xl">
+    <div className="relative w-full max-w-6xl mx-auto">
+      {/* Carousel Container - Made wider and larger */}
+      <div className="relative overflow-hidden rounded-2xl md:rounded-3xl aspect-[16/7] md:aspect-[21/9] shadow-2xl">
         {creativeDeals.map((deal, index) => {
           const IconComponent = deal.icon;
           return (
             <div
               key={deal.id}
-              className={`absolute inset-0 transition-all duration-500 ${
+              className={`absolute inset-0 transition-all duration-700 ease-out ${
                 index === currentIndex
-                  ? 'opacity-100 translate-x-0'
+                  ? 'opacity-100 translate-x-0 scale-100'
                   : index < currentIndex
-                  ? 'opacity-0 -translate-x-full'
-                  : 'opacity-0 translate-x-full'
+                  ? 'opacity-0 -translate-x-full scale-95'
+                  : 'opacity-0 translate-x-full scale-95'
               }`}
             >
               <img
@@ -76,43 +76,43 @@ export function DealsCarousel() {
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                <div className="flex items-center gap-2 mb-2">
-                  <IconComponent className="w-6 h-6 text-amber-400" />
-                  <span className="text-amber-400 font-semibold text-lg">{deal.title}</span>
+              <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white">
+                <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                  <IconComponent className="w-6 h-6 md:w-8 md:h-8 text-amber-400" />
+                  <span className="text-amber-400 font-semibold text-lg md:text-2xl">{deal.title}</span>
                 </div>
-                <h3 className="font-display text-2xl md:text-3xl font-bold mb-1">{deal.subtitle}</h3>
-                <p className="text-white/80">{deal.description}</p>
+                <h3 className="font-display text-3xl md:text-5xl lg:text-6xl font-bold mb-2 md:mb-3">{deal.subtitle}</h3>
+                <p className="text-white/80 text-base md:text-xl">{deal.description}</p>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Navigation Arrows */}
+      {/* Navigation Arrows - Made larger and more visible */}
       <button
         onClick={goPrev}
-        className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-colors"
+        className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-all hover:scale-110 shadow-lg"
       >
-        <ChevronLeft className="w-6 h-6" />
+        <ChevronLeft className="w-7 h-7 md:w-8 md:h-8" />
       </button>
       <button
         onClick={goNext}
-        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-colors"
+        className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-all hover:scale-110 shadow-lg"
       >
-        <ChevronRight className="w-6 h-6" />
+        <ChevronRight className="w-7 h-7 md:w-8 md:h-8" />
       </button>
 
-      {/* Dots */}
-      <div className="flex justify-center gap-2 mt-4">
+      {/* Dots - Made larger */}
+      <div className="flex justify-center gap-3 mt-6">
         {creativeDeals.map((_, index) => (
           <button
             key={index}
             onClick={() => goTo(index)}
-            className={`w-3 h-3 rounded-full transition-all ${
+            className={`h-3 rounded-full transition-all duration-300 ${
               index === currentIndex
-                ? 'bg-primary w-8'
-                : 'bg-muted hover:bg-muted-foreground'
+                ? 'bg-primary w-10'
+                : 'bg-muted w-3 hover:bg-muted-foreground'
             }`}
           />
         ))}
