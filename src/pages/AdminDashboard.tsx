@@ -11,10 +11,10 @@ import {
   LogOut, Home, Search, RefreshCw, Download, Printer, 
   Clock, CheckCircle, XCircle, ChefHat, Package,
   MapPin, Phone, User, MessageSquare, CreditCard, Banknote,
-  Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv
+  Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv, TrendingUp
 } from 'lucide-react';
 
-type AdminTab = 'orders' | 'zones' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts';
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', icon: Clock },
@@ -139,9 +139,38 @@ export default function AdminDashboard() {
     });
   };
 
+  const formatItemForPrint = (cartItem: any): string => {
+    const productName = cartItem.item?.name || cartItem.name || 'Produit';
+    const price = cartItem.calculatedPrice || cartItem.item?.price || cartItem.price || 0;
+    const customization = cartItem.customization;
+    const note = cartItem.note || customization?.note;
+    
+    let details: string[] = [];
+    if (customization?.size) details.push('📏 ' + customization.size.toUpperCase());
+    if (customization?.base) details.push('🍕 ' + customization.base);
+    if (customization?.meats?.length) details.push('🥩 ' + customization.meats.join(', '));
+    if (customization?.meat) details.push('🥩 ' + customization.meat);
+    if (customization?.sauces?.length) details.push('🥫 ' + customization.sauces.join(', '));
+    if (customization?.garnitures?.length) details.push('🥬 ' + customization.garnitures.join(', '));
+    if (customization?.supplements?.length) details.push('➕ ' + customization.supplements.join(', '));
+    if (customization?.cheeseSupplements?.length) details.push('🧀 ' + customization.cheeseSupplements.join(', '));
+    if (customization?.menuOption && customization.menuOption !== 'none') details.push('🍟 ' + customization.menuOption);
+    
+    let html = '<div class="item"><span>' + cartItem.quantity + 'x ' + escapeHtml(productName) + '</span><span>' + Number(price).toFixed(2) + '€</span></div>';
+    if (details.length > 0) {
+      html += '<div style="font-size: 10px; margin-left: 10px; color: #555;">' + details.join(' | ') + '</div>';
+    }
+    if (note) {
+      html += '<div class="note">📝 ' + escapeHtml(note) + '</div>';
+    }
+    return html;
+  };
+
   const printTicket = (order: Order) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
+
+    const itemsHtml = Array.isArray(order.items) ? order.items.map(formatItemForPrint).join('') : '';
 
     const ticketHTML = `
       <!DOCTYPE html>
@@ -173,13 +202,7 @@ export default function AdminDashboard() {
           <p><strong>Heure:</strong> ${new Date(order.created_at).toLocaleString('fr-FR')}</p>
         </div>
         <div class="items">
-          ${Array.isArray(order.items) ? order.items.map((item: any) => `
-            <div class="item">
-              <span>${item.quantity}x ${escapeHtml(item.name)}</span>
-              <span>${item.price}€</span>
-            </div>
-            ${item.note ? `<div class="note">📝 ${escapeHtml(item.note)}</div>` : ''}
-          `).join('') : ''}
+          ${itemsHtml}
         </div>
         <div class="total">
           <p>Sous-total: ${order.subtotal.toFixed(2)}€</p>
@@ -268,6 +291,10 @@ export default function AdminDashboard() {
             </TabsTrigger>
             <TabsTrigger value="drinks">🥤 Boissons</TabsTrigger>
             <TabsTrigger value="desserts">🍰 Desserts</TabsTrigger>
+            <TabsTrigger value="ventes" className="gap-2 bg-green-500/20 text-green-700 dark:text-green-400">
+              <TrendingUp className="w-4 h-4" />
+              Ventes
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders">
@@ -352,6 +379,10 @@ export default function AdminDashboard() {
           <TabsContent value="desserts">
             <AdminTable tableName="desserts" title="Desserts" />
           </TabsContent>
+          
+          <TabsContent value="ventes">
+            <VentesSection orders={orders || []} />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
@@ -403,21 +434,55 @@ function OrderCard({
           )}
         </div>
 
-        <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-          {Array.isArray(order.items) && order.items.map((item: any, idx: number) => (
-            <div key={idx}>
-              <div className="flex justify-between">
-                <span className="font-medium">{item.quantity}x {item.name}</span>
-                <span>{item.price}€</span>
+        <div className="bg-muted/50 rounded-lg p-3 space-y-3">
+          {Array.isArray(order.items) && order.items.map((cartItem: any, idx: number) => {
+            const productName = cartItem.item?.name || cartItem.name || 'Produit';
+            const price = cartItem.calculatedPrice || cartItem.item?.price || cartItem.price || 0;
+            const customization = cartItem.customization;
+            const note = cartItem.note || customization?.note;
+            
+            return (
+              <div key={idx} className="border-b border-border/50 pb-2 last:border-0">
+                <div className="flex justify-between font-medium">
+                  <span>{cartItem.quantity}x {productName}</span>
+                  <span>{Number(price).toFixed(2)}€</span>
+                </div>
+                {customization?.size && (
+                  <p className="text-xs text-cyan-600 ml-4">📏 {customization.size.toUpperCase()}</p>
+                )}
+                {customization?.base && (
+                  <p className="text-xs text-pink-600 ml-4">🍕 {customization.base}</p>
+                )}
+                {customization?.meats?.length > 0 && (
+                  <p className="text-xs text-red-600 ml-4">🥩 {customization.meats.join(', ')}</p>
+                )}
+                {customization?.meat && (
+                  <p className="text-xs text-red-600 ml-4">🥩 {customization.meat}</p>
+                )}
+                {customization?.sauces?.length > 0 && (
+                  <p className="text-xs text-orange-600 ml-4">🥫 {customization.sauces.join(', ')}</p>
+                )}
+                {customization?.garnitures?.length > 0 && (
+                  <p className="text-xs text-green-600 ml-4">🥬 {customization.garnitures.join(', ')}</p>
+                )}
+                {customization?.supplements?.length > 0 && (
+                  <p className="text-xs text-yellow-600 ml-4">➕ {customization.supplements.join(', ')}</p>
+                )}
+                {customization?.cheeseSupplements?.length > 0 && (
+                  <p className="text-xs text-yellow-600 ml-4">🧀 {customization.cheeseSupplements.join(', ')}</p>
+                )}
+                {customization?.menuOption && customization.menuOption !== 'none' && (
+                  <p className="text-xs text-purple-600 ml-4">🍟 {customization.menuOption}</p>
+                )}
+                {note && (
+                  <p className="text-xs text-amber-600 ml-4 flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30 rounded px-2 py-1 mt-1">
+                    <MessageSquare className="w-3 h-3" />
+                    {note}
+                  </p>
+                )}
               </div>
-              {item.note && (
-                <p className="text-xs text-amber-600 ml-4 flex items-center gap-1">
-                  <MessageSquare className="w-3 h-3" />
-                  {item.note}
-                </p>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {order.customer_notes && (
@@ -765,6 +830,223 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+// Ventes Section Component
+function VentesSection({ orders }: { orders: Order[] }) {
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [paymentFilter, setPaymentFilter] = useState<string>('all');
+  const [startDate, setStartDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
+
+  // Filter orders
+  const filteredOrders = orders.filter(order => {
+    const orderDate = new Date(order.created_at).toISOString().slice(0, 10);
+    const matchesDate = orderDate >= startDate && orderDate <= endDate;
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesPayment = paymentFilter === 'all' || 
+      (paymentFilter === 'paid' && order.payment_method === 'en_ligne') ||
+      (paymentFilter === 'unpaid' && order.payment_method !== 'en_ligne');
+    return matchesDate && matchesStatus && matchesPayment;
+  });
+
+  // Calculate stats
+  const totalRevenue = filteredOrders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + o.total, 0);
+  const paidOnline = filteredOrders.filter(o => o.payment_method === 'en_ligne' && o.status !== 'cancelled').reduce((sum, o) => sum + o.total, 0);
+  const unpaid = filteredOrders.filter(o => o.payment_method !== 'en_ligne' && o.status !== 'cancelled').reduce((sum, o) => sum + o.total, 0);
+  const cancelledTotal = filteredOrders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + o.total, 0);
+  const completedCount = filteredOrders.filter(o => o.status === 'completed').length;
+  const cancelledCount = filteredOrders.filter(o => o.status === 'cancelled').length;
+
+  const exportVentes = () => {
+    const csv = [
+      ['N° Commande', 'Date', 'Type', 'Client', 'Téléphone', 'Total', 'Paiement', 'Statut'].join(';'),
+      ...filteredOrders.map(o => [
+        o.order_number,
+        new Date(o.created_at).toLocaleString('fr-FR'),
+        o.order_type,
+        o.customer_name,
+        o.customer_phone,
+        o.total.toFixed(2) + '€',
+        o.payment_method === 'en_ligne' ? 'En ligne (PAYÉ)' : o.payment_method === 'cb' ? 'Carte' : 'Espèces',
+        statusConfig[o.status].label
+      ].join(';'))
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `ventes-${startDate}-${endDate}.csv`;
+    link.click();
+    toast.success('Export des ventes téléchargé!');
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
+          <p className="text-green-600 text-sm font-medium">CA Total</p>
+          <p className="text-2xl font-bold text-green-700">{totalRevenue.toFixed(2)}€</p>
+          <p className="text-xs text-muted-foreground">{filteredOrders.length} commandes</p>
+        </div>
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+          <p className="text-blue-600 text-sm font-medium">Payé en ligne</p>
+          <p className="text-2xl font-bold text-blue-700">{paidOnline.toFixed(2)}€</p>
+          <p className="text-xs text-muted-foreground">{filteredOrders.filter(o => o.payment_method === 'en_ligne').length} paiements</p>
+        </div>
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+          <p className="text-amber-600 text-sm font-medium">À encaisser</p>
+          <p className="text-2xl font-bold text-amber-700">{unpaid.toFixed(2)}€</p>
+          <p className="text-xs text-muted-foreground">CB/Espèces</p>
+        </div>
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+          <p className="text-red-600 text-sm font-medium">Annulées</p>
+          <p className="text-2xl font-bold text-red-700">{cancelledTotal.toFixed(2)}€</p>
+          <p className="text-xs text-muted-foreground">{cancelledCount} annulations</p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4 items-center bg-card p-4 rounded-lg border">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium">Du:</label>
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-auto"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium">Au:</label>
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-auto"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="h-10 px-3 rounded-md border bg-background"
+        >
+          <option value="all">Tous les statuts</option>
+          <option value="pending">En attente</option>
+          <option value="preparing">En préparation</option>
+          <option value="ready">Prêt</option>
+          <option value="completed">Terminé</option>
+          <option value="cancelled">Annulé</option>
+        </select>
+        <select
+          value={paymentFilter}
+          onChange={(e) => setPaymentFilter(e.target.value)}
+          className="h-10 px-3 rounded-md border bg-background"
+        >
+          <option value="all">Tous les paiements</option>
+          <option value="paid">Payé en ligne</option>
+          <option value="unpaid">Non payé (CB/Espèces)</option>
+        </select>
+        <Button variant="outline" onClick={exportVentes}>
+          <Download className="w-4 h-4 mr-2" />
+          Exporter CSV
+        </Button>
+      </div>
+
+      {/* Orders Table */}
+      <div className="bg-card rounded-lg border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left p-3 font-medium">N°</th>
+                <th className="text-left p-3 font-medium">Date</th>
+                <th className="text-left p-3 font-medium">Client</th>
+                <th className="text-left p-3 font-medium">Type</th>
+                <th className="text-left p-3 font-medium">Total</th>
+                <th className="text-left p-3 font-medium">Paiement</th>
+                <th className="text-left p-3 font-medium">Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Aucune vente trouvée pour cette période
+                  </td>
+                </tr>
+              ) : (
+                filteredOrders.map((order) => (
+                  <tr key={order.id} className="border-t hover:bg-muted/30">
+                    <td className="p-3 font-mono text-sm">{order.order_number}</td>
+                    <td className="p-3 text-sm">
+                      {new Date(order.created_at).toLocaleDateString('fr-FR')}
+                      <br />
+                      <span className="text-muted-foreground text-xs">
+                        {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <div className="text-sm font-medium">{order.customer_name}</div>
+                      <div className="text-xs text-muted-foreground">{order.customer_phone}</div>
+                    </td>
+                    <td className="p-3">
+                      <Badge variant="secondary" className="text-xs">
+                        {order.order_type.toUpperCase()}
+                      </Badge>
+                    </td>
+                    <td className="p-3 font-bold">{order.total.toFixed(2)}€</td>
+                    <td className="p-3">
+                      {order.payment_method === 'en_ligne' ? (
+                        <Badge className="bg-green-500 text-white text-xs">PAYÉ ✓</Badge>
+                      ) : (
+                        <Badge variant="destructive" className="text-xs">
+                          {order.payment_method === 'cb' ? 'CB' : 'ESPÈCES'}
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      <Badge 
+                        className={`${statusConfig[order.status].color} text-white text-xs`}
+                      >
+                        {statusConfig[order.status].label}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Summary */}
+      <div className="bg-card rounded-lg border p-4">
+        <h3 className="font-semibold mb-2">Résumé de la période</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <span className="text-muted-foreground">Commandes totales:</span>
+            <span className="ml-2 font-medium">{filteredOrders.length}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Terminées:</span>
+            <span className="ml-2 font-medium text-green-600">{completedCount}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Annulées:</span>
+            <span className="ml-2 font-medium text-red-600">{cancelledCount}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Taux de conversion:</span>
+            <span className="ml-2 font-medium">
+              {filteredOrders.length > 0 ? ((completedCount / filteredOrders.length) * 100).toFixed(1) : 0}%
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

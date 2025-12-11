@@ -271,21 +271,78 @@ function TVOrderCard({ order }: { order: Order }) {
         )}
 
         {/* Items */}
-        <div className="bg-black/30 rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
-          {Array.isArray(order.items) && order.items.map((item: any, idx: number) => (
-            <div key={idx}>
-              <div className="flex justify-between text-lg">
-                <span className="font-semibold">{item.quantity}x {item.name}</span>
-                <span className="text-amber-400">{item.price}€</span>
+        <div className="bg-black/30 rounded-lg p-3 space-y-3 max-h-64 overflow-y-auto">
+          {Array.isArray(order.items) && order.items.map((cartItem: any, idx: number) => {
+            // Handle both nested structure (item.item.name) and flat structure (item.name)
+            const productName = cartItem.item?.name || cartItem.name || 'Produit';
+            const price = cartItem.calculatedPrice || cartItem.item?.price || cartItem.price || 0;
+            const customization = cartItem.customization;
+            const note = cartItem.note || customization?.note;
+            
+            return (
+              <div key={idx} className="border-b border-white/10 pb-2 last:border-0">
+                <div className="flex justify-between text-lg">
+                  <span className="font-bold">{cartItem.quantity}x {productName}</span>
+                  <span className="text-amber-400">{Number(price).toFixed(2)}€</span>
+                </div>
+                
+                {/* Size */}
+                {customization?.size && (
+                  <p className="text-cyan-300 text-sm ml-4">📏 Taille: {customization.size.toUpperCase()}</p>
+                )}
+                
+                {/* Pizza base */}
+                {customization?.base && (
+                  <p className="text-pink-300 text-sm ml-4">🍕 Base: {customization.base}</p>
+                )}
+                
+                {/* Meats */}
+                {customization?.meats && customization.meats.length > 0 && (
+                  <p className="text-red-300 text-sm ml-4">🥩 Viandes: {customization.meats.join(', ')}</p>
+                )}
+                {customization?.meat && (
+                  <p className="text-red-300 text-sm ml-4">🥩 Viande: {customization.meat}</p>
+                )}
+                
+                {/* Sauces */}
+                {customization?.sauces && customization.sauces.length > 0 && (
+                  <p className="text-orange-300 text-sm ml-4">🥫 Sauces: {customization.sauces.join(', ')}</p>
+                )}
+                {customization?.sauce && (
+                  <p className="text-orange-300 text-sm ml-4">🥫 Sauce: {customization.sauce}</p>
+                )}
+                
+                {/* Garnitures */}
+                {customization?.garnitures && customization.garnitures.length > 0 && (
+                  <p className="text-green-300 text-sm ml-4">🥬 Garnitures: {customization.garnitures.join(', ')}</p>
+                )}
+                {customization?.toppings && Object.keys(customization.toppings).filter(k => customization.toppings[k]).length > 0 && (
+                  <p className="text-green-300 text-sm ml-4">🥬 Garnitures: {Object.keys(customization.toppings).filter(k => customization.toppings[k]).join(', ')}</p>
+                )}
+                
+                {/* Supplements */}
+                {customization?.supplements && customization.supplements.length > 0 && (
+                  <p className="text-yellow-300 text-sm ml-4">➕ Supp: {customization.supplements.join(', ')}</p>
+                )}
+                {customization?.cheeseSupplements && customization.cheeseSupplements.length > 0 && (
+                  <p className="text-yellow-300 text-sm ml-4">🧀 Fromages: {customization.cheeseSupplements.join(', ')}</p>
+                )}
+                
+                {/* Menu option */}
+                {customization?.menuOption && customization.menuOption !== 'none' && (
+                  <p className="text-purple-300 text-sm ml-4">🍟 Menu: {customization.menuOption}</p>
+                )}
+                
+                {/* Note */}
+                {note && (
+                  <p className="text-amber-300 text-sm ml-4 flex items-center gap-1 mt-1 bg-amber-500/20 rounded px-2 py-1">
+                    <MessageSquare className="w-3 h-3" />
+                    {note}
+                  </p>
+                )}
               </div>
-              {item.note && (
-                <p className="text-amber-300 text-sm ml-4 flex items-center gap-1">
-                  <MessageSquare className="w-3 h-3" />
-                  {item.note}
-                </p>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Notes */}
