@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useOrder } from '@/context/OrderContext';
-import { CustomerInfo, PaymentMethod, Order, CartItem, PizzaCustomization } from '@/types/order';
+import { CustomerInfo, PaymentMethod, PizzaCustomization } from '@/types/order';
 import { applyPizzaPromotions, calculateTVA } from '@/utils/promotions';
-import { saveOrder, generateOrderId } from '@/utils/orderStorage';
+import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ interface NewCheckoutProps {
 
 export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const { cart, orderType, clearCart, getTotal } = useOrder();
+  const createOrder = useCreateOrder();
   const [step, setStep] = useState<'info' | 'payment' | 'confirm' | 'success'>('info');
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: '',
@@ -63,29 +64,43 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   };
 
   const handleConfirmOrder = async () => {
+    if (!orderType) {
+      toast({ title: 'Erreur', description: 'Type de commande non sélectionné', variant: 'destructive' });
+      return;
+    }
+    
     setIsProcessing(true);
     
-    // Simulate processing
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const order: Order = {
-      id: generateOrderId(),
-      type: orderType,
-      items: cart,
-      subtotal: ht,
-      tva,
-      total: ttc,
-      customer: customerInfo,
-      paymentMethod,
-      status: 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    
-    saveOrder(order);
-    clearCart();
-    setIsProcessing(false);
-    setStep('success');
+    try {
+      // Create order in database
+      await createOrder.mutateAsync({
+        order_number: generateOrderNumber(),
+        order_type: orderType,
+        items: cart as unknown as import('@/integrations/supabase/types').Json,
+        customer_name: customerInfo.name,
+        customer_phone: customerInfo.phone,
+        customer_address: customerInfo.address || null,
+        customer_notes: customerInfo.notes || null,
+        payment_method: paymentMethod,
+        subtotal: ht,
+        tva,
+        total: ttc,
+        delivery_fee: 0,
+        status: 'pending',
+      });
+      
+      clearCart();
+      setStep('success');
+    } catch (error) {
+      console.error('Failed to create order:', error);
+      toast({ 
+        title: 'Erreur', 
+        description: 'Impossible de créer la commande. Veuillez réessayer.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (step === 'success') {
