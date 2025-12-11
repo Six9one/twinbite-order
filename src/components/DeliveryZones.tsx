@@ -1,55 +1,84 @@
-import { MapPin, Clock, Truck } from 'lucide-react';
-import { deliveryZones } from '@/data/menu';
+import { useDeliveryZones } from '@/hooks/useSupabaseData';
+import { MapPin, Clock, Truck, CheckCircle } from 'lucide-react';
 
 export function DeliveryZones() {
+  const { data: zones, isLoading } = useDeliveryZones();
+
+  if (isLoading) {
+    return (
+      <section className="py-16 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-muted rounded w-64 mx-auto" />
+            <div className="grid md:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-32 bg-muted rounded-xl" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="py-12 bg-card">
+    <section className="py-16 bg-muted/30">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-8">
-          <h2 className="font-display text-3xl font-bold mb-2">
-            Zones de <span className="text-primary">Livraison</span>
+        <div className="text-center mb-10">
+          <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
+            <span className="text-amber-500">Zones</span> de Livraison
           </h2>
-          <p className="text-muted-foreground">Nous livrons dans toute la ville et ses environs</p>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Nous livrons dans Grand-Couronne et les communes environnantes. 
+            Vérifiez votre zone et les conditions de livraison.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
-          {deliveryZones.map((zone) => (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {zones?.map((zone) => (
             <div
               key={zone.id}
-              className="bg-background rounded-xl p-5 border border-border hover:border-primary/50 transition-all hover:shadow-lg"
+              className="bg-card rounded-xl p-5 border hover:border-primary/50 transition-all hover:-translate-y-1"
             >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
                   <MapPin className="w-5 h-5 text-primary" />
+                  <h3 className="font-display font-semibold text-lg">{zone.name}</h3>
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-2">{zone.name}</h3>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      <span>{zone.estimatedTime}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Truck className="w-4 h-4" />
-                      <span>
-                        {zone.deliveryFee === 0 
-                          ? 'Livraison gratuite' 
-                          : `Frais: ${zone.deliveryFee.toFixed(2)} €`}
-                      </span>
-                    </div>
-                    <p className="text-xs mt-2 text-primary font-medium">
-                      Min. commande: {zone.minOrder} €
-                    </p>
-                  </div>
+                {zone.delivery_fee === 0 && (
+                  <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-medium px-2 py-1 rounded-full">
+                    Gratuit
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="w-4 h-4" />
+                  <span>{zone.estimated_time}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Truck className="w-4 h-4" />
+                  <span>
+                    {zone.delivery_fee > 0 
+                      ? `Frais: ${zone.delivery_fee}€` 
+                      : 'Livraison gratuite'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Minimum: {zone.min_order}€</span>
                 </div>
               </div>
             </div>
           ))}
         </div>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          Livraison gratuite à partir de 25€ en centre-ville
-        </p>
+        <div className="mt-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            💡 <strong>Astuce:</strong> Livraison gratuite à Grand-Couronne Centre dès 15€ de commande!
+          </p>
+        </div>
       </div>
     </section>
   );
