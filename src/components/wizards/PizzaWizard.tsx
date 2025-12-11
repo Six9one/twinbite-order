@@ -61,7 +61,11 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
       description: `${selectedPizza.name} ${size === 'mega' ? 'Mega' : 'Senior'}${isMenuMidi ? ' (Menu Midi)' : ''}`,
     });
     
-    onClose();
+    // Reset and go back to pizza selection instead of closing
+    setSelectedPizza(null);
+    setSize('senior');
+    setIsMenuMidi(false);
+    setStep('select');
   };
 
   if (step === 'select') {
