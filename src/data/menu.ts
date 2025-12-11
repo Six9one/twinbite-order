@@ -404,7 +404,7 @@ export const gaufres: MenuItem[] = [
 
 // ============= BOISSONS =============
 export const boissons: MenuItem[] = [
-  { id: "coca-33", name: "Coca-Cola", description: "33cl", price: 0.5, category: "boissons" },
+  { id: "coca-33", name: "Coca-Cola", description: "33cl", price: 0.0, category: "boissons" },
   { id: "coca-zero", name: "Coca-Cola Zero", description: "33cl", price: 2, category: "boissons" },
   { id: "fanta", name: "Fanta Orange", description: "33cl", price: 2, category: "boissons" },
   { id: "sprite", name: "Sprite", description: "33cl", price: 2, category: "boissons" },
