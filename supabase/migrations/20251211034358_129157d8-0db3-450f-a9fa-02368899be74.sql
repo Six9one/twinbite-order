@@ -251,7 +251,7 @@ INSERT INTO public.supplement_options (name, price, display_order) VALUES
 
 -- Insert drinks
 INSERT INTO public.drinks (name, price, display_order) VALUES
-('Coca-Cola', 0.00, 1),
+('Coca-Cola', 0.01, 1),
 ('Coca-Cola Zero', 2.00, 2),
 ('Fanta Orange', 2.00, 3),
 ('Sprite', 2.00, 4),
