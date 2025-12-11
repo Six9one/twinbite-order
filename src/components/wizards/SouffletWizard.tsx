@@ -98,7 +98,8 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
     };
 
     // Pass calculated price
-    addToCart(cartItem, 1, customization);
+    const calculatedPrice = calculatePrice();
+    addToCart(cartItem, 1, customization, calculatedPrice);
     
     const meatNames = selectedMeats.map(id => meatOptions.find(m => m.id === id)?.name).join(', ');
     toast({
