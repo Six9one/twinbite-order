@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
 import { HeroOrderSelector } from '@/components/HeroOrderSelector';
@@ -7,15 +7,18 @@ import { CategoryMenu } from '@/components/CategoryMenu';
 import { NewCart } from '@/components/NewCart';
 import { NewCheckout } from '@/components/NewCheckout';
 import { Footer } from '@/components/Footer';
-import { DeliveryZones } from '@/components/DeliveryZones';
+import { DeliveryMapSection } from '@/components/DeliveryMapSection';
 import { PromoBanner } from '@/components/PromoBanner';
 import { Header } from '@/components/Header';
+import { Button } from '@/components/ui/button';
+import { ShoppingBag } from 'lucide-react';
 import heroPizza from '@/assets/hero-pizza.jpg';
 
 function MainApp() {
   const { orderType, setOrderType } = useOrder();
   const [view, setView] = useState<'home' | 'menu' | 'checkout'>('home');
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const orderSelectorRef = useRef<HTMLDivElement>(null);
 
   const handleOrderTypeSelect = () => {
     setView('menu');
@@ -38,6 +41,10 @@ function MainApp() {
 
   const handleNavOrderTypeSelect = (type: OrderType) => {
     setView('menu');
+  };
+
+  const scrollToOrderSelector = () => {
+    orderSelectorRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   // Menu view
@@ -71,7 +78,11 @@ function MainApp() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header with Order Now */}
-      <Header onCartClick={() => setIsCartOpen(true)} onOrderTypeSelect={handleNavOrderTypeSelect} />
+      <Header 
+        onCartClick={() => setIsCartOpen(true)} 
+        onOrderTypeSelect={handleNavOrderTypeSelect}
+        onMenuClick={scrollToOrderSelector}
+      />
 
       {/* Cart */}
       <NewCart 
@@ -93,9 +104,9 @@ function MainApp() {
         
         <div className="relative z-10 container mx-auto px-4 py-12">
           <div className="text-center mb-10 animate-fade-in">
-            {/* Logo TWIN */}
+            {/* Logo TWIN - Using Cinzel Decorative for Roman style */}
             <div className="mb-6">
-              <h1 className="text-6xl md:text-8xl font-display font-bold tracking-tight whitespace-nowrap">
+              <h1 className="text-6xl md:text-8xl font-bold tracking-tight whitespace-nowrap" style={{ fontFamily: "'Cinzel Decorative', serif" }}>
                 <span className="text-amber-400 drop-shadow-[0_0_30px_rgba(251,191,36,0.5)]">TWIN</span>
                 <span className="text-white drop-shadow-lg ml-3">PIZZA</span>
               </h1>
@@ -110,7 +121,9 @@ function MainApp() {
             </p>
           </div>
           
-          <HeroOrderSelector onSelect={handleOrderTypeSelect} />
+          <div ref={orderSelectorRef}>
+            <HeroOrderSelector onSelect={handleOrderTypeSelect} />
+          </div>
         </div>
         
         {/* Decorative elements */}
@@ -120,10 +133,19 @@ function MainApp() {
       {/* Deals Carousel */}
       <section className="py-12 bg-gradient-to-b from-muted/30 to-background">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-center mb-8">
-            <span className="text-amber-500">Nos</span> Offres
-          </h2>
           <DealsCarousel />
+          
+          {/* Commander Button under carousel */}
+          <div className="flex justify-center mt-8">
+            <Button 
+              onClick={scrollToOrderSelector}
+              size="lg"
+              className="btn-primary gap-2 px-8 py-6 text-lg rounded-full shadow-lg hover:scale-105 transition-transform"
+            >
+              <ShoppingBag className="w-5 h-5" />
+              Commander Maintenant
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -156,8 +178,8 @@ function MainApp() {
         </div>
       </section>
 
-      {/* Delivery Zones */}
-      <DeliveryZones />
+      {/* Interactive Delivery Map */}
+      <DeliveryMapSection />
 
       {/* Contact Section */}
       <section className="py-16 bg-gradient-to-b from-background to-muted/30">
@@ -170,8 +192,8 @@ function MainApp() {
               <span className="text-3xl mb-3 block">📍</span>
               <h3 className="font-semibold mb-2 text-lg">Adresse</h3>
               <p className="text-muted-foreground">
-                Grand-Couronne<br />
-                76530, France
+                60 Rue Georges Clemenceau<br />
+                76530 Grand-Couronne
               </p>
             </div>
             <div className="p-6 rounded-2xl bg-card">
