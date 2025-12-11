@@ -124,6 +124,21 @@ export default function AdminDashboard() {
     toast.success('Export téléchargé!');
   };
 
+  // HTML escape function to prevent XSS attacks
+  const escapeHtml = (str: string | null | undefined): string => {
+    if (!str) return '';
+    return str.replace(/[&<>"']/g, (c) => {
+      const escapeMap: Record<string, string> = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      };
+      return escapeMap[c] || c;
+    });
+  };
+
   const printTicket = (order: Order) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -132,7 +147,7 @@ export default function AdminDashboard() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Ticket ${order.order_number}</title>
+        <title>Ticket ${escapeHtml(order.order_number)}</title>
         <style>
           body { font-family: monospace; width: 80mm; margin: 0; padding: 10px; }
           .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; }
@@ -150,20 +165,20 @@ export default function AdminDashboard() {
           <p>Grand-Couronne</p>
         </div>
         <div class="info">
-          <p><strong>N°:</strong> ${order.order_number}</p>
-          <p><strong>Type:</strong> ${order.order_type.toUpperCase()}</p>
-          <p><strong>Client:</strong> ${order.customer_name}</p>
-          <p><strong>Tél:</strong> ${order.customer_phone}</p>
-          ${order.customer_address ? `<p><strong>Adresse:</strong> ${order.customer_address}</p>` : ''}
+          <p><strong>N°:</strong> ${escapeHtml(order.order_number)}</p>
+          <p><strong>Type:</strong> ${escapeHtml(order.order_type.toUpperCase())}</p>
+          <p><strong>Client:</strong> ${escapeHtml(order.customer_name)}</p>
+          <p><strong>Tél:</strong> ${escapeHtml(order.customer_phone)}</p>
+          ${order.customer_address ? `<p><strong>Adresse:</strong> ${escapeHtml(order.customer_address)}</p>` : ''}
           <p><strong>Heure:</strong> ${new Date(order.created_at).toLocaleString('fr-FR')}</p>
         </div>
         <div class="items">
           ${Array.isArray(order.items) ? order.items.map((item: any) => `
             <div class="item">
-              <span>${item.quantity}x ${item.name}</span>
+              <span>${item.quantity}x ${escapeHtml(item.name)}</span>
               <span>${item.price}€</span>
             </div>
-            ${item.note ? `<div class="note">📝 ${item.note}</div>` : ''}
+            ${item.note ? `<div class="note">📝 ${escapeHtml(item.note)}</div>` : ''}
           `).join('') : ''}
         </div>
         <div class="total">
@@ -173,7 +188,7 @@ export default function AdminDashboard() {
           <p style="font-size: 24px;">TOTAL: ${order.total.toFixed(2)}€</p>
           <p>Paiement: ${order.payment_method === 'cb' ? 'Carte' : 'Espèces'}</p>
         </div>
-        ${order.customer_notes ? `<div class="note"><strong>Note client:</strong> ${order.customer_notes}</div>` : ''}
+        ${order.customer_notes ? `<div class="note"><strong>Note client:</strong> ${escapeHtml(order.customer_notes)}</div>` : ''}
         <div style="text-align: center; margin-top: 20px; border-top: 2px dashed #000; padding-top: 10px;">
           <p>Merci de votre commande!</p>
           <p>🍕 TWIN PIZZA 🍕</p>
