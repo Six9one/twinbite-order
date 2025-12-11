@@ -1,8 +1,7 @@
 import { useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ShoppingBag, Truck, UtensilsCrossed, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Truck, UtensilsCrossed } from 'lucide-react';
 
 interface HeroOrderSelectorProps {
   onSelect: () => void;
@@ -33,16 +32,11 @@ const orderOptions = [
 ];
 
 export function HeroOrderSelector({ onSelect }: HeroOrderSelectorProps) {
-  const { orderType, setOrderType } = useOrder();
+  const { setOrderType } = useOrder();
 
   const handleSelect = (type: OrderType) => {
     setOrderType(type);
-  };
-
-  const handleContinue = () => {
-    if (orderType) {
-      onSelect();
-    }
+    onSelect();
   };
 
   return (
@@ -51,25 +45,18 @@ export function HeroOrderSelector({ onSelect }: HeroOrderSelectorProps) {
         Comment souhaitez-vous commander ?
       </p>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {orderOptions.map((option) => {
           const Icon = option.icon;
-          const isSelected = orderType === option.type;
           
           return (
             <Card
               key={option.type}
-              className={`p-6 cursor-pointer transition-all duration-300 ${
-                isSelected 
-                  ? 'ring-2 ring-primary bg-primary/10 scale-105' 
-                  : 'bg-background/90 hover:bg-background hover:scale-102'
-              }`}
+              className="p-6 cursor-pointer transition-all duration-300 bg-background/90 hover:bg-primary/10 hover:scale-105 hover:ring-2 hover:ring-primary active:scale-100"
               onClick={() => handleSelect(option.type)}
             >
               <div className="text-center">
-                <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 transition-colors ${
-                  isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                }`}>
+                <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 bg-muted group-hover:bg-primary transition-colors">
                   <Icon className="w-8 h-8" />
                 </div>
                 <h3 className="font-display font-bold text-xl mb-1">{option.label}</h3>
@@ -82,19 +69,6 @@ export function HeroOrderSelector({ onSelect }: HeroOrderSelectorProps) {
           );
         })}
       </div>
-
-      {orderType && (
-        <div className="text-center animate-fade-in">
-          <Button 
-            size="lg" 
-            className="h-14 px-8 text-lg"
-            onClick={handleContinue}
-          >
-            Voir le menu
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
