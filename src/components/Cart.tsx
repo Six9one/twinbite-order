@@ -2,6 +2,7 @@ import { X, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { useOrder } from '@/context/OrderContext';
 import { souffletOptions } from '@/data/menu';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface CartProps {
   isOpen: boolean;
@@ -10,7 +11,7 @@ interface CartProps {
 }
 
 export function Cart({ isOpen, onClose, onCheckout }: CartProps) {
-  const { cart, updateQuantity, removeFromCart, getTotal, clearCart } = useOrder();
+  const { cart, updateQuantity, removeFromCart, getTotal, clearCart, orderType } = useOrder();
 
   const getSouffletDescription = (customization: any) => {
     if (!customization) return null;
@@ -23,6 +24,14 @@ export function Cart({ isOpen, onClose, onCheckout }: CartProps) {
     const side = souffletOptions.sides.find(s => s.id === customization.side)?.name;
 
     return `${meat} • ${sauce} • ${toppings.join(', ')} • ${side}`;
+  };
+
+  const handleCheckout = () => {
+    if (!orderType) {
+      toast.error('Veuillez d\'abord choisir un mode de commande');
+      return;
+    }
+    onCheckout();
   };
 
   if (!isOpen) return null;
@@ -118,12 +127,17 @@ export function Cart({ isOpen, onClose, onCheckout }: CartProps) {
           {/* Footer */}
           {cart.length > 0 && (
             <div className="border-t border-border p-4 space-y-4">
+              {!orderType && (
+                <p className="text-sm text-accent text-center">
+                  Choisissez d'abord un mode de commande
+                </p>
+              )}
               <div className="flex justify-between items-center text-lg">
                 <span className="font-semibold">Total</span>
                 <span className="font-bold text-primary text-xl">{getTotal().toFixed(2)} €</span>
               </div>
               <Button
-                onClick={onCheckout}
+                onClick={handleCheckout}
                 className="w-full btn-primary py-4 rounded-full text-lg font-semibold"
               >
                 Passer la commande
