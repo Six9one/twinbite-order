@@ -79,12 +79,10 @@ function MainApp() {
           <div className="text-center mb-10 animate-fade-in">
             {/* Logo TWIN */}
             <div className="mb-6">
-              <h1 className="text-7xl md:text-9xl font-display font-bold tracking-tight">
+              <h1 className="text-6xl md:text-8xl font-display font-bold tracking-tight whitespace-nowrap">
                 <span className="text-amber-400 drop-shadow-[0_0_30px_rgba(251,191,36,0.5)]">TWIN</span>
+                <span className="text-white drop-shadow-lg ml-3">PIZZA</span>
               </h1>
-              <h2 className="text-4xl md:text-5xl font-display font-bold text-white -mt-2 drop-shadow-lg">
-                PIZZAS
-              </h2>
             </div>
             
             {/* Subtitle */}
