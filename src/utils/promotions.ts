@@ -1,5 +1,5 @@
 import { OrderType, CartItem, PizzaCustomization } from '@/types/order';
-import { pizzaPrices } from '@/data/menu';
+import { pizzaPrices, cheeseSupplementOptions } from '@/data/menu';
 
 // Menu midi is available between 11:00 and 15:00
 export function isMenuMidiTime(): boolean {
@@ -38,12 +38,36 @@ export function calculatePizzaPrice(customization: PizzaCustomization): number {
     : pizzaPrices.mega;
 }
 
+// Get base pizza price WITHOUT supplements
+function getBasePizzaPrice(customization: PizzaCustomization): number {
+  if (customization.isMenuMidi) {
+    return customization.size === 'senior' 
+      ? pizzaPrices.menuMidiSenior 
+      : pizzaPrices.menuMidiMega;
+  }
+  return customization.size === 'senior' 
+    ? pizzaPrices.senior 
+    : pizzaPrices.mega;
+}
+
+// Get supplements total for a pizza
+function getSupplementsTotal(customization: PizzaCustomization): number {
+  if (!customization.supplements || customization.supplements.length === 0) {
+    return 0;
+  }
+  return customization.supplements.reduce((sum, supId) => {
+    const sup = cheeseSupplementOptions.find(s => s.id === supId);
+    return sum + (sup?.price || 0);
+  }, 0);
+}
+
 // Apply pizza promotions based on order type
 export interface PromoResult {
   originalTotal: number;
   discountedTotal: number;
   promoDescription: string | null;
   freePizzas: number;
+  supplementsTotal: number;
 }
 
 export function applyPizzaPromotions(
@@ -57,11 +81,21 @@ export function applyPizzaPromotions(
       originalTotal: total, 
       discountedTotal: total, 
       promoDescription: null,
-      freePizzas: 0 
+      freePizzas: 0,
+      supplementsTotal: 0
     };
   }
 
-  // Group pizzas by size
+  // Calculate supplements total separately (never discounted)
+  let supplementsTotal = 0;
+  pizzaItems.forEach(item => {
+    const customization = item.customization as PizzaCustomization;
+    if (customization) {
+      supplementsTotal += getSupplementsTotal(customization) * item.quantity;
+    }
+  });
+
+  // Group pizzas by size (for base price calculation only)
   const seniorPizzas = pizzaItems.filter(item => {
     const customization = item.customization as PizzaCustomization;
     return customization?.size === 'senior';
@@ -74,15 +108,18 @@ export function applyPizzaPromotions(
   const seniorCount = seniorPizzas.reduce((sum, item) => sum + item.quantity, 0);
   const megaCount = megaPizzas.reduce((sum, item) => sum + item.quantity, 0);
 
-  let originalTotal = 0;
-  let discountedTotal = 0;
+  // Calculate original total (base prices only, without supplements)
+  let originalBaseTotal = 0;
+  pizzaItems.forEach(item => {
+    const customization = item.customization as PizzaCustomization;
+    if (customization) {
+      originalBaseTotal += getBasePizzaPrice(customization) * item.quantity;
+    }
+  });
+
+  let discountedBaseTotal = 0;
   let promoDescription: string | null = null;
   let freePizzas = 0;
-
-  // Calculate original total
-  pizzaItems.forEach(item => {
-    originalTotal += (item.calculatedPrice || item.item.price) * item.quantity;
-  });
 
   if (orderType === 'surplace' || orderType === 'emporter') {
     // 1 achetée = 1 offerte (pairs of 2)
@@ -91,7 +128,7 @@ export function applyPizzaPromotions(
     const megaPairs = Math.floor(megaCount / 2);
     const megaSingles = megaCount % 2;
 
-    discountedTotal = 
+    discountedBaseTotal = 
       (seniorPairs * pizzaPrices.senior) + (seniorSingles * pizzaPrices.senior) +
       (megaPairs * pizzaPrices.mega) + (megaSingles * pizzaPrices.mega);
     
@@ -107,7 +144,7 @@ export function applyPizzaPromotions(
     const megaGroups = Math.floor(megaCount / 3);
     const megaRemainder = megaCount % 3;
 
-    discountedTotal = 
+    discountedBaseTotal = 
       (seniorGroups * 2 * pizzaPrices.senior) + (seniorRemainder * pizzaPrices.senior) +
       (megaGroups * 2 * pizzaPrices.mega) + (megaRemainder * pizzaPrices.mega);
     
@@ -117,10 +154,14 @@ export function applyPizzaPromotions(
       promoDescription = `2 achetées = 1 offerte (${freePizzas} pizza${freePizzas > 1 ? 's' : ''} offerte${freePizzas > 1 ? 's' : ''})`;
     }
   } else {
-    discountedTotal = originalTotal;
+    discountedBaseTotal = originalBaseTotal;
   }
 
-  return { originalTotal, discountedTotal, promoDescription, freePizzas };
+  // Final totals: base + supplements (supplements are NEVER discounted)
+  const originalTotal = originalBaseTotal + supplementsTotal;
+  const discountedTotal = discountedBaseTotal + supplementsTotal;
+
+  return { originalTotal, discountedTotal, promoDescription, freePizzas, supplementsTotal };
 }
 
 // Calculate TVA (10%)
