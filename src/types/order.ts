@@ -1,6 +1,22 @@
 export type OrderType = 'emporter' | 'livraison' | 'surplace' | null;
 
-export type MenuCategory = 'pizzas' | 'soufflets' | 'makloub' | 'tacos' | 'sandwiches' | 'panini' | 'boissons';
+export type MenuCategory = 
+  | 'pizzas' 
+  | 'menus-midi'
+  | 'tacos' 
+  | 'soufflets' 
+  | 'makloub' 
+  | 'mlawi'
+  | 'panini' 
+  | 'croques'
+  | 'frites'
+  | 'milkshakes'
+  | 'crepes'
+  | 'gaufres'
+  | 'boissons';
+
+export type PizzaBase = 'tomate' | 'creme';
+export type PizzaSize = 'senior' | 'mega';
 
 export interface MenuItem {
   id: string;
@@ -9,8 +25,62 @@ export interface MenuItem {
   price: number;
   category: MenuCategory;
   image?: string;
+  base?: PizzaBase; // For pizzas
+  ingredients?: string[];
 }
 
+export interface PizzaCustomization {
+  base: PizzaBase;
+  size: PizzaSize;
+  isMenuMidi?: boolean;
+  promoApplied?: string;
+}
+
+export interface TacosCustomization {
+  size: 'solo' | 'double' | 'triple';
+  meats: string[];
+  sauces: string[];
+  menuOption: 'none' | 'frites' | 'boisson' | 'menu';
+  supplements: string[];
+}
+
+export interface SouffletCustomization {
+  size: 'solo' | 'double' | 'triple';
+  meats: string[];
+  sauces: string[];
+  garnitures: string[];
+  menuOption: 'none' | 'frites' | 'boisson' | 'menu';
+}
+
+export interface MakloubCustomization {
+  size: 'solo' | 'double';
+  meats: string[];
+  sauces: string[];
+  garnitures: string[];
+}
+
+export interface MlawiCustomization {
+  meats: string[];
+  sauces: string[];
+  garnitures: string[];
+}
+
+export interface PaniniCustomization {
+  meats: string[];
+  sauces: string[];
+  menuOption: 'none' | 'frites' | 'boisson' | 'menu';
+  supplements: string[];
+}
+
+export type ProductCustomization = 
+  | PizzaCustomization 
+  | TacosCustomization 
+  | SouffletCustomization 
+  | MakloubCustomization
+  | MlawiCustomization
+  | PaniniCustomization;
+
+// Legacy support
 export interface SouffletOrder {
   meat: string | null;
   sauce: string | null;
@@ -22,11 +92,30 @@ export interface CartItem {
   id: string;
   item: MenuItem;
   quantity: number;
-  customization?: SouffletOrder;
+  customization?: ProductCustomization | SouffletOrder;
+  calculatedPrice?: number; // Price after customization
+}
+
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+export type PaymentMethod = 'cb' | 'especes';
+
+export interface CustomerInfo {
+  name: string;
+  phone: string;
+  address?: string;
+  notes?: string;
 }
 
 export interface Order {
+  id: string;
   type: OrderType;
   items: CartItem[];
+  subtotal: number;
+  tva: number;
   total: number;
+  customer: CustomerInfo;
+  paymentMethod: PaymentMethod;
+  status: OrderStatus;
+  createdAt: Date;
+  updatedAt: Date;
 }
