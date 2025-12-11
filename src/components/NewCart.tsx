@@ -66,6 +66,12 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
   };
 
   const getItemPrice = (item: typeof cart[0]) => {
+    // Always prioritize calculatedPrice if it exists (set by wizards)
+    if (item.calculatedPrice !== undefined && item.calculatedPrice > 0) {
+      return item.calculatedPrice;
+    }
+    
+    // Fallback for pizzas without calculatedPrice
     if (item.item.category === 'pizzas' && item.customization && 'size' in item.customization) {
       const pizzaCustom = item.customization as PizzaCustomization;
       if (pizzaCustom.isMenuMidi) {
@@ -73,7 +79,8 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
       }
       return pizzaCustom.size === 'senior' ? pizzaPrices.senior : pizzaPrices.mega;
     }
-    return item.calculatedPrice || item.item.price;
+    
+    return item.item.price;
   };
 
   return (
