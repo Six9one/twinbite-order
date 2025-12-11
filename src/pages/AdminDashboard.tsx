@@ -186,7 +186,7 @@ export default function AdminDashboard() {
           <p>TVA (10%): ${order.tva.toFixed(2)}€</p>
           ${order.delivery_fee > 0 ? `<p>Livraison: ${order.delivery_fee.toFixed(2)}€</p>` : ''}
           <p style="font-size: 24px;">TOTAL: ${order.total.toFixed(2)}€</p>
-          <p>Paiement: ${order.payment_method === 'cb' ? 'Carte' : 'Espèces'}</p>
+          <p>Paiement: ${order.payment_method === 'en_ligne' ? 'EN LIGNE (PAYÉ)' : order.payment_method === 'cb' ? 'Carte (NON PAYÉ)' : 'Espèces (NON PAYÉ)'}</p>
         </div>
         ${order.customer_notes ? `<div class="note"><strong>Note client:</strong> ${escapeHtml(order.customer_notes)}</div>` : ''}
         <div style="text-align: center; margin-top: 20px; border-top: 2px dashed #000; padding-top: 10px;">
@@ -425,12 +425,25 @@ function OrderCard({
 
         <div className="flex items-center justify-between pt-2 border-t">
           <div className="flex items-center gap-2">
-            {order.payment_method === 'cb' ? (
-              <CreditCard className="w-4 h-4 text-blue-500" />
+            {order.payment_method === 'en_ligne' ? (
+              <>
+                <CreditCard className="w-4 h-4 text-green-500" />
+                <span className="text-sm">Paiement en ligne</span>
+                <Badge className="bg-green-500 text-white">PAYÉ ✓</Badge>
+              </>
+            ) : order.payment_method === 'cb' ? (
+              <>
+                <CreditCard className="w-4 h-4 text-blue-500" />
+                <span className="text-sm">Carte</span>
+                <Badge variant="destructive" className="bg-red-500 text-white animate-pulse">NON PAYÉ</Badge>
+              </>
             ) : (
-              <Banknote className="w-4 h-4 text-green-500" />
+              <>
+                <Banknote className="w-4 h-4 text-amber-500" />
+                <span className="text-sm">Espèces</span>
+                <Badge variant="destructive" className="bg-red-500 text-white animate-pulse">NON PAYÉ</Badge>
+              </>
             )}
-            <span className="text-sm">{order.payment_method === 'cb' ? 'Carte' : 'Espèces'}</span>
           </div>
           <span className="text-2xl font-bold text-primary">{order.total.toFixed(2)}€</span>
         </div>
@@ -483,10 +496,11 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
 
   const fetchItems = async () => {
     setLoading(true);
+    const orderColumn = tableName === 'delivery_zones' ? 'min_order' : 'display_order';
     const { data, error } = await supabase
       .from(tableName as any)
       .select('*')
-      .order('display_order', { ascending: true });
+      .order(orderColumn, { ascending: true });
     
     if (!error && data) {
       setItems(data);
@@ -571,7 +585,7 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
                 placeholder="Min. commande"
                 value={newItem.min_order || ''}
                 onChange={(e) => setNewItem({ ...newItem, min_order: parseFloat(e.target.value) })}
-                className="w-32"
+                className="w-28"
               />
               <Input
                 type="number"
@@ -579,13 +593,29 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
                 placeholder="Frais livraison"
                 value={newItem.delivery_fee || ''}
                 onChange={(e) => setNewItem({ ...newItem, delivery_fee: parseFloat(e.target.value) })}
-                className="w-32"
+                className="w-28"
               />
               <Input
                 placeholder="Délai (ex: 20-30 min)"
                 value={newItem.estimated_time || ''}
                 onChange={(e) => setNewItem({ ...newItem, estimated_time: e.target.value })}
-                className="w-32"
+                className="w-28"
+              />
+              <Input
+                type="number"
+                step="0.000001"
+                placeholder="Latitude"
+                value={newItem.latitude || ''}
+                onChange={(e) => setNewItem({ ...newItem, latitude: parseFloat(e.target.value) })}
+                className="w-28"
+              />
+              <Input
+                type="number"
+                step="0.000001"
+                placeholder="Longitude"
+                value={newItem.longitude || ''}
+                onChange={(e) => setNewItem({ ...newItem, longitude: parseFloat(e.target.value) })}
+                className="w-28"
               />
             </>
           )}
@@ -607,6 +637,8 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
                   <th className="text-left p-3">Min.</th>
                   <th className="text-left p-3">Frais</th>
                   <th className="text-left p-3">Délai</th>
+                  <th className="text-left p-3">Latitude</th>
+                  <th className="text-left p-3">Longitude</th>
                 </>
               )}
               <th className="text-left p-3">Actions</th>
@@ -677,6 +709,32 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
                         />
                       ) : (
                         item.estimated_time
+                      )}
+                    </td>
+                    <td className="p-3">
+                      {editingId === item.id ? (
+                        <Input
+                          type="number"
+                          step="0.000001"
+                          value={item.latitude || ''}
+                          onChange={(e) => setItems(items.map(i => i.id === item.id ? { ...i, latitude: parseFloat(e.target.value) } : i))}
+                          className="w-24"
+                        />
+                      ) : (
+                        item.latitude ? item.latitude.toFixed(4) : '-'
+                      )}
+                    </td>
+                    <td className="p-3">
+                      {editingId === item.id ? (
+                        <Input
+                          type="number"
+                          step="0.000001"
+                          value={item.longitude || ''}
+                          onChange={(e) => setItems(items.map(i => i.id === item.id ? { ...i, longitude: parseFloat(e.target.value) } : i))}
+                          className="w-24"
+                        />
+                      ) : (
+                        item.longitude ? item.longitude.toFixed(4) : '-'
                       )}
                     </td>
                   </>
