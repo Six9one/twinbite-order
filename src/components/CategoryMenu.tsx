@@ -21,11 +21,11 @@ import { useOrder } from '@/context/OrderContext';
 import { PizzaWizard } from '@/components/wizards/PizzaWizard';
 import { TacosWizard } from '@/components/wizards/TacosWizard';
 import { SouffletWizard } from '@/components/wizards/SouffletWizard';
+import { MakloubWizard } from '@/components/wizards/MakloubWizard';
 import { SimpleProductWizard } from '@/components/wizards/SimpleProductWizard';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { isMenuMidiTime } from '@/utils/promotions';
 
@@ -64,14 +64,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       case 'soufflets':
         return <SouffletWizard onClose={() => setSelectedCategory(null)} />;
       case 'makloub':
-        return (
-          <SimpleProductWizard 
-            items={makloub} 
-            title="Makloub" 
-            showMenuOption 
-            onClose={() => setSelectedCategory(null)} 
-          />
-        );
+        return <MakloubWizard onClose={() => setSelectedCategory(null)} />;
       case 'mlawi':
         return (
           <SimpleProductWizard 
@@ -192,7 +185,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
               )}
               {showMenuMidi && (
                 <Badge className="bg-yellow-500/10 text-yellow-600 whitespace-nowrap">
-                  ☀️ Menu Midi disponible (11h30-15h)
+                  ☀️ Menu Midi disponible (11h-15h)
                 </Badge>
               )}
             </div>

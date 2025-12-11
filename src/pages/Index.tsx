@@ -104,11 +104,11 @@ function MainApp() {
         
         <div className="relative z-10 container mx-auto px-4 py-12">
           <div className="text-center mb-10 animate-fade-in">
-            {/* Logo TWIN - Using Cinzel Decorative for Roman style */}
+            {/* Logo TWIN - Clean simple font */}
             <div className="mb-6">
-              <h1 className="text-6xl md:text-8xl font-bold tracking-tight whitespace-nowrap" style={{ fontFamily: "'Cinzel Decorative', serif" }}>
-                <span className="text-amber-400 drop-shadow-[0_0_30px_rgba(251,191,36,0.5)]">TWIN</span>
-                <span className="text-white drop-shadow-lg ml-3">PIZZA</span>
+              <h1 className="text-6xl md:text-8xl font-medium tracking-wide whitespace-nowrap">
+                <span className="text-amber-400">TWIN</span>
+                <span className="text-white ml-3">PIZZA</span>
               </h1>
             </div>
             

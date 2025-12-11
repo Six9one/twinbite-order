@@ -1,9 +1,29 @@
 import { OrderType, CartItem, PizzaCustomization } from '@/types/order';
 import { pizzaPrices } from '@/data/menu';
 
-// Menu midi is always available (no time restriction)
+// Menu midi is available between 11:00 and 15:00
 export function isMenuMidiTime(): boolean {
-  return true;
+  const now = new Date();
+  const hour = now.getHours();
+  return hour >= 11 && hour < 15;
+}
+
+// Get remaining time for menu midi
+export function getMenuMidiRemainingTime(): { hours: number; minutes: number; seconds: number } | null {
+  if (!isMenuMidiTime()) return null;
+  
+  const now = new Date();
+  const endTime = new Date();
+  endTime.setHours(15, 0, 0, 0);
+  
+  const diff = endTime.getTime() - now.getTime();
+  if (diff <= 0) return null;
+  
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  
+  return { hours, minutes, seconds };
 }
 
 // Calculate pizza price based on customization

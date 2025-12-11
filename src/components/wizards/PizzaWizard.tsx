@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MenuItem, PizzaCustomization, PizzaBase, PizzaSize } from '@/types/order';
 import { pizzasTomate, pizzasCreme, pizzaPrices } from '@/data/menu';
-import { isMenuMidiTime, calculatePizzaPrice } from '@/utils/promotions';
+import { isMenuMidiTime, getMenuMidiRemainingTime } from '@/utils/promotions';
 import { useOrder } from '@/context/OrderContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Pizza, Sun } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { ArrowLeft, Check, Pizza, Sun, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface PizzaWizardProps {
@@ -21,11 +22,26 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
   const [base, setBase] = useState<PizzaBase>('tomate');
   const [size, setSize] = useState<PizzaSize>('senior');
   const [isMenuMidi, setIsMenuMidi] = useState(false);
+  const [note, setNote] = useState('');
+  const [countdown, setCountdown] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
 
   const showMenuMidi = isMenuMidiTime();
   const promoText = orderType === 'livraison' 
     ? '2 achetées = 1 offerte' 
     : orderType ? '1 achetée = 1 offerte' : null;
+
+  // Update countdown every second
+  useEffect(() => {
+    if (!showMenuMidi) return;
+    
+    const updateCountdown = () => {
+      setCountdown(getMenuMidiRemainingTime());
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [showMenuMidi]);
 
   const handleSelectPizza = (pizza: MenuItem) => {
     setSelectedPizza(pizza);
@@ -47,6 +63,7 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
       base,
       size,
       isMenuMidi: isMenuMidi && showMenuMidi,
+      note: note || undefined,
     };
 
     const cartItem = {
@@ -65,6 +82,7 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
     setSelectedPizza(null);
     setSize('senior');
     setIsMenuMidi(false);
+    setNote('');
     setStep('select');
   };
 
@@ -86,6 +104,27 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
                 )}
               </div>
             </div>
+
+            {/* Menu Midi availability banner */}
+            {showMenuMidi && countdown && (
+              <div className="mt-3 p-3 bg-yellow-500/10 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-2 text-yellow-600">
+                  <Sun className="w-5 h-5" />
+                  <span className="font-semibold">Menu Midi disponible</span>
+                </div>
+                <div className="flex items-center gap-1 text-yellow-600 font-mono">
+                  <Clock className="w-4 h-4" />
+                  <span>Fin dans {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}</span>
+                </div>
+              </div>
+            )}
+            {!showMenuMidi && (
+              <div className="mt-3 p-3 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground text-center">
+                  Menu midi disponible uniquement de 11:00 à 15:00
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -209,31 +248,76 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
           </div>
         </div>
 
-        {/* Menu Midi Option */}
+        {/* Menu Midi Options */}
         {showMenuMidi && (
-          <div>
-            <Card
-              className={`p-4 cursor-pointer transition-all border-2 ${isMenuMidi ? 'border-yellow-500 bg-yellow-500/10' : 'border-transparent hover:bg-muted/50'}`}
-              onClick={() => setIsMenuMidi(!isMenuMidi)}
-            >
-              <div className="flex items-center gap-3">
-                <Sun className="w-8 h-8 text-yellow-500" />
-                <div className="flex-1">
-                  <h3 className="font-semibold flex items-center gap-2">
-                    Menu Midi
-                    <Badge variant="outline" className="text-yellow-600 border-yellow-500">
-                      11h30 - 15h00
-                    </Badge>
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Pizza + Boisson : {size === 'senior' ? pizzaPrices.menuMidiSenior : pizzaPrices.menuMidiMega}€
-                  </p>
-                </div>
-                {isMenuMidi && <Check className="w-6 h-6 text-yellow-500" />}
-              </div>
-            </Card>
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Sun className="w-5 h-5 text-yellow-500" />
+              Menu Midi
+              {countdown && (
+                <span className="text-sm font-mono text-yellow-600">
+                  (Fin dans {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')})
+                </span>
+              )}
+            </h2>
+            
+            <div className="grid grid-cols-1 gap-3">
+              {/* Menu Midi Senior */}
+              {size === 'senior' && (
+                <Card
+                  className={`p-4 cursor-pointer transition-all border-2 ${isMenuMidi ? 'border-yellow-500 bg-yellow-500/10' : 'border-transparent hover:bg-muted/50'}`}
+                  onClick={() => setIsMenuMidi(!isMenuMidi)}
+                >
+                  <div className="flex items-center gap-3">
+                    <Sun className="w-8 h-8 text-yellow-500" />
+                    <div className="flex-1">
+                      <h3 className="font-semibold">Menu Midi Senior</h3>
+                      <p className="text-sm text-muted-foreground">Pizza Senior + Boisson</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-yellow-600">{pizzaPrices.menuMidiSenior}€</p>
+                      <p className="text-xs text-green-600">Économie de {pizzaPrices.senior + 2 - pizzaPrices.menuMidiSenior}€</p>
+                    </div>
+                    {isMenuMidi && <Check className="w-6 h-6 text-yellow-500" />}
+                  </div>
+                </Card>
+              )}
+              
+              {/* Menu Midi Mega */}
+              {size === 'mega' && (
+                <Card
+                  className={`p-4 cursor-pointer transition-all border-2 ${isMenuMidi ? 'border-yellow-500 bg-yellow-500/10' : 'border-transparent hover:bg-muted/50'}`}
+                  onClick={() => setIsMenuMidi(!isMenuMidi)}
+                >
+                  <div className="flex items-center gap-3">
+                    <Sun className="w-8 h-8 text-yellow-500" />
+                    <div className="flex-1">
+                      <h3 className="font-semibold">Menu Midi Mega</h3>
+                      <p className="text-sm text-muted-foreground">Pizza Mega + Boisson</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-yellow-600">{pizzaPrices.menuMidiMega}€</p>
+                      <p className="text-xs text-green-600">Économie de {pizzaPrices.mega + 2 - pizzaPrices.menuMidiMega}€</p>
+                    </div>
+                    {isMenuMidi && <Check className="w-6 h-6 text-yellow-500" />}
+                  </div>
+                </Card>
+              )}
+            </div>
           </div>
         )}
+
+        {/* Notes */}
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">Notes / Remarques</h2>
+          <Textarea
+            placeholder="Ex: bien cuite, sans oignons..."
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className="resize-none"
+            rows={3}
+          />
+        </div>
 
         {/* Promo reminder */}
         {promoText && (
