@@ -34,6 +34,7 @@ export interface PizzaCustomization {
   size: PizzaSize;
   isMenuMidi?: boolean;
   promoApplied?: string;
+  note?: string;
 }
 
 export interface TacosCustomization {
@@ -42,6 +43,7 @@ export interface TacosCustomization {
   sauces: string[];
   menuOption: 'none' | 'frites' | 'boisson' | 'menu';
   supplements: string[];
+  note?: string;
 }
 
 export interface SouffletCustomization {
@@ -49,7 +51,9 @@ export interface SouffletCustomization {
   meats: string[];
   sauces: string[];
   garnitures: string[];
+  supplements: string[];
   menuOption: 'none' | 'frites' | 'boisson' | 'menu';
+  note?: string;
 }
 
 export interface MakloubCustomization {
@@ -57,12 +61,15 @@ export interface MakloubCustomization {
   meats: string[];
   sauces: string[];
   garnitures: string[];
+  supplements: string[];
+  note?: string;
 }
 
 export interface MlawiCustomization {
   meats: string[];
   sauces: string[];
   garnitures: string[];
+  note?: string;
 }
 
 export interface PaniniCustomization {
@@ -70,6 +77,7 @@ export interface PaniniCustomization {
   sauces: string[];
   menuOption: 'none' | 'frites' | 'boisson' | 'menu';
   supplements: string[];
+  note?: string;
 }
 
 export type ProductCustomization = 
@@ -94,6 +102,7 @@ export interface CartItem {
   quantity: number;
   customization?: ProductCustomization | SouffletOrder;
   calculatedPrice?: number; // Price after customization
+  note?: string;
 }
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';

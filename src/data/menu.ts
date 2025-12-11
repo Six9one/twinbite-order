@@ -15,9 +15,8 @@ export const pizzasTomate: MenuItem[] = [
   { id: 'pizza-t-10', name: 'Bolognaise', description: 'Tomate, mozzarella, viande hachée, oignons', price: 18, category: 'pizzas', base: 'tomate' },
   { id: 'pizza-t-11', name: 'Pepperoni', description: 'Tomate, mozzarella, pepperoni, piments', price: 18, category: 'pizzas', base: 'tomate' },
   { id: 'pizza-t-12', name: 'Mexicaine', description: 'Tomate, mozzarella, bœuf, poivrons, jalapeños', price: 18, category: 'pizzas', base: 'tomate' },
-  { id: 'pizza-t-13', name: 'Kebab', description: 'Tomate, mozzarella, viande kebab, oignons, sauce blanche', price: 18, category: 'pizzas', base: 'tomate' },
-  { id: 'pizza-t-14', name: 'Poulet', description: 'Tomate, mozzarella, poulet grillé, poivrons', price: 18, category: 'pizzas', base: 'tomate' },
-  { id: 'pizza-t-15', name: 'Twin Special', description: 'Tomate, mozzarella, viande hachée, merguez, œuf', price: 18, category: 'pizzas', base: 'tomate' },
+  { id: 'pizza-t-13', name: 'Poulet', description: 'Tomate, mozzarella, poulet grillé, poivrons', price: 18, category: 'pizzas', base: 'tomate' },
+  { id: 'pizza-t-14', name: 'Twin Special', description: 'Tomate, mozzarella, viande hachée, merguez, œuf', price: 18, category: 'pizzas', base: 'tomate' },
 ];
 
 // Base Crème Fraîche - 18€ Senior, 25€ Mega
@@ -67,7 +66,6 @@ export const mlawi: MenuItem[] = [
 // ============= PANINI =============
 export const panini: MenuItem[] = [
   { id: 'panini-poulet', name: 'Panini Poulet', description: 'Poulet grillé, fromage, sauce', price: 5, category: 'panini' },
-  { id: 'panini-kebab', name: 'Panini Kebab', description: 'Viande kebab, fromage, sauce', price: 5.5, category: 'panini' },
   { id: 'panini-thon', name: 'Panini Thon', description: 'Thon, fromage, tomates', price: 5, category: 'panini' },
   { id: 'panini-merguez', name: 'Panini Merguez', description: 'Merguez, fromage, sauce', price: 5.5, category: 'panini' },
 ];
@@ -143,12 +141,12 @@ export const menuItems: MenuItem[] = [
 ];
 
 // ============= OPTIONS =============
+// Removed kebab meat option as per requirements
 export const meatOptions = [
   { id: 'poulet', name: 'Poulet', price: 0 },
   { id: 'escalope', name: 'Escalope', price: 0 },
   { id: 'viande', name: 'Viande Hachée', price: 0 },
   { id: 'merguez', name: 'Merguez', price: 0 },
-  { id: 'kebab', name: 'Kebab', price: 0 },
   { id: 'cordon-bleu', name: 'Cordon Bleu', price: 0.5 },
   { id: 'nuggets', name: 'Nuggets', price: 0.5 },
 ];
@@ -165,6 +163,21 @@ export const sauceOptions = [
   { id: 'curry', name: 'Curry', price: 0 },
 ];
 
+// Garnitures for Soufflet (Pomme de terre, Oignon, Olive)
+export const souffletGarnitureOptions = [
+  { id: 'pdt', name: 'Pomme de Terre', price: 0 },
+  { id: 'oignon', name: 'Oignon', price: 0 },
+  { id: 'olive', name: 'Olive', price: 0 },
+];
+
+// Garnitures for Makloub (Salade, Tomate, Oignon)
+export const makloubGarnitureOptions = [
+  { id: 'salade', name: 'Salade', price: 0 },
+  { id: 'tomate', name: 'Tomate', price: 0 },
+  { id: 'oignon', name: 'Oignon', price: 0 },
+];
+
+// Legacy garniture options
 export const garnitureOptions = [
   { id: 'salade', name: 'Salade', price: 0 },
   { id: 'tomate', name: 'Tomate', price: 0 },
@@ -172,6 +185,16 @@ export const garnitureOptions = [
   { id: 'olive', name: 'Olives', price: 0.5 },
   { id: 'pdt', name: 'Pommes de Terre', price: 0 },
   { id: 'fromage', name: 'Fromage', price: 1 },
+];
+
+// Supplements for Soufflet and Makloub (1€ each)
+export const cheeseSupplementOptions = [
+  { id: 'chevre', name: 'Chèvre', price: 1 },
+  { id: 'reblochon', name: 'Reblochon', price: 1 },
+  { id: 'mozzarella', name: 'Mozzarella', price: 1 },
+  { id: 'raclette', name: 'Raclette', price: 1 },
+  { id: 'cheddar', name: 'Cheddar', price: 1 },
+  { id: 'boursin', name: 'Boursin', price: 1 },
 ];
 
 export const supplementOptions = [
@@ -241,7 +264,7 @@ export const deals = [
   { 
     id: 'deal-3', 
     title: 'Menu Midi', 
-    description: 'Pizza Senior + Boisson 10€ (11h30-15h)', 
+    description: 'Pizza Senior + Boisson 10€ (11h-15h)', 
     image: 'deal-3',
     orderTypes: ['surplace', 'emporter', 'livraison'] as const
   },

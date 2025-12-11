@@ -48,9 +48,12 @@ export type Database = {
           estimated_time: string
           id: string
           is_active: boolean
+          latitude: number | null
+          longitude: number | null
           min_order: number
           name: string
           updated_at: string | null
+          zone_type: string | null
         }
         Insert: {
           created_at?: string | null
@@ -58,9 +61,12 @@ export type Database = {
           estimated_time?: string
           id?: string
           is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
           min_order?: number
           name: string
           updated_at?: string | null
+          zone_type?: string | null
         }
         Update: {
           created_at?: string | null
@@ -68,9 +74,12 @@ export type Database = {
           estimated_time?: string
           id?: string
           is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
           min_order?: number
           name?: string
           updated_at?: string | null
+          zone_type?: string | null
         }
         Relationships: []
       }

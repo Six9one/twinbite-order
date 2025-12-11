@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { MenuItem, SouffletCustomization } from '@/types/order';
-import { soufflets, meatOptions, sauceOptions, souffletGarnitureOptions, cheeseSupplementOptions, menuOptionPrices } from '@/data/menu';
+import { MenuItem, MakloubCustomization } from '@/types/order';
+import { makloub, meatOptions, sauceOptions, makloubGarnitureOptions, cheeseSupplementOptions } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,25 +10,24 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Check } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-interface SouffletWizardProps {
+interface MakloubWizardProps {
   onClose: () => void;
 }
 
-type SouffletSize = 'solo' | 'double' | 'triple';
+type MakloubSize = 'solo' | 'double';
 
-export function SouffletWizard({ onClose }: SouffletWizardProps) {
+export function MakloubWizard({ onClose }: MakloubWizardProps) {
   const { addToCart } = useOrder();
   const [step, setStep] = useState(1);
-  const [size, setSize] = useState<SouffletSize>('solo');
+  const [size, setSize] = useState<MakloubSize>('solo');
   const [selectedMeats, setSelectedMeats] = useState<string[]>([]);
   const [selectedSauces, setSelectedSauces] = useState<string[]>([]);
   const [selectedGarnitures, setSelectedGarnitures] = useState<string[]>([]);
   const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
-  const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'menu'>('none');
   const [note, setNote] = useState('');
 
-  const maxMeats = size === 'solo' ? 1 : size === 'double' ? 2 : 3;
-  const souffletItem = soufflets.find(s => s.id === `souffle-${size}`);
+  const maxMeats = size === 'solo' ? 1 : 2;
+  const makloubItem = makloub.find(m => m.id === `makloub-${size}`);
 
   const toggleMeat = (meatId: string) => {
     if (selectedMeats.includes(meatId)) {
@@ -63,8 +62,7 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
   };
 
   const calculatePrice = () => {
-    let price = souffletItem?.price || 0;
-    price += menuOptionPrices[menuOption];
+    let price = makloubItem?.price || 0;
     
     // Add supplement costs (1€ each)
     price += selectedSupplements.length * 1;
@@ -80,30 +78,28 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
   };
 
   const handleAddToCart = () => {
-    if (!souffletItem) return;
+    if (!makloubItem) return;
 
-    const customization: SouffletCustomization = {
+    const customization: MakloubCustomization = {
       size,
       meats: selectedMeats,
       sauces: selectedSauces,
       garnitures: selectedGarnitures,
       supplements: selectedSupplements,
-      menuOption,
       note: note || undefined,
     };
 
     const cartItem: MenuItem = {
-      ...souffletItem,
-      id: `${souffletItem.id}-${Date.now()}`,
+      ...makloubItem,
+      id: `${makloubItem.id}-${Date.now()}`,
     };
 
-    // Pass calculated price
     addToCart(cartItem, 1, customization);
     
     const meatNames = selectedMeats.map(id => meatOptions.find(m => m.id === id)?.name).join(', ');
     toast({
       title: 'Ajouté au panier',
-      description: `Soufflé ${size} - ${meatNames}`,
+      description: `Makloub ${size} - ${meatNames}`,
     });
     
     onClose();
@@ -115,9 +111,9 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
         return (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Choisir la taille</h2>
-            <div className="grid grid-cols-3 gap-4">
-              {(['solo', 'double', 'triple'] as SouffletSize[]).map((s) => {
-                const item = soufflets.find(t => t.id === `souffle-${s}`);
+            <div className="grid grid-cols-2 gap-4">
+              {(['solo', 'double'] as MakloubSize[]).map((s) => {
+                const item = makloub.find(m => m.id === `makloub-${s}`);
                 return (
                   <Card
                     key={s}
@@ -129,7 +125,7 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
                   >
                     <h3 className="font-semibold capitalize">{s}</h3>
                     <p className="text-xs text-muted-foreground">
-                      {s === 'solo' ? '1' : s === 'double' ? '2' : '3'} viande{s !== 'solo' ? 's' : ''}
+                      {s === 'solo' ? '1' : '2'} viande{s !== 'solo' ? 's' : ''}
                     </p>
                     <p className="text-xl font-bold text-primary mt-2">{item?.price}€</p>
                   </Card>
@@ -191,7 +187,7 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
             <h2 className="text-lg font-semibold">Choisir les garnitures</h2>
             <p className="text-sm text-muted-foreground">Sélection multiple possible</p>
             <div className="grid grid-cols-3 gap-3">
-              {souffletGarnitureOptions.map((gar) => (
+              {makloubGarnitureOptions.map((gar) => (
                 <Card
                   key={gar.id}
                   className={`p-3 cursor-pointer transition-all ${selectedGarnitures.includes(gar.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
@@ -221,38 +217,6 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
                     {selectedSupplements.includes(sup.id) && <Check className="w-5 h-5 text-primary" />}
                   </div>
                   <span className="text-sm text-primary font-semibold">+{sup.price}€</span>
-                </Card>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Option Menu</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { id: 'none', label: 'Sans', price: 0 },
-                { id: 'frites', label: 'Frites', price: 1.5 },
-                { id: 'boisson', label: 'Boisson', price: 1.5 },
-                { id: 'menu', label: 'Menu Complet', price: 2.5, desc: 'Frites + Boisson' },
-              ].map((option) => (
-                <Card
-                  key={option.id}
-                  className={`p-3 cursor-pointer transition-all ${menuOption === option.id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                  onClick={() => setMenuOption(option.id as typeof menuOption)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="font-medium">{option.label}</span>
-                      {option.desc && <p className="text-xs text-muted-foreground">{option.desc}</p>}
-                    </div>
-                    {menuOption === option.id && <Check className="w-5 h-5 text-primary" />}
-                  </div>
-                  {option.price > 0 && (
-                    <span className="text-sm text-primary font-semibold">+{option.price}€</span>
-                  )}
                 </Card>
               ))}
             </div>
@@ -286,15 +250,15 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex-1">
-              <h1 className="text-2xl font-display font-bold">Soufflé</h1>
-              <p className="text-sm text-muted-foreground">Étape {step}/5</p>
+              <h1 className="text-2xl font-display font-bold">Makloub</h1>
+              <p className="text-sm text-muted-foreground">Étape {step}/4</p>
             </div>
             <span className="text-xl font-bold text-primary">{calculatePrice().toFixed(2)}€</span>
           </div>
           
           {/* Progress */}
           <div className="flex gap-2 mt-4">
-            {[1, 2, 3, 4, 5].map((s) => (
+            {[1, 2, 3, 4].map((s) => (
               <div
                 key={s}
                 className={`h-1 flex-1 rounded-full transition-colors ${s <= step ? 'bg-primary' : 'bg-muted'}`}
@@ -311,7 +275,7 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
       {/* Bottom Action */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4">
         <div className="container mx-auto">
-          {step < 5 ? (
+          {step < 4 ? (
             <Button 
               className="w-full h-14 text-lg" 
               onClick={() => setStep(step + 1)}
