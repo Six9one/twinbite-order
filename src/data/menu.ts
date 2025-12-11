@@ -7,6 +7,7 @@ export const menuItems: MenuItem[] = [
   { id: 'pizza-3', name: 'Quatre Fromages', description: 'Mozzarella, gorgonzola, chèvre, parmesan', price: 12.50, category: 'pizzas' },
   { id: 'pizza-4', name: 'Calzone', description: 'Pizza pliée, jambon, œuf, champignons', price: 12.00, category: 'pizzas' },
   { id: 'pizza-5', name: 'Orientale', description: 'Merguez, poivrons, oignons, olives', price: 11.50, category: 'pizzas' },
+  { id: 'pizza-6', name: 'Végétarienne', description: 'Légumes grillés, mozzarella, basilic', price: 11.00, category: 'pizzas' },
 
   // Soufflets
   { id: 'soufflet-1', name: 'Soufflet Personnalisé', description: 'Créez votre soufflet sur mesure', price: 7.50, category: 'soufflets' },
@@ -77,3 +78,18 @@ export const categoryLabels: Record<string, string> = {
   panini: 'Panini',
   boissons: 'Boissons',
 };
+
+export const deliveryZones = [
+  { id: 'zone-1', name: 'Centre-ville', minOrder: 10, deliveryFee: 0, estimatedTime: '20-30 min' },
+  { id: 'zone-2', name: 'Quartier Nord', minOrder: 15, deliveryFee: 2, estimatedTime: '30-40 min' },
+  { id: 'zone-3', name: 'Quartier Sud', minOrder: 15, deliveryFee: 2, estimatedTime: '30-40 min' },
+  { id: 'zone-4', name: 'Quartier Est', minOrder: 20, deliveryFee: 3, estimatedTime: '35-45 min' },
+  { id: 'zone-5', name: 'Quartier Ouest', minOrder: 20, deliveryFee: 3, estimatedTime: '35-45 min' },
+  { id: 'zone-6', name: 'Périphérie', minOrder: 25, deliveryFee: 5, estimatedTime: '40-50 min' },
+];
+
+export const deals = [
+  { id: 'deal-1', title: '2 Pizzas pour 18€', description: 'Offre valable tous les jours', image: 'deal-1' },
+  { id: 'deal-2', title: 'Menu Tacos Complet', description: 'Tacos + Frites + Boisson à 10€', image: 'deal-2' },
+  { id: 'deal-3', title: 'Livraison Gratuite', description: 'Dès 25€ de commande en centre-ville', image: 'deal-3' },
+];
