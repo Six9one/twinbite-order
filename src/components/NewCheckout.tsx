@@ -11,6 +11,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { z } from 'zod';
+
+// Customer info validation schema
+const customerInfoSchema = z.object({
+  name: z.string()
+    .trim()
+    .min(1, 'Le nom est requis')
+    .max(100, 'Le nom ne peut pas dépasser 100 caractères'),
+  phone: z.string()
+    .trim()
+    .min(10, 'Numéro de téléphone invalide')
+    .max(20, 'Numéro de téléphone trop long')
+    .regex(/^[0-9\s+()-]+$/, 'Format de téléphone invalide'),
+  address: z.string()
+    .trim()
+    .max(500, 'L\'adresse ne peut pas dépasser 500 caractères')
+    .optional()
+    .or(z.literal('')),
+  notes: z.string()
+    .trim()
+    .max(1000, 'Les notes ne peuvent pas dépasser 1000 caractères')
+    .optional()
+    .or(z.literal('')),
+});
 
 interface NewCheckoutProps {
   onBack: () => void;
@@ -48,18 +72,21 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   };
 
   const validateInfo = () => {
-    if (!customerInfo.name.trim()) {
-      toast({ title: 'Erreur', description: 'Veuillez entrer votre nom', variant: 'destructive' });
+    // Validate with zod schema
+    const result = customerInfoSchema.safeParse(customerInfo);
+    
+    if (!result.success) {
+      const firstError = result.error.errors[0];
+      toast({ title: 'Erreur', description: firstError.message, variant: 'destructive' });
       return false;
     }
-    if (!customerInfo.phone.trim() || customerInfo.phone.length < 10) {
-      toast({ title: 'Erreur', description: 'Veuillez entrer un numéro de téléphone valide', variant: 'destructive' });
-      return false;
-    }
+    
+    // Additional check for delivery address
     if (orderType === 'livraison' && !customerInfo.address?.trim()) {
       toast({ title: 'Erreur', description: 'Veuillez entrer votre adresse de livraison', variant: 'destructive' });
       return false;
     }
+    
     return true;
   };
 

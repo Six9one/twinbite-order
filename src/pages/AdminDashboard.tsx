@@ -41,6 +41,22 @@ export default function AdminDashboard() {
         navigate('/admin');
         return;
       }
+      
+      // Verify admin role - redirect if not admin
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      
+      if (roleError || !roleData) {
+        toast.error('Accès non autorisé');
+        await supabase.auth.signOut();
+        navigate('/admin');
+        return;
+      }
+      
       setIsAuthenticated(true);
     };
     checkAuth();
