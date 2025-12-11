@@ -1,6 +1,6 @@
 import { useOrder } from '@/context/OrderContext';
 import { PizzaCustomization, TacosCustomization, SouffletCustomization } from '@/types/order';
-import { meatOptions, sauceOptions, garnitureOptions, pizzaPrices } from '@/data/menu';
+import { meatOptions, sauceOptions, garnitureOptions, pizzaPrices, cheeseSupplementOptions } from '@/data/menu';
 import { applyPizzaPromotions } from '@/utils/promotions';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -32,7 +32,7 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
     
     const custom = item.customization;
     
-    if ('base' in custom && 'size' in custom) {
+    if ('base' in custom && 'size' in custom && !('meats' in custom)) {
       // Pizza
       const pizzaCustom = custom as PizzaCustomization;
       const parts = [
@@ -40,6 +40,14 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
         pizzaCustom.base === 'creme' ? 'Base crème' : 'Base tomate',
       ];
       if (pizzaCustom.isMenuMidi) parts.push('Menu Midi');
+      // Show supplements with prices
+      if (pizzaCustom.supplements && pizzaCustom.supplements.length > 0) {
+        const supNames = pizzaCustom.supplements.map(id => {
+          const sup = cheeseSupplementOptions.find(s => s.id === id);
+          return sup ? `+${sup.name} (${sup.price}€)` : null;
+        }).filter(Boolean);
+        if (supNames.length > 0) parts.push(supNames.join(', '));
+      }
       return parts.join(' • ');
     }
     
