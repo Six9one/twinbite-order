@@ -1,13 +1,68 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import { OrderProvider, useOrder } from '@/context/OrderContext';
+import { Header } from '@/components/Header';
+import { OrderTypeSelector } from '@/components/OrderTypeSelector';
+import { Menu } from '@/components/Menu';
+import { Cart } from '@/components/Cart';
+import { Checkout } from '@/components/Checkout';
+
+type View = 'orderType' | 'menu' | 'checkout';
+
+function MainApp() {
+  const { orderType, setOrderType, cart } = useOrder();
+  const [currentView, setCurrentView] = useState<View>('orderType');
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
+  const handleOrderTypeSelected = () => {
+    setCurrentView('menu');
+  };
+
+  const handleCheckout = () => {
+    if (cart.length > 0) {
+      setIsCartOpen(false);
+      setCurrentView('checkout');
+    }
+  };
+
+  const handleBackToMenu = () => {
+    setCurrentView('menu');
+  };
+
+  const handleBackToStart = () => {
+    setOrderType(null);
+    setCurrentView('orderType');
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {currentView !== 'orderType' && (
+        <Header onCartClick={() => setIsCartOpen(true)} />
+      )}
+
+      {currentView === 'orderType' && (
+        <OrderTypeSelector onSelect={handleOrderTypeSelected} />
+      )}
+
+      {currentView === 'menu' && <Menu />}
+
+      {currentView === 'checkout' && (
+        <Checkout onBack={cart.length > 0 ? handleBackToMenu : handleBackToStart} />
+      )}
+
+      <Cart 
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)}
+        onCheckout={handleCheckout}
+      />
+    </div>
+  );
+}
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <OrderProvider>
+      <MainApp />
+    </OrderProvider>
   );
 };
 
