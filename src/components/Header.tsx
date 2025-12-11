@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 interface HeaderProps {
   onCartClick: () => void;
   onOrderTypeSelect?: (type: OrderType) => void;
+  onMenuClick?: () => void;
 }
 
 const orderTypeConfig = {
@@ -23,24 +24,31 @@ const orderTypeConfig = {
   surplace: { label: 'Sur Place', icon: UtensilsCrossed, color: 'bg-green-500' },
 };
 
-export function Header({ onCartClick, onOrderTypeSelect }: HeaderProps) {
+export function Header({ onCartClick, onOrderTypeSelect, onMenuClick }: HeaderProps) {
   const { getItemCount, orderType, setOrderType } = useOrder();
   const itemCount = getItemCount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-    setMobileMenuOpen(false);
-  };
 
   const handleOrderTypeChange = (type: OrderType) => {
     setOrderType(type);
     if (onOrderTypeSelect) {
       onOrderTypeSelect(type);
     }
+  };
+
+  const handleLivraisonClick = () => {
+    setOrderType('livraison');
+    if (onOrderTypeSelect) {
+      onOrderTypeSelect('livraison');
+    }
+    setMobileMenuOpen(false);
+  };
+
+  const handleMenuClick = () => {
+    if (onMenuClick) {
+      onMenuClick();
+    }
+    setMobileMenuOpen(false);
   };
 
   return (
@@ -55,11 +63,31 @@ export function Header({ onCartClick, onOrderTypeSelect }: HeaderProps) {
           </div>
         </Link>
 
-        {/* Order Type Indicator & Selector */}
-        <div className="hidden md:flex items-center gap-4">
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center gap-4">
+          {/* Menu button - opens order type selection */}
+          <Button 
+            variant="ghost" 
+            onClick={handleMenuClick}
+            className="text-sm font-medium"
+          >
+            Menu
+          </Button>
+
+          {/* Livraison button - goes directly to delivery menu */}
+          <Button 
+            variant="outline" 
+            onClick={handleLivraisonClick}
+            className="gap-2"
+          >
+            <Truck className="w-4 h-4" />
+            Livraison
+          </Button>
+
+          {/* Order Type Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
+              <Button variant="default" className="gap-2 btn-primary">
                 Commander
                 <ChevronDown className="w-4 h-4" />
               </Button>
@@ -81,6 +109,7 @@ export function Header({ onCartClick, onOrderTypeSelect }: HeaderProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* Current Order Type Badge */}
           {orderType && (
             <Badge variant="secondary" className="gap-1.5 py-1.5 px-3">
               {(() => {
@@ -95,16 +124,7 @@ export function Header({ onCartClick, onOrderTypeSelect }: HeaderProps) {
               })()}
             </Badge>
           )}
-        </div>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
-          <button onClick={() => scrollToSection('menu')} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Menu
-          </button>
-          <button onClick={() => scrollToSection('delivery')} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Livraison
-          </button>
           <Link to="/admin" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             Admin
           </Link>
@@ -155,6 +175,26 @@ export function Header({ onCartClick, onOrderTypeSelect }: HeaderProps) {
             </div>
           )}
 
+          {/* Quick Actions */}
+          <div className="mb-4 pb-4 border-b border-border space-y-2">
+            <Button 
+              variant="outline" 
+              onClick={handleMenuClick}
+              className="w-full justify-start gap-2"
+            >
+              <Pizza className="w-4 h-4" />
+              Menu
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleLivraisonClick}
+              className="w-full justify-start gap-2"
+            >
+              <Truck className="w-4 h-4" />
+              Livraison
+            </Button>
+          </div>
+
           {/* Order Type Selection */}
           <div className="mb-4 pb-4 border-b border-border">
             <p className="text-xs text-muted-foreground mb-2">Commander</p>
@@ -181,12 +221,6 @@ export function Header({ onCartClick, onOrderTypeSelect }: HeaderProps) {
           </div>
 
           <nav className="flex flex-col gap-3">
-            <button onClick={() => scrollToSection('menu')} className="text-left py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Menu
-            </button>
-            <button onClick={() => scrollToSection('delivery')} className="text-left py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Livraison
-            </button>
             <Link to="/admin" className="py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Admin
             </Link>
