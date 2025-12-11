@@ -3,13 +3,14 @@ import { useOrder } from '@/context/OrderContext';
 import { CustomerInfo, PaymentMethod, PizzaCustomization } from '@/types/order';
 import { applyPizzaPromotions, calculateTVA } from '@/utils/promotions';
 import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe } from 'lucide-react';
+import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
 
@@ -51,7 +52,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     address: '',
     notes: '',
   });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cb');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('en_ligne');
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Calculate totals with promotions
@@ -96,9 +97,79 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     return true;
   };
 
+  const handleStripePayment = async () => {
+    if (!orderType) {
+      toast({ title: 'Erreur', description: 'Type de commande non sélectionné', variant: 'destructive' });
+      return;
+    }
+    
+    setIsProcessing(true);
+    const orderNumber = generateOrderNumber();
+    
+    try {
+      // First, save the order to database with pending status
+      await createOrder.mutateAsync({
+        order_number: orderNumber,
+        order_type: orderType,
+        items: cart as unknown as import('@/integrations/supabase/types').Json,
+        customer_name: customerInfo.name,
+        customer_phone: customerInfo.phone,
+        customer_address: customerInfo.address || null,
+        customer_notes: customerInfo.notes || null,
+        payment_method: 'en_ligne',
+        subtotal: ht,
+        tva,
+        total: ttc,
+        delivery_fee: 0,
+        status: 'pending',
+      });
+
+      // Then create Stripe checkout session
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          amount: ttc,
+          customerName: customerInfo.name,
+          customerPhone: customerInfo.phone,
+          customerEmail: null,
+          orderNumber,
+          items: cart.map(item => ({
+            name: item.item.name,
+            quantity: item.quantity,
+            price: item.calculatedPrice || item.item.price,
+          })),
+          orderType,
+          customerAddress: customerInfo.address,
+          customerNotes: customerInfo.notes,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.url) throw new Error('No checkout URL returned');
+
+      // Clear cart and redirect to Stripe
+      clearCart();
+      window.location.href = data.url;
+    } catch (error) {
+      console.error('Stripe checkout error:', error);
+      toast({ 
+        title: 'Erreur de paiement', 
+        description: 'Impossible de créer la session de paiement. Veuillez réessayer.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleConfirmOrder = async () => {
     if (!orderType) {
       toast({ title: 'Erreur', description: 'Type de commande non sélectionné', variant: 'destructive' });
+      return;
+    }
+
+    // If payment is online, redirect to Stripe
+    if (paymentMethod === 'en_ligne') {
+      await handleStripePayment();
       return;
     }
     
@@ -145,7 +216,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           <p className="text-muted-foreground mb-6">
             Merci {customerInfo.name}! Votre commande a été envoyée.
             {paymentMethod === 'especes' && ' Paiement à la réception.'}
-            {paymentMethod === 'en_ligne' && ' Vous recevrez un lien de paiement.'}
+            {paymentMethod === 'cb' && ' Paiement par carte à la réception.'}
           </p>
           <Button onClick={onComplete} className="w-full">
             Retour à l'accueil
@@ -250,8 +321,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 <div className="flex items-center gap-3">
                   <Globe className="w-8 h-8 text-purple-600" />
                   <div className="flex-1">
-                    <h3 className="font-semibold">Paiement en ligne</h3>
-                    <p className="text-xs text-muted-foreground">Payez maintenant par carte</p>
+                    <h3 className="font-semibold">Payer maintenant (Stripe)</h3>
+                    <p className="text-xs text-muted-foreground">Paiement sécurisé par carte</p>
                   </div>
                   {paymentMethod === 'en_ligne' && <Check className="w-5 h-5 text-primary" />}
                 </div>
@@ -367,7 +438,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       </div>
 
       {/* Bottom Action */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
         <div className="container mx-auto">
           {step === 'info' && (
             <Button 
@@ -391,7 +462,16 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               onClick={handleConfirmOrder}
               disabled={isProcessing}
             >
-              {isProcessing ? 'Envoi en cours...' : `Confirmer la commande - ${ttc.toFixed(2)}€`}
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  {paymentMethod === 'en_ligne' ? 'Redirection...' : 'Envoi en cours...'}
+                </>
+              ) : (
+                paymentMethod === 'en_ligne' 
+                  ? `Payer maintenant - ${ttc.toFixed(2)}€`
+                  : `Confirmer la commande - ${ttc.toFixed(2)}€`
+              )}
             </Button>
           )}
         </div>
