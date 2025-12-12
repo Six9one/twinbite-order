@@ -33,7 +33,7 @@ export function LoyaltyManager() {
       .order('total_purchases', { ascending: false });
     
     if (!error && data) {
-      setCustomers(data as LoyaltyPoint[]);
+      setCustomers(data as unknown as LoyaltyPoint[]);
     }
     setLoading(false);
   };
