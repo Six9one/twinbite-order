@@ -201,15 +201,6 @@ export default function TVDashboard() {
   const { data: orders, isLoading, refetch } = useOrders(dateFilter);
   const updateStatus = useUpdateOrderStatus();
 
-  // Show loading while checking auth
-  if (authLoading || !isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-xl">Vérification des accès...</div>
-      </div>
-    );
-  }
-
   // Save auto-print preference
   useEffect(() => {
     localStorage.setItem('autoPrintEnabled', autoPrintEnabled.toString());
@@ -268,6 +259,15 @@ export default function TVDashboard() {
     }
     previousOrdersCount.current = orders?.length || 0;
   }, [orders, soundEnabled]);
+
+  // Show loading while checking auth - AFTER all hooks
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-xl">Vérification des accès...</div>
+      </div>
+    );
+  }
 
   const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
     try {
