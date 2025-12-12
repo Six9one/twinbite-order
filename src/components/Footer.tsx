@@ -1,55 +1,54 @@
-import { Pizza, Phone, MapPin, Clock } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Facebook, Instagram, Twitter } from 'lucide-react';
+import logoImage from '@/assets/logo.png';
 
 export function Footer() {
   return (
-    <footer className="bg-foreground text-background py-12">
+    <footer className="bg-foreground text-background py-8">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Brand */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
-                <Pizza className="w-7 h-7 text-primary-foreground" />
-              </div>
-              <h3 className="font-display text-2xl font-bold">Twin Pizza</h3>
-            </div>
-            <p className="text-background/70 text-sm">
-              Les meilleures pizzas, tacos, et sandwiches de la ville. 
-              Qualité et saveur garanties depuis 2010.
-            </p>
-          </div>
-
-          {/* Contact */}
-          <div>
-            <h4 className="font-semibold mb-4">Contact</h4>
-            <div className="space-y-3 text-sm text-background/70">
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                <span>01 23 45 67 89</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                <span>123 Rue de la Pizza, 75001 Paris</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Hours */}
-          <div>
-            <h4 className="font-semibold mb-4">Horaires</h4>
-            <div className="space-y-2 text-sm text-background/70">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                <div>
-                  <p>Lun - Ven: 11h00 - 23h00</p>
-                  <p>Sam - Dim: 11h00 - 00h00</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Centered Logo */}
+        <div className="flex flex-col items-center justify-center mb-6">
+          <Link to="/" className="hover:opacity-80 transition-opacity">
+            <img 
+              src={logoImage} 
+              alt="Twin Pizza" 
+              className="w-16 h-16 rounded-full mb-3"
+            />
+          </Link>
+          <Link to="/" className="hover:opacity-80 transition-opacity">
+            <h3 className="font-display text-xl font-bold">Twin Pizza</h3>
+          </Link>
         </div>
 
-        <div className="border-t border-background/20 mt-8 pt-8 text-center text-sm text-background/50">
+        {/* Social Media */}
+        <div className="flex items-center justify-center gap-6 mb-6">
+          <a 
+            href="https://facebook.com/twinpizza" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="w-10 h-10 rounded-full bg-background/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all"
+          >
+            <Facebook className="w-5 h-5" />
+          </a>
+          <a 
+            href="https://instagram.com/twinpizza" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="w-10 h-10 rounded-full bg-background/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all"
+          >
+            <Instagram className="w-5 h-5" />
+          </a>
+          <a 
+            href="https://twitter.com/twinpizza" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="w-10 h-10 rounded-full bg-background/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all"
+          >
+            <Twitter className="w-5 h-5" />
+          </a>
+        </div>
+
+        <div className="border-t border-background/20 pt-6 text-center text-sm text-background/50">
           © 2024 Twin Pizza. Tous droits réservés.
         </div>
       </div>
