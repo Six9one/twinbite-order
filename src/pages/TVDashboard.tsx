@@ -12,6 +12,7 @@ import {
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import logoImage from '@/assets/logo.png';
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', textColor: 'text-yellow-500', icon: Clock },
@@ -236,7 +237,8 @@ export default function TVDashboard() {
       {/* Compact Header */}
       <header className="flex items-center justify-between px-4 py-2 bg-black/60 border-b border-white/10">
         <div className="flex items-center gap-4">
-          <Link to="/" className="hover:opacity-80 transition-opacity">
+          <Link to="/" className="hover:opacity-80 transition-opacity flex items-center gap-3">
+            <img src={logoImage} alt="Twin Pizza" className="w-10 h-10 rounded-full" />
             <h1 className="text-2xl font-bold">
               <span className="text-amber-500">TWIN</span> <span className="text-white/80">TV</span>
             </h1>

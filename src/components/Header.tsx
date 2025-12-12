@@ -1,4 +1,4 @@
-import { ShoppingCart, Pizza, Menu, X, ShoppingBag, Truck, UtensilsCrossed, ChevronDown } from 'lucide-react';
+import { ShoppingCart, Menu, X, ShoppingBag, Truck, UtensilsCrossed, ChevronDown, Pizza } from 'lucide-react';
 import { useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import logoImage from '@/assets/logo.png';
 
 interface HeaderProps {
   onCartClick: () => void;
@@ -54,10 +55,12 @@ export function Header({ onCartClick, onOrderTypeSelect, onMenuClick }: HeaderPr
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-primary rounded-full flex items-center justify-center">
-            <Pizza className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <div>
+          <img 
+            src={logoImage} 
+            alt="Twin Pizza" 
+            className="w-12 h-12 rounded-full object-cover"
+          />
+          <div className="hidden sm:block">
             <h1 className="text-xl font-medium text-foreground leading-tight">Twin Pizza</h1>
           </div>
         </div>

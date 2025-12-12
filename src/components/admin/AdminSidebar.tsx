@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import logoImage from '@/assets/logo.png';
 
 interface NavItem {
   label: string;
@@ -142,9 +143,7 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
     <aside className="w-64 bg-card border-r border-border h-screen sticky top-0 overflow-y-auto">
       <div className="p-4 border-b border-border">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center">
-            <Pizza className="w-5 h-5 text-black" />
-          </div>
+          <img src={logoImage} alt="Twin Pizza" className="w-10 h-10 rounded-full" />
           <div>
             <h1 className="text-lg font-bold">
               <span className="text-amber-500">TWIN</span> Admin

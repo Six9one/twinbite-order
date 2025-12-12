@@ -49,6 +49,9 @@ serve(async (req) => {
       console.error("[CREATE-CHECKOUT] Error stringifying items:", e);
     }
 
+    // Get origin for logo URL
+    const origin = req.headers.get("origin") || 'https://twin-pizza.lovable.app';
+    
     // Create checkout session with all order data in metadata
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -59,6 +62,7 @@ serve(async (req) => {
             product_data: {
               name: `Commande Twin Pizza #${orderNumber}`,
               description: `${items?.length || 0} article(s) - ${orderType === 'livraison' ? 'Livraison' : orderType === 'emporter' ? 'À emporter' : 'Sur place'}`,
+              images: [`${origin}/favicon.png`],
             },
             unit_amount: Math.round(amount * 100), // Convert to cents
           },

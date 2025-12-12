@@ -20,6 +20,7 @@ import {
   Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv, TrendingUp,
   Menu
 } from 'lucide-react';
+import logoImage from '@/assets/logo.png';
 
 type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard';
 
