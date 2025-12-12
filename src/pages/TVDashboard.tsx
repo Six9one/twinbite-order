@@ -7,7 +7,7 @@ import {
   Clock, CheckCircle, XCircle, ChefHat, Package,
   MapPin, Truck, Store, Utensils,
   Volume2, VolumeX, RefreshCw, History, Home,
-  CreditCard, Banknote, Play, ArrowRight
+  CreditCard, Banknote, Play, ArrowRight, Printer
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -50,17 +50,108 @@ const playOrderSound = () => {
   }
 };
 
+// Auto-print ticket function
+const printOrderTicket = (order: Order) => {
+  const ticketSettings = {
+    header: localStorage.getItem('ticketHeader') || 'TWIN PIZZA',
+    subheader: localStorage.getItem('ticketSubheader') || 'Grand-Couronne',
+    phone: localStorage.getItem('ticketPhone') || '02 32 11 26 13',
+    footer: localStorage.getItem('ticketFooter') || 'Merci de votre visite!',
+  };
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemsHtml = items.map((cartItem: any) => {
+    const productName = cartItem.item?.name || cartItem.name || 'Produit';
+    const customization = cartItem.customization;
+    let details = [];
+    if (customization?.size) details.push(customization.size.toUpperCase());
+    if (customization?.meats?.length) details.push(`Viandes: ${customization.meats.join(', ')}`);
+    if (customization?.sauces?.length) details.push(`Sauces: ${customization.sauces.join(', ')}`);
+    if (customization?.garnitures?.length) details.push(`Garnitures: ${customization.garnitures.join(', ')}`);
+    if (customization?.supplements?.length) details.push(`Supp: ${customization.supplements.join(', ')}`);
+    if (customization?.notes) details.push(`Note: ${customization.notes}`);
+    
+    return `
+      <div style="margin-bottom:8px;border-bottom:1px dashed #ccc;padding-bottom:8px;">
+        <div style="font-size:16px;font-weight:bold;">${cartItem.quantity}x ${productName} - ${cartItem.totalPrice?.toFixed(2) || '0.00'}€</div>
+        ${details.length > 0 ? `<div style="font-size:12px;color:#555;">${details.join(' | ')}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  const orderTypeLabels: Record<string, string> = {
+    livraison: 'LIVRAISON',
+    emporter: 'À EMPORTER',
+    surplace: 'SUR PLACE'
+  };
+
+  const paymentLabels: Record<string, string> = {
+    en_ligne: 'PAYÉ EN LIGNE',
+    cb: 'CB (À PAYER)',
+    especes: 'ESPÈCES (À PAYER)'
+  };
+
+  printWindow.document.write(`
+    <html><head><title>Ticket ${order.order_number}</title>
+    <style>
+      body { font-family: 'Courier New', monospace; padding: 10px; max-width: 300px; margin: 0 auto; }
+      .center { text-align: center; }
+      .bold { font-weight: bold; }
+      .divider { border-top: 2px dashed #000; margin: 10px 0; }
+    </style></head><body>
+      <div class="center">
+        <h2 style="margin:5px 0;">${ticketSettings.header}</h2>
+        <p style="margin:0;">${ticketSettings.subheader}</p>
+        <p style="margin:0;">${ticketSettings.phone}</p>
+      </div>
+      <div class="divider"></div>
+      <div class="center bold" style="font-size:20px;">N° ${order.order_number}</div>
+      <div class="center" style="font-size:14px;margin:5px 0;">${new Date(order.created_at || '').toLocaleString('fr-FR')}</div>
+      <div class="center bold" style="background:#000;color:#fff;padding:5px;margin:10px 0;">${orderTypeLabels[order.order_type] || order.order_type}</div>
+      <div class="divider"></div>
+      <div style="margin-bottom:5px;"><strong>Client:</strong> ${order.customer_name}</div>
+      ${order.customer_address ? `<div style="margin-bottom:5px;"><strong>Adresse:</strong> ${order.customer_address}</div>` : ''}
+      ${order.customer_notes ? `<div style="margin-bottom:5px;background:#ffe;padding:5px;"><strong>Note:</strong> ${order.customer_notes}</div>` : ''}
+      <div class="divider"></div>
+      ${itemsHtml}
+      <div class="divider"></div>
+      <div style="text-align:right;font-size:14px;">Sous-total: ${order.subtotal?.toFixed(2)}€</div>
+      <div style="text-align:right;font-size:14px;">TVA (10%): ${order.tva?.toFixed(2)}€</div>
+      <div style="text-align:right;font-size:20px;font-weight:bold;margin-top:5px;">TOTAL: ${order.total?.toFixed(2)}€</div>
+      <div class="center bold" style="margin-top:10px;padding:5px;${order.payment_method === 'en_ligne' ? 'background:#d4edda;' : 'background:#f8d7da;'}">${paymentLabels[order.payment_method] || order.payment_method}</div>
+      <div class="divider"></div>
+      <div class="center">${ticketSettings.footer}</div>
+    </body></html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  printWindow.close();
+};
+
 export default function TVDashboard() {
   const [dateFilter] = useState(new Date().toISOString().slice(0, 10));
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [autoPrintEnabled, setAutoPrintEnabled] = useState(() => {
+    return localStorage.getItem('autoPrintEnabled') === 'true';
+  });
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [flashEffect, setFlashEffect] = useState(false);
   const [activeTab, setActiveTab] = useState<'live' | 'history'>('live');
   const previousOrdersCount = useRef(0);
+  const printedOrders = useRef<Set<string>>(new Set());
 
   const { data: orders, isLoading, refetch } = useOrders(dateFilter);
   const updateStatus = useUpdateOrderStatus();
+
+  // Save auto-print preference
+  useEffect(() => {
+    localStorage.setItem('autoPrintEnabled', autoPrintEnabled.toString());
+  }, [autoPrintEnabled]);
 
   // Auto-refresh every 8 seconds
   useEffect(() => {
@@ -74,17 +165,25 @@ export default function TVDashboard() {
     return () => clearInterval(interval);
   }, [refetch]);
 
-  // Real-time subscription
+  // Real-time subscription with auto-print
   useEffect(() => {
     const channel = supabase
       .channel('tv-orders-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
         refetch();
         setLastRefresh(new Date());
         if (soundEnabled) {
           playOrderSound();
           setFlashEffect(true);
           setTimeout(() => setFlashEffect(false), 1000);
+        }
+        // Auto-print new order
+        if (autoPrintEnabled && payload.new) {
+          const newOrder = payload.new as Order;
+          if (!printedOrders.current.has(newOrder.id)) {
+            printedOrders.current.add(newOrder.id);
+            setTimeout(() => printOrderTicket(newOrder), 500);
+          }
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
@@ -94,9 +193,9 @@ export default function TVDashboard() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [refetch, soundEnabled]);
+  }, [refetch, soundEnabled, autoPrintEnabled]);
 
-  // Check for new orders
+  // Check for new orders (fallback)
   useEffect(() => {
     if (orders && orders.length > previousOrdersCount.current && previousOrdersCount.current > 0) {
       if (soundEnabled) {
@@ -171,6 +270,17 @@ export default function TVDashboard() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
+
+          <Button
+            variant={autoPrintEnabled ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAutoPrintEnabled(!autoPrintEnabled)}
+            className={`gap-1 ${autoPrintEnabled ? 'bg-green-600 hover:bg-green-700' : ''}`}
+            title="Impression automatique"
+          >
+            <Printer className="w-4 h-4" />
+            {autoPrintEnabled ? 'Auto' : 'Off'}
+          </Button>
 
           <Button
             variant={soundEnabled ? "default" : "outline"}
