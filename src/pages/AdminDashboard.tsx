@@ -53,29 +53,35 @@ export default function AdminDashboard() {
   }, [refetch]);
 
   useEffect(() => {
+    let mounted = true;
+    
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/admin');
-        return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          if (mounted) navigate('/admin');
+          return;
+        }
+        
+        // Verify admin role - redirect if not admin
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        if (roleError || !roleData) {
+          toast.error('Accès non autorisé');
+          await supabase.auth.signOut();
+          if (mounted) navigate('/admin');
+          return;
+        }
+        
+        if (mounted) setIsAuthenticated(true);
+      } catch (error) {
+        if (mounted) navigate('/admin');
       }
-      
-      // Verify admin role - redirect if not admin
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', session.user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
-      
-      if (roleError || !roleData) {
-        toast.error('Accès non autorisé');
-        await supabase.auth.signOut();
-        navigate('/admin');
-        return;
-      }
-      
-      setIsAuthenticated(true);
     };
     checkAuth();
 
@@ -94,6 +100,7 @@ export default function AdminDashboard() {
     }
 
     return () => {
+      mounted = false;
       supabase.removeChannel(channel);
     };
   }, [navigate, refetch]);
