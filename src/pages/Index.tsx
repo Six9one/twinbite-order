@@ -14,93 +14,67 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ShoppingBag, Phone } from 'lucide-react';
 import heroPizza from '@/assets/hero-pizza.jpg';
-
 function MainApp() {
-  const { orderType, setOrderType } = useOrder();
+  const {
+    orderType,
+    setOrderType
+  } = useOrder();
   const [view, setView] = useState<'home' | 'menu' | 'checkout'>('home');
   const [isCartOpen, setIsCartOpen] = useState(false);
   const orderSelectorRef = useRef<HTMLDivElement>(null);
-
   const handleOrderTypeSelect = () => {
     setView('menu');
   };
-
   const handleBackToHome = () => {
     setView('home');
     setOrderType(null);
   };
-
   const handleCheckout = () => {
     setIsCartOpen(false);
     setView('checkout');
   };
-
   const handleOrderComplete = () => {
     setView('home');
     setOrderType(null);
   };
-
   const handleNavOrderTypeSelect = (type: OrderType) => {
     setView('menu');
   };
-
   const scrollToOrderSelector = () => {
-    orderSelectorRef.current?.scrollIntoView({ behavior: 'smooth' });
+    orderSelectorRef.current?.scrollIntoView({
+      behavior: 'smooth'
+    });
   };
 
   // Menu view
   if (view === 'menu') {
-    return (
-      <>
-        <CategoryMenu 
-          onBack={handleBackToHome}
-          onOpenCart={() => setIsCartOpen(true)}
-        />
-        <NewCart 
-          isOpen={isCartOpen}
-          onClose={() => setIsCartOpen(false)}
-          onCheckout={handleCheckout}
-        />
-      </>
-    );
+    return <>
+        <CategoryMenu onBack={handleBackToHome} onOpenCart={() => setIsCartOpen(true)} />
+        <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
+      </>;
   }
 
   // Checkout view
   if (view === 'checkout') {
-    return (
-      <NewCheckout 
-        onBack={() => setView('menu')}
-        onComplete={handleOrderComplete}
-      />
-    );
+    return <NewCheckout onBack={() => setView('menu')} onComplete={handleOrderComplete} />;
   }
 
   // Home view
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       {/* Header with Order Now */}
-      <Header 
-        onCartClick={() => setIsCartOpen(true)} 
-        onOrderTypeSelect={handleNavOrderTypeSelect}
-        onMenuClick={scrollToOrderSelector}
-      />
+      <Header onCartClick={() => setIsCartOpen(true)} onOrderTypeSelect={handleNavOrderTypeSelect} onMenuClick={scrollToOrderSelector} />
 
       {/* Cart */}
-      <NewCart 
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        onCheckout={handleCheckout}
-      />
+      <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
 
       {/* Promo Banner */}
       <PromoBanner />
 
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroPizza})` }}
-        />
+        <div className="absolute inset-0 bg-cover bg-center" style={{
+        backgroundImage: `url(${heroPizza})`
+      }} />
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-background" />
         
         <div className="relative z-10 container mx-auto px-4 py-12">
@@ -116,10 +90,10 @@ function MainApp() {
             </div>
             
             {/* Subtitle */}
-            <p className="text-lg md:text-xl text-white/90 mb-2 font-light">
+            <p className="text-lg md:text-xl mb-2 font-light text-primary">
               Grand-Couronne
             </p>
-            <p className="text-base md:text-lg text-amber-200/80 max-w-lg mx-auto">
+            <p className="text-base md:text-lg max-w-lg mx-auto text-secondary">
               Pizzas • Soufflés • Makloub • Mlawi • Tacos • Sandwiches et plus encore...
             </p>
           </div>
@@ -142,17 +116,11 @@ function MainApp() {
               <span>📞 Appelez-nous maintenant</span>
             </div>
             <div className="flex flex-wrap justify-center gap-4">
-              <a 
-                href="tel:0232112613" 
-                className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-all hover:scale-105 shadow-lg"
-              >
+              <a href="tel:0232112613" className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-all hover:scale-105 shadow-lg">
                 <Phone className="w-5 h-5" />
                 02 32 11 26 13
               </a>
-              <a 
-                href="tel:0685852788" 
-                className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-all hover:scale-105 shadow-lg"
-              >
+              <a href="tel:0685852788" className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-all hover:scale-105 shadow-lg">
                 <Phone className="w-5 h-5" />
                 06 85 85 27 88
               </a>
@@ -168,11 +136,7 @@ function MainApp() {
           
           {/* Commander Button under carousel */}
           <div className="flex justify-center mt-8">
-            <Button 
-              onClick={scrollToOrderSelector}
-              size="lg"
-              className="btn-primary gap-2 px-8 py-6 text-lg rounded-full shadow-lg hover:scale-105 transition-transform"
-            >
+            <Button onClick={scrollToOrderSelector} size="lg" className="btn-primary gap-2 px-8 py-6 text-lg rounded-full shadow-lg hover:scale-105 transition-transform">
               <ShoppingBag className="w-5 h-5" />
               Commander Maintenant
             </Button>
@@ -248,14 +212,10 @@ function MainApp() {
       </section>
 
       <Footer />
-    </div>
-  );
+    </div>;
 }
-
 export default function Index() {
-  return (
-    <OrderProvider>
+  return <OrderProvider>
       <MainApp />
-    </OrderProvider>
-  );
+    </OrderProvider>;
 }
