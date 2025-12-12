@@ -1141,6 +1141,11 @@ function PrinterConfig() {
   const [ticketFooter, setTicketFooter] = useState(localStorage.getItem('ticketFooter') || 'Merci de votre commande!');
   const [ticketLogo, setTicketLogo] = useState(localStorage.getItem('ticketLogo') || '🍕 TWIN PIZZA 🍕');
   
+  // Font customization
+  const [ticketFontFamily, setTicketFontFamily] = useState(localStorage.getItem('ticketFontFamily') || 'monospace');
+  const [ticketFontSize, setTicketFontSize] = useState(localStorage.getItem('ticketFontSize') || '12');
+  const [ticketHeaderSize, setTicketHeaderSize] = useState(localStorage.getItem('ticketHeaderSize') || '20');
+  
   // Order number settings
   const [orderPrefix, setOrderPrefix] = useState(localStorage.getItem('orderPrefix') || 'TW');
   const [lastOrderNumber, setLastOrderNumber] = useState(localStorage.getItem('lastOrderNumber') || '0');
@@ -1157,6 +1162,9 @@ function PrinterConfig() {
     localStorage.setItem('ticketPhone', ticketPhone);
     localStorage.setItem('ticketFooter', ticketFooter);
     localStorage.setItem('ticketLogo', ticketLogo);
+    localStorage.setItem('ticketFontFamily', ticketFontFamily);
+    localStorage.setItem('ticketFontSize', ticketFontSize);
+    localStorage.setItem('ticketHeaderSize', ticketHeaderSize);
     toast.success('Configuration du ticket sauvegardée!');
   };
 
@@ -1188,8 +1196,9 @@ function PrinterConfig() {
       <head>
         <title>Test Imprimante</title>
         <style>
-          body { font-family: monospace; width: 80mm; margin: 0; padding: 10px; }
+          body { font-family: ${ticketFontFamily}; font-size: ${ticketFontSize}px; width: 80mm; margin: 0; padding: 10px; }
           .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; }
+          .header h1 { font-size: ${ticketHeaderSize}px; margin: 0; }
           .content { padding: 20px 0; text-align: center; }
         </style>
       </head>
@@ -1275,6 +1284,50 @@ function PrinterConfig() {
               value={ticketLogo}
               onChange={(e) => setTicketLogo(e.target.value)}
             />
+          </div>
+        </div>
+        
+        {/* Font Customization */}
+        <div className="border-t pt-4 mt-4">
+          <h4 className="font-medium mb-3">🔤 Police et Taille</h4>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Police</label>
+              <select
+                className="w-full px-3 py-2 border rounded-md bg-background"
+                value={ticketFontFamily}
+                onChange={(e) => setTicketFontFamily(e.target.value)}
+              >
+                <option value="monospace">Monospace (par défaut)</option>
+                <option value="'Courier New', monospace">Courier New</option>
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="'Lucida Console', monospace">Lucida Console</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+                <option value="'Times New Roman', serif">Times New Roman</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Taille texte (px)</label>
+              <Input
+                type="number"
+                min="8"
+                max="24"
+                value={ticketFontSize}
+                onChange={(e) => setTicketFontSize(e.target.value)}
+                placeholder="12"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Taille en-tête (px)</label>
+              <Input
+                type="number"
+                min="14"
+                max="36"
+                value={ticketHeaderSize}
+                onChange={(e) => setTicketHeaderSize(e.target.value)}
+                placeholder="20"
+              />
+            </div>
           </div>
         </div>
 
