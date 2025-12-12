@@ -1,8 +1,5 @@
 project_id = "pdrhquzlbknihemiirbe"
 
-[functions.get-mapbox-token]
-verify_jwt = false
-
 [functions.create-checkout]
 verify_jwt = false
 

@@ -48,17 +48,14 @@ export function DeliveryMapSection() {
     async function initMap() {
       if (!mapContainer.current) return;
       try {
-        // Fetch Mapbox token from edge function
-        const {
-          data,
-          error: fetchError
-        } = await supabase.functions.invoke('get-mapbox-token');
-        if (fetchError || !data?.token) {
+        // Use Mapbox public token from environment variable (safe for client-side)
+        const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
+        if (!mapboxToken) {
           setError('Configuration de la carte en cours...');
           setLoading(false);
           return;
         }
-        mapboxgl.accessToken = data.token;
+        mapboxgl.accessToken = mapboxToken;
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: 'mapbox://styles/mapbox/light-v11',
