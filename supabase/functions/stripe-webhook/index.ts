@@ -23,11 +23,23 @@ serve(async (req) => {
 
     let event: Stripe.Event;
 
-    if (webhookSecret && signature) {
+    // SECURITY: Always require webhook signature verification
+    if (!webhookSecret || !signature) {
+      console.error("[STRIPE-WEBHOOK] Missing webhook secret or signature");
+      return new Response(JSON.stringify({ error: "Webhook signature verification required" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    } else {
-      // For testing without webhook secret
-      event = JSON.parse(body);
+    } catch (err) {
+      console.error("[STRIPE-WEBHOOK] Signature verification failed:", err);
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
     }
 
     console.log("[STRIPE-WEBHOOK] Event received:", event.type);
