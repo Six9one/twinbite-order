@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +14,43 @@ import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import logoImage from '@/assets/logo.png';
+
+// Admin authentication check hook
+const useAdminAuth = () => {
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/admin');
+        return;
+      }
+      
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      
+      if (roleError || !roleData) {
+        toast.error('Accès non autorisé');
+        await supabase.auth.signOut();
+        navigate('/admin');
+        return;
+      }
+      
+      setIsAuthenticated(true);
+      setIsLoading(false);
+    };
+    checkAuth();
+  }, [navigate]);
+
+  return { isAuthenticated, isLoading };
+};
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', textColor: 'text-yellow-500', icon: Clock },
@@ -134,12 +172,22 @@ const printOrderTicket = (order: Order) => {
 };
 
 export default function TVDashboard() {
+  const { isAuthenticated, isLoading: authLoading } = useAdminAuth();
   const [dateFilter] = useState(new Date().toISOString().slice(0, 10));
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(() => {
     return localStorage.getItem('autoPrintEnabled') === 'true';
   });
   const [lastRefresh, setLastRefresh] = useState(new Date());
+
+  // Show loading while checking auth
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-xl">Vérification des accès...</div>
+      </div>
+    );
+  }
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [flashEffect, setFlashEffect] = useState(false);
   const [activeTab, setActiveTab] = useState<'live' | 'history'>('live');
