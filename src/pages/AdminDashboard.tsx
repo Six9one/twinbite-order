@@ -1126,10 +1126,43 @@ function VentesSection({ orders }: { orders: Order[] }) {
 function PrinterConfig() {
   const [printerName, setPrinterName] = useState(localStorage.getItem('printerName') || '');
   const [testPrinting, setTestPrinting] = useState(false);
+  
+  // Ticket customization
+  const [ticketHeader, setTicketHeader] = useState(localStorage.getItem('ticketHeader') || 'TWIN PIZZA');
+  const [ticketSubheader, setTicketSubheader] = useState(localStorage.getItem('ticketSubheader') || 'Grand-Couronne');
+  const [ticketPhone, setTicketPhone] = useState(localStorage.getItem('ticketPhone') || '02 32 11 26 13');
+  const [ticketFooter, setTicketFooter] = useState(localStorage.getItem('ticketFooter') || 'Merci de votre commande!');
+  const [ticketLogo, setTicketLogo] = useState(localStorage.getItem('ticketLogo') || '🍕 TWIN PIZZA 🍕');
+  
+  // Order number settings
+  const [orderPrefix, setOrderPrefix] = useState(localStorage.getItem('orderPrefix') || 'TW');
+  const [lastOrderNumber, setLastOrderNumber] = useState(localStorage.getItem('lastOrderNumber') || '0');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const savePrinterConfig = () => {
     localStorage.setItem('printerName', printerName);
     toast.success('Configuration sauvegardée!');
+  };
+
+  const saveTicketConfig = () => {
+    localStorage.setItem('ticketHeader', ticketHeader);
+    localStorage.setItem('ticketSubheader', ticketSubheader);
+    localStorage.setItem('ticketPhone', ticketPhone);
+    localStorage.setItem('ticketFooter', ticketFooter);
+    localStorage.setItem('ticketLogo', ticketLogo);
+    toast.success('Configuration du ticket sauvegardée!');
+  };
+
+  const saveOrderConfig = () => {
+    localStorage.setItem('orderPrefix', orderPrefix);
+    toast.success('Préfixe de commande sauvegardé!');
+  };
+
+  const resetOrderNumber = () => {
+    localStorage.setItem('lastOrderNumber', '0');
+    setLastOrderNumber('0');
+    setShowResetConfirm(false);
+    toast.success('Numéro de commande réinitialisé à 0!');
   };
 
   const testPrint = () => {
@@ -1137,7 +1170,7 @@ function PrinterConfig() {
     
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      toast.error('Impossible d\'ouvrir la fenêtre d\'impression');
+      toast.error("Impossible d'ouvrir la fenêtre d'impression");
       setTestPrinting(false);
       return;
     }
@@ -1155,12 +1188,17 @@ function PrinterConfig() {
       </head>
       <body>
         <div class="header">
-          <h1>TWIN PIZZA</h1>
-          <p>Test d'impression</p>
+          <h1>${ticketHeader}</h1>
+          <p>${ticketSubheader}</p>
+          ${ticketPhone ? `<p>📞 ${ticketPhone}</p>` : ''}
         </div>
         <div class="content">
           <p>✓ L'imprimante fonctionne correctement!</p>
           <p>${new Date().toLocaleString('fr-FR')}</p>
+        </div>
+        <div style="text-align: center; margin-top: 20px; border-top: 2px dashed #000; padding-top: 10px;">
+          <p>${ticketFooter}</p>
+          <p>${ticketLogo}</p>
         </div>
       </body>
       </html>
@@ -1173,7 +1211,7 @@ function PrinterConfig() {
     
     setTimeout(() => {
       setTestPrinting(false);
-      toast.success('Test d\'impression envoyé!');
+      toast.success("Test d'impression envoyé!");
     }, 1000);
   };
 
@@ -1181,9 +1219,118 @@ function PrinterConfig() {
     <div className="space-y-6">
       <h2 className="text-2xl font-display font-bold flex items-center gap-2">
         <Printer className="w-6 h-6" />
-        Configuration Imprimante
+        Configuration Imprimante & Tickets
       </h2>
 
+      {/* Ticket Customization */}
+      <div className="bg-card rounded-lg p-6 border space-y-4">
+        <h3 className="font-semibold text-lg flex items-center gap-2">
+          🎫 Personnalisation du Ticket
+        </h3>
+        
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">En-tête principal</label>
+            <Input
+              placeholder="TWIN PIZZA"
+              value={ticketHeader}
+              onChange={(e) => setTicketHeader(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Sous-titre</label>
+            <Input
+              placeholder="Grand-Couronne"
+              value={ticketSubheader}
+              onChange={(e) => setTicketSubheader(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Téléphone</label>
+            <Input
+              placeholder="02 32 11 26 13"
+              value={ticketPhone}
+              onChange={(e) => setTicketPhone(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Message de fin</label>
+            <Input
+              placeholder="Merci de votre commande!"
+              value={ticketFooter}
+              onChange={(e) => setTicketFooter(e.target.value)}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2">Logo / Signature (avec émojis)</label>
+            <Input
+              placeholder="🍕 TWIN PIZZA 🍕"
+              value={ticketLogo}
+              onChange={(e) => setTicketLogo(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <Button onClick={saveTicketConfig}>
+          Sauvegarder le ticket
+        </Button>
+      </div>
+
+      {/* Order Number Settings */}
+      <div className="bg-card rounded-lg p-6 border space-y-4">
+        <h3 className="font-semibold text-lg flex items-center gap-2">
+          🔢 Numéro de Commande
+        </h3>
+        
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Préfixe</label>
+            <Input
+              placeholder="TW"
+              value={orderPrefix}
+              onChange={(e) => setOrderPrefix(e.target.value.toUpperCase())}
+              maxLength={5}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Ex: TW → TW20251212-0001
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Dernier numéro utilisé</label>
+            <div className="flex items-center gap-2">
+              <Input
+                value={lastOrderNumber}
+                disabled
+                className="bg-muted"
+              />
+              <Badge variant="secondary">Aujourd'hui</Badge>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Button onClick={saveOrderConfig}>
+            Sauvegarder préfixe
+          </Button>
+          {showResetConfirm ? (
+            <div className="flex gap-2 items-center">
+              <span className="text-sm text-destructive">Confirmer?</span>
+              <Button variant="destructive" size="sm" onClick={resetOrderNumber}>
+                Oui, réinitialiser
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowResetConfirm(false)}>
+                Annuler
+              </Button>
+            </div>
+          ) : (
+            <Button variant="outline" onClick={() => setShowResetConfirm(true)}>
+              Réinitialiser le compteur
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Printer Setup */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
         <h3 className="font-semibold text-amber-700 mb-2">📋 Instructions de configuration</h3>
         <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
@@ -1197,6 +1344,7 @@ function PrinterConfig() {
       </div>
 
       <div className="bg-card rounded-lg p-6 border space-y-4">
+        <h3 className="font-semibold text-lg">🖨️ Imprimante</h3>
         <div>
           <label className="block text-sm font-medium mb-2">Nom de l'imprimante (optionnel)</label>
           <Input
@@ -1220,7 +1368,7 @@ function PrinterConfig() {
             disabled={testPrinting}
           >
             <Printer className="w-4 h-4 mr-2" />
-            {testPrinting ? 'Impression...' : 'Test d\'impression'}
+            {testPrinting ? 'Impression...' : "Test d'impression"}
           </Button>
         </div>
       </div>

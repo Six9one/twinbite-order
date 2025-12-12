@@ -258,10 +258,16 @@ export function useUpdateOrderStatus() {
   });
 }
 
-// Generate order number
+// Generate order number with customizable prefix
 export function generateOrderNumber(): string {
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
   const timeStr = now.getTime().toString().slice(-4);
-  return `TW${dateStr}-${timeStr}`;
+  
+  // Get custom prefix from localStorage, default to 'TW'
+  const prefix = typeof window !== 'undefined' 
+    ? (localStorage.getItem('orderPrefix') || 'TW')
+    : 'TW';
+  
+  return `${prefix}${dateStr}-${timeStr}`;
 }
