@@ -25,6 +25,7 @@ export interface MenuItem {
   price: number;
   category: MenuCategory;
   image?: string;
+  imageUrl?: string; // For database products
   base?: PizzaBase; // For pizzas
   ingredients?: string[];
 }
