@@ -90,10 +90,10 @@ function MainApp() {
             </div>
             
             {/* Subtitle */}
-            <p className="text-lg md:text-xl mb-2 font-light text-primary">
+            <p className="text-lg mb-2 font-sans font-extrabold md:text-xl text-secondary">
               Grand-Couronne
             </p>
-            <p className="text-base md:text-lg max-w-lg mx-auto text-secondary">
+            <p className="text-base md:text-lg max-w-lg mx-auto text-orange-400">
               Pizzas • Soufflés • Makloub • Mlawi • Tacos • Sandwiches et plus encore...
             </p>
           </div>
