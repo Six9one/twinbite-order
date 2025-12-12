@@ -35,7 +35,7 @@ export function OpeningHoursManager() {
       .order('day_of_week', { ascending: true });
     
     if (!error && data) {
-      setHours(data as OpeningHour[]);
+      setHours(data as unknown as OpeningHour[]);
     }
     setLoading(false);
   };

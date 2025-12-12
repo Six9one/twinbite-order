@@ -51,7 +51,7 @@ export function PromotionsManager() {
       .order('created_at', { ascending: false });
     
     if (!error && data) {
-      setPromotions(data as Promotion[]);
+      setPromotions(data as unknown as Promotion[]);
     }
     setLoading(false);
   };
