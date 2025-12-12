@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&family=Cinzel+Decorative:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap');
 
 @layer base {
   :root {
@@ -42,7 +42,7 @@
     --pizza-cream: 35 40% 92%;
     --pizza-brown: 25 35% 25%;
 
-    --font-display: 'Cinzel Decorative', serif;
+    --font-display: 'Comfortaa', sans-serif;
     --font-body: 'Comfortaa', sans-serif;
 
     --shadow-warm: 0 4px 20px -4px hsl(24 80% 50% / 0.2);

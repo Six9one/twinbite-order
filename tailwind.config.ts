@@ -15,7 +15,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Comfortaa', 'sans-serif'],
-        display: ['Cinzel Decorative', 'serif'],
+        display: ['Comfortaa', 'sans-serif'],
         body: ['Comfortaa', 'sans-serif'],
       },
       colors: {

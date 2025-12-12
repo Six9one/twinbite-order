@@ -105,12 +105,12 @@ function MainApp() {
         
         <div className="relative z-10 container mx-auto px-4 py-12">
           <div className="text-center mb-10 animate-fade-in">
-            {/* Logo TWIN - Clickable */}
+            {/* Logo Twin Pizza - Clickable */}
             <div className="mb-6">
               <a href="/" className="hover:opacity-80 transition-opacity">
                 <h1 className="text-6xl md:text-8xl font-medium tracking-wide whitespace-nowrap">
-                  <span className="text-amber-400">TWIN</span>
-                  <span className="text-white ml-3">PIZZA</span>
+                  <span className="text-amber-400">Twin</span>
+                  <span className="text-white ml-3">Pizza</span>
                 </h1>
               </a>
             </div>
