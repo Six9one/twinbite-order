@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrders, useUpdateOrderStatus, Order } from '@/hooks/useSupabaseData';
+import { ProductsManager } from '@/components/admin/ProductsManager';
+import { ImageUploadTable } from '@/components/admin/ImageUploadTable';
 import { 
   LogOut, Home, Search, RefreshCw, Download, Printer, 
   Clock, CheckCircle, XCircle, ChefHat, Package,
@@ -14,7 +16,7 @@ import {
   Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv, TrendingUp
 } from 'lucide-react';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts';
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', icon: Clock },
@@ -269,6 +271,9 @@ export default function AdminDashboard() {
               <Package className="w-4 h-4" />
               Commandes
             </TabsTrigger>
+            <TabsTrigger value="products" className="gap-2 bg-amber-500/20 text-amber-700 dark:text-amber-400">
+              🍕 Produits
+            </TabsTrigger>
             <TabsTrigger value="zones" className="gap-2">
               <MapPin className="w-4 h-4" />
               Zones
@@ -358,26 +363,29 @@ export default function AdminDashboard() {
             </div>
           </TabsContent>
 
+          <TabsContent value="products">
+            <ProductsManager />
+          </TabsContent>
           <TabsContent value="zones">
             <AdminTable tableName="delivery_zones" title="Zones de livraison" />
           </TabsContent>
           <TabsContent value="meats">
-            <AdminTable tableName="meat_options" title="Options viandes" />
+            <ImageUploadTable tableName="meat_options" title="Options viandes" hasImage />
           </TabsContent>
           <TabsContent value="sauces">
-            <AdminTable tableName="sauce_options" title="Options sauces" />
+            <ImageUploadTable tableName="sauce_options" title="Options sauces" hasImage />
           </TabsContent>
           <TabsContent value="garnitures">
-            <AdminTable tableName="garniture_options" title="Options garnitures" />
+            <ImageUploadTable tableName="garniture_options" title="Options garnitures" hasImage />
           </TabsContent>
           <TabsContent value="supplements">
-            <AdminTable tableName="supplement_options" title="Options suppléments" />
+            <ImageUploadTable tableName="supplement_options" title="Options suppléments" hasImage />
           </TabsContent>
           <TabsContent value="drinks">
-            <AdminTable tableName="drinks" title="Boissons" />
+            <ImageUploadTable tableName="drinks" title="Boissons" hasImage />
           </TabsContent>
           <TabsContent value="desserts">
-            <AdminTable tableName="desserts" title="Desserts" />
+            <ImageUploadTable tableName="desserts" title="Desserts" hasImage />
           </TabsContent>
           
           <TabsContent value="ventes">

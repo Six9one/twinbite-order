@@ -3,13 +3,14 @@ import { MenuItem, PizzaCustomization, PizzaBase, PizzaSize } from '@/types/orde
 import { pizzasTomate, pizzasCreme, pizzaPrices, cheeseSupplementOptions } from '@/data/menu';
 import { isMenuMidiTime, getMenuMidiRemainingTime } from '@/utils/promotions';
 import { useOrder } from '@/context/OrderContext';
+import { usePizzasByBase, Product } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Check, Pizza, Sun, Clock, Plus } from 'lucide-react';
+import { ArrowLeft, Check, Pizza, Sun, Clock, Plus, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface PizzaWizardProps {
@@ -20,12 +21,21 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
   const { addToCart, orderType } = useOrder();
   const [step, setStep] = useState<'select' | 'customize'>('select');
   const [selectedPizza, setSelectedPizza] = useState<MenuItem | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [base, setBase] = useState<PizzaBase>('tomate');
   const [size, setSize] = useState<PizzaSize>('senior');
   const [isMenuMidi, setIsMenuMidi] = useState(false);
   const [supplements, setSupplements] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [countdown, setCountdown] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
+
+  // Fetch pizzas from database
+  const { data: dbPizzasTomate, isLoading: loadingTomate } = usePizzasByBase('tomate');
+  const { data: dbPizzasCreme, isLoading: loadingCreme } = usePizzasByBase('creme');
+  
+  // Use database pizzas if available, fallback to static data
+  const displayPizzasTomate = dbPizzasTomate && dbPizzasTomate.length > 0 ? dbPizzasTomate : pizzasTomate;
+  const displayPizzasCreme = dbPizzasCreme && dbPizzasCreme.length > 0 ? dbPizzasCreme : pizzasCreme;
 
   const showMenuMidi = isMenuMidiTime();
   const promoText = orderType === 'livraison' 
@@ -45,9 +55,24 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
     return () => clearInterval(interval);
   }, [showMenuMidi]);
 
-  const handleSelectPizza = (pizza: MenuItem) => {
-    setSelectedPizza(pizza);
-    setBase(pizza.base || 'tomate');
+  const handleSelectPizza = (pizza: MenuItem | Product) => {
+    // Handle both static MenuItem and database Product
+    const isProduct = 'base_price' in pizza;
+    const menuItem: MenuItem = isProduct 
+      ? {
+          id: pizza.id,
+          name: pizza.name,
+          description: pizza.description || '',
+          price: (pizza as Product).base_price,
+          category: 'pizzas' as const,
+          base: (pizza as Product).pizza_base as PizzaBase || 'tomate',
+          imageUrl: (pizza as Product).image_url || undefined,
+        }
+      : pizza;
+    
+    setSelectedPizza(menuItem);
+    setSelectedProduct(isProduct ? pizza as Product : null);
+    setBase(menuItem.base || 'tomate');
     setStep('customize');
   };
 
@@ -164,55 +189,93 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
 
             <TabsContent value="tomate">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pizzasTomate.map((pizza) => (
-                  <Card
-                    key={pizza.id}
-                    className="p-4 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30"
-                    onClick={() => handleSelectPizza(pizza)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
+                {(loadingTomate ? [] : displayPizzasTomate).map((pizza: any) => {
+                  const imageUrl = pizza.image_url || pizza.imageUrl || pizza.image;
+                  return (
+                    <Card
+                      key={pizza.id}
+                      className="overflow-hidden cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30"
+                      onClick={() => handleSelectPizza(pizza)}
+                    >
+                      {/* Image */}
+                      {imageUrl ? (
+                        <div className="aspect-video relative">
+                          <img
+                            src={imageUrl}
+                            alt={pizza.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="aspect-video bg-muted flex items-center justify-center">
+                          <Pizza className="w-12 h-12 text-primary/30" />
+                        </div>
+                      )}
+                      <div className="p-4">
                         <h3 className="font-display font-semibold text-lg">{pizza.name}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">{pizza.description}</p>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{pizza.description}</p>
+                        <div className="mt-3 flex items-center gap-2">
+                          <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
+                          <span className="text-sm text-muted-foreground">Senior</span>
+                          <span className="text-muted-foreground">|</span>
+                          <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
+                          <span className="text-sm text-muted-foreground">Mega</span>
+                        </div>
                       </div>
-                      <Pizza className="w-8 h-8 text-primary/50" />
-                    </div>
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
-                      <span className="text-sm text-muted-foreground">Senior</span>
-                      <span className="text-muted-foreground">|</span>
-                      <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
-                      <span className="text-sm text-muted-foreground">Mega</span>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
+                {loadingTomate && (
+                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                    Chargement des pizzas...
+                  </div>
+                )}
               </div>
             </TabsContent>
 
             <TabsContent value="creme">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pizzasCreme.map((pizza) => (
-                  <Card
-                    key={pizza.id}
-                    className="p-4 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30"
-                    onClick={() => handleSelectPizza(pizza)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
+                {(loadingCreme ? [] : displayPizzasCreme).map((pizza: any) => {
+                  const imageUrl = pizza.image_url || pizza.imageUrl || pizza.image;
+                  return (
+                    <Card
+                      key={pizza.id}
+                      className="overflow-hidden cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30"
+                      onClick={() => handleSelectPizza(pizza)}
+                    >
+                      {/* Image */}
+                      {imageUrl ? (
+                        <div className="aspect-video relative">
+                          <img
+                            src={imageUrl}
+                            alt={pizza.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="aspect-video bg-muted flex items-center justify-center">
+                          <Pizza className="w-12 h-12 text-primary/30" />
+                        </div>
+                      )}
+                      <div className="p-4">
                         <h3 className="font-display font-semibold text-lg">{pizza.name}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">{pizza.description}</p>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{pizza.description}</p>
+                        <div className="mt-3 flex items-center gap-2">
+                          <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
+                          <span className="text-sm text-muted-foreground">Senior</span>
+                          <span className="text-muted-foreground">|</span>
+                          <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
+                          <span className="text-sm text-muted-foreground">Mega</span>
+                        </div>
                       </div>
-                      <Pizza className="w-8 h-8 text-primary/50" />
-                    </div>
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
-                      <span className="text-sm text-muted-foreground">Senior</span>
-                      <span className="text-muted-foreground">|</span>
-                      <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
-                      <span className="text-sm text-muted-foreground">Mega</span>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
+                {loadingCreme && (
+                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                    Chargement des pizzas...
+                  </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>
