@@ -38,6 +38,7 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10));
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const { data: orders, isLoading, refetch } = useOrders(dateFilter);
   const updateStatus = useUpdateOrderStatus();
@@ -253,8 +254,6 @@ export default function AdminDashboard() {
   if (!isAuthenticated) {
     return <div className="min-h-screen flex items-center justify-center">Chargement...</div>;
   }
-
-  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
     <div className="min-h-screen bg-background flex">
