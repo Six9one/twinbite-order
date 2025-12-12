@@ -49,7 +49,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-background/20 pt-6 text-center text-sm text-background/50">
-          © 2024 Twin Pizza. Tous droits réservés.
+          © 2025 Twin Pizza. Tous droits réservés.
         </div>
       </div>
     </footer>

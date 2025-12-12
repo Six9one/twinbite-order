@@ -79,24 +79,48 @@ const orderTypeConfig = {
   surplace: { icon: Utensils, label: 'Sur place', color: 'bg-green-600' },
 };
 
-// Sound alert with flash effect
+// Sound alert with flash effect - LOUD ALARM
 const playOrderSound = () => {
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    [0, 150, 300].forEach((delay, i) => {
+    
+    // Play multiple loud beeps for urgent notification
+    const frequencies = [880, 1100, 880, 1100, 880];
+    const beepDuration = 0.15;
+    const gapDuration = 0.1;
+    
+    frequencies.forEach((freq, i) => {
       setTimeout(() => {
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
-        oscillator.frequency.value = 880 + (i * 220);
-        oscillator.type = 'sine';
-        gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+        oscillator.frequency.value = freq;
+        oscillator.type = 'square'; // More piercing sound
+        gainNode.gain.setValueAtTime(0.8, audioContext.currentTime); // Louder volume
+        gainNode.gain.exponentialRampToValueAtTime(0.1, audioContext.currentTime + beepDuration);
         oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.2);
-      }, delay);
+        oscillator.stop(audioContext.currentTime + beepDuration);
+      }, i * (beepDuration + gapDuration) * 1000);
     });
+    
+    // Play a second round after a short pause for emphasis
+    setTimeout(() => {
+      frequencies.forEach((freq, i) => {
+        setTimeout(() => {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          oscillator.frequency.value = freq;
+          oscillator.type = 'square';
+          gainNode.gain.setValueAtTime(0.8, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.1, audioContext.currentTime + beepDuration);
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + beepDuration);
+        }, i * (beepDuration + gapDuration) * 1000);
+      });
+    }, 800);
   } catch (error) {
     console.log('Audio not supported');
   }
@@ -128,8 +152,8 @@ const printOrderTicket = (order: Order) => {
     
     return `
       <div style="margin-bottom:8px;border-bottom:1px dashed #ccc;padding-bottom:8px;">
-        <div style="font-size:16px;font-weight:bold;">${cartItem.quantity}x ${productName} - ${cartItem.totalPrice?.toFixed(2) || '0.00'}€</div>
-        ${details.length > 0 ? `<div style="font-size:12px;color:#555;">${details.join(' | ')}</div>` : ''}
+        <div style="font-weight:bold;">${cartItem.quantity}x ${productName} - ${cartItem.totalPrice?.toFixed(2) || '0.00'}€</div>
+        ${details.length > 0 ? `<div style="color:#555;">${details.join(' | ')}</div>` : ''}
       </div>
     `;
   }).join('');
@@ -145,14 +169,20 @@ const printOrderTicket = (order: Order) => {
     cb: 'CB (À PAYER)',
     especes: 'ESPÈCES (À PAYER)'
   };
+  
+  // Get font settings from localStorage
+  const fontFamily = localStorage.getItem('ticketFontFamily') || 'monospace';
+  const fontSize = localStorage.getItem('ticketFontSize') || '12';
+  const headerSize = localStorage.getItem('ticketHeaderSize') || '20';
 
   printWindow.document.write(`
     <html><head><title>Ticket ${order.order_number}</title>
     <style>
-      body { font-family: 'Courier New', monospace; padding: 10px; max-width: 300px; margin: 0 auto; }
+      body { font-family: ${fontFamily}; font-size: ${fontSize}px; padding: 10px; max-width: 300px; margin: 0 auto; }
       .center { text-align: center; }
       .bold { font-weight: bold; }
       .divider { border-top: 2px dashed #000; margin: 10px 0; }
+      h2 { font-size: ${headerSize}px; }
     </style></head><body>
       <div class="center">
         <h2 style="margin:5px 0;">${ticketSettings.header}</h2>
