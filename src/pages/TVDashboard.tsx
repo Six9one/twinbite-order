@@ -192,6 +192,14 @@ export default function TVDashboard() {
     return localStorage.getItem('autoPrintEnabled') === 'true';
   });
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [flashEffect, setFlashEffect] = useState(false);
+  const [activeTab, setActiveTab] = useState<'live' | 'history'>('live');
+  const previousOrdersCount = useRef(0);
+  const printedOrders = useRef<Set<string>>(new Set());
+
+  const { data: orders, isLoading, refetch } = useOrders(dateFilter);
+  const updateStatus = useUpdateOrderStatus();
 
   // Show loading while checking auth
   if (authLoading || !isAuthenticated) {
@@ -201,14 +209,6 @@ export default function TVDashboard() {
       </div>
     );
   }
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [flashEffect, setFlashEffect] = useState(false);
-  const [activeTab, setActiveTab] = useState<'live' | 'history'>('live');
-  const previousOrdersCount = useRef(0);
-  const printedOrders = useRef<Set<string>>(new Set());
-
-  const { data: orders, isLoading, refetch } = useOrders(dateFilter);
-  const updateStatus = useUpdateOrderStatus();
 
   // Save auto-print preference
   useEffect(() => {
