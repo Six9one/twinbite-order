@@ -107,24 +107,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     const orderNumber = generateOrderNumber();
     
     try {
-      // First, save the order to database with pending status
-      await createOrder.mutateAsync({
-        order_number: orderNumber,
-        order_type: orderType,
-        items: cart as unknown as import('@/integrations/supabase/types').Json,
-        customer_name: customerInfo.name,
-        customer_phone: customerInfo.phone,
-        customer_address: customerInfo.address || null,
-        customer_notes: customerInfo.notes || null,
-        payment_method: 'en_ligne',
-        subtotal: ht,
-        tva,
-        total: ttc,
-        delivery_fee: 0,
-        status: 'pending',
-      });
-
-      // Then create Stripe checkout session
+      // Create Stripe checkout session with ALL order data
+      // Order will be created in database ONLY after payment succeeds (via webhook)
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           amount: ttc,
@@ -136,10 +120,13 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             name: item.item.name,
             quantity: item.quantity,
             price: item.calculatedPrice || item.item.price,
+            customization: item.customization,
           })),
           orderType,
           customerAddress: customerInfo.address,
           customerNotes: customerInfo.notes,
+          subtotal: ht,
+          tva,
         },
       });
 

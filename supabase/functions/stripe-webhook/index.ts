@@ -35,26 +35,74 @@ serve(async (req) => {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       
-      console.log("[STRIPE-WEBHOOK] Payment completed for order:", session.metadata?.orderNumber);
+      console.log("[STRIPE-WEBHOOK] Payment completed!", {
+        orderNumber: session.metadata?.orderNumber,
+        amount: session.amount_total,
+        customerName: session.metadata?.customerName,
+      });
 
-      // Update order status in database
+      // Create order in database only after successful payment
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL") ?? "",
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
       );
 
-      const { error } = await supabase
+      // Parse order data from metadata
+      const orderNumber = session.metadata?.orderNumber || "";
+      const customerName = session.metadata?.customerName || "";
+      const customerPhone = session.metadata?.customerPhone || "";
+      const customerAddress = session.metadata?.customerAddress || null;
+      const customerNotes = session.metadata?.customerNotes || null;
+      const orderType = session.metadata?.orderType || "emporter";
+      const subtotal = parseFloat(session.metadata?.subtotal || "0");
+      const tva = parseFloat(session.metadata?.tva || "0");
+      const total = (session.amount_total || 0) / 100; // Convert from cents
+      
+      // Parse items from metadata
+      let items = [];
+      try {
+        items = JSON.parse(session.metadata?.items || "[]");
+      } catch (e) {
+        console.error("[STRIPE-WEBHOOK] Error parsing items:", e);
+        items = [];
+      }
+
+      console.log("[STRIPE-WEBHOOK] Creating order in database:", {
+        orderNumber,
+        customerName,
+        orderType,
+        total,
+        itemsCount: items.length,
+      });
+
+      // Insert the order into database
+      const { data, error } = await supabase
         .from('orders')
-        .update({ 
+        .insert({
+          order_number: orderNumber,
+          order_type: orderType,
+          items: items,
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_address: customerAddress,
+          customer_notes: customerNotes,
+          payment_method: 'en_ligne',
+          subtotal: subtotal,
+          tva: tva,
+          total: total,
+          delivery_fee: 0,
           status: 'pending',
-          payment_method: 'en_ligne'
         })
-        .eq('order_number', session.metadata?.orderNumber);
+        .select()
+        .single();
 
       if (error) {
-        console.error("[STRIPE-WEBHOOK] Error updating order:", error);
+        console.error("[STRIPE-WEBHOOK] Error creating order:", error);
       } else {
-        console.log("[STRIPE-WEBHOOK] Order updated successfully");
+        console.log("[STRIPE-WEBHOOK] Order created successfully!", {
+          orderId: data.id,
+          orderNumber: data.order_number,
+        });
       }
     }
 

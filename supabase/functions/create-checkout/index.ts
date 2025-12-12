@@ -12,15 +12,44 @@ serve(async (req) => {
   }
 
   try {
-    const { amount, customerName, customerPhone, customerEmail, orderNumber, items, orderType, customerAddress, customerNotes } = await req.json();
+    const { 
+      amount, 
+      customerName, 
+      customerPhone, 
+      customerEmail, 
+      orderNumber, 
+      items, 
+      orderType, 
+      customerAddress, 
+      customerNotes,
+      subtotal,
+      tva 
+    } = await req.json();
     
-    console.log("[CREATE-CHECKOUT] Starting checkout session creation", { amount, orderNumber, customerName });
+    console.log("[CREATE-CHECKOUT] Starting checkout session creation", { 
+      amount, 
+      orderNumber, 
+      customerName,
+      itemsCount: items?.length 
+    });
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Create checkout session with dynamic pricing
+    // Stringify items for metadata (Stripe has 500 char limit per value)
+    let itemsJson = "[]";
+    try {
+      itemsJson = JSON.stringify(items);
+      // If too long, truncate but keep valid JSON
+      if (itemsJson.length > 450) {
+        itemsJson = JSON.stringify(items.slice(0, 10)); // Keep first 10 items
+      }
+    } catch (e) {
+      console.error("[CREATE-CHECKOUT] Error stringifying items:", e);
+    }
+
+    // Create checkout session with all order data in metadata
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -29,7 +58,7 @@ serve(async (req) => {
             currency: 'eur',
             product_data: {
               name: `Commande Twin Pizza #${orderNumber}`,
-              description: `${items.length} article(s) - ${orderType === 'livraison' ? 'Livraison' : orderType === 'emporter' ? 'À emporter' : 'Sur place'}`,
+              description: `${items?.length || 0} article(s) - ${orderType === 'livraison' ? 'Livraison' : orderType === 'emporter' ? 'À emporter' : 'Sur place'}`,
             },
             unit_amount: Math.round(amount * 100), // Convert to cents
           },
@@ -47,11 +76,16 @@ serve(async (req) => {
         customerAddress: customerAddress || '',
         customerNotes: customerNotes || '',
         orderType,
-        items: JSON.stringify(items).substring(0, 500), // Stripe has metadata limits
+        subtotal: String(subtotal || 0),
+        tva: String(tva || 0),
+        items: itemsJson,
       },
     });
 
-    console.log("[CREATE-CHECKOUT] Checkout session created", { sessionId: session.id, url: session.url });
+    console.log("[CREATE-CHECKOUT] Checkout session created", { 
+      sessionId: session.id, 
+      url: session.url 
+    });
 
     return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
