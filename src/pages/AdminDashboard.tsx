@@ -638,6 +638,22 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
     <div className="space-y-4">
       <h2 className="text-2xl font-display font-bold">{title}</h2>
       
+      {/* Help box for delivery zones */}
+      {tableName === 'delivery_zones' && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+          <h3 className="font-semibold text-amber-700 mb-2">📍 Comment trouver les coordonnées ?</h3>
+          <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+            <li>Allez sur <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" className="text-amber-600 underline">Google Maps</a></li>
+            <li>Faites un clic droit sur le centre de la zone</li>
+            <li>Cliquez sur les coordonnées pour les copier (ex: 49.3569, 1.0024)</li>
+            <li>La première valeur = Latitude, la deuxième = Longitude</li>
+          </ol>
+          <p className="text-xs text-muted-foreground mt-2">
+            💡 <strong>Type de zone:</strong> "main" = cercle orange (1.5km), "near" = cercle jaune (1.2km), autre = cercle jaune clair (1km)
+          </p>
+        </div>
+      )}
+      
       <div className="bg-card rounded-lg p-4 border">
         <h3 className="font-semibold mb-3">Ajouter</h3>
         <div className="flex flex-wrap gap-2 items-end">
@@ -659,6 +675,15 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
           )}
           {tableName === 'delivery_zones' && (
             <>
+              <select
+                value={newItem.zone_type || 'main'}
+                onChange={(e) => setNewItem({ ...newItem, zone_type: e.target.value })}
+                className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+              >
+                <option value="main">Principal (orange)</option>
+                <option value="near">Proche (jaune)</option>
+                <option value="medium">Moyen (jaune clair)</option>
+              </select>
               <Input
                 type="number"
                 placeholder="Min. commande"
@@ -682,19 +707,19 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
               />
               <Input
                 type="number"
-                step="0.000001"
-                placeholder="Latitude"
+                step="0.0001"
+                placeholder="Latitude (ex: 49.3569)"
                 value={newItem.latitude || ''}
                 onChange={(e) => setNewItem({ ...newItem, latitude: parseFloat(e.target.value) })}
-                className="w-28"
+                className="w-36"
               />
               <Input
                 type="number"
-                step="0.000001"
-                placeholder="Longitude"
+                step="0.0001"
+                placeholder="Longitude (ex: 1.0024)"
                 value={newItem.longitude || ''}
                 onChange={(e) => setNewItem({ ...newItem, longitude: parseFloat(e.target.value) })}
-                className="w-28"
+                className="w-36"
               />
             </>
           )}
@@ -705,7 +730,7 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
         </div>
       </div>
 
-      <div className="bg-card rounded-lg border overflow-hidden">
+      <div className="bg-card rounded-lg border overflow-hidden overflow-x-auto">
         <table className="w-full">
           <thead className="bg-muted">
             <tr>
@@ -713,11 +738,12 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
               {tableName !== 'delivery_zones' && <th className="text-left p-3">Prix</th>}
               {tableName === 'delivery_zones' && (
                 <>
+                  <th className="text-left p-3">Type</th>
                   <th className="text-left p-3">Min.</th>
                   <th className="text-left p-3">Frais</th>
                   <th className="text-left p-3">Délai</th>
-                  <th className="text-left p-3">Latitude</th>
-                  <th className="text-left p-3">Longitude</th>
+                  <th className="text-left p-3">Lat</th>
+                  <th className="text-left p-3">Lng</th>
                 </>
               )}
               <th className="text-left p-3">Actions</th>
@@ -756,11 +782,31 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
                   <>
                     <td className="p-3">
                       {editingId === item.id ? (
+                        <select
+                          value={item.zone_type || 'main'}
+                          onChange={(e) => setItems(items.map(i => i.id === item.id ? { ...i, zone_type: e.target.value } : i))}
+                          className="h-8 px-2 rounded border border-input bg-background text-xs"
+                        >
+                          <option value="main">Principal</option>
+                          <option value="near">Proche</option>
+                          <option value="medium">Moyen</option>
+                        </select>
+                      ) : (
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          item.zone_type === 'main' ? 'bg-amber-500 text-white' : 
+                          item.zone_type === 'near' ? 'bg-amber-300 text-amber-900' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {item.zone_type || 'main'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      {editingId === item.id ? (
                         <Input
                           type="number"
                           value={item.min_order}
                           onChange={(e) => setItems(items.map(i => i.id === item.id ? { ...i, min_order: parseFloat(e.target.value) } : i))}
-                          className="w-20"
+                          className="w-16"
                         />
                       ) : (
                         `${item.min_order}€`
@@ -773,7 +819,7 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
                           step="0.01"
                           value={item.delivery_fee}
                           onChange={(e) => setItems(items.map(i => i.id === item.id ? { ...i, delivery_fee: parseFloat(e.target.value) } : i))}
-                          className="w-20"
+                          className="w-16"
                         />
                       ) : (
                         item.delivery_fee > 0 ? `${item.delivery_fee}€` : 'Gratuit'
@@ -784,7 +830,7 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
                         <Input
                           value={item.estimated_time}
                           onChange={(e) => setItems(items.map(i => i.id === item.id ? { ...i, estimated_time: e.target.value } : i))}
-                          className="w-24"
+                          className="w-20"
                         />
                       ) : (
                         item.estimated_time
@@ -794,26 +840,26 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
                       {editingId === item.id ? (
                         <Input
                           type="number"
-                          step="0.000001"
+                          step="0.0001"
                           value={item.latitude || ''}
                           onChange={(e) => setItems(items.map(i => i.id === item.id ? { ...i, latitude: parseFloat(e.target.value) } : i))}
                           className="w-24"
                         />
                       ) : (
-                        item.latitude ? item.latitude.toFixed(4) : '-'
+                        item.latitude ? item.latitude.toFixed(4) : '⚠️'
                       )}
                     </td>
                     <td className="p-3">
                       {editingId === item.id ? (
                         <Input
                           type="number"
-                          step="0.000001"
+                          step="0.0001"
                           value={item.longitude || ''}
                           onChange={(e) => setItems(items.map(i => i.id === item.id ? { ...i, longitude: parseFloat(e.target.value) } : i))}
                           className="w-24"
                         />
                       ) : (
-                        item.longitude ? item.longitude.toFixed(4) : '-'
+                        item.longitude ? item.longitude.toFixed(4) : '⚠️'
                       )}
                     </td>
                   </>

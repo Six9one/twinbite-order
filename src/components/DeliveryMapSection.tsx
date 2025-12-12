@@ -11,15 +11,15 @@ const TWIN_PIZZA_LOCATION = {
   address: '60 Rue Georges Clemenceau, 76530 Grand-Couronne'
 };
 
-// Delivery zones with approximate coordinates
-const deliveryZones = [
-  { name: 'Grand-Couronne', lng: 1.0024, lat: 49.3569, radius: 'main' },
-  { name: 'Petit-Couronne', lng: 1.0256, lat: 49.3825, radius: 'near' },
-  { name: 'Le Moulineaux', lng: 0.9856, lat: 49.3425, radius: 'near' },
-  { name: 'Les Essarts', lng: 0.9624, lat: 49.3769, radius: 'near' },
-  { name: 'Oissel', lng: 1.0856, lat: 49.3425, radius: 'medium' },
-  { name: 'Les Boutières', lng: 0.9924, lat: 49.3869, radius: 'near' },
-];
+interface DeliveryZone {
+  id: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  zone_type: string | null;
+  delivery_fee: number;
+  estimated_time: string;
+}
 
 export function DeliveryMapSection() {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -27,6 +27,24 @@ export function DeliveryMapSection() {
   const [hoveredZone, setHoveredZone] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
+
+  // Fetch delivery zones from database
+  useEffect(() => {
+    async function fetchZones() {
+      const { data, error } = await supabase
+        .from('delivery_zones')
+        .select('*')
+        .eq('is_active', true);
+      
+      if (data) {
+        // Filter zones that have valid coordinates
+        const validZones = data.filter(z => z.latitude && z.longitude);
+        setZones(validZones);
+      }
+    }
+    fetchZones();
+  }, []);
 
   useEffect(() => {
     async function initMap() {
@@ -87,17 +105,17 @@ export function DeliveryMapSection() {
             )
             .addTo(map.current);
 
-          // Add circle zones
-          deliveryZones.forEach((zone, index) => {
-            if (!map.current) return;
+          // Add circle zones from database
+          zones.forEach((zone, index) => {
+            if (!map.current || !zone.latitude || !zone.longitude) return;
             
-            const radius = zone.radius === 'main' ? 1500 : zone.radius === 'near' ? 1200 : 1000;
-            const color = zone.radius === 'main' ? '#f59e0b' : zone.radius === 'near' ? '#fbbf24' : '#fcd34d';
+            const radius = zone.zone_type === 'main' ? 1500 : zone.zone_type === 'near' ? 1200 : 1000;
+            const color = zone.zone_type === 'main' ? '#f59e0b' : zone.zone_type === 'near' ? '#fbbf24' : '#fcd34d';
             
             // Add zone source
             map.current.addSource(`zone-${index}`, {
               type: 'geojson',
-              data: createCircle([zone.lng, zone.lat], radius)
+              data: createCircle([zone.longitude, zone.latitude], radius)
             });
 
             // Add zone fill
@@ -170,7 +188,7 @@ export function DeliveryMapSection() {
     return () => {
       map.current?.remove();
     };
-  }, []);
+  }, [zones]);
 
   // Helper function to create a circle GeoJSON
   function createCircle(center: [number, number], radiusInMeters: number): GeoJSON.FeatureCollection {
