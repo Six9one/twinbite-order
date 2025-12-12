@@ -43,6 +43,7 @@ export type Database = {
       }
       delivery_zones: {
         Row: {
+          color: string | null
           created_at: string | null
           delivery_fee: number
           estimated_time: string
@@ -52,10 +53,12 @@ export type Database = {
           longitude: number | null
           min_order: number
           name: string
+          radius: number | null
           updated_at: string | null
           zone_type: string | null
         }
         Insert: {
+          color?: string | null
           created_at?: string | null
           delivery_fee?: number
           estimated_time?: string
@@ -65,10 +68,12 @@ export type Database = {
           longitude?: number | null
           min_order?: number
           name: string
+          radius?: number | null
           updated_at?: string | null
           zone_type?: string | null
         }
         Update: {
+          color?: string | null
           created_at?: string | null
           delivery_fee?: number
           estimated_time?: string
@@ -78,6 +83,7 @@ export type Database = {
           longitude?: number | null
           min_order?: number
           name?: string
+          radius?: number | null
           updated_at?: string | null
           zone_type?: string | null
         }
