@@ -35,6 +35,16 @@ export default function AdminDashboard() {
 
   const { data: orders, isLoading, refetch } = useOrders(dateFilter);
   const updateStatus = useUpdateOrderStatus();
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+
+  // Auto-refresh every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+      setLastUpdate(new Date());
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -246,14 +256,18 @@ export default function AdminDashboard() {
               </Button>
             </Link>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              <span>Mise à jour: {lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            </div>
             <Link to="/tv" target="_blank">
               <Button variant="outline" size="sm" className="gap-2 bg-amber-500 text-black hover:bg-amber-600">
                 <Tv className="w-4 h-4" />
                 Mode TV
               </Button>
             </Link>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <Button variant="outline" size="sm" onClick={() => { refetch(); setLastUpdate(new Date()); }}>
               <RefreshCw className="w-4 h-4" />
             </Button>
             <Button variant="destructive" size="sm" onClick={handleLogout}>
@@ -426,17 +440,26 @@ function OrderCard({
           <Badge variant="secondary" className="bg-white/20">
             {order.order_type.toUpperCase()}
           </Badge>
+          {/* Payment method badge */}
+          {order.payment_method === 'en_ligne' ? (
+            <Badge className="bg-green-600 text-white">PAYÉ STRIPE ✓</Badge>
+          ) : order.payment_method === 'cb' ? (
+            <Badge className="bg-blue-600 text-white">CB</Badge>
+          ) : (
+            <Badge className="bg-amber-600 text-white">ESPÈCES</Badge>
+          )}
         </div>
-        <span className="text-sm">
-          {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-        </span>
+        <div className="flex items-center gap-2 text-sm">
+          <Clock className="w-4 h-4" />
+          <span>{new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+        </div>
       </div>
 
       <div className="p-4 space-y-4">
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-muted-foreground" />
-            <span>{order.customer_name}</span>
+            <span className="font-medium">{order.customer_name}</span>
           </div>
           <div className="flex items-center gap-2">
             <Phone className="w-4 h-4 text-muted-foreground" />
