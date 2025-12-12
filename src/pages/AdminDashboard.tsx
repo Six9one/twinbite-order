@@ -2,21 +2,26 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrders, useUpdateOrderStatus, Order } from '@/hooks/useSupabaseData';
 import { ProductsManager } from '@/components/admin/ProductsManager';
 import { ImageUploadTable } from '@/components/admin/ImageUploadTable';
+import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { PromotionsManager } from '@/components/admin/PromotionsManager';
+import { LoyaltyManager } from '@/components/admin/LoyaltyManager';
+import { OpeningHoursManager } from '@/components/admin/OpeningHoursManager';
+import { StatisticsSection } from '@/components/admin/StatisticsSection';
 import { 
   LogOut, Home, Search, RefreshCw, Download, Printer, 
   Clock, CheckCircle, XCircle, ChefHat, Package,
   MapPin, Phone, User, MessageSquare, CreditCard, Banknote,
-  Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv, TrendingUp
+  Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv, TrendingUp,
+  Menu
 } from 'lucide-react';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard';
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', icon: Clock },
@@ -241,86 +246,71 @@ export default function AdminDashboard() {
     return <div className="min-h-screen flex items-center justify-center">Chargement...</div>;
   }
 
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-card border-b shadow-sm">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-display font-bold">
-              <span className="text-amber-500">TWIN</span> Admin
-            </h1>
-            <Link to="/">
-              <Button variant="ghost" size="sm">
-                <Home className="w-4 h-4 mr-2" />
-                Site
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 overflow-hidden`}>
+        <AdminSidebar activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab as AdminTab)} />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-h-screen">
+        <header className="sticky top-0 z-50 bg-card border-b shadow-sm">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
+                <Menu className="w-5 h-5" />
               </Button>
-            </Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              <span>Mise à jour: {lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                <span>Mise à jour: {lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+              </div>
             </div>
-            <Link to="/tv" target="_blank">
-              <Button variant="outline" size="sm" className="gap-2 bg-amber-500 text-black hover:bg-amber-600">
-                <Tv className="w-4 h-4" />
-                Mode TV
+            <div className="flex items-center gap-3">
+              <Link to="/tv" target="_blank">
+                <Button variant="outline" size="sm" className="gap-2 bg-amber-500 text-black hover:bg-amber-600">
+                  <Tv className="w-4 h-4" />
+                  Mode TV
+                </Button>
+              </Link>
+              <Button variant="outline" size="sm" onClick={() => { refetch(); setLastUpdate(new Date()); }}>
+                <RefreshCw className="w-4 h-4" />
               </Button>
-            </Link>
-            <Button variant="outline" size="sm" onClick={() => { refetch(); setLastUpdate(new Date()); }}>
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Déconnexion
-            </Button>
+              <Button variant="destructive" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Déconnexion
+              </Button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="container mx-auto px-4 py-6">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as AdminTab)}>
-          <TabsList className="mb-6 flex-wrap h-auto gap-1">
-            <TabsTrigger value="orders" className="gap-2">
-              <Package className="w-4 h-4" />
-              Commandes
-            </TabsTrigger>
-            <TabsTrigger value="products" className="gap-2 bg-amber-500/20 text-amber-700 dark:text-amber-400">
-              🍕 Produits
-            </TabsTrigger>
-            <TabsTrigger value="zones" className="gap-2">
-              <MapPin className="w-4 h-4" />
-              Zones
-            </TabsTrigger>
-            <TabsTrigger value="meats" className="gap-2">
-              <Utensils className="w-4 h-4" />
-              Viandes
-            </TabsTrigger>
-            <TabsTrigger value="sauces" className="gap-2">
-              <Droplet className="w-4 h-4" />
-              Sauces
-            </TabsTrigger>
-            <TabsTrigger value="garnitures" className="gap-2">
-              <Leaf className="w-4 h-4" />
-              Garnitures
-            </TabsTrigger>
-            <TabsTrigger value="supplements" className="gap-2">
-              <Plus className="w-4 h-4" />
-              Suppléments
-            </TabsTrigger>
-            <TabsTrigger value="drinks">🥤 Boissons</TabsTrigger>
-            <TabsTrigger value="desserts">🍰 Desserts</TabsTrigger>
-            <TabsTrigger value="ventes" className="gap-2 bg-green-500/20 text-green-700 dark:text-green-400">
-              <TrendingUp className="w-4 h-4" />
-              Ventes
-            </TabsTrigger>
-            <TabsTrigger value="printer" className="gap-2">
-              <Printer className="w-4 h-4" />
-              Imprimante
-            </TabsTrigger>
-          </TabsList>
+        <main className="flex-1 p-6 overflow-auto">
+          {/* Dashboard */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Dashboard</h2>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {Object.entries(statusConfig).map(([key, config]) => {
+                  const count = filteredOrders?.filter(o => o.status === key).length || 0;
+                  const Icon = config.icon;
+                  return (
+                    <div key={key} className={`p-4 rounded-lg ${config.color} text-white`}>
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-5 h-5" />
+                        <span className="font-semibold">{count}</span>
+                      </div>
+                      <p className="text-sm opacity-90">{config.label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-          <TabsContent value="orders">
+          {/* Orders */}
+          {activeTab === 'orders' && (
             <div className="space-y-4">
               <div className="flex flex-wrap gap-4 items-center">
                 <div className="relative flex-1 min-w-[200px]">
@@ -379,41 +369,34 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="products">
-            <ProductsManager />
-          </TabsContent>
-          <TabsContent value="zones">
-            <AdminTable tableName="delivery_zones" title="Zones de livraison" />
-          </TabsContent>
-          <TabsContent value="meats">
-            <ImageUploadTable tableName="meat_options" title="Options viandes" hasImage />
-          </TabsContent>
-          <TabsContent value="sauces">
-            <ImageUploadTable tableName="sauce_options" title="Options sauces" hasImage />
-          </TabsContent>
-          <TabsContent value="garnitures">
-            <ImageUploadTable tableName="garniture_options" title="Options garnitures" hasImage />
-          </TabsContent>
-          <TabsContent value="supplements">
-            <ImageUploadTable tableName="supplement_options" title="Options suppléments" hasImage />
-          </TabsContent>
-          <TabsContent value="drinks">
-            <ImageUploadTable tableName="drinks" title="Boissons" hasImage />
-          </TabsContent>
-          <TabsContent value="desserts">
-            <ImageUploadTable tableName="desserts" title="Desserts" hasImage />
-          </TabsContent>
+          {/* Products */}
+          {activeTab === 'products' && <ProductsManager />}
           
-          <TabsContent value="ventes">
-            <VentesSection orders={orders || []} />
-          </TabsContent>
+          {/* Zones */}
+          {activeTab === 'zones' && <AdminTable tableName="delivery_zones" title="Zones de livraison" />}
           
-          <TabsContent value="printer">
-            <PrinterConfig />
-          </TabsContent>
-        </Tabs>
+          {/* Meats, Sauces, Garnitures, Supplements, Drinks, Desserts */}
+          {activeTab === 'meats' && <ImageUploadTable tableName="meat_options" title="Options viandes" hasImage />}
+          {activeTab === 'sauces' && <ImageUploadTable tableName="sauce_options" title="Options sauces" hasImage />}
+          {activeTab === 'garnitures' && <ImageUploadTable tableName="garniture_options" title="Options garnitures" hasImage />}
+          {activeTab === 'supplements' && <ImageUploadTable tableName="supplement_options" title="Options suppléments" hasImage />}
+          {activeTab === 'drinks' && <ImageUploadTable tableName="drinks" title="Boissons" hasImage />}
+          {activeTab === 'desserts' && <ImageUploadTable tableName="desserts" title="Desserts" hasImage />}
+          
+          {/* Ventes */}
+          {activeTab === 'ventes' && <VentesSection orders={orders || []} />}
+          
+          {/* Printer */}
+          {activeTab === 'printer' && <PrinterConfig />}
+          
+          {/* New Sections */}
+          {activeTab === 'promotions' && <PromotionsManager />}
+          {activeTab === 'loyalty' && <LoyaltyManager />}
+          {activeTab === 'hours' && <OpeningHoursManager />}
+          {activeTab === 'stats' && <StatisticsSection orders={orders || []} />}
+        </main>
       </div>
     </div>
   );
