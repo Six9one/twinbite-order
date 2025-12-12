@@ -51,12 +51,9 @@ export function DealsCarousel() {
               <img src={deal.image} alt={deal.title} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white">
-                <div className="gap-2 md:gap-3 mb-2 md:mb-3 flex items-start justify-start">
-                  
-                  <span className="text-lg md:text-2xl text-[#49f60f] bg-destructive-foreground mx-0 px-0 font-sans font-extrabold">{deal.title}</span>
-                </div>
-                <h3 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-2 md:mb-3 text-center font-mono bg-accent px-[10px] my-[66px] mx-[21px]">{deal.subtitle}</h3>
-                <p className="text-white/80 text-base md:text-xl text-center font-mono bg-primary pl-[5px] pt-px pb-[9px] pr-0 my-[117px]">{deal.description}</p>
+                
+                
+                
               </div>
             </div>;
       })}
