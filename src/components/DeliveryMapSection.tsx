@@ -19,6 +19,8 @@ interface DeliveryZone {
   zone_type: string | null;
   delivery_fee: number;
   estimated_time: string;
+  radius: number | null;
+  color: string | null;
 }
 
 export function DeliveryMapSection() {
@@ -109,8 +111,9 @@ export function DeliveryMapSection() {
           zones.forEach((zone, index) => {
             if (!map.current || !zone.latitude || !zone.longitude) return;
             
-            const radius = zone.zone_type === 'main' ? 1500 : zone.zone_type === 'near' ? 1200 : 1000;
-            const color = zone.zone_type === 'main' ? '#f59e0b' : zone.zone_type === 'near' ? '#fbbf24' : '#fcd34d';
+            // Use database values or defaults (reduced default sizes)
+            const radius = zone.radius || (zone.zone_type === 'main' ? 1000 : zone.zone_type === 'near' ? 800 : 600);
+            const color = zone.color || (zone.zone_type === 'main' ? '#f59e0b' : zone.zone_type === 'near' ? '#fbbf24' : '#fcd34d');
             
             // Add zone source
             map.current.addSource(`zone-${index}`, {
@@ -271,19 +274,20 @@ export function DeliveryMapSection() {
             </div>
           )}
 
-          {/* Legend */}
-          {!error && !loading && (
-            <div className="absolute bottom-4 right-4 bg-background/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-border">
-              <p className="text-xs font-medium text-foreground mb-2">Légende</p>
+          {/* Legend - Dynamic based on zones */}
+          {!error && !loading && zones.length > 0 && (
+            <div className="absolute bottom-4 right-4 bg-background/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-border max-w-[180px]">
+              <p className="text-xs font-medium text-foreground mb-2">Zones de livraison</p>
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-amber-500" />
-                  <span className="text-xs text-muted-foreground">Zone principale</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-amber-400" />
-                  <span className="text-xs text-muted-foreground">Zones proches</span>
-                </div>
+                {zones.map((zone) => (
+                  <div key={zone.id} className="flex items-center gap-2">
+                    <div 
+                      className="w-3 h-3 rounded-full flex-shrink-0" 
+                      style={{ backgroundColor: zone.color || '#f59e0b' }}
+                    />
+                    <span className="text-xs text-muted-foreground truncate">{zone.name}</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
