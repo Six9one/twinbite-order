@@ -105,12 +105,14 @@ function MainApp() {
         
         <div className="relative z-10 container mx-auto px-4 py-12">
           <div className="text-center mb-10 animate-fade-in">
-            {/* Logo TWIN - Clean simple font */}
+            {/* Logo TWIN - Clickable */}
             <div className="mb-6">
-              <h1 className="text-6xl md:text-8xl font-medium tracking-wide whitespace-nowrap">
-                <span className="text-amber-400">TWIN</span>
-                <span className="text-white ml-3">PIZZA</span>
-              </h1>
+              <a href="/" className="hover:opacity-80 transition-opacity">
+                <h1 className="text-6xl md:text-8xl font-medium tracking-wide whitespace-nowrap">
+                  <span className="text-amber-400">TWIN</span>
+                  <span className="text-white ml-3">PIZZA</span>
+                </h1>
+              </a>
             </div>
             
             {/* Subtitle */}
