@@ -16,7 +16,7 @@ import {
   Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv, TrendingUp
 } from 'lucide-react';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer';
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', icon: Clock },
@@ -300,6 +300,10 @@ export default function AdminDashboard() {
               <TrendingUp className="w-4 h-4" />
               Ventes
             </TabsTrigger>
+            <TabsTrigger value="printer" className="gap-2">
+              <Printer className="w-4 h-4" />
+              Imprimante
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders">
@@ -390,6 +394,10 @@ export default function AdminDashboard() {
           
           <TabsContent value="ventes">
             <VentesSection orders={orders || []} />
+          </TabsContent>
+          
+          <TabsContent value="printer">
+            <PrinterConfig />
           </TabsContent>
         </Tabs>
       </div>
@@ -1103,6 +1111,122 @@ function VentesSection({ orders }: { orders: Order[] }) {
             </span>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Printer Configuration Component
+function PrinterConfig() {
+  const [printerName, setPrinterName] = useState(localStorage.getItem('printerName') || '');
+  const [testPrinting, setTestPrinting] = useState(false);
+
+  const savePrinterConfig = () => {
+    localStorage.setItem('printerName', printerName);
+    toast.success('Configuration sauvegardée!');
+  };
+
+  const testPrint = () => {
+    setTestPrinting(true);
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Impossible d\'ouvrir la fenêtre d\'impression');
+      setTestPrinting(false);
+      return;
+    }
+
+    const testHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Test Imprimante</title>
+        <style>
+          body { font-family: monospace; width: 80mm; margin: 0; padding: 10px; }
+          .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; }
+          .content { padding: 20px 0; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>TWIN PIZZA</h1>
+          <p>Test d'impression</p>
+        </div>
+        <div class="content">
+          <p>✓ L'imprimante fonctionne correctement!</p>
+          <p>${new Date().toLocaleString('fr-FR')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(testHTML);
+    printWindow.document.close();
+    printWindow.print();
+    printWindow.close();
+    
+    setTimeout(() => {
+      setTestPrinting(false);
+      toast.success('Test d\'impression envoyé!');
+    }, 1000);
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-display font-bold flex items-center gap-2">
+        <Printer className="w-6 h-6" />
+        Configuration Imprimante
+      </h2>
+
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+        <h3 className="font-semibold text-amber-700 mb-2">📋 Instructions de configuration</h3>
+        <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+          <li>Connectez votre imprimante thermique au PC via câble USB</li>
+          <li>Installez le pilote de l'imprimante sur votre PC</li>
+          <li>Assurez-vous que l'imprimante est définie comme imprimante par défaut</li>
+          <li>Connectez le PC à l'écran TV via HDMI</li>
+          <li>Ouvrez le Dashboard TV sur le navigateur du PC (<code className="bg-black/20 px-1 rounded">/tv</code>)</li>
+          <li>Les tickets s'impriment automatiquement via le bouton "Imprimer" dans les commandes</li>
+        </ol>
+      </div>
+
+      <div className="bg-card rounded-lg p-6 border space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Nom de l'imprimante (optionnel)</label>
+          <Input
+            placeholder="Ex: EPSON TM-T20III"
+            value={printerName}
+            onChange={(e) => setPrinterName(e.target.value)}
+            className="max-w-md"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Pour référence uniquement. L'impression utilise l'imprimante par défaut du système.
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <Button onClick={savePrinterConfig}>
+            Sauvegarder
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={testPrint}
+            disabled={testPrinting}
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            {testPrinting ? 'Impression...' : 'Test d\'impression'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="bg-card rounded-lg p-6 border">
+        <h3 className="font-semibold mb-4">Imprimantes compatibles recommandées</h3>
+        <ul className="text-sm space-y-2 text-muted-foreground">
+          <li>• <strong>EPSON TM-T20III</strong> - Imprimante thermique USB 80mm</li>
+          <li>• <strong>Star TSP143III</strong> - Compatible ESC/POS</li>
+          <li>• <strong>Citizen CT-S310II</strong> - Thermique compacte</li>
+          <li>• Toute imprimante thermique 80mm avec connexion USB</li>
+        </ul>
       </div>
     </div>
   );
