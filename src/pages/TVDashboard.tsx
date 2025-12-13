@@ -358,20 +358,32 @@ export default function TVDashboard() {
     }
   };
 
-  // Filter orders
-  const activeOrders = orders?.filter(o => !['completed', 'cancelled'].includes(o.status)) || [];
+  // Filter orders - separate scheduled from live
+  const liveOrders = orders?.filter(o => !o.is_scheduled && !['completed', 'cancelled'].includes(o.status)) || [];
+  const scheduledOrders = orders?.filter(o => o.is_scheduled === true && !['completed', 'cancelled'].includes(o.status)) || [];
   const completedOrders = orders?.filter(o => o.status === 'completed') || [];
   const allHistoryOrders = orders?.filter(o => ['completed', 'cancelled'].includes(o.status)) || [];
+
+  // Filter live orders by type
+  const surplaceOrders = liveOrders.filter(o => o.order_type === 'surplace');
+  const emporterOrders = liveOrders.filter(o => o.order_type === 'emporter');
+  const livraisonOrders = liveOrders.filter(o => o.order_type === 'livraison');
+
+  // Get all orders sorted by creation time for global sequential numbering
+  const allOrdersSorted = [...(orders || [])].sort((a, b) => 
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
   
-  // Sort active orders: pending first, then preparing, then ready
-  const sortedActiveOrders = [...activeOrders].sort((a, b) => {
-    const priority: Record<string, number> = { pending: 0, preparing: 1, ready: 2 };
-    return (priority[a.status] || 3) - (priority[b.status] || 3);
+  // Create a map of order id to global sequential number
+  const orderNumberMap = new Map<string, number>();
+  allOrdersSorted.forEach((order, idx) => {
+    orderNumberMap.set(order.id, idx + 1);
   });
 
-  const pendingCount = activeOrders.filter(o => o.status === 'pending').length;
-  const preparingCount = activeOrders.filter(o => o.status === 'preparing').length;
-  const readyCount = activeOrders.filter(o => o.status === 'ready').length;
+  const pendingCount = liveOrders.filter(o => o.status === 'pending').length;
+  const preparingCount = liveOrders.filter(o => o.status === 'preparing').length;
+  const readyCount = liveOrders.filter(o => o.status === 'ready').length;
+  const scheduledCount = scheduledOrders.length;
 
   return (
     <div className={`min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white flex flex-col ${flashEffect ? 'animate-pulse bg-amber-500/20' : ''}`}>
@@ -404,19 +416,23 @@ export default function TVDashboard() {
             </h1>
           </Link>
           
-          {/* Status counters - BIGGER */}
+          {/* Status counters */}
           <div className="flex gap-2">
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-lg font-bold ${pendingCount > 0 ? 'bg-yellow-500 animate-pulse' : 'bg-yellow-500/30'}`}>
-              <Clock className="w-5 h-5" />
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${pendingCount > 0 ? 'bg-yellow-500 animate-pulse' : 'bg-yellow-500/30'}`}>
+              <Clock className="w-4 h-4" />
               <span>{pendingCount}</span>
             </div>
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-lg font-bold ${preparingCount > 0 ? 'bg-blue-500' : 'bg-blue-500/30'}`}>
-              <ChefHat className="w-5 h-5" />
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${preparingCount > 0 ? 'bg-blue-500' : 'bg-blue-500/30'}`}>
+              <ChefHat className="w-4 h-4" />
               <span>{preparingCount}</span>
             </div>
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-lg font-bold ${readyCount > 0 ? 'bg-green-500 animate-pulse' : 'bg-green-500/30'}`}>
-              <Package className="w-5 h-5" />
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${readyCount > 0 ? 'bg-green-500 animate-pulse' : 'bg-green-500/30'}`}>
+              <Package className="w-4 h-4" />
               <span>{readyCount}</span>
+            </div>
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${scheduledCount > 0 ? 'bg-purple-500' : 'bg-purple-500/30'}`}>
+              <CalendarClock className="w-4 h-4" />
+              <span>{scheduledCount}</span>
             </div>
           </div>
         </div>
@@ -469,52 +485,57 @@ export default function TVDashboard() {
         </div>
       </header>
 
-      {/* Main content */}
+      {/* Main content - 4 Column Layout */}
       {activeTab === 'live' ? (
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* TOP SECTION - Active Orders (MUCH larger) */}
-          <div className="flex-[4] p-4 overflow-hidden">
-            {isLoading ? (
-              <div className="text-center text-4xl py-20 text-white/50">Chargement...</div>
-            ) : activeOrders.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="text-9xl mb-6">🍕</div>
-                <div className="text-5xl text-white/40 font-light">Aucune commande active</div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 h-full overflow-y-auto pb-4">
-                {sortedActiveOrders.map((order, idx) => (
-                  <ActiveOrderCard 
-                    key={order.id} 
-                    order={order} 
-                    orderNumber={idx + 1} 
-                    onStatusUpdate={handleStatusUpdate}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+        <div className="flex-1 flex overflow-hidden">
+          {/* Column 1: Sur Place (25%) */}
+          <OrderColumn 
+            title="Sur Place" 
+            icon={Utensils}
+            orders={surplaceOrders}
+            orderNumberMap={orderNumberMap}
+            onStatusUpdate={handleStatusUpdate}
+            colorClass="bg-green-600"
+            emptyIcon="🍴"
+          />
 
           {/* Divider */}
-          <div className="h-1 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent mx-8" />
+          <div className="w-0.5 bg-white/10" />
 
-          {/* BOTTOM SECTION - Completed Orders (smaller) */}
-          <div className="flex-1 p-3 bg-black/30">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="w-4 h-4 text-gray-400" />
-              <span className="text-sm font-medium text-white/60">Terminées</span>
-            </div>
+          {/* Column 2: À Emporter (25%) */}
+          <OrderColumn 
+            title="À Emporter" 
+            icon={Store}
+            orders={emporterOrders}
+            orderNumberMap={orderNumberMap}
+            onStatusUpdate={handleStatusUpdate}
+            colorClass="bg-orange-600"
+            emptyIcon="🥡"
+          />
 
-            {completedOrders.length === 0 ? (
-              <div className="text-center text-white/30 py-2 text-sm">Aucune</div>
-            ) : (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {completedOrders.slice(0, 10).map((order) => (
-                  <CompletedOrderCard key={order.id} order={order} />
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Divider */}
+          <div className="w-0.5 bg-white/10" />
+
+          {/* Column 3: Livraison (25%) */}
+          <OrderColumn 
+            title="Livraison" 
+            icon={Truck}
+            orders={livraisonOrders}
+            orderNumberMap={orderNumberMap}
+            onStatusUpdate={handleStatusUpdate}
+            colorClass="bg-blue-600"
+            emptyIcon="🚗"
+          />
+
+          {/* Divider */}
+          <div className="w-0.5 bg-purple-500/50" />
+
+          {/* Column 4: Plus Tard (25%) - Scheduled Orders */}
+          <ScheduledOrderColumn 
+            orders={scheduledOrders}
+            orderNumberMap={orderNumberMap}
+            onStatusUpdate={handleStatusUpdate}
+          />
         </div>
       ) : (
         /* HISTORY TAB */
@@ -531,6 +552,21 @@ export default function TVDashboard() {
           )}
         </div>
       )}
+
+      {/* Bottom Completed Strip */}
+      {activeTab === 'live' && completedOrders.length > 0 && (
+        <div className="h-16 px-4 py-2 bg-black/50 border-t border-white/10">
+          <div className="flex items-center gap-2 h-full overflow-x-auto">
+            <CheckCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <span className="text-xs text-white/50 flex-shrink-0">Terminées:</span>
+            {completedOrders.slice(0, 15).map((order) => (
+              <div key={order.id} className="bg-gray-800/50 rounded px-2 py-1 text-xs text-white/60 flex-shrink-0">
+                #{orderNumberMap.get(order.id) || '?'} {order.customer_name.split(' ')[0]}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -544,8 +580,116 @@ function CurrentTime() {
   return <>{time.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</>;
 }
 
-// Active order card - MUCH BIGGER fonts, no prices, with controls
-function ActiveOrderCard({ 
+// Order Column Component for the 4-column layout
+function OrderColumn({ 
+  title, 
+  icon: Icon, 
+  orders, 
+  orderNumberMap,
+  onStatusUpdate,
+  colorClass,
+  emptyIcon
+}: { 
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  orders: Order[];
+  orderNumberMap: Map<string, number>;
+  onStatusUpdate: (id: string, status: Order['status']) => void;
+  colorClass: string;
+  emptyIcon: string;
+}) {
+  // Sort orders: pending first, then preparing, then ready
+  const sortedOrders = [...orders].sort((a, b) => {
+    const priority: Record<string, number> = { pending: 0, preparing: 1, ready: 2 };
+    return (priority[a.status] || 3) - (priority[b.status] || 3);
+  });
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Column Header */}
+      <div className={`${colorClass} px-4 py-3 flex items-center justify-between`}>
+        <div className="flex items-center gap-2">
+          <Icon className="w-5 h-5" />
+          <span className="font-bold text-lg">{title}</span>
+        </div>
+        <Badge className="bg-white/20 text-white">{orders.length}</Badge>
+      </div>
+
+      {/* Orders List */}
+      <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-black/20">
+        {sortedOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-white/30">
+            <span className="text-4xl mb-2">{emptyIcon}</span>
+            <span className="text-sm">Aucune commande</span>
+          </div>
+        ) : (
+          sortedOrders.map((order) => (
+            <ColumnOrderCard 
+              key={order.id} 
+              order={order} 
+              orderNumber={orderNumberMap.get(order.id) || 0}
+              onStatusUpdate={onStatusUpdate}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Scheduled Order Column (Plus Tard)
+function ScheduledOrderColumn({ 
+  orders, 
+  orderNumberMap,
+  onStatusUpdate 
+}: { 
+  orders: Order[];
+  orderNumberMap: Map<string, number>;
+  onStatusUpdate: (id: string, status: Order['status']) => void;
+}) {
+  // Sort by scheduled time
+  const sortedOrders = [...orders].sort((a, b) => {
+    if (a.scheduled_for && b.scheduled_for) {
+      return new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime();
+    }
+    return 0;
+  });
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden bg-purple-950/30">
+      {/* Column Header */}
+      <div className="bg-purple-600 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CalendarClock className="w-5 h-5" />
+          <span className="font-bold text-lg">Plus Tard</span>
+        </div>
+        <Badge className="bg-white/20 text-white">{orders.length}</Badge>
+      </div>
+
+      {/* Orders List */}
+      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+        {sortedOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-white/30">
+            <span className="text-4xl mb-2">📅</span>
+            <span className="text-sm">Aucune commande programmée</span>
+          </div>
+        ) : (
+          sortedOrders.map((order) => (
+            <ScheduledOrderCard 
+              key={order.id} 
+              order={order} 
+              orderNumber={orderNumberMap.get(order.id) || 0}
+              onStatusUpdate={onStatusUpdate}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Compact order card for columns
+function ColumnOrderCard({ 
   order, 
   orderNumber,
   onStatusUpdate 
@@ -556,143 +700,98 @@ function ActiveOrderCard({
 }) {
   const config = statusConfig[order.status];
   const Icon = config.icon;
-  const typeConfig = orderTypeConfig[order.order_type as keyof typeof orderTypeConfig];
-  const TypeIcon = typeConfig?.icon || Store;
   const isNew = order.status === 'pending';
   const isReady = order.status === 'ready';
 
-  // Get items for display (max 6, then show +N more)
   const items = Array.isArray(order.items) ? order.items : [];
-  const displayItems = items.slice(0, 6);
-  const moreCount = items.length - 6;
-
-  // Check if order is scheduled
-  const isScheduled = order.is_scheduled === true;
-  const scheduledTime = order.scheduled_for ? new Date(order.scheduled_for) : null;
+  const orderTime = new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className={`rounded-xl overflow-hidden flex flex-col ${
-      isScheduled ? 'bg-purple-900/30 ring-4 ring-purple-500' :
-      isNew ? 'ring-4 ring-yellow-400 animate-pulse bg-white/5' : 
-      isReady ? 'ring-4 ring-green-400 bg-white/5' : 'bg-white/5'
-    }`}>
-      {/* Scheduled Banner */}
-      {isScheduled && scheduledTime && (
-        <div className="bg-purple-600 text-white px-4 py-2 flex items-center justify-center gap-2">
-          <CalendarClock className="w-5 h-5" />
-          <span className="font-bold">POUR PLUS TARD:</span>
-          <span>{format(scheduledTime, "EEEE d MMM 'à' HH:mm", { locale: fr })}</span>
-        </div>
-      )}
-
+    <div className={`rounded-lg overflow-hidden ${
+      isNew ? 'ring-2 ring-yellow-400 animate-pulse' : 
+      isReady ? 'ring-2 ring-green-400' : ''
+    } bg-white/5`}>
       {/* Header */}
-      <div className={`${isScheduled ? 'bg-purple-700' : config.color} text-white px-4 py-3 flex items-center justify-between`}>
-        <div className="flex items-center gap-3">
-          {isScheduled ? <CalendarClock className="w-8 h-8" /> : <Icon className="w-8 h-8" />}
-          <span className="text-4xl font-black">#{orderNumber}</span>
+      <div className={`${config.color} px-3 py-2 flex items-center justify-between`}>
+        <div className="flex items-center gap-2">
+          <Icon className="w-4 h-4" />
+          <span className="font-bold">#{String(orderNumber).padStart(3, '0')}</span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Payment indicator */}
           {order.payment_method === 'en_ligne' ? (
-            <Badge className="bg-green-700 text-white text-sm px-2 py-1">
-              <CreditCard className="w-4 h-4 mr-1" /> PAYÉ
+            <Badge className="bg-green-700 text-white text-xs px-1.5 py-0.5">
+              <CreditCard className="w-3 h-3" />
             </Badge>
           ) : (
-            <Badge className="bg-red-700 text-white text-sm px-2 py-1 animate-pulse">
-              {order.payment_method === 'cb' ? <CreditCard className="w-4 h-4 mr-1" /> : <Banknote className="w-4 h-4 mr-1" />}
-              À PAYER
+            <Badge className="bg-red-700 text-white text-xs px-1.5 py-0.5 animate-pulse">
+              <Banknote className="w-3 h-3" />
             </Badge>
           )}
-          <div className={`${typeConfig?.color} px-2 py-1 rounded-lg text-sm font-semibold flex items-center gap-1`}>
-            <TypeIcon className="w-4 h-4" />
-            {typeConfig?.label}
-          </div>
+          <span className="text-xs opacity-80">{orderTime}</span>
         </div>
       </div>
 
-      <div className="p-4 flex-1 flex flex-col gap-3 overflow-hidden">
-        {/* Customer name - VERY BIG, no phone */}
-        <div className="text-2xl sm:text-3xl font-bold text-white truncate">
-          {order.customer_name}
-        </div>
-
+      <div className="p-2 space-y-1.5">
+        {/* Customer */}
+        <div className="font-bold text-lg text-white truncate">{order.customer_name}</div>
+        
         {/* Address for delivery */}
         {order.order_type === 'livraison' && order.customer_address && (
-          <div className="flex items-start gap-2 text-amber-300 bg-amber-500/10 rounded-lg p-2 overflow-hidden">
-            <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <span className="text-base sm:text-lg leading-tight font-medium line-clamp-2">{order.customer_address}</span>
+          <div className="flex items-start gap-1 text-amber-300 text-xs bg-amber-500/10 rounded px-2 py-1">
+            <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
+            <span className="line-clamp-2">{order.customer_address}</span>
           </div>
         )}
 
-        {/* Items grid - no prices */}
-        <div className="bg-black/40 rounded-lg p-3 flex-1 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-2">
-            {displayItems.map((cartItem: any, idx: number) => {
-              const productName = cartItem.item?.name || cartItem.name || 'Produit';
-              const customization = cartItem.customization;
-              
-              return (
-                <div key={idx} className="bg-white/5 rounded-lg p-2 overflow-hidden">
-                  <div className="text-base sm:text-xl font-bold text-white truncate">
-                    {cartItem.quantity}x {productName}
-                  </div>
-                  {customization?.size && (
-                    <span className="text-xs sm:text-sm text-cyan-300">{customization.size.toUpperCase()}</span>
-                  )}
-                  {customization?.meats?.length > 0 && (
-                    <p className="text-xs sm:text-sm text-white/70 truncate">🥩 {customization.meats.join(', ')}</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {moreCount > 0 && (
-            <div className="text-center text-amber-400 font-bold mt-2 text-lg">
-              +{moreCount} autres produits
+        {/* Items */}
+        <div className="bg-black/30 rounded p-1.5 space-y-0.5 max-h-24 overflow-y-auto">
+          {items.slice(0, 4).map((item: any, idx: number) => (
+            <div key={idx} className="text-xs text-white/80 truncate">
+              <span className="font-semibold">{item.quantity}x</span> {item.item?.name || item.name || 'Produit'}
             </div>
+          ))}
+          {items.length > 4 && (
+            <div className="text-xs text-amber-400">+{items.length - 4} autres</div>
           )}
         </div>
 
-        {/* Status Controls - BIG BUTTONS */}
-        <div className="flex gap-2 pt-2">
+        {/* Status Buttons */}
+        <div className="flex gap-1 pt-1">
           {order.status === 'pending' && (
             <Button 
-              size="lg" 
-              className="flex-1 bg-blue-500 hover:bg-blue-600 text-xl py-6 gap-2"
+              size="sm" 
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-xs py-1 h-auto gap-1"
               onClick={() => onStatusUpdate(order.id, 'preparing')}
             >
-              <ChefHat className="w-6 h-6" />
-              Préparer
+              <ChefHat className="w-3 h-3" /> Préparer
             </Button>
           )}
           {order.status === 'preparing' && (
             <Button 
-              size="lg" 
-              className="flex-1 bg-green-500 hover:bg-green-600 text-xl py-6 gap-2"
+              size="sm" 
+              className="flex-1 bg-green-500 hover:bg-green-600 text-xs py-1 h-auto gap-1"
               onClick={() => onStatusUpdate(order.id, 'ready')}
             >
-              <Package className="w-6 h-6" />
-              Prêt
+              <Package className="w-3 h-3" /> Prêt
             </Button>
           )}
           {order.status === 'ready' && (
             <Button 
-              size="lg" 
-              className="flex-1 bg-gray-600 hover:bg-gray-700 text-xl py-6 gap-2"
+              size="sm" 
+              className="flex-1 bg-gray-600 hover:bg-gray-700 text-xs py-1 h-auto gap-1"
               onClick={() => onStatusUpdate(order.id, 'completed')}
             >
-              <CheckCircle className="w-6 h-6" />
-              Terminé
+              <CheckCircle className="w-3 h-3" /> Terminé
             </Button>
           )}
           {['pending', 'preparing'].includes(order.status) && (
             <Button 
               variant="destructive" 
-              size="lg"
-              className="py-6"
+              size="sm"
+              className="text-xs py-1 h-auto px-2"
               onClick={() => onStatusUpdate(order.id, 'cancelled')}
             >
-              <XCircle className="w-6 h-6" />
+              <XCircle className="w-3 h-3" />
             </Button>
           )}
         </div>
@@ -701,21 +800,113 @@ function ActiveOrderCard({
   );
 }
 
-// Completed order card - Minimal, just product names and small client name
-function CompletedOrderCard({ order }: { order: Order }) {
+// Scheduled Order Card with delivery mode indicator
+function ScheduledOrderCard({ 
+  order, 
+  orderNumber,
+  onStatusUpdate 
+}: { 
+  order: Order; 
+  orderNumber: number;
+  onStatusUpdate: (id: string, status: Order['status']) => void;
+}) {
+  const typeConfig = orderTypeConfig[order.order_type as keyof typeof orderTypeConfig];
+  const TypeIcon = typeConfig?.icon || Store;
+  const config = statusConfig[order.status];
+  const scheduledTime = order.scheduled_for ? new Date(order.scheduled_for) : null;
+  const orderTime = new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
   const items = Array.isArray(order.items) ? order.items : [];
-  const productNames = items.map((item: any) => item.item?.name || item.name || 'Produit').slice(0, 3);
 
   return (
-    <div className="bg-gray-800/50 rounded-lg px-3 py-2 min-w-[160px] flex-shrink-0 border border-gray-700">
-      <div className="text-xs text-white/50 mb-1">{order.customer_name}</div>
-      <div className="text-sm font-medium text-white/80">
-        {productNames.join(', ')}
-        {items.length > 3 && <span className="text-white/50"> +{items.length - 3}</span>}
+    <div className="rounded-lg overflow-hidden bg-purple-900/40 ring-1 ring-purple-500/50">
+      {/* Scheduled Time Banner */}
+      {scheduledTime && (
+        <div className="bg-purple-500 px-3 py-1.5 flex items-center justify-center gap-2 text-sm">
+          <CalendarClock className="w-4 h-4" />
+          <span className="font-bold">{format(scheduledTime, "EEE d MMM 'à' HH:mm", { locale: fr })}</span>
+        </div>
+      )}
+
+      {/* Order Type + Number Header */}
+      <div className={`${typeConfig?.color || 'bg-gray-600'} px-3 py-2 flex items-center justify-between`}>
+        <div className="flex items-center gap-2">
+          <TypeIcon className="w-4 h-4" />
+          <span className="font-semibold text-sm">{typeConfig?.label}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-bold">#{String(orderNumber).padStart(3, '0')}</span>
+          {order.payment_method === 'en_ligne' ? (
+            <Badge className="bg-green-700 text-white text-xs px-1.5 py-0.5">PAYÉ</Badge>
+          ) : (
+            <Badge className="bg-red-700 text-white text-xs px-1.5 py-0.5">À PAYER</Badge>
+          )}
+        </div>
+      </div>
+
+      <div className="p-2 space-y-1.5">
+        {/* Customer + Order entry time */}
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-white truncate flex-1">{order.customer_name}</span>
+          <span className="text-xs text-white/50">reçu {orderTime}</span>
+        </div>
+
+        {/* Address for delivery */}
+        {order.order_type === 'livraison' && order.customer_address && (
+          <div className="flex items-start gap-1 text-amber-300 text-xs bg-amber-500/10 rounded px-2 py-1">
+            <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
+            <span className="line-clamp-2">{order.customer_address}</span>
+          </div>
+        )}
+
+        {/* Items */}
+        <div className="bg-black/30 rounded p-1.5 space-y-0.5 max-h-20 overflow-y-auto">
+          {items.slice(0, 3).map((item: any, idx: number) => (
+            <div key={idx} className="text-xs text-white/80 truncate">
+              <span className="font-semibold">{item.quantity}x</span> {item.item?.name || item.name || 'Produit'}
+            </div>
+          ))}
+          {items.length > 3 && (
+            <div className="text-xs text-purple-300">+{items.length - 3} autres</div>
+          )}
+        </div>
+
+        {/* Status indicator + button */}
+        <div className="flex items-center gap-2 pt-1">
+          <Badge className={`${config.color} text-xs`}>{config.label}</Badge>
+          {order.status === 'pending' && (
+            <Button 
+              size="sm" 
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-xs py-1 h-auto gap-1"
+              onClick={() => onStatusUpdate(order.id, 'preparing')}
+            >
+              <ChefHat className="w-3 h-3" /> Préparer
+            </Button>
+          )}
+          {order.status === 'preparing' && (
+            <Button 
+              size="sm" 
+              className="flex-1 bg-green-500 hover:bg-green-600 text-xs py-1 h-auto gap-1"
+              onClick={() => onStatusUpdate(order.id, 'ready')}
+            >
+              <Package className="w-3 h-3" /> Prêt
+            </Button>
+          )}
+          {order.status === 'ready' && (
+            <Button 
+              size="sm" 
+              className="flex-1 bg-gray-600 hover:bg-gray-700 text-xs py-1 h-auto gap-1"
+              onClick={() => onStatusUpdate(order.id, 'completed')}
+            >
+              <CheckCircle className="w-3 h-3" /> Terminé
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
 
 // History order row - Shows phone number only here
 function HistoryOrderRow({ order }: { order: Order }) {
