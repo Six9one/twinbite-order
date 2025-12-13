@@ -143,14 +143,14 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
   return (
     <aside className="w-64 bg-card border-r border-border h-screen sticky top-0 overflow-y-auto">
       <div className="p-4 border-b border-border">
-        <Link to="/" className="flex items-center gap-2">
+        <button onClick={() => onTabChange('dashboard')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <img src={logoImage} alt="Twin Pizza" className="w-10 h-10 rounded-full" />
           <div>
             <h1 className="text-lg font-bold">
               <span className="text-amber-500">TWIN</span> Admin
             </h1>
           </div>
-        </Link>
+        </button>
       </div>
 
       <nav className="p-3 space-y-1">
