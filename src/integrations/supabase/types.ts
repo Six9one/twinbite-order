@@ -277,6 +277,88 @@ export type Database = {
           },
         ]
       }
+      product_analytics: {
+        Row: {
+          action_type: string
+          category_slug: string | null
+          created_at: string | null
+          device_type: string | null
+          id: string
+          product_id: string | null
+          product_name: string
+          session_id: string | null
+        }
+        Insert: {
+          action_type: string
+          category_slug?: string | null
+          created_at?: string | null
+          device_type?: string | null
+          id?: string
+          product_id?: string | null
+          product_name: string
+          session_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          category_slug?: string | null
+          created_at?: string | null
+          device_type?: string | null
+          id?: string
+          product_id?: string | null
+          product_name?: string
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_analytics_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_views: {
+        Row: {
+          category_slug: string | null
+          created_at: string | null
+          id: string
+          last_viewed_at: string | null
+          order_count: number | null
+          product_id: string | null
+          product_name: string
+          view_count: number | null
+        }
+        Insert: {
+          category_slug?: string | null
+          created_at?: string | null
+          id?: string
+          last_viewed_at?: string | null
+          order_count?: number | null
+          product_id?: string | null
+          product_name: string
+          view_count?: number | null
+        }
+        Update: {
+          category_slug?: string | null
+          created_at?: string | null
+          id?: string
+          last_viewed_at?: string | null
+          order_count?: number | null
+          product_id?: string | null
+          product_name?: string
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_views_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           base_price: number

@@ -4,6 +4,7 @@ import { pizzasTomate, pizzasCreme, pizzaPrices, cheeseSupplementOptions } from 
 import { isMenuMidiTime, getMenuMidiRemainingTime } from '@/utils/promotions';
 import { useOrder } from '@/context/OrderContext';
 import { usePizzasByBase, Product } from '@/hooks/useProducts';
+import { trackProductView, trackAddToCart } from '@/hooks/useProductAnalytics';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
@@ -70,6 +71,9 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
         }
       : pizza;
     
+    // Track product view
+    trackProductView(pizza.id, pizza.name, 'pizzas');
+    
     setSelectedPizza(menuItem);
     setSelectedProduct(isProduct ? pizza as Product : null);
     setBase(menuItem.base || 'tomate');
@@ -119,6 +123,9 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
 
     const calculatedPrice = getPrice();
     addToCart(cartItem, 1, customization, calculatedPrice);
+    
+    // Track add to cart
+    trackAddToCart(selectedPizza.id.split('-')[0], selectedPizza.name, 'pizzas');
     
     toast({
       title: 'Ajouté au panier',
