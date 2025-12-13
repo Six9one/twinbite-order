@@ -39,11 +39,20 @@ interface NavItem {
 
 import { CreditCard } from 'lucide-react';
 
+import { FileText } from 'lucide-react';
+
 const navItems: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, value: 'dashboard' },
   { label: 'Commandes', icon: Package, value: 'orders' },
   { label: 'TV Dashboard', icon: Tv, href: '/tv' },
-  { label: 'Imprimante', icon: Printer, value: 'printer' },
+  {
+    label: 'Imprimante',
+    icon: Printer,
+    children: [
+      { label: 'Configuration', icon: Printer, value: 'printer' },
+      { label: 'Templates Tickets', icon: FileText, value: 'tickets' },
+    ]
+  },
   {
     label: 'Produits',
     icon: Pizza,
