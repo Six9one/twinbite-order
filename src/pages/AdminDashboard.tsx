@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrders, useUpdateOrderStatus, Order } from '@/hooks/useSupabaseData';
 import { ProductsManager } from '@/components/admin/ProductsManager';
+import { PizzaManager } from '@/components/admin/PizzaManager';
 import { ImageUploadTable } from '@/components/admin/ImageUploadTable';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { PromotionsManager } from '@/components/admin/PromotionsManager';
@@ -22,7 +23,7 @@ import {
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'pizzas' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard';
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', icon: Clock },
@@ -378,6 +379,9 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* Pizzas */}
+          {activeTab === 'pizzas' && <PizzaManager />}
+          
           {/* Products */}
           {activeTab === 'products' && <ProductsManager />}
           

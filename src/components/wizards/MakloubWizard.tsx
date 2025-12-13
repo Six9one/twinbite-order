@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MenuItem, MakloubCustomization } from '@/types/order';
 import { makloub, meatOptions, sauceOptions, makloubGarnitureOptions, cheeseSupplementOptions } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
+import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -96,6 +97,9 @@ export function MakloubWizard({ onClose }: MakloubWizardProps) {
 
     const calculatedPrice = calculatePrice();
     addToCart(cartItem, 1, customization, calculatedPrice);
+    
+    // Track analytics
+    trackAddToCart(makloubItem.id, `Makloub ${size}`, 'makloub');
     
     const meatNames = selectedMeats.map(id => meatOptions.find(m => m.id === id)?.name).join(', ');
     toast({

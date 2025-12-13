@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MenuItem, TacosCustomization } from '@/types/order';
 import { tacos, meatOptions, sauceOptions, menuOptionPrices, supplementOptions, cheeseSupplementOptions } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
+import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -98,6 +99,9 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
 
     const calculatedPrice = calculatePrice();
     addToCart(cartItem, 1, customization, calculatedPrice);
+    
+    // Track analytics
+    trackAddToCart(tacosItem.id, `Tacos ${size}`, 'tacos');
     
     const meatNames = selectedMeats.map(id => meatOptions.find(m => m.id === id)?.name).join(', ');
     toast({

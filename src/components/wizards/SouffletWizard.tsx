@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MenuItem, SouffletCustomization } from '@/types/order';
 import { soufflets, meatOptions, sauceOptions, souffletGarnitureOptions, cheeseSupplementOptions, menuOptionPrices } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
+import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -100,6 +101,9 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
     // Pass calculated price
     const calculatedPrice = calculatePrice();
     addToCart(cartItem, 1, customization, calculatedPrice);
+    
+    // Track analytics
+    trackAddToCart(souffletItem.id, `Soufflé ${size}`, 'soufflets');
     
     const meatNames = selectedMeats.map(id => meatOptions.find(m => m.id === id)?.name).join(', ');
     toast({

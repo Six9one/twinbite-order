@@ -44,7 +44,8 @@ const navItems: NavItem[] = [
     label: 'Produits',
     icon: Pizza,
     children: [
-      { label: 'Tous les Produits', icon: Pizza, value: 'products' },
+      { label: '🍕 Pizzas', icon: Pizza, value: 'pizzas' },
+      { label: 'Autres Produits', icon: Package, value: 'products' },
       { label: 'Viandes', icon: Utensils, value: 'meats' },
       { label: 'Sauces', icon: Droplet, value: 'sauces' },
       { label: 'Garnitures', icon: Leaf, value: 'garnitures' },
