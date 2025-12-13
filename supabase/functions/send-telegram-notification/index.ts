@@ -64,17 +64,19 @@ serve(async (req) => {
     // Build message
     let message = `🍕 *NOUVELLE COMMANDE* 🍕\n\n`;
     message += `📋 *Commande:* #${order.orderNumber}\n`;
-    message += `👤 *Client:* ${order.customerName}\n`;
-    message += `📞 *Tél:* ${order.customerPhone}\n`;
     message += `${orderTypeText}\n`;
+    message += `${paymentText}\n\n`;
+    
+    message += `👤 *CLIENT:*\n`;
+    message += `• Nom: ${order.customerName}\n`;
+    message += `• Tél: ${order.customerPhone}\n`;
     
     if (order.customerAddress) {
-      message += `📍 *Adresse:* ${order.customerAddress}\n`;
+      message += `• Adresse: ${order.customerAddress}\n`;
     }
     
-    message += `\n*Articles:*\n${itemsList}\n`;
-    message += `\n💰 *Total:* ${order.total.toFixed(2)}€\n`;
-    message += `${paymentText}\n`;
+    message += `\n🛒 *ARTICLES:*\n${itemsList}\n`;
+    message += `\n💰 *TOTAL: ${order.total.toFixed(2)}€*\n`;
     
     if (order.customerNotes) {
       message += `\n📝 *Notes:* ${order.customerNotes}`;
