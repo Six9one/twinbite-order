@@ -82,27 +82,25 @@ const orderTypeConfig = {
   surplace: { icon: Utensils, label: 'Sur place', color: 'bg-green-600' },
 };
 
-// Pleasant notification sound - soft xylophone-like chime (Apple style)
+// Loud alarm notification sound for new orders
 const playOrderSound = () => {
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     
-    // Create a pleasant xylophone-like chime
-    const playNote = (frequency: number, startTime: number, duration: number, volume: number) => {
+    const playAlarm = (frequency: number, startTime: number, duration: number, volume: number) => {
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       
-      // Use triangle wave for softer, bell-like tone
-      oscillator.type = 'triangle';
+      // Use square wave for loud, clear alarm
+      oscillator.type = 'square';
       oscillator.frequency.setValueAtTime(frequency, startTime);
       
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      // Smooth envelope for pleasant sound
-      gainNode.gain.setValueAtTime(0, startTime);
-      gainNode.gain.linearRampToValueAtTime(volume, startTime + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      gainNode.gain.setValueAtTime(volume, startTime);
+      gainNode.gain.linearRampToValueAtTime(volume * 0.8, startTime + duration * 0.5);
+      gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
       
       oscillator.start(startTime);
       oscillator.stop(startTime + duration);
@@ -110,9 +108,11 @@ const playOrderSound = () => {
     
     const now = audioContext.currentTime;
     
-    // Pleasant two-tone chime (like macOS notification)
-    playNote(1318.5, now, 0.4, 0.15); // E6 - first note
-    playNote(1568, now + 0.12, 0.35, 0.12); // G6 - second note (higher)
+    // Loud repeating alarm pattern (3 bursts)
+    for (let i = 0; i < 3; i++) {
+      playAlarm(880, now + i * 0.4, 0.15, 0.4);  // A5
+      playAlarm(1174.7, now + i * 0.4 + 0.15, 0.15, 0.4);  // D6
+    }
     
   } catch (error) {
     console.log('Audio not supported');
@@ -214,6 +214,9 @@ export default function TVDashboard() {
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(() => {
     return localStorage.getItem('autoPrintEnabled') === 'true';
   });
+  const [showPrices, setShowPrices] = useState(() => {
+    return localStorage.getItem('tvShowPrices') !== 'false';
+  });
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [flashEffect, setFlashEffect] = useState(false);
@@ -227,10 +230,14 @@ export default function TVDashboard() {
   const { data: orders, isLoading, refetch } = useOrders(dateFilter);
   const updateStatus = useUpdateOrderStatus();
 
-  // Save auto-print preference
+  // Save preferences
   useEffect(() => {
     localStorage.setItem('autoPrintEnabled', autoPrintEnabled.toString());
   }, [autoPrintEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('tvShowPrices', showPrices.toString());
+  }, [showPrices]);
 
   // Auto-refresh every 5 seconds (fallback)
   useEffect(() => {
@@ -447,6 +454,15 @@ export default function TVDashboard() {
             {soundEnabled ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
           </Button>
 
+          <Button
+            variant={showPrices ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowPrices(!showPrices)}
+            className={`h-7 px-2 text-xs gap-1 ${showPrices ? 'bg-amber-600 hover:bg-amber-700' : ''}`}
+          >
+            €
+          </Button>
+
           <div className="flex items-center gap-1 text-[10px] text-white/50">
             <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-green-400' : 'text-white/40'}`} />
             <span>MAJ {lastRefresh.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
@@ -476,6 +492,7 @@ export default function TVDashboard() {
             onStatusUpdate={handleStatusUpdate}
             colorClass="bg-green-600"
             emptyIcon="🍴"
+            showPrices={showPrices}
           />
           <div className="w-px bg-white/10" />
           {/* Column 2: À Emporter (25%) */}
@@ -487,6 +504,7 @@ export default function TVDashboard() {
             onStatusUpdate={handleStatusUpdate}
             colorClass="bg-orange-600"
             emptyIcon="🥡"
+            showPrices={showPrices}
           />
           <div className="w-px bg-white/10" />
           {/* Column 3: Livraison (25%) */}
@@ -498,6 +516,7 @@ export default function TVDashboard() {
             onStatusUpdate={handleStatusUpdate}
             colorClass="bg-blue-600"
             emptyIcon="🚗"
+            showPrices={showPrices}
           />
           <div className="w-px bg-purple-500/50" />
           {/* Column 4: Plus Tard (25%) */}
@@ -505,6 +524,7 @@ export default function TVDashboard() {
             orders={scheduledOrders}
             orderNumberMap={orderNumberMap}
             onStatusUpdate={handleStatusUpdate}
+            showPrices={showPrices}
           />
         </div>
       ) : (
@@ -547,7 +567,7 @@ function CurrentTime() {
     const interval = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
-  return <>{time.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</>;
+  return <>{time.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</>;
 }
 
 // Order Column Component for the 4-column layout
@@ -558,7 +578,8 @@ function OrderColumn({
   orderNumberMap,
   onStatusUpdate,
   colorClass,
-  emptyIcon
+  emptyIcon,
+  showPrices
 }: { 
   title: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -567,6 +588,7 @@ function OrderColumn({
   onStatusUpdate: (id: string, status: Order['status']) => void;
   colorClass: string;
   emptyIcon: string;
+  showPrices: boolean;
 }) {
   // Sort orders: pending first, then preparing, then ready
   const sortedOrders = [...orders].sort((a, b) => {
@@ -585,8 +607,8 @@ function OrderColumn({
         <Badge className="bg-white/20 text-white text-xs h-5">{orders.length}</Badge>
       </div>
 
-      {/* Orders List - Scrollable */}
-      <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5 bg-black/20 min-h-0">
+      {/* Orders List - Scrollable, hide scrollbar */}
+      <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5 bg-black/20 min-h-0 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {sortedOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-white/30">
             <span className="text-2xl mb-1">{emptyIcon}</span>
@@ -599,6 +621,7 @@ function OrderColumn({
               order={order} 
               orderNumber={orderNumberMap.get(order.id) || 0}
               onStatusUpdate={onStatusUpdate}
+              showPrices={showPrices}
             />
           ))
         )}
@@ -611,11 +634,13 @@ function OrderColumn({
 function ScheduledOrderColumn({ 
   orders, 
   orderNumberMap,
-  onStatusUpdate 
+  onStatusUpdate,
+  showPrices
 }: { 
   orders: Order[];
   orderNumberMap: Map<string, number>;
   onStatusUpdate: (id: string, status: Order['status']) => void;
+  showPrices: boolean;
 }) {
   // Sort by scheduled time
   const sortedOrders = [...orders].sort((a, b) => {
@@ -636,8 +661,8 @@ function ScheduledOrderColumn({
         <Badge className="bg-white/20 text-white text-xs h-5">{orders.length}</Badge>
       </div>
 
-      {/* Orders List - Scrollable */}
-      <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5 min-h-0">
+      {/* Orders List - Scrollable, hide scrollbar */}
+      <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5 min-h-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {sortedOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-white/30">
             <span className="text-2xl mb-1">📅</span>
@@ -650,6 +675,7 @@ function ScheduledOrderColumn({
               order={order} 
               orderNumber={orderNumberMap.get(order.id) || 0}
               onStatusUpdate={onStatusUpdate}
+              showPrices={showPrices}
             />
           ))
         )}
@@ -662,11 +688,13 @@ function ScheduledOrderColumn({
 function ColumnOrderCard({ 
   order, 
   orderNumber,
-  onStatusUpdate 
+  onStatusUpdate,
+  showPrices
 }: { 
   order: Order; 
   orderNumber: number;
   onStatusUpdate: (id: string, status: Order['status']) => void;
+  showPrices: boolean;
 }) {
   const config = statusConfig[order.status];
   const Icon = config.icon;
@@ -675,6 +703,17 @@ function ColumnOrderCard({
 
   const items = Array.isArray(order.items) ? order.items : [];
   const orderTime = new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+  // Helper to format menu option (frite/boisson/menu)
+  const getMenuLabel = (customization: any) => {
+    if (!customization) return '';
+    const hasFrites = customization.withFrites;
+    const hasBoisson = customization.withBoisson || customization.selectedDrink;
+    if (hasFrites && hasBoisson) return ' (menu)';
+    if (hasFrites) return ' (frite)';
+    if (hasBoisson) return ' (boisson)';
+    return '';
+  };
 
   return (
     <div className={`rounded overflow-hidden ${
@@ -701,7 +740,10 @@ function ColumnOrderCard({
 
       <div className="p-1.5 space-y-1">
         {/* Customer - smaller */}
-        <div className="text-xs text-white/60 truncate">{order.customer_name}</div>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-white/50 truncate">{order.customer_name}</span>
+          {showPrices && <span className="text-xs font-bold text-green-400">{order.total?.toFixed(2)}€</span>}
+        </div>
         
         {/* Address for delivery - compact */}
         {order.order_type === 'livraison' && order.customer_address && (
@@ -711,33 +753,52 @@ function ColumnOrderCard({
           </div>
         )}
 
-        {/* Items - Readable with vertical ingredient list */}
-        <div className="bg-black/30 rounded p-1.5 space-y-1.5 max-h-32 overflow-y-auto">
+        {/* Items - Better formatted */}
+        <div className="bg-black/30 rounded p-1.5 space-y-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {items.slice(0, 4).map((item: any, idx: number) => {
             const customization = item.customization;
+            const menuLabel = getMenuLabel(customization);
+            const productName = item.item?.name || item.name || 'Produit';
+            const sizeLabel = customization?.size ? customization.size.toUpperCase() : '';
             
             return (
-              <div key={idx} className="text-white border-b border-white/10 pb-1 last:border-0 last:pb-0">
-                <div className="font-bold text-sm">
-                  {item.quantity}x {item.item?.name || item.name || 'Produit'}
+              <div key={idx} className="border-b border-white/10 pb-1.5 last:border-0 last:pb-0">
+                {/* Product name - BOLD and bigger */}
+                <div className="font-bold text-sm text-white flex items-baseline gap-1">
+                  <span>{item.quantity}x {productName} {sizeLabel}{menuLabel}</span>
+                  {showPrices && <span className="text-[10px] text-green-400 font-normal">{item.totalPrice?.toFixed(2)}€</span>}
                 </div>
-                {customization?.size && (
-                  <div className="text-xs font-bold text-blue-400 pl-2">• {customization.size.toUpperCase()}</div>
+                
+                {/* Meats on one line */}
+                {customization?.meats?.length > 0 && (
+                  <div className="text-xs font-bold text-blue-400 pl-1">
+                    {customization.meats.join(' . ')}
+                  </div>
                 )}
-                {customization?.meats?.length > 0 && customization.meats.map((meat: string, i: number) => (
-                  <div key={i} className="text-xs font-bold text-blue-400 pl-2">• {meat}</div>
-                ))}
-                {customization?.sauces?.length > 0 && customization.sauces.map((sauce: string, i: number) => (
-                  <div key={i} className="text-xs font-bold text-blue-400 pl-2">• {sauce}</div>
-                ))}
-                {customization?.garnitures?.length > 0 && customization.garnitures.map((g: string, i: number) => (
-                  <div key={i} className="text-xs font-bold text-blue-400 pl-2">• {g}</div>
-                ))}
-                {customization?.supplements?.length > 0 && customization.supplements.map((s: string, i: number) => (
-                  <div key={i} className="text-xs font-bold text-amber-400 pl-2">+ {s}</div>
-                ))}
+                
+                {/* Sauces on one line */}
+                {customization?.sauces?.length > 0 && (
+                  <div className="text-xs font-bold text-blue-400 pl-1">
+                    {customization.sauces.join(', ')}
+                  </div>
+                )}
+                
+                {/* Garnitures on one line */}
+                {customization?.garnitures?.length > 0 && (
+                  <div className="text-xs font-bold text-blue-400 pl-1">
+                    {customization.garnitures.join(' . ')}
+                  </div>
+                )}
+                
+                {/* Supplements in amber */}
+                {customization?.supplements?.length > 0 && (
+                  <div className="text-xs font-bold text-amber-400 pl-1">
+                    + {customization.supplements.join(', ')}
+                  </div>
+                )}
+                
                 {customization?.notes && (
-                  <div className="text-[10px] text-pink-300 pl-2 italic">📝 {customization.notes}</div>
+                  <div className="text-[10px] text-pink-300 pl-1 italic">📝 {customization.notes}</div>
                 )}
               </div>
             );
@@ -796,11 +857,13 @@ function ColumnOrderCard({
 function ScheduledOrderCard({ 
   order, 
   orderNumber,
-  onStatusUpdate 
+  onStatusUpdate,
+  showPrices
 }: { 
   order: Order; 
   orderNumber: number;
   onStatusUpdate: (id: string, status: Order['status']) => void;
+  showPrices: boolean;
 }) {
   const typeConfig = orderTypeConfig[order.order_type as keyof typeof orderTypeConfig];
   const TypeIcon = typeConfig?.icon || Store;
@@ -809,6 +872,17 @@ function ScheduledOrderCard({
   const orderTime = new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
   const items = Array.isArray(order.items) ? order.items : [];
+
+  // Helper to format menu option (frite/boisson/menu)
+  const getMenuLabel = (customization: any) => {
+    if (!customization) return '';
+    const hasFrites = customization.withFrites;
+    const hasBoisson = customization.withBoisson || customization.selectedDrink;
+    if (hasFrites && hasBoisson) return ' (menu)';
+    if (hasFrites) return ' (frite)';
+    if (hasBoisson) return ' (boisson)';
+    return '';
+  };
 
   return (
     <div className="rounded overflow-hidden bg-purple-900/40 ring-1 ring-purple-500/50">
@@ -841,8 +915,11 @@ function ScheduledOrderCard({
       <div className="p-1.5 space-y-1">
         {/* Customer + time */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-white/60 truncate flex-1">{order.customer_name}</span>
-          <span className="text-[10px] text-white/40">reçu {orderTime}</span>
+          <span className="text-[10px] text-white/50 truncate flex-1">{order.customer_name}</span>
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-white/40">reçu {orderTime}</span>
+            {showPrices && <span className="text-xs font-bold text-green-400">{order.total?.toFixed(2)}€</span>}
+          </div>
         </div>
 
         {/* Address */}
@@ -853,27 +930,49 @@ function ScheduledOrderCard({
           </div>
         )}
 
-        {/* Items - Readable with vertical ingredient list */}
-        <div className="bg-black/30 rounded p-1 space-y-1 max-h-24 overflow-y-auto">
+        {/* Items - Better formatted */}
+        <div className="bg-black/30 rounded p-1 space-y-1.5" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {items.slice(0, 3).map((item: any, idx: number) => {
             const customization = item.customization;
+            const menuLabel = getMenuLabel(customization);
+            const productName = item.item?.name || item.name || 'Produit';
+            const sizeLabel = customization?.size ? customization.size.toUpperCase() : '';
+            
             return (
-              <div key={idx} className="text-white border-b border-white/10 pb-1 last:border-0 last:pb-0">
-                <div className="font-bold text-xs">
-                  {item.quantity}x {item.item?.name || item.name || 'Produit'}
+              <div key={idx} className="border-b border-white/10 pb-1 last:border-0 last:pb-0">
+                {/* Product name - BOLD */}
+                <div className="font-bold text-xs text-white flex items-baseline gap-1">
+                  <span>{item.quantity}x {productName} {sizeLabel}{menuLabel}</span>
+                  {showPrices && <span className="text-[9px] text-green-400 font-normal">{item.totalPrice?.toFixed(2)}€</span>}
                 </div>
-                {customization?.size && (
-                  <div className="text-[10px] font-bold text-blue-400 pl-1">• {customization.size.toUpperCase()}</div>
+                
+                {/* Meats on one line */}
+                {customization?.meats?.length > 0 && (
+                  <div className="text-[10px] font-bold text-blue-400 pl-1">
+                    {customization.meats.join(' . ')}
+                  </div>
                 )}
-                {customization?.meats?.length > 0 && customization.meats.map((meat: string, i: number) => (
-                  <div key={i} className="text-[10px] font-bold text-blue-400 pl-1">• {meat}</div>
-                ))}
-                {customization?.sauces?.length > 0 && customization.sauces.map((sauce: string, i: number) => (
-                  <div key={i} className="text-[10px] font-bold text-blue-400 pl-1">• {sauce}</div>
-                ))}
-                {customization?.supplements?.length > 0 && customization.supplements.map((s: string, i: number) => (
-                  <div key={i} className="text-[10px] font-bold text-amber-400 pl-1">+ {s}</div>
-                ))}
+                
+                {/* Sauces on one line */}
+                {customization?.sauces?.length > 0 && (
+                  <div className="text-[10px] font-bold text-blue-400 pl-1">
+                    {customization.sauces.join(', ')}
+                  </div>
+                )}
+                
+                {/* Garnitures on one line */}
+                {customization?.garnitures?.length > 0 && (
+                  <div className="text-[10px] font-bold text-blue-400 pl-1">
+                    {customization.garnitures.join(' . ')}
+                  </div>
+                )}
+                
+                {/* Supplements in amber */}
+                {customization?.supplements?.length > 0 && (
+                  <div className="text-[10px] font-bold text-amber-400 pl-1">
+                    + {customization.supplements.join(', ')}
+                  </div>
+                )}
               </div>
             );
           })}
