@@ -4,6 +4,7 @@ import { CustomerInfo, PaymentMethod, PizzaCustomization } from '@/types/order';
 import { applyPizzaPromotions, calculateTVA } from '@/utils/promotions';
 import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
+import { usePaymentSettings } from '@/hooks/usePaymentSettings';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -50,6 +51,7 @@ interface NewCheckoutProps {
 export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const { cart, orderType, clearCart, scheduledInfo, setScheduledInfo } = useOrder();
   const createOrder = useCreateOrder();
+  const { data: paymentSettings, isLoading: isLoadingPaymentSettings } = usePaymentSettings();
   const [step, setStep] = useState<'info' | 'payment' | 'schedule-confirm' | 'confirm' | 'success'>('info');
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: '',
@@ -57,7 +59,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     address: '',
     notes: '',
   });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('en_ligne');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cb');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const orderNumberRef = useRef<string | null>(null);
@@ -466,19 +468,22 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Mode de paiement</h2>
             <div className="grid grid-cols-1 gap-4">
-              <Card
-                className={`p-4 cursor-pointer transition-all ${paymentMethod === 'en_ligne' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                onClick={() => setPaymentMethod('en_ligne')}
-              >
-                <div className="flex items-center gap-3">
-                  <Globe className="w-8 h-8 text-purple-600" />
-                  <div className="flex-1">
-                    <h3 className="font-semibold">Payer maintenant (Stripe)</h3>
-                    <p className="text-xs text-muted-foreground">Paiement sécurisé par carte</p>
+              {/* Online Payment - Only show if enabled */}
+              {paymentSettings?.online_payments_enabled && (
+                <Card
+                  className={`p-4 cursor-pointer transition-all ${paymentMethod === 'en_ligne' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                  onClick={() => setPaymentMethod('en_ligne')}
+                >
+                  <div className="flex items-center gap-3">
+                    <Globe className="w-8 h-8 text-purple-600" />
+                    <div className="flex-1">
+                      <h3 className="font-semibold">Payer maintenant (Stripe)</h3>
+                      <p className="text-xs text-muted-foreground">Paiement sécurisé par carte</p>
+                    </div>
+                    {paymentMethod === 'en_ligne' && <Check className="w-5 h-5 text-primary" />}
                   </div>
-                  {paymentMethod === 'en_ligne' && <Check className="w-5 h-5 text-primary" />}
-                </div>
-              </Card>
+                </Card>
+              )}
               <Card
                 className={`p-4 cursor-pointer transition-all ${paymentMethod === 'cb' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
                 onClick={() => setPaymentMethod('cb')}

@@ -37,6 +37,8 @@ interface NavItem {
   children?: NavItem[];
 }
 
+import { CreditCard } from 'lucide-react';
+
 const navItems: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, value: 'dashboard' },
   { label: 'Commandes', icon: Package, value: 'orders' },
@@ -65,6 +67,7 @@ const navItems: NavItem[] = [
   { label: 'Statistiques', icon: BarChart3, value: 'stats' },
   { label: 'Horaires', icon: Clock, value: 'hours' },
   { label: 'Ventes', icon: BarChart3, value: 'ventes' },
+  { label: 'Paiements', icon: CreditCard, value: 'payments' },
   { label: 'Paramètres', icon: Settings, value: 'settings' },
 ];
 

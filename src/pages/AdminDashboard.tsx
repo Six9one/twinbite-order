@@ -17,6 +17,7 @@ import { PromotionsManager } from '@/components/admin/PromotionsManager';
 import { LoyaltyManager } from '@/components/admin/LoyaltyManager';
 import { OpeningHoursManager } from '@/components/admin/OpeningHoursManager';
 import { StatisticsSection } from '@/components/admin/StatisticsSection';
+import { PaymentSettingsManager } from '@/components/admin/PaymentSettingsManager';
 import { 
   LogOut, Home, Search, RefreshCw, Download, Printer, 
   Clock, CheckCircle, XCircle, ChefHat, Package,
@@ -26,7 +27,7 @@ import {
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'pizzas' | 'sandwiches' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'pizzas' | 'sandwiches' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments';
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', icon: Clock },
@@ -414,6 +415,9 @@ export default function AdminDashboard() {
           {activeTab === 'loyalty' && <LoyaltyManager />}
           {activeTab === 'hours' && <OpeningHoursManager />}
           {activeTab === 'stats' && <StatisticsSection orders={orders || []} />}
+          
+          {/* Payments */}
+          {activeTab === 'payments' && <PaymentSettingsManager />}
           
           {/* Settings */}
           {activeTab === 'settings' && <SettingsManager />}
