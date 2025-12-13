@@ -82,48 +82,55 @@ const orderTypeConfig = {
   surplace: { icon: Utensils, label: 'Sur place', color: 'bg-green-600' },
 };
 
-// Sound alert with flash effect - LOUD ALARM
+// Soft "glass" notification sound - Apple-like tan tan
 const playOrderSound = () => {
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     
-    // Play multiple loud beeps for urgent notification
-    const frequencies = [880, 1100, 880, 1100, 880];
-    const beepDuration = 0.15;
-    const gapDuration = 0.1;
+    // Soft glass-like sound: two gentle chimes
+    const playChime = (startTime: number, frequency: number) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = frequency;
+      oscillator.type = 'sine'; // Soft sine wave
+      
+      // Gentle envelope
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + 0.8);
+      
+      oscillator.start(startTime);
+      oscillator.stop(startTime + 0.8);
+    };
     
-    frequencies.forEach((freq, i) => {
-      setTimeout(() => {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        oscillator.frequency.value = freq;
-        oscillator.type = 'square'; // More piercing sound
-        gainNode.gain.setValueAtTime(0.8, audioContext.currentTime); // Louder volume
-        gainNode.gain.exponentialRampToValueAtTime(0.1, audioContext.currentTime + beepDuration);
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + beepDuration);
-      }, i * (beepDuration + gapDuration) * 1000);
-    });
+    // First chime
+    playChime(audioContext.currentTime, 1046.5); // C6
+    // Second chime (slightly lower, delayed)
+    playChime(audioContext.currentTime + 0.15, 880); // A5
     
-    // Play a second round after a short pause for emphasis
+    // Repeat after short pause
     setTimeout(() => {
-      frequencies.forEach((freq, i) => {
-        setTimeout(() => {
-          const oscillator = audioContext.createOscillator();
-          const gainNode = audioContext.createGain();
-          oscillator.connect(gainNode);
-          gainNode.connect(audioContext.destination);
-          oscillator.frequency.value = freq;
-          oscillator.type = 'square';
-          gainNode.gain.setValueAtTime(0.8, audioContext.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.1, audioContext.currentTime + beepDuration);
-          oscillator.start(audioContext.currentTime);
-          oscillator.stop(audioContext.currentTime + beepDuration);
-        }, i * (beepDuration + gapDuration) * 1000);
-      });
-    }, 800);
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playSecond = (startTime: number, frequency: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = frequency;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.25, startTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.6);
+        osc.start(startTime);
+        osc.stop(startTime + 0.6);
+      };
+      playSecond(ctx.currentTime, 1046.5);
+      playSecond(ctx.currentTime + 0.15, 880);
+    }, 600);
   } catch (error) {
     console.log('Audio not supported');
   }
@@ -168,9 +175,9 @@ const printOrderTicket = (order: Order) => {
   };
 
   const paymentLabels: Record<string, string> = {
-    en_ligne: 'PAYÉ EN LIGNE',
-    cb: 'CB (À PAYER)',
-    especes: 'ESPÈCES (À PAYER)'
+    en_ligne: 'PAYÉE',
+    cb: 'CB',
+    especes: 'ESP'
   };
   
   // Get font settings from localStorage
@@ -719,12 +726,12 @@ function ColumnOrderCard({
         </div>
         <div className="flex items-center gap-2">
           {order.payment_method === 'en_ligne' ? (
-            <Badge className="bg-green-700 text-white text-xs px-1.5 py-0.5">
-              <CreditCard className="w-3 h-3" />
+            <Badge className="bg-green-700 text-white text-xs px-2 py-0.5 font-bold">
+              PAYÉE
             </Badge>
           ) : (
-            <Badge className="bg-red-700 text-white text-xs px-1.5 py-0.5 animate-pulse">
-              <Banknote className="w-3 h-3" />
+            <Badge className="bg-red-700 text-white text-xs px-2 py-0.5 font-bold animate-pulse">
+              {order.payment_method === 'cb' ? 'CB' : 'ESP'}
             </Badge>
           )}
           <span className="text-xs opacity-80">{orderTime}</span>
@@ -732,8 +739,8 @@ function ColumnOrderCard({
       </div>
 
       <div className="p-2 space-y-1.5">
-        {/* Customer */}
-        <div className="font-bold text-lg text-white truncate">{order.customer_name}</div>
+        {/* Customer - smaller and lighter */}
+        <div className="text-sm text-white/60 truncate">{order.customer_name}</div>
         
         {/* Address for delivery */}
         {order.order_type === 'livraison' && order.customer_address && (
@@ -743,15 +750,33 @@ function ColumnOrderCard({
           </div>
         )}
 
-        {/* Items */}
-        <div className="bg-black/30 rounded p-1.5 space-y-0.5 max-h-24 overflow-y-auto">
-          {items.slice(0, 4).map((item: any, idx: number) => (
-            <div key={idx} className="text-xs text-white/80 truncate">
-              <span className="font-semibold">{item.quantity}x</span> {item.item?.name || item.name || 'Produit'}
-            </div>
-          ))}
-          {items.length > 4 && (
-            <div className="text-xs text-amber-400">+{items.length - 4} autres</div>
+        {/* Items - BIGGER and BOLD */}
+        <div className="bg-black/30 rounded p-2 space-y-1 max-h-32 overflow-y-auto">
+          {items.slice(0, 5).map((item: any, idx: number) => {
+            const customization = item.customization;
+            const customParts: string[] = [];
+            if (customization?.size) customParts.push(customization.size.toUpperCase());
+            if (customization?.meats?.length) customParts.push(customization.meats.join(', '));
+            if (customization?.sauces?.length) customParts.push(customization.sauces.join(', '));
+            if (customization?.garnitures?.length) customParts.push(customization.garnitures.join(', '));
+            if (customization?.supplements?.length) customParts.push(customization.supplements.join(', '));
+            
+            return (
+              <div key={idx} className="text-white">
+                <div className="font-bold text-base">
+                  {item.quantity}x {item.item?.name || item.name || 'Produit'}
+                </div>
+                {customParts.length > 0 && (
+                  <div className="text-xs text-white/60 pl-2">└ {customParts.join(' • ')}</div>
+                )}
+                {customization?.note && (
+                  <div className="text-xs text-amber-300 pl-2">📝 {customization.note}</div>
+                )}
+              </div>
+            );
+          })}
+          {items.length > 5 && (
+            <div className="text-xs text-amber-400 font-semibold">+{items.length - 5} autres</div>
           )}
         </div>
 
@@ -837,17 +862,19 @@ function ScheduledOrderCard({
         <div className="flex items-center gap-2">
           <span className="font-bold">#{String(orderNumber).padStart(3, '0')}</span>
           {order.payment_method === 'en_ligne' ? (
-            <Badge className="bg-green-700 text-white text-xs px-1.5 py-0.5">PAYÉ</Badge>
+            <Badge className="bg-green-700 text-white text-xs px-2 py-0.5 font-bold">PAYÉE</Badge>
           ) : (
-            <Badge className="bg-red-700 text-white text-xs px-1.5 py-0.5">À PAYER</Badge>
+            <Badge className="bg-red-700 text-white text-xs px-2 py-0.5 font-bold">
+              {order.payment_method === 'cb' ? 'CB' : 'ESP'}
+            </Badge>
           )}
         </div>
       </div>
 
       <div className="p-2 space-y-1.5">
-        {/* Customer + Order entry time */}
+        {/* Customer + Order entry time - smaller text */}
         <div className="flex items-center justify-between">
-          <span className="font-bold text-white truncate flex-1">{order.customer_name}</span>
+          <span className="text-sm text-white/60 truncate flex-1">{order.customer_name}</span>
           <span className="text-xs text-white/50">reçu {orderTime}</span>
         </div>
 
@@ -859,15 +886,30 @@ function ScheduledOrderCard({
           </div>
         )}
 
-        {/* Items */}
-        <div className="bg-black/30 rounded p-1.5 space-y-0.5 max-h-20 overflow-y-auto">
-          {items.slice(0, 3).map((item: any, idx: number) => (
-            <div key={idx} className="text-xs text-white/80 truncate">
-              <span className="font-semibold">{item.quantity}x</span> {item.item?.name || item.name || 'Produit'}
-            </div>
-          ))}
-          {items.length > 3 && (
-            <div className="text-xs text-purple-300">+{items.length - 3} autres</div>
+        {/* Items - BIGGER and BOLD */}
+        <div className="bg-black/30 rounded p-2 space-y-1 max-h-24 overflow-y-auto">
+          {items.slice(0, 4).map((item: any, idx: number) => {
+            const customization = item.customization;
+            const customParts: string[] = [];
+            if (customization?.size) customParts.push(customization.size.toUpperCase());
+            if (customization?.meats?.length) customParts.push(customization.meats.join(', '));
+            if (customization?.sauces?.length) customParts.push(customization.sauces.join(', '));
+            if (customization?.garnitures?.length) customParts.push(customization.garnitures.join(', '));
+            if (customization?.supplements?.length) customParts.push(customization.supplements.join(', '));
+            
+            return (
+              <div key={idx} className="text-white">
+                <div className="font-bold text-sm">
+                  {item.quantity}x {item.item?.name || item.name || 'Produit'}
+                </div>
+                {customParts.length > 0 && (
+                  <div className="text-xs text-white/60 pl-2">└ {customParts.join(' • ')}</div>
+                )}
+              </div>
+            );
+          })}
+          {items.length > 4 && (
+            <div className="text-xs text-purple-300 font-semibold">+{items.length - 4} autres</div>
           )}
         </div>
 

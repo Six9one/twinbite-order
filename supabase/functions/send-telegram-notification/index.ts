@@ -16,11 +16,14 @@ interface OrderNotification {
     name: string;
     quantity: number;
     price: number;
+    customization?: any;
   }>;
   customerAddress?: string;
   customerNotes?: string;
   isScheduled?: boolean;
   scheduledFor?: string;
+  subtotal?: number;
+  tva?: number;
 }
 
 serve(async (req) => {
@@ -47,9 +50,89 @@ serve(async (req) => {
       });
     }
 
-    // Format order items
+    // Format order items with full customization details
+    const formatCustomization = (customization: any): string => {
+      if (!customization) return '';
+      const parts: string[] = [];
+      
+      // Size (pizza/tacos)
+      if (customization.size) {
+        parts.push(customization.size.toUpperCase());
+      }
+      
+      // Base (pizza)
+      if (customization.base) {
+        parts.push(customization.base === 'creme' ? 'Base crème' : 'Base tomate');
+      }
+      
+      // Menu Midi
+      if (customization.isMenuMidi) {
+        parts.push('Menu Midi');
+      }
+      
+      // Meats
+      if (customization.meats && customization.meats.length > 0) {
+        parts.push(`🥩 ${customization.meats.join(', ')}`);
+      }
+      
+      // Single meat (legacy)
+      if (customization.meat) {
+        parts.push(`🥩 ${customization.meat}`);
+      }
+      
+      // Sauces
+      if (customization.sauces && customization.sauces.length > 0) {
+        parts.push(`🍯 ${customization.sauces.join(', ')}`);
+      }
+      
+      // Single sauce (legacy)
+      if (customization.sauce) {
+        parts.push(`🍯 ${customization.sauce}`);
+      }
+      
+      // Garnitures
+      if (customization.garnitures && customization.garnitures.length > 0) {
+        parts.push(`🥗 ${customization.garnitures.join(', ')}`);
+      }
+      
+      // Toppings (legacy)
+      if (customization.toppings && customization.toppings.length > 0) {
+        parts.push(`🥗 ${customization.toppings.join(', ')}`);
+      }
+      
+      // Supplements
+      if (customization.supplements && customization.supplements.length > 0) {
+        parts.push(`🧀 ${customization.supplements.join(', ')}`);
+      }
+      
+      // Cheese supplements
+      if (customization.cheeseSupplements && customization.cheeseSupplements.length > 0) {
+        parts.push(`🧀 ${customization.cheeseSupplements.join(', ')}`);
+      }
+      
+      // Menu option
+      if (customization.menuOption && customization.menuOption !== 'none') {
+        const menuLabels: Record<string, string> = {
+          'frites': '+Frites',
+          'boisson': '+Boisson',
+          'menu': '+Menu complet'
+        };
+        parts.push(menuLabels[customization.menuOption] || '');
+      }
+      
+      // Note
+      if (customization.note) {
+        parts.push(`📝 "${customization.note}"`);
+      }
+      
+      return parts.length > 0 ? `\n   └ ${parts.join(' | ')}` : '';
+    };
+
     const itemsList = order.items
-      .map(item => `• ${item.quantity}x ${item.name} - ${item.price.toFixed(2)}€`)
+      .map(item => {
+        const customDetails = formatCustomization(item.customization);
+        return `• ${item.quantity}x ${item.name} - ${item.price.toFixed(2)}€${customDetails}`;
+      })
       .join('\n');
 
     // Order type emoji and text with colors
@@ -60,13 +143,18 @@ serve(async (req) => {
     };
     const orderTypeInfo = orderTypeMap[order.orderType] || { emoji: '📦', text: order.orderType, color: '⚪' };
 
-    // Payment method
-    const paymentMap: Record<string, string> = {
-      'en_ligne': '💳 Payé en ligne ✅',
-      'cb': '💳 CB à la livraison',
-      'especes': '💵 Espèces',
+    // Payment method with status
+    const getPaymentDisplay = () => {
+      if (order.paymentMethod === 'en_ligne') {
+        return '💳 PAYÉE ✅ (Stripe)';
+      } else if (order.paymentMethod === 'cb') {
+        return '💳 CB (À PAYER)';
+      } else if (order.paymentMethod === 'especes') {
+        return '💵 ESP (À PAYER)';
+      }
+      return order.paymentMethod;
     };
-    const paymentText = paymentMap[order.paymentMethod] || order.paymentMethod;
+    const paymentText = getPaymentDisplay();
 
     // Scheduled order handling - PURPLE color for scheduled
     const isScheduled = order.isScheduled === true;
@@ -109,7 +197,15 @@ serve(async (req) => {
     }
     
     message += `\n🛒 *ARTICLES:*\n${itemsList}\n`;
-    message += `\n💰 *TOTAL: ${order.total.toFixed(2)}€*\n`;
+    
+    // Show full pricing breakdown
+    if (order.subtotal) {
+      message += `\n📊 *Sous-total HT:* ${order.subtotal.toFixed(2)}€`;
+    }
+    if (order.tva) {
+      message += `\n📊 *TVA (10%):* ${order.tva.toFixed(2)}€`;
+    }
+    message += `\n💰 *TOTAL TTC: ${order.total.toFixed(2)}€*\n`;
     
     if (order.customerNotes) {
       message += `\n📝 *Notes:* ${order.customerNotes}`;

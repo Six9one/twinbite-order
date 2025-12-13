@@ -10,10 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe, Loader2, CalendarClock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { format, addMonths, isSunday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 // Customer info validation schema
@@ -45,9 +48,9 @@ interface NewCheckoutProps {
 }
 
 export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
-  const { cart, orderType, clearCart, scheduledInfo } = useOrder();
+  const { cart, orderType, clearCart, scheduledInfo, setScheduledInfo } = useOrder();
   const createOrder = useCreateOrder();
-  const [step, setStep] = useState<'info' | 'payment' | 'confirm' | 'success'>('info');
+  const [step, setStep] = useState<'info' | 'payment' | 'schedule-confirm' | 'confirm' | 'success'>('info');
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: '',
     phone: '',
@@ -58,6 +61,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const orderNumberRef = useRef<string | null>(null);
+  const [scheduleAsked, setScheduleAsked] = useState(false);
+  const [tempScheduleDate, setTempScheduleDate] = useState<Date | undefined>(undefined);
+  const [tempScheduleTime, setTempScheduleTime] = useState<string>('12:00');
 
   // Prevent duplicate submissions
   useEffect(() => {
@@ -275,7 +281,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
       console.log('[CHECKOUT] Order created successfully:', result);
 
-      // Send Telegram notification for non-Stripe orders
+      // Send Telegram notification for non-Stripe orders with FULL customization details
       try {
         await supabase.functions.invoke('send-telegram-notification', {
           body: {
@@ -287,10 +293,13 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             orderType,
             paymentMethod,
             total: finalTtc,
+            subtotal: finalHt,
+            tva: finalTva,
             items: cart.map(item => ({
               name: item.item.name,
               quantity: item.quantity,
               price: item.calculatedPrice || item.item.price,
+              customization: item.customization,
             })),
             isScheduled: scheduledInfo.isScheduled,
             scheduledFor: scheduledInfo.scheduledFor?.toISOString() || null,
@@ -387,7 +396,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               <div
                 key={s}
                 className={`h-1 flex-1 rounded-full transition-colors ${
-                  ['info', 'payment', 'confirm'].indexOf(step) >= i ? 'bg-primary' : 'bg-muted'
+                  ['info', 'payment', 'schedule-confirm', 'confirm'].indexOf(step) >= i ? 'bg-primary' : 'bg-muted'
                 }`}
               />
             ))}
@@ -504,6 +513,69 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           </div>
         )}
 
+        {step === 'schedule-confirm' && (
+          <div className="space-y-4">
+            <Card className="p-6 text-center">
+              <CalendarClock className="w-12 h-12 mx-auto text-purple-600 mb-4" />
+              <h2 className="text-xl font-bold mb-2">Commander pour plus tard ?</h2>
+              <p className="text-muted-foreground mb-4">
+                Souhaitez-vous programmer votre commande pour un autre moment ?
+              </p>
+              <div className="space-y-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full gap-2 border-purple-300 text-purple-700">
+                      <CalendarClock className="w-4 h-4" />
+                      {tempScheduleDate 
+                        ? format(tempScheduleDate, "EEE d MMM", { locale: fr }) + " à " + tempScheduleTime
+                        : "Choisir date et heure"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-4" align="center">
+                    <Calendar
+                      mode="single"
+                      selected={tempScheduleDate}
+                      onSelect={setTempScheduleDate}
+                      locale={fr}
+                      disabled={(date) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return date < today || date > addMonths(today, 1) || isSunday(date);
+                      }}
+                      modifiersClassNames={{ sunday: 'text-red-500 line-through' }}
+                    />
+                    <Select value={tempScheduleTime} onValueChange={setTempScheduleTime}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="Heure" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['11:00','11:30','12:00','12:30','13:00','13:30','14:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00','22:30','23:00'].map(t => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {tempScheduleDate && (
+                      <Button 
+                        className="w-full mt-3"
+                        onClick={() => {
+                          const [h, m] = tempScheduleTime.split(':').map(Number);
+                          const d = new Date(tempScheduleDate);
+                          d.setHours(h, m, 0, 0);
+                          setScheduledInfo({ isScheduled: true, scheduledFor: d });
+                          setScheduleAsked(true);
+                          setStep('confirm');
+                        }}
+                      >
+                        Confirmer
+                      </Button>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </Card>
+          </div>
+        )}
+
         {step === 'confirm' && (
           <div className="space-y-4">
             {/* Scheduled Order Banner */}
@@ -610,11 +682,41 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           {step === 'payment' && (
             <Button 
               className="w-full h-14 text-lg" 
-              onClick={() => setStep('confirm')}
+              onClick={() => {
+                // If not already scheduled, go to schedule-confirm step first
+                if (!scheduledInfo.isScheduled && !scheduleAsked) {
+                  setStep('schedule-confirm');
+                } else {
+                  setStep('confirm');
+                }
+              }}
               disabled={!isCartValid}
             >
               Continuer - {ttc.toFixed(2)}€
             </Button>
+          )}
+          {step === 'schedule-confirm' && (
+            <div className="flex gap-3">
+              <Button 
+                variant="outline"
+                className="flex-1 h-14 text-lg" 
+                onClick={() => {
+                  setScheduleAsked(true);
+                  setStep('confirm');
+                }}
+              >
+                Commander maintenant
+              </Button>
+              <Button 
+                className="flex-1 h-14 text-lg bg-purple-600 hover:bg-purple-700" 
+                onClick={() => {
+                  // User wants to schedule - they'll pick date in the step view
+                  setScheduleAsked(true);
+                }}
+              >
+                Choisir horaire
+              </Button>
+            </div>
           )}
           {step === 'confirm' && (
             <Button 
