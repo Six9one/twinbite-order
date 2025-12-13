@@ -1,4 +1,4 @@
-import { ShoppingCart, Menu, X, ShoppingBag, Truck, UtensilsCrossed, ChevronDown, Pizza } from 'lucide-react';
+import { ShoppingCart, Menu, X, ShoppingBag, Truck, UtensilsCrossed, ChevronDown, Pizza, CalendarClock } from 'lucide-react';
 import { useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
 import { Button } from '@/components/ui/button';
@@ -6,10 +6,12 @@ import { useState } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import logoImage from '@/assets/logo.png';
+
 interface HeaderProps {
   onCartClick: () => void;
   onOrderTypeSelect?: (type: OrderType) => void;
   onMenuClick?: () => void;
+  onScheduleClick?: () => void;
 }
 const orderTypeConfig = {
   emporter: {
@@ -31,7 +33,8 @@ const orderTypeConfig = {
 export function Header({
   onCartClick,
   onOrderTypeSelect,
-  onMenuClick
+  onMenuClick,
+  onScheduleClick
 }: HeaderProps) {
   const {
     getItemCount,
@@ -113,7 +116,18 @@ export function Header({
             </Badge>}
         </nav>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Schedule Order Button - Desktop */}
+          <Button
+            onClick={onScheduleClick}
+            variant="ghost"
+            size="sm"
+            className="hidden md:flex gap-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+          >
+            <CalendarClock className="w-4 h-4" />
+            <span className="hidden lg:inline text-sm">Plus tard</span>
+          </Button>
+
           <Button onClick={onCartClick} className="btn-primary relative flex items-center gap-2 px-4 py-2 rounded-full">
             <ShoppingCart className="w-5 h-5" />
             <span className="hidden sm:inline">Panier</span>
@@ -154,6 +168,17 @@ export function Header({
             <Button variant="outline" onClick={handleLivraisonClick} className="w-full justify-start gap-2">
               <Truck className="w-4 h-4" />
               Livraison
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                onScheduleClick?.();
+                setMobileMenuOpen(false);
+              }} 
+              className="w-full justify-start gap-2 text-purple-600 border-purple-200"
+            >
+              <CalendarClock className="w-4 h-4" />
+              Commander plus tard
             </Button>
           </div>
 

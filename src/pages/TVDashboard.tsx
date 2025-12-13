@@ -610,17 +610,17 @@ function ActiveOrderCard({
         </div>
       </div>
 
-      <div className="p-4 flex-1 flex flex-col gap-3">
+      <div className="p-4 flex-1 flex flex-col gap-3 overflow-hidden">
         {/* Customer name - VERY BIG, no phone */}
-        <div className="text-3xl font-bold text-white truncate">
+        <div className="text-2xl sm:text-3xl font-bold text-white truncate">
           {order.customer_name}
         </div>
 
         {/* Address for delivery */}
         {order.order_type === 'livraison' && order.customer_address && (
-          <div className="flex items-start gap-2 text-amber-300 bg-amber-500/10 rounded-lg p-2">
+          <div className="flex items-start gap-2 text-amber-300 bg-amber-500/10 rounded-lg p-2 overflow-hidden">
             <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <span className="text-lg leading-tight font-medium">{order.customer_address}</span>
+            <span className="text-base sm:text-lg leading-tight font-medium line-clamp-2">{order.customer_address}</span>
           </div>
         )}
 
@@ -632,15 +632,15 @@ function ActiveOrderCard({
               const customization = cartItem.customization;
               
               return (
-                <div key={idx} className="bg-white/5 rounded-lg p-2">
-                  <div className="text-xl font-bold text-white">
+                <div key={idx} className="bg-white/5 rounded-lg p-2 overflow-hidden">
+                  <div className="text-base sm:text-xl font-bold text-white truncate">
                     {cartItem.quantity}x {productName}
                   </div>
                   {customization?.size && (
-                    <span className="text-sm text-cyan-300">{customization.size.toUpperCase()}</span>
+                    <span className="text-xs sm:text-sm text-cyan-300">{customization.size.toUpperCase()}</span>
                   )}
                   {customization?.meats?.length > 0 && (
-                    <p className="text-sm text-white/70">🥩 {customization.meats.join(', ')}</p>
+                    <p className="text-xs sm:text-sm text-white/70 truncate">🥩 {customization.meats.join(', ')}</p>
                   )}
                 </div>
               );
