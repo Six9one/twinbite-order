@@ -33,13 +33,42 @@ export function DeliveryMapSection() {
   const [zonesLoaded, setZonesLoaded] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
+  const [mapboxToken, setMapboxToken] = useState<string>('');
   
   // Precompute zones with valid coordinates for map display
   const zonesWithCoords = zones.filter((z) => z.latitude && z.longitude);
+  const hasValidToken = mapboxToken.length > 20;
 
-  // Check if Mapbox token exists
-  const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
-  const hasValidToken = mapboxToken && mapboxToken !== '' && mapboxToken !== 'undefined';
+  // Fetch Mapbox token from edge function
+  useEffect(() => {
+    async function fetchMapboxToken() {
+      try {
+        // First try env variable
+        const envToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN || '';
+        if (envToken && envToken.length > 20) {
+          console.log('[MAP] Using env token');
+          setMapboxToken(envToken);
+          return;
+        }
+        
+        // Fallback: fetch from edge function
+        const { data, error } = await supabase.functions.invoke('get-mapbox-token');
+        if (data?.token && data.token.length > 20) {
+          console.log('[MAP] Using edge function token');
+          setMapboxToken(data.token);
+        } else {
+          console.log('[MAP] No valid token found');
+          setMapFailed(true);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('[MAP] Token fetch error:', err);
+        setMapFailed(true);
+        setLoading(false);
+      }
+    }
+    fetchMapboxToken();
+  }, []);
 
   // Fetch delivery zones from database
   useEffect(() => {
@@ -53,7 +82,6 @@ export function DeliveryMapSection() {
         if (error) {
           console.error('Error fetching zones:', error);
           setZonesLoaded(true);
-          setLoading(false);
           return;
         }
         
@@ -61,20 +89,13 @@ export function DeliveryMapSection() {
           setZones(data);
         }
         setZonesLoaded(true);
-        
-        // If no valid token, immediately show fallback
-        if (!hasValidToken) {
-          setMapFailed(true);
-          setLoading(false);
-        }
       } catch (err) {
         console.error('Fetch zones error:', err);
         setZonesLoaded(true);
-        setLoading(false);
       }
     }
     fetchZones();
-  }, [hasValidToken]);
+  }, []);
 
   useEffect(() => {
     async function initMap() {
@@ -223,14 +244,14 @@ export function DeliveryMapSection() {
       }
     }
     
-    if (zonesLoaded) {
+    if (zonesLoaded && hasValidToken) {
       initMap();
     }
     
     return () => {
       map.current?.remove();
     };
-  }, [zones, zonesLoaded, hasValidToken]);
+  }, [zones, zonesLoaded, hasValidToken, mapboxToken]);
 
   // Helper function to create a circle GeoJSON
   function createCircle(center: [number, number], radiusInMeters: number): GeoJSON.FeatureCollection {
