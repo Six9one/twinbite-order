@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.send-telegram-notification]
+verify_jwt = false

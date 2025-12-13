@@ -115,6 +115,39 @@ serve(async (req) => {
           orderId: data.id,
           orderNumber: data.order_number,
         });
+
+        // Send Telegram notification to admin
+        try {
+          const telegramResponse = await fetch(
+            `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-telegram-notification`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+              },
+              body: JSON.stringify({
+                orderNumber: data.order_number,
+                customerName: data.customer_name,
+                customerPhone: data.customer_phone,
+                orderType: data.order_type,
+                total: data.total,
+                paymentMethod: data.payment_method,
+                items: data.items,
+                customerAddress: data.customer_address,
+                customerNotes: data.customer_notes,
+              }),
+            }
+          );
+          
+          if (telegramResponse.ok) {
+            console.log("[STRIPE-WEBHOOK] Telegram notification sent successfully");
+          } else {
+            console.error("[STRIPE-WEBHOOK] Telegram notification failed:", await telegramResponse.text());
+          }
+        } catch (telegramError) {
+          console.error("[STRIPE-WEBHOOK] Error sending Telegram notification:", telegramError);
+        }
       }
     }
 
