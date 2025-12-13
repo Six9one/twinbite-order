@@ -199,15 +199,15 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
           {categoryOrder.map((category) => (
             <Card
               key={category}
-              className="p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30 text-center"
+              className="p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30 text-center overflow-hidden"
               onClick={() => handleCategoryClick(category)}
             >
-              <span className="text-4xl mb-3 block">{categoryLabels[category].split(' ')[0]}</span>
-              <h3 className="font-display font-semibold text-lg">
+              <span className="text-3xl sm:text-4xl mb-3 block">{categoryLabels[category].split(' ')[0]}</span>
+              <h3 className="font-display font-semibold text-base sm:text-lg truncate">
                 {categoryLabels[category].split(' ').slice(1).join(' ')}
               </h3>
               {category === 'pizzas' && promoText && (
-                <p className="text-xs text-primary mt-1">{promoText}</p>
+                <p className="text-xs text-primary mt-1 truncate">{promoText}</p>
               )}
             </Card>
           ))}

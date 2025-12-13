@@ -102,55 +102,44 @@ export function HeroOrderSelector({
   };
 
   return (
-    <div className="max-w-5xl mx-auto flex gap-6">
-      {/* Main Order Options */}
-      <div className="flex-1">
-        <p className="text-center text-white/80 mb-6 text-lg">
-          Comment souhaitez-vous commander ?
-        </p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {orderOptions.map(option => {
-            const Icon = option.icon;
-            return (
-              <Card 
-                key={option.type} 
-                className="p-6 cursor-pointer transition-all duration-300 bg-background/90 hover:bg-primary/10 hover:scale-105 hover:ring-2 hover:ring-primary active:scale-100" 
-                onClick={() => handleSelect(option.type)}
-              >
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 transition-colors bg-primary">
-                    <Icon className="w-8 h-8" />
-                  </div>
-                  <h3 className="font-display font-bold text-xl mb-1">{option.label}</h3>
-                  <p className="text-sm text-muted-foreground mb-3">{option.description}</p>
-                  <span className="inline-block text-xs font-medium px-3 py-1 rounded-full bg-primary/10 text-primary">
-                    🍕 {option.promo}
-                  </span>
+    <div className="max-w-4xl mx-auto">
+      <p className="text-center text-white/80 mb-6 text-lg">
+        Comment souhaitez-vous commander ?
+      </p>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {orderOptions.map(option => {
+          const Icon = option.icon;
+          return (
+            <Card 
+              key={option.type} 
+              className="p-6 cursor-pointer transition-all duration-300 bg-background/90 hover:bg-primary/10 hover:scale-105 hover:ring-2 hover:ring-primary active:scale-100" 
+              onClick={() => handleSelect(option.type)}
+            >
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 transition-colors bg-primary">
+                  <Icon className="w-8 h-8" />
                 </div>
-              </Card>
-            );
-          })}
-        </div>
+                <h3 className="font-display font-bold text-xl mb-1 truncate">{option.label}</h3>
+                <p className="text-sm text-muted-foreground mb-3 truncate">{option.description}</p>
+                <span className="inline-block text-xs font-medium px-3 py-1 rounded-full bg-primary/10 text-primary whitespace-nowrap">
+                  🍕 {option.promo}
+                </span>
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Schedule Order - Right Side Vertical Strip */}
-      <div className="hidden md:flex flex-col w-24 bg-gradient-to-b from-purple-600 to-purple-800 rounded-2xl p-3 items-center justify-center cursor-pointer hover:from-purple-500 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-purple-500/30 hover:scale-105"
-           onClick={handleScheduleClick}>
-        <CalendarClock className="w-10 h-10 text-white mb-3" />
-        <span className="text-white text-xs font-semibold text-center leading-tight">
-          Commander pour plus tard
-        </span>
-      </div>
-
-      {/* Mobile Schedule Button */}
-      <div className="md:hidden fixed bottom-24 right-4 z-50">
+      {/* Schedule Order Button - Under order type options */}
+      <div className="flex justify-center">
         <Button
           onClick={handleScheduleClick}
-          className="gap-2 px-4 py-6 rounded-full bg-purple-600 hover:bg-purple-700 shadow-lg"
+          variant="outline"
+          className="gap-2 px-6 py-3 bg-purple-600/90 hover:bg-purple-700 border-purple-500 text-white"
         >
           <CalendarClock className="w-5 h-5" />
-          <span className="text-sm">Plus tard</span>
+          Commander pour plus tard
         </Button>
       </div>
 
@@ -186,7 +175,7 @@ export function HeroOrderSelector({
                       onClick={() => setSelectedOrderType(option.type)}
                     >
                       <Icon className="w-6 h-6 mx-auto mb-1 text-purple-600" />
-                      <p className="text-xs font-medium">{option.label}</p>
+                      <p className="text-xs font-medium truncate">{option.label}</p>
                     </Card>
                   );
                 })}

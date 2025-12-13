@@ -62,7 +62,7 @@ function MainApp() {
   // Home view
   return <div className="min-h-screen bg-background">
       {/* Header with Order Now */}
-      <Header onCartClick={() => setIsCartOpen(true)} onOrderTypeSelect={handleNavOrderTypeSelect} onMenuClick={scrollToOrderSelector} />
+      <Header onCartClick={() => setIsCartOpen(true)} onOrderTypeSelect={handleNavOrderTypeSelect} onMenuClick={scrollToOrderSelector} onScheduleClick={scrollToOrderSelector} />
 
       {/* Cart */}
       <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
