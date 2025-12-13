@@ -22,6 +22,7 @@ import { PizzaWizard } from '@/components/wizards/PizzaWizard';
 import { TacosWizard } from '@/components/wizards/TacosWizard';
 import { SouffletWizard } from '@/components/wizards/SouffletWizard';
 import { MakloubWizard } from '@/components/wizards/MakloubWizard';
+import { SandwichWizard } from '@/components/wizards/SandwichWizard';
 import { SimpleProductWizard } from '@/components/wizards/SimpleProductWizard';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -65,8 +66,8 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
         return <SouffletWizard onClose={() => setSelectedCategory(null)} />;
       case 'makloub':
         return <MakloubWizard onClose={() => setSelectedCategory(null)} />;
-      case 'mlawi':
-        return (
+      case 'panini':
+        return <SandwichWizard onClose={() => setSelectedCategory(null)} />;
           <SimpleProductWizard 
             items={mlawi} 
             title="Mlawi" 
