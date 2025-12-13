@@ -82,55 +82,38 @@ const orderTypeConfig = {
   surplace: { icon: Utensils, label: 'Sur place', color: 'bg-green-600' },
 };
 
-// Soft "glass" notification sound - Apple-like tan tan
+// Pleasant notification sound - soft xylophone-like chime (Apple style)
 const playOrderSound = () => {
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     
-    // Soft glass-like sound: two gentle chimes
-    const playChime = (startTime: number, frequency: number) => {
+    // Create a pleasant xylophone-like chime
+    const playNote = (frequency: number, startTime: number, duration: number, volume: number) => {
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
+      
+      // Use triangle wave for softer, bell-like tone
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(frequency, startTime);
       
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      oscillator.frequency.value = frequency;
-      oscillator.type = 'sine'; // Soft sine wave
-      
-      // Gentle envelope
+      // Smooth envelope for pleasant sound
       gainNode.gain.setValueAtTime(0, startTime);
-      gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + 0.8);
+      gainNode.gain.linearRampToValueAtTime(volume, startTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
       
       oscillator.start(startTime);
-      oscillator.stop(startTime + 0.8);
+      oscillator.stop(startTime + duration);
     };
     
-    // First chime
-    playChime(audioContext.currentTime, 1046.5); // C6
-    // Second chime (slightly lower, delayed)
-    playChime(audioContext.currentTime + 0.15, 880); // A5
+    const now = audioContext.currentTime;
     
-    // Repeat after short pause
-    setTimeout(() => {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const playSecond = (startTime: number, frequency: number) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = frequency;
-        osc.type = 'sine';
-        gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(0.25, startTime + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.6);
-        osc.start(startTime);
-        osc.stop(startTime + 0.6);
-      };
-      playSecond(ctx.currentTime, 1046.5);
-      playSecond(ctx.currentTime + 0.15, 880);
-    }, 600);
+    // Pleasant two-tone chime (like macOS notification)
+    playNote(1318.5, now, 0.4, 0.15); // E6 - first note
+    playNote(1568, now + 0.12, 0.35, 0.12); // G6 - second note (higher)
+    
   } catch (error) {
     console.log('Audio not supported');
   }
@@ -249,7 +232,7 @@ export default function TVDashboard() {
     localStorage.setItem('autoPrintEnabled', autoPrintEnabled.toString());
   }, [autoPrintEnabled]);
 
-  // Auto-refresh every 10 seconds (fallback)
+  // Auto-refresh every 5 seconds (fallback)
   useEffect(() => {
     const interval = setInterval(() => {
       setIsRefreshing(true);
@@ -257,7 +240,7 @@ export default function TVDashboard() {
         setLastRefresh(new Date());
         setTimeout(() => setIsRefreshing(false), 500);
       });
-    }, 10000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [refetch]);
 
@@ -464,7 +447,10 @@ export default function TVDashboard() {
             {soundEnabled ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
           </Button>
 
-          <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-green-400' : 'text-white/40'}`} />
+          <div className="flex items-center gap-1 text-[10px] text-white/50">
+            <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-green-400' : 'text-white/40'}`} />
+            <span>MAJ {lastRefresh.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+          </div>
 
           <div className="text-sm font-mono bg-amber-500 text-black px-2 py-0.5 rounded">
             <CurrentTime />
@@ -725,28 +711,39 @@ function ColumnOrderCard({
           </div>
         )}
 
-        {/* Items - Compact but readable */}
-        <div className="bg-black/30 rounded p-1.5 space-y-0.5 max-h-20 overflow-y-auto">
+        {/* Items - Readable with vertical ingredient list */}
+        <div className="bg-black/30 rounded p-1.5 space-y-1.5 max-h-32 overflow-y-auto">
           {items.slice(0, 4).map((item: any, idx: number) => {
             const customization = item.customization;
-            const customParts: string[] = [];
-            if (customization?.size) customParts.push(customization.size.toUpperCase());
-            if (customization?.meats?.length) customParts.push(customization.meats.join(', '));
-            if (customization?.sauces?.length) customParts.push(customization.sauces.join(', '));
             
             return (
-              <div key={idx} className="text-white">
-                <div className="font-bold text-xs truncate">
+              <div key={idx} className="text-white border-b border-white/10 pb-1 last:border-0 last:pb-0">
+                <div className="font-bold text-sm">
                   {item.quantity}x {item.item?.name || item.name || 'Produit'}
                 </div>
-                {customParts.length > 0 && (
-                  <div className="text-[10px] text-white/50 truncate pl-1">{customParts.join(' • ')}</div>
+                {customization?.size && (
+                  <div className="text-xs font-bold text-blue-400 pl-2">• {customization.size.toUpperCase()}</div>
+                )}
+                {customization?.meats?.length > 0 && customization.meats.map((meat: string, i: number) => (
+                  <div key={i} className="text-xs font-bold text-blue-400 pl-2">• {meat}</div>
+                ))}
+                {customization?.sauces?.length > 0 && customization.sauces.map((sauce: string, i: number) => (
+                  <div key={i} className="text-xs font-bold text-blue-400 pl-2">• {sauce}</div>
+                ))}
+                {customization?.garnitures?.length > 0 && customization.garnitures.map((g: string, i: number) => (
+                  <div key={i} className="text-xs font-bold text-blue-400 pl-2">• {g}</div>
+                ))}
+                {customization?.supplements?.length > 0 && customization.supplements.map((s: string, i: number) => (
+                  <div key={i} className="text-xs font-bold text-amber-400 pl-2">+ {s}</div>
+                ))}
+                {customization?.notes && (
+                  <div className="text-[10px] text-pink-300 pl-2 italic">📝 {customization.notes}</div>
                 )}
               </div>
             );
           })}
           {items.length > 4 && (
-            <div className="text-[10px] text-amber-400">+{items.length - 4}</div>
+            <div className="text-xs text-amber-400 font-bold">+{items.length - 4} autre(s)</div>
           )}
         </div>
 
@@ -856,17 +853,32 @@ function ScheduledOrderCard({
           </div>
         )}
 
-        {/* Items - Compact */}
-        <div className="bg-black/30 rounded p-1 space-y-0.5 max-h-16 overflow-y-auto">
-          {items.slice(0, 3).map((item: any, idx: number) => (
-            <div key={idx} className="text-white">
-              <div className="font-bold text-xs truncate">
-                {item.quantity}x {item.item?.name || item.name || 'Produit'}
+        {/* Items - Readable with vertical ingredient list */}
+        <div className="bg-black/30 rounded p-1 space-y-1 max-h-24 overflow-y-auto">
+          {items.slice(0, 3).map((item: any, idx: number) => {
+            const customization = item.customization;
+            return (
+              <div key={idx} className="text-white border-b border-white/10 pb-1 last:border-0 last:pb-0">
+                <div className="font-bold text-xs">
+                  {item.quantity}x {item.item?.name || item.name || 'Produit'}
+                </div>
+                {customization?.size && (
+                  <div className="text-[10px] font-bold text-blue-400 pl-1">• {customization.size.toUpperCase()}</div>
+                )}
+                {customization?.meats?.length > 0 && customization.meats.map((meat: string, i: number) => (
+                  <div key={i} className="text-[10px] font-bold text-blue-400 pl-1">• {meat}</div>
+                ))}
+                {customization?.sauces?.length > 0 && customization.sauces.map((sauce: string, i: number) => (
+                  <div key={i} className="text-[10px] font-bold text-blue-400 pl-1">• {sauce}</div>
+                ))}
+                {customization?.supplements?.length > 0 && customization.supplements.map((s: string, i: number) => (
+                  <div key={i} className="text-[10px] font-bold text-amber-400 pl-1">+ {s}</div>
+                ))}
               </div>
-            </div>
-          ))}
+            );
+          })}
           {items.length > 3 && (
-            <div className="text-[10px] text-purple-300">+{items.length - 3}</div>
+            <div className="text-[10px] text-purple-300 font-bold">+{items.length - 3} autre(s)</div>
           )}
         </div>
 
