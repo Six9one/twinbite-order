@@ -1,5 +1,10 @@
 export type OrderType = 'emporter' | 'livraison' | 'surplace' | null;
 
+export interface ScheduledOrderInfo {
+  isScheduled: boolean;
+  scheduledFor?: Date | null;
+}
+
 export type MenuCategory = 
   | 'pizzas' 
   | 'menus-midi'

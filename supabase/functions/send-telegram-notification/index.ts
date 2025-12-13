@@ -19,6 +19,8 @@ interface OrderNotification {
   }>;
   customerAddress?: string;
   customerNotes?: string;
+  isScheduled?: boolean;
+  scheduledFor?: string;
 }
 
 serve(async (req) => {
@@ -50,29 +52,54 @@ serve(async (req) => {
       .map(item => `• ${item.quantity}x ${item.name} - ${item.price.toFixed(2)}€`)
       .join('\n');
 
-    // Order type emoji and text
-    const orderTypeMap: Record<string, string> = {
-      'livraison': '🛵 Livraison',
-      'emporter': '🥡 À emporter',
-      'surplace': '🍽️ Sur place',
+    // Order type emoji and text with colors
+    const orderTypeMap: Record<string, { emoji: string; text: string; color: string }> = {
+      'livraison': { emoji: '🛵', text: 'Livraison', color: '🔵' },
+      'emporter': { emoji: '🥡', text: 'À emporter', color: '🟠' },
+      'surplace': { emoji: '🍽️', text: 'Sur place', color: '🟢' },
     };
-    const orderTypeText = orderTypeMap[order.orderType] || order.orderType;
+    const orderTypeInfo = orderTypeMap[order.orderType] || { emoji: '📦', text: order.orderType, color: '⚪' };
 
     // Payment method
     const paymentMap: Record<string, string> = {
-      'en_ligne': '💳 Payé en ligne',
+      'en_ligne': '💳 Payé en ligne ✅',
       'cb': '💳 CB à la livraison',
       'especes': '💵 Espèces',
     };
     const paymentText = paymentMap[order.paymentMethod] || order.paymentMethod;
 
-    // Build message
-    let message = `🍕 *NOUVELLE COMMANDE* 🍕\n\n`;
-    message += `📋 *Commande:* #${order.orderNumber}\n`;
-    message += `${orderTypeText}\n`;
-    message += `${paymentText}\n\n`;
+    // Scheduled order handling - PURPLE color for scheduled
+    const isScheduled = order.isScheduled === true;
+    let scheduledText = '';
+    if (isScheduled && order.scheduledFor) {
+      const scheduledDate = new Date(order.scheduledFor);
+      const formattedDate = scheduledDate.toLocaleDateString('fr-FR', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long' 
+      });
+      const formattedTime = scheduledDate.toLocaleTimeString('fr-FR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      scheduledText = `\n\n⏰ *COMMANDE PROGRAMMÉE*\n📅 ${formattedDate}\n🕐 ${formattedTime}`;
+    }
+
+    // Build message with color coding
+    const headerEmoji = isScheduled ? '📆⏰' : '🍕';
+    const headerText = isScheduled ? 'COMMANDE PROGRAMMÉE' : 'NOUVELLE COMMANDE';
     
-    message += `👤 *CLIENT:*\n`;
+    let message = `${headerEmoji} *${headerText}* ${headerEmoji}\n`;
+    message += `${orderTypeInfo.color} ${orderTypeInfo.color} ${orderTypeInfo.color}\n\n`;
+    message += `📋 *Commande:* #${order.orderNumber}\n`;
+    message += `${orderTypeInfo.emoji} ${orderTypeInfo.text}\n`;
+    message += `${paymentText}\n`;
+    
+    if (isScheduled) {
+      message += scheduledText;
+    }
+    
+    message += `\n\n👤 *CLIENT:*\n`;
     message += `• Nom: ${order.customerName}\n`;
     message += `• Tél: ${order.customerPhone}\n`;
     
