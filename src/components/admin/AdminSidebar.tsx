@@ -21,7 +21,9 @@ import {
   Leaf,
   Plus,
   GlassWater,
-  Cake
+  Cake,
+  Sandwich,
+  Salad
 } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -45,10 +47,12 @@ const navItems: NavItem[] = [
     icon: Pizza,
     children: [
       { label: '🍕 Pizzas', icon: Pizza, value: 'pizzas' },
+      { label: '🥖 Sandwiches', icon: Sandwich, value: 'sandwiches' },
       { label: 'Autres Produits', icon: Package, value: 'products' },
       { label: 'Viandes', icon: Utensils, value: 'meats' },
       { label: 'Sauces', icon: Droplet, value: 'sauces' },
       { label: 'Garnitures', icon: Leaf, value: 'garnitures' },
+      { label: 'Crudités', icon: Salad, value: 'crudites' },
       { label: 'Suppléments', icon: Plus, value: 'supplements' },
       { label: 'Boissons', icon: GlassWater, value: 'drinks' },
       { label: 'Desserts', icon: Cake, value: 'desserts' },
