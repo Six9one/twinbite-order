@@ -33,6 +33,9 @@ export function DeliveryMapSection() {
   const [zonesLoaded, setZonesLoaded] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
+  
+  // Precompute zones with valid coordinates for map display
+  const zonesWithCoords = zones.filter((z) => z.latitude && z.longitude);
 
   // Check if Mapbox token exists
   const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
@@ -302,8 +305,8 @@ export function DeliveryMapSection() {
           </p>
         </div>
 
-        {/* Show fallback list if map failed or no zones with coordinates */}
-        {(mapFailed || zones.filter(z => z.latitude && z.longitude).length === 0) && zones.length > 0 ? (
+        {/* Show fallback list only if no token or no zones with coordinates */}
+        {((!hasValidToken || zonesWithCoords.length === 0) && zones.length > 0) ? (
           <div className="max-w-5xl mx-auto">
             <ZoneFallbackList />
           </div>
@@ -333,11 +336,11 @@ export function DeliveryMapSection() {
             )}
 
             {/* Legend - Dynamic based on zones */}
-            {!loading && zones.length > 0 && (
+            {!loading && zonesWithCoords.length > 0 && (
               <div className="absolute bottom-4 right-4 bg-background/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-border max-w-[180px]">
                 <p className="text-xs font-medium text-foreground mb-2">Zones de livraison</p>
                 <div className="space-y-1">
-                  {zones.filter(z => z.latitude && z.longitude).map(zone => (
+                  {zonesWithCoords.map((zone) => (
                     <div key={zone.id} className="flex items-center gap-2">
                       <div 
                         className="w-3 h-3 rounded-full flex-shrink-0" 
