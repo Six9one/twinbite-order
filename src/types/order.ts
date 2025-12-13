@@ -89,13 +89,22 @@ export interface PaniniCustomization {
   note?: string;
 }
 
+export interface SandwichCustomization {
+  sauces: string[];
+  crudites: string[];
+  supplements: string[];
+  menuOption: 'none' | 'frites' | 'boisson' | 'menu';
+  note?: string;
+}
+
 export type ProductCustomization = 
   | PizzaCustomization 
   | TacosCustomization 
   | SouffletCustomization 
   | MakloubCustomization
   | MlawiCustomization
-  | PaniniCustomization;
+  | PaniniCustomization
+  | SandwichCustomization;
 
 // Legacy support - Updated with new fields
 export interface SouffletOrder {
