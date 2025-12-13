@@ -393,65 +393,55 @@ export default function TVDashboard() {
   const scheduledCount = scheduledOrders.length;
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white flex flex-col ${flashEffect ? 'animate-pulse bg-amber-500/20' : ''}`}>
+    <div className={`h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white flex flex-col ${flashEffect ? 'animate-pulse bg-amber-500/20' : ''}`}>
       {/* Full-screen NEW ORDER overlay */}
       {showNewOrderOverlay && newOrderInfo && (
         <div className="fixed inset-0 z-[99999] bg-white flex flex-col items-center justify-center animate-pulse">
           <div className="text-center">
-            <div className="text-8xl mb-8">🍕</div>
-            <h1 className="text-6xl md:text-8xl font-bold text-amber-500 mb-4">
-              NOUVELLE COMMANDE
-            </h1>
-            <h2 className="text-4xl md:text-6xl font-bold text-black mb-8">
-              REÇUE !
-            </h2>
-            <div className="bg-black text-white px-12 py-6 rounded-2xl inline-block">
-              <p className="text-3xl font-bold">{newOrderInfo.orderType}</p>
-              <p className="text-5xl font-mono font-bold mt-2">N° {newOrderInfo.orderNumber}</p>
+            <div className="text-6xl mb-4">🍕</div>
+            <h1 className="text-5xl md:text-6xl font-bold text-amber-500 mb-2">NOUVELLE COMMANDE</h1>
+            <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">REÇUE !</h2>
+            <div className="bg-black text-white px-8 py-4 rounded-xl inline-block">
+              <p className="text-xl font-bold">{newOrderInfo.orderType}</p>
+              <p className="text-3xl font-mono font-bold mt-1">N° {newOrderInfo.orderNumber}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Compact Header */}
-      <header className="flex items-center justify-between px-4 py-2 bg-black/60 border-b border-white/10">
-        <div className="flex items-center gap-4">
-          <Link to="/tv" className="hover:opacity-80 transition-opacity flex items-center gap-3">
-            <img src={logoImage} alt="Twin Pizza" className="w-10 h-10 rounded-full" />
-            <h1 className="text-2xl font-bold">
-              <span className="text-amber-500">TWIN</span> <span className="text-white/80">TV</span>
-            </h1>
+      {/* Ultra Compact Header */}
+      <header className="flex items-center justify-between px-3 py-1.5 bg-black/80 border-b border-white/10 shrink-0">
+        <div className="flex items-center gap-3">
+          <Link to="/tv" className="hover:opacity-80 transition-opacity flex items-center gap-2">
+            <img src={logoImage} alt="Twin Pizza" className="w-8 h-8 rounded-full" />
+            <span className="text-lg font-bold"><span className="text-amber-500">TWIN</span> <span className="text-white/80">TV</span></span>
           </Link>
           
-          {/* Status counters */}
-          <div className="flex gap-2">
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${pendingCount > 0 ? 'bg-yellow-500 animate-pulse' : 'bg-yellow-500/30'}`}>
-              <Clock className="w-4 h-4" />
-              <span>{pendingCount}</span>
+          {/* Compact Status counters */}
+          <div className="flex gap-1.5">
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${pendingCount > 0 ? 'bg-yellow-500 animate-pulse' : 'bg-yellow-500/30'}`}>
+              <Clock className="w-3 h-3" />{pendingCount}
             </div>
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${preparingCount > 0 ? 'bg-blue-500' : 'bg-blue-500/30'}`}>
-              <ChefHat className="w-4 h-4" />
-              <span>{preparingCount}</span>
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${preparingCount > 0 ? 'bg-blue-500' : 'bg-blue-500/30'}`}>
+              <ChefHat className="w-3 h-3" />{preparingCount}
             </div>
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${readyCount > 0 ? 'bg-green-500 animate-pulse' : 'bg-green-500/30'}`}>
-              <Package className="w-4 h-4" />
-              <span>{readyCount}</span>
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${readyCount > 0 ? 'bg-green-500 animate-pulse' : 'bg-green-500/30'}`}>
+              <Package className="w-3 h-3" />{readyCount}
             </div>
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${scheduledCount > 0 ? 'bg-purple-500' : 'bg-purple-500/30'}`}>
-              <CalendarClock className="w-4 h-4" />
-              <span>{scheduledCount}</span>
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${scheduledCount > 0 ? 'bg-purple-500' : 'bg-purple-500/30'}`}>
+              <CalendarClock className="w-3 h-3" />{scheduledCount}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'live' | 'history')}>
-            <TabsList className="bg-black/50">
-              <TabsTrigger value="live" className="gap-1 data-[state=active]:bg-amber-500 data-[state=active]:text-black">
-                <Play className="w-4 h-4" /> Live
+            <TabsList className="bg-black/50 h-7">
+              <TabsTrigger value="live" className="gap-1 text-xs h-6 px-2 data-[state=active]:bg-amber-500 data-[state=active]:text-black">
+                <Play className="w-3 h-3" /> Live
               </TabsTrigger>
-              <TabsTrigger value="history" className="gap-1 data-[state=active]:bg-gray-600">
-                <History className="w-4 h-4" /> Historique
+              <TabsTrigger value="history" className="gap-1 text-xs h-6 px-2 data-[state=active]:bg-gray-600">
+                <History className="w-3 h-3" /> Hist
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -460,41 +450,37 @@ export default function TVDashboard() {
             variant={autoPrintEnabled ? "default" : "outline"}
             size="sm"
             onClick={() => setAutoPrintEnabled(!autoPrintEnabled)}
-            className={`gap-1 ${autoPrintEnabled ? 'bg-green-600 hover:bg-green-700' : ''}`}
-            title="Impression automatique"
+            className={`h-7 px-2 text-xs gap-1 ${autoPrintEnabled ? 'bg-green-600 hover:bg-green-700' : ''}`}
           >
-            <Printer className="w-4 h-4" />
-            {autoPrintEnabled ? 'Auto' : 'Off'}
+            <Printer className="w-3 h-3" />
           </Button>
 
           <Button
             variant={soundEnabled ? "default" : "outline"}
             size="sm"
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="gap-1"
+            className="h-7 px-2"
           >
-            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            {soundEnabled ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
           </Button>
 
-          <div className="flex items-center gap-2 text-sm text-white/60">
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-green-400' : ''}`} />
-          </div>
+          <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-green-400' : 'text-white/40'}`} />
 
-          <div className="text-xl font-mono bg-amber-500 text-black px-3 py-1 rounded-lg">
+          <div className="text-sm font-mono bg-amber-500 text-black px-2 py-0.5 rounded">
             <CurrentTime />
           </div>
 
           <Link to="/">
-            <Button variant="ghost" size="sm" className="text-white/60 hover:text-white">
-              <Home className="w-4 h-4" />
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-white/60 hover:text-white">
+              <Home className="w-3 h-3" />
             </Button>
           </Link>
         </div>
       </header>
 
-      {/* Main content - 4 Column Layout */}
+      {/* Main content - 4 Column Layout - Fixed height */}
       {activeTab === 'live' ? (
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Column 1: Sur Place (25%) */}
           <OrderColumn 
             title="Sur Place" 
@@ -505,10 +491,7 @@ export default function TVDashboard() {
             colorClass="bg-green-600"
             emptyIcon="🍴"
           />
-
-          {/* Divider */}
-          <div className="w-0.5 bg-white/10" />
-
+          <div className="w-px bg-white/10" />
           {/* Column 2: À Emporter (25%) */}
           <OrderColumn 
             title="À Emporter" 
@@ -519,10 +502,7 @@ export default function TVDashboard() {
             colorClass="bg-orange-600"
             emptyIcon="🥡"
           />
-
-          {/* Divider */}
-          <div className="w-0.5 bg-white/10" />
-
+          <div className="w-px bg-white/10" />
           {/* Column 3: Livraison (25%) */}
           <OrderColumn 
             title="Livraison" 
@@ -533,11 +513,8 @@ export default function TVDashboard() {
             colorClass="bg-blue-600"
             emptyIcon="🚗"
           />
-
-          {/* Divider */}
-          <div className="w-0.5 bg-purple-500/50" />
-
-          {/* Column 4: Plus Tard (25%) - Scheduled Orders */}
+          <div className="w-px bg-purple-500/50" />
+          {/* Column 4: Plus Tard (25%) */}
           <ScheduledOrderColumn 
             orders={scheduledOrders}
             orderNumberMap={orderNumberMap}
@@ -546,12 +523,12 @@ export default function TVDashboard() {
         </div>
       ) : (
         /* HISTORY TAB */
-        <div className="flex-1 p-4 overflow-y-auto">
-          <h2 className="text-2xl font-bold mb-4 text-white/80">Historique du jour</h2>
+        <div className="flex-1 p-3 overflow-y-auto min-h-0">
+          <h2 className="text-xl font-bold mb-3 text-white/80">Historique du jour</h2>
           {allHistoryOrders.length === 0 ? (
-            <div className="text-center text-white/40 py-12">Aucune commande terminée aujourd'hui</div>
+            <div className="text-center text-white/40 py-8">Aucune commande terminée</div>
           ) : (
-            <div className="grid gap-3">
+            <div className="grid gap-2">
               {allHistoryOrders.map((order) => (
                 <HistoryOrderRow key={order.id} order={order} />
               ))}
@@ -560,15 +537,15 @@ export default function TVDashboard() {
         </div>
       )}
 
-      {/* Bottom Completed Strip */}
+      {/* Compact Bottom Completed Strip */}
       {activeTab === 'live' && completedOrders.length > 0 && (
-        <div className="h-16 px-4 py-2 bg-black/50 border-t border-white/10">
-          <div className="flex items-center gap-2 h-full overflow-x-auto">
-            <CheckCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />
-            <span className="text-xs text-white/50 flex-shrink-0">Terminées:</span>
-            {completedOrders.slice(0, 15).map((order) => (
-              <div key={order.id} className="bg-gray-800/50 rounded px-2 py-1 text-xs text-white/60 flex-shrink-0">
-                #{orderNumberMap.get(order.id) || '?'} {order.customer_name.split(' ')[0]}
+        <div className="h-10 px-3 py-1 bg-black/50 border-t border-white/10 shrink-0">
+          <div className="flex items-center gap-1.5 h-full overflow-x-auto">
+            <CheckCircle className="w-3 h-3 text-gray-400 flex-shrink-0" />
+            <span className="text-xs text-white/40 flex-shrink-0">OK:</span>
+            {completedOrders.slice(0, 20).map((order) => (
+              <div key={order.id} className="bg-gray-800/50 rounded px-1.5 py-0.5 text-xs text-white/50 flex-shrink-0">
+                #{orderNumberMap.get(order.id)}
               </div>
             ))}
           </div>
@@ -612,22 +589,22 @@ function OrderColumn({
   });
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Column Header */}
-      <div className={`${colorClass} px-4 py-3 flex items-center justify-between`}>
-        <div className="flex items-center gap-2">
-          <Icon className="w-5 h-5" />
-          <span className="font-bold text-lg">{title}</span>
+    <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+      {/* Column Header - Compact */}
+      <div className={`${colorClass} px-2 py-1.5 flex items-center justify-between shrink-0`}>
+        <div className="flex items-center gap-1.5">
+          <Icon className="w-4 h-4" />
+          <span className="font-bold text-sm">{title}</span>
         </div>
-        <Badge className="bg-white/20 text-white">{orders.length}</Badge>
+        <Badge className="bg-white/20 text-white text-xs h-5">{orders.length}</Badge>
       </div>
 
-      {/* Orders List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-black/20">
+      {/* Orders List - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5 bg-black/20 min-h-0">
         {sortedOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-white/30">
-            <span className="text-4xl mb-2">{emptyIcon}</span>
-            <span className="text-sm">Aucune commande</span>
+            <span className="text-2xl mb-1">{emptyIcon}</span>
+            <span className="text-xs">Vide</span>
           </div>
         ) : (
           sortedOrders.map((order) => (
@@ -663,22 +640,22 @@ function ScheduledOrderColumn({
   });
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-purple-950/30">
-      {/* Column Header */}
-      <div className="bg-purple-600 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CalendarClock className="w-5 h-5" />
-          <span className="font-bold text-lg">Plus Tard</span>
+    <div className="flex-1 flex flex-col overflow-hidden min-h-0 bg-purple-950/30">
+      {/* Column Header - Compact */}
+      <div className="bg-purple-600 px-2 py-1.5 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-1.5">
+          <CalendarClock className="w-4 h-4" />
+          <span className="font-bold text-sm">Plus Tard</span>
         </div>
-        <Badge className="bg-white/20 text-white">{orders.length}</Badge>
+        <Badge className="bg-white/20 text-white text-xs h-5">{orders.length}</Badge>
       </div>
 
-      {/* Orders List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+      {/* Orders List - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5 min-h-0">
         {sortedOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-white/30">
-            <span className="text-4xl mb-2">📅</span>
-            <span className="text-sm">Aucune commande programmée</span>
+            <span className="text-2xl mb-1">📅</span>
+            <span className="text-xs">Vide</span>
           </div>
         ) : (
           sortedOrders.map((order) => (
@@ -714,78 +691,71 @@ function ColumnOrderCard({
   const orderTime = new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className={`rounded-lg overflow-hidden ${
-      isNew ? 'ring-2 ring-yellow-400 animate-pulse' : 
-      isReady ? 'ring-2 ring-green-400' : ''
+    <div className={`rounded overflow-hidden ${
+      isNew ? 'ring-1 ring-yellow-400 animate-pulse' : 
+      isReady ? 'ring-1 ring-green-400' : ''
     } bg-white/5`}>
-      {/* Header */}
-      <div className={`${config.color} px-3 py-2 flex items-center justify-between`}>
-        <div className="flex items-center gap-2">
-          <Icon className="w-4 h-4" />
-          <span className="font-bold">#{String(orderNumber).padStart(3, '0')}</span>
+      {/* Header - Ultra compact */}
+      <div className={`${config.color} px-2 py-1 flex items-center justify-between`}>
+        <div className="flex items-center gap-1.5">
+          <Icon className="w-3 h-3" />
+          <span className="font-bold text-xs">#{String(orderNumber).padStart(3, '0')}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {order.payment_method === 'en_ligne' ? (
-            <Badge className="bg-green-700 text-white text-xs px-2 py-0.5 font-bold">
-              PAYÉE
-            </Badge>
+            <Badge className="bg-green-700 text-white text-[10px] px-1 py-0 font-bold h-4">PAYÉE</Badge>
           ) : (
-            <Badge className="bg-red-700 text-white text-xs px-2 py-0.5 font-bold animate-pulse">
+            <Badge className="bg-red-700 text-white text-[10px] px-1 py-0 font-bold animate-pulse h-4">
               {order.payment_method === 'cb' ? 'CB' : 'ESP'}
             </Badge>
           )}
-          <span className="text-xs opacity-80">{orderTime}</span>
+          <span className="text-[10px] opacity-80">{orderTime}</span>
         </div>
       </div>
 
-      <div className="p-2 space-y-1.5">
-        {/* Customer - smaller and lighter */}
-        <div className="text-sm text-white/60 truncate">{order.customer_name}</div>
+      <div className="p-1.5 space-y-1">
+        {/* Customer - smaller */}
+        <div className="text-xs text-white/60 truncate">{order.customer_name}</div>
         
-        {/* Address for delivery */}
+        {/* Address for delivery - compact */}
         {order.order_type === 'livraison' && order.customer_address && (
-          <div className="flex items-start gap-1 text-amber-300 text-xs bg-amber-500/10 rounded px-2 py-1">
-            <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
-            <span className="line-clamp-2">{order.customer_address}</span>
+          <div className="flex items-start gap-1 text-amber-300 text-[10px] bg-amber-500/10 rounded px-1.5 py-0.5">
+            <MapPin className="w-2.5 h-2.5 flex-shrink-0 mt-0.5" />
+            <span className="line-clamp-1">{order.customer_address}</span>
           </div>
         )}
 
-        {/* Items - BIGGER and BOLD */}
-        <div className="bg-black/30 rounded p-2 space-y-1 max-h-32 overflow-y-auto">
-          {items.slice(0, 5).map((item: any, idx: number) => {
+        {/* Items - Compact but readable */}
+        <div className="bg-black/30 rounded p-1.5 space-y-0.5 max-h-20 overflow-y-auto">
+          {items.slice(0, 4).map((item: any, idx: number) => {
             const customization = item.customization;
             const customParts: string[] = [];
             if (customization?.size) customParts.push(customization.size.toUpperCase());
             if (customization?.meats?.length) customParts.push(customization.meats.join(', '));
             if (customization?.sauces?.length) customParts.push(customization.sauces.join(', '));
-            if (customization?.garnitures?.length) customParts.push(customization.garnitures.join(', '));
-            if (customization?.supplements?.length) customParts.push(customization.supplements.join(', '));
             
             return (
               <div key={idx} className="text-white">
-                <div className="font-bold text-base">
+                <div className="font-bold text-xs truncate">
                   {item.quantity}x {item.item?.name || item.name || 'Produit'}
                 </div>
                 {customParts.length > 0 && (
-                  <div className="text-xs text-white/60 pl-2">└ {customParts.join(' • ')}</div>
-                )}
-                {customization?.note && (
-                  <div className="text-xs text-amber-300 pl-2">📝 {customization.note}</div>
+                  <div className="text-[10px] text-white/50 truncate pl-1">{customParts.join(' • ')}</div>
                 )}
               </div>
             );
           })}
-          {items.length > 5 && (
-            <div className="text-xs text-amber-400 font-semibold">+{items.length - 5} autres</div>
+          {items.length > 4 && (
+            <div className="text-[10px] text-amber-400">+{items.length - 4}</div>
           )}
         </div>
 
-        {/* Status Buttons */}
-        <div className="flex gap-1 pt-1">
+        {/* Status Buttons - Compact */}
+        <div className="flex gap-1">
           {order.status === 'pending' && (
             <Button 
               size="sm" 
-              className="flex-1 bg-blue-500 hover:bg-blue-600 text-xs py-1 h-auto gap-1"
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-[10px] py-0.5 h-6 gap-0.5"
               onClick={() => onStatusUpdate(order.id, 'preparing')}
             >
               <ChefHat className="w-3 h-3" /> Préparer
@@ -794,7 +764,7 @@ function ColumnOrderCard({
           {order.status === 'preparing' && (
             <Button 
               size="sm" 
-              className="flex-1 bg-green-500 hover:bg-green-600 text-xs py-1 h-auto gap-1"
+              className="flex-1 bg-green-500 hover:bg-green-600 text-[10px] py-0.5 h-6 gap-0.5"
               onClick={() => onStatusUpdate(order.id, 'ready')}
             >
               <Package className="w-3 h-3" /> Prêt
@@ -803,17 +773,17 @@ function ColumnOrderCard({
           {order.status === 'ready' && (
             <Button 
               size="sm" 
-              className="flex-1 bg-gray-600 hover:bg-gray-700 text-xs py-1 h-auto gap-1"
+              className="flex-1 bg-gray-600 hover:bg-gray-700 text-[10px] py-0.5 h-6 gap-0.5"
               onClick={() => onStatusUpdate(order.id, 'completed')}
             >
-              <CheckCircle className="w-3 h-3" /> Terminé
+              <CheckCircle className="w-3 h-3" /> OK
             </Button>
           )}
           {['pending', 'preparing'].includes(order.status) && (
             <Button 
               variant="destructive" 
               size="sm"
-              className="text-xs py-1 h-auto px-2"
+              className="text-[10px] py-0.5 h-6 px-1.5"
               onClick={() => onStatusUpdate(order.id, 'cancelled')}
             >
               <XCircle className="w-3 h-3" />
@@ -844,103 +814,90 @@ function ScheduledOrderCard({
   const items = Array.isArray(order.items) ? order.items : [];
 
   return (
-    <div className="rounded-lg overflow-hidden bg-purple-900/40 ring-1 ring-purple-500/50">
-      {/* Scheduled Time Banner */}
+    <div className="rounded overflow-hidden bg-purple-900/40 ring-1 ring-purple-500/50">
+      {/* Scheduled Time Banner - Compact */}
       {scheduledTime && (
-        <div className="bg-purple-500 px-3 py-1.5 flex items-center justify-center gap-2 text-sm">
-          <CalendarClock className="w-4 h-4" />
-          <span className="font-bold">{format(scheduledTime, "EEE d MMM 'à' HH:mm", { locale: fr })}</span>
+        <div className="bg-purple-500 px-2 py-1 flex items-center justify-center gap-1 text-xs">
+          <CalendarClock className="w-3 h-3" />
+          <span className="font-bold">{format(scheduledTime, "EEE d 'à' HH:mm", { locale: fr })}</span>
         </div>
       )}
 
-      {/* Order Type + Number Header */}
-      <div className={`${typeConfig?.color || 'bg-gray-600'} px-3 py-2 flex items-center justify-between`}>
-        <div className="flex items-center gap-2">
-          <TypeIcon className="w-4 h-4" />
-          <span className="font-semibold text-sm">{typeConfig?.label}</span>
+      {/* Order Type + Number Header - Compact */}
+      <div className={`${typeConfig?.color || 'bg-gray-600'} px-2 py-1 flex items-center justify-between`}>
+        <div className="flex items-center gap-1">
+          <TypeIcon className="w-3 h-3" />
+          <span className="font-semibold text-xs">{typeConfig?.label}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="font-bold">#{String(orderNumber).padStart(3, '0')}</span>
+        <div className="flex items-center gap-1">
+          <span className="font-bold text-xs">#{String(orderNumber).padStart(3, '0')}</span>
           {order.payment_method === 'en_ligne' ? (
-            <Badge className="bg-green-700 text-white text-xs px-2 py-0.5 font-bold">PAYÉE</Badge>
+            <Badge className="bg-green-700 text-white text-[10px] px-1 py-0 h-4">PAYÉE</Badge>
           ) : (
-            <Badge className="bg-red-700 text-white text-xs px-2 py-0.5 font-bold">
+            <Badge className="bg-red-700 text-white text-[10px] px-1 py-0 h-4">
               {order.payment_method === 'cb' ? 'CB' : 'ESP'}
             </Badge>
           )}
         </div>
       </div>
 
-      <div className="p-2 space-y-1.5">
-        {/* Customer + Order entry time - smaller text */}
+      <div className="p-1.5 space-y-1">
+        {/* Customer + time */}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-white/60 truncate flex-1">{order.customer_name}</span>
-          <span className="text-xs text-white/50">reçu {orderTime}</span>
+          <span className="text-xs text-white/60 truncate flex-1">{order.customer_name}</span>
+          <span className="text-[10px] text-white/40">reçu {orderTime}</span>
         </div>
 
-        {/* Address for delivery */}
+        {/* Address */}
         {order.order_type === 'livraison' && order.customer_address && (
-          <div className="flex items-start gap-1 text-amber-300 text-xs bg-amber-500/10 rounded px-2 py-1">
-            <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
-            <span className="line-clamp-2">{order.customer_address}</span>
+          <div className="flex items-start gap-1 text-amber-300 text-[10px] bg-amber-500/10 rounded px-1 py-0.5">
+            <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+            <span className="line-clamp-1">{order.customer_address}</span>
           </div>
         )}
 
-        {/* Items - BIGGER and BOLD */}
-        <div className="bg-black/30 rounded p-2 space-y-1 max-h-24 overflow-y-auto">
-          {items.slice(0, 4).map((item: any, idx: number) => {
-            const customization = item.customization;
-            const customParts: string[] = [];
-            if (customization?.size) customParts.push(customization.size.toUpperCase());
-            if (customization?.meats?.length) customParts.push(customization.meats.join(', '));
-            if (customization?.sauces?.length) customParts.push(customization.sauces.join(', '));
-            if (customization?.garnitures?.length) customParts.push(customization.garnitures.join(', '));
-            if (customization?.supplements?.length) customParts.push(customization.supplements.join(', '));
-            
-            return (
-              <div key={idx} className="text-white">
-                <div className="font-bold text-sm">
-                  {item.quantity}x {item.item?.name || item.name || 'Produit'}
-                </div>
-                {customParts.length > 0 && (
-                  <div className="text-xs text-white/60 pl-2">└ {customParts.join(' • ')}</div>
-                )}
+        {/* Items - Compact */}
+        <div className="bg-black/30 rounded p-1 space-y-0.5 max-h-16 overflow-y-auto">
+          {items.slice(0, 3).map((item: any, idx: number) => (
+            <div key={idx} className="text-white">
+              <div className="font-bold text-xs truncate">
+                {item.quantity}x {item.item?.name || item.name || 'Produit'}
               </div>
-            );
-          })}
-          {items.length > 4 && (
-            <div className="text-xs text-purple-300 font-semibold">+{items.length - 4} autres</div>
+            </div>
+          ))}
+          {items.length > 3 && (
+            <div className="text-[10px] text-purple-300">+{items.length - 3}</div>
           )}
         </div>
 
-        {/* Status indicator + button */}
-        <div className="flex items-center gap-2 pt-1">
-          <Badge className={`${config.color} text-xs`}>{config.label}</Badge>
+        {/* Status + button */}
+        <div className="flex items-center gap-1">
+          <Badge className={`${config.color} text-[10px] h-4`}>{config.label}</Badge>
           {order.status === 'pending' && (
             <Button 
               size="sm" 
-              className="flex-1 bg-blue-500 hover:bg-blue-600 text-xs py-1 h-auto gap-1"
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-[10px] py-0.5 h-5 gap-0.5"
               onClick={() => onStatusUpdate(order.id, 'preparing')}
             >
-              <ChefHat className="w-3 h-3" /> Préparer
+              <ChefHat className="w-2.5 h-2.5" /> Préparer
             </Button>
           )}
           {order.status === 'preparing' && (
             <Button 
               size="sm" 
-              className="flex-1 bg-green-500 hover:bg-green-600 text-xs py-1 h-auto gap-1"
+              className="flex-1 bg-green-500 hover:bg-green-600 text-[10px] py-0.5 h-5 gap-0.5"
               onClick={() => onStatusUpdate(order.id, 'ready')}
             >
-              <Package className="w-3 h-3" /> Prêt
+              <Package className="w-2.5 h-2.5" /> Prêt
             </Button>
           )}
           {order.status === 'ready' && (
             <Button 
               size="sm" 
-              className="flex-1 bg-gray-600 hover:bg-gray-700 text-xs py-1 h-auto gap-1"
+              className="flex-1 bg-gray-600 hover:bg-gray-700 text-[10px] py-0.5 h-5 gap-0.5"
               onClick={() => onStatusUpdate(order.id, 'completed')}
             >
-              <CheckCircle className="w-3 h-3" /> Terminé
+              <CheckCircle className="w-2.5 h-2.5" /> OK
             </Button>
           )}
         </div>
