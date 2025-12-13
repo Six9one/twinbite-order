@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useOrder } from '@/context/OrderContext';
 import { PizzaCustomization, TacosCustomization, SouffletCustomization, MakloubCustomization } from '@/types/order';
 import { meatOptions, sauceOptions, garnitureOptions, souffletGarnitureOptions, makloubGarnitureOptions, pizzaPrices, cheeseSupplementOptions } from '@/data/menu';
@@ -6,7 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Minus, Trash2, ShoppingBag, CalendarClock } from 'lucide-react';
+import { format, addMonths, isSunday } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface NewCartProps {
   isOpen: boolean;
@@ -15,7 +21,10 @@ interface NewCartProps {
 }
 
 export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
-  const { cart, orderType, updateQuantity, removeFromCart, getTotal } = useOrder();
+  const { cart, orderType, scheduledInfo, setScheduledInfo, updateQuantity, removeFromCart, getTotal } = useOrder();
+  const [showSchedulePicker, setShowSchedulePicker] = useState(false);
+  const [tempDate, setTempDate] = useState<Date | undefined>(undefined);
+  const [tempTime, setTempTime] = useState<string>('12:00');
 
   // Calculate with promotions
   const pizzaItems = cart.filter(item => item.item.category === 'pizzas');
@@ -26,6 +35,27 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
     sum + (item.calculatedPrice || item.item.price) * item.quantity, 0);
   
   const total = pizzaPromo.discountedTotal + otherTotal;
+
+  // Time slots for scheduling
+  const timeSlots = [
+    '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+    '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30'
+  ];
+
+  const handleConfirmSchedule = () => {
+    if (tempDate && tempTime) {
+      const [hours, minutes] = tempTime.split(':').map(Number);
+      const scheduledDate = new Date(tempDate);
+      scheduledDate.setHours(hours, minutes, 0, 0);
+      setScheduledInfo({ isScheduled: true, scheduledFor: scheduledDate });
+      setShowSchedulePicker(false);
+    }
+  };
+
+  const handleCancelSchedule = () => {
+    setScheduledInfo({ isScheduled: false, scheduledFor: null });
+    setShowSchedulePicker(false);
+  };
 
   const getCustomizationText = (item: typeof cart[0]) => {
     if (!item.customization) return null;
@@ -208,6 +238,86 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
             </div>
 
             <div className="border-t pt-4 space-y-3">
+              {/* Scheduled order indicator or button */}
+              {scheduledInfo.isScheduled && scheduledInfo.scheduledFor ? (
+                <Card className="p-3 bg-purple-50 border-purple-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-purple-700">
+                      <CalendarClock className="w-4 h-4" />
+                      <span className="text-sm font-medium">
+                        {format(scheduledInfo.scheduledFor, "EEE d MMM 'à' HH:mm", { locale: fr })}
+                      </span>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-purple-600 h-7 px-2"
+                      onClick={handleCancelSchedule}
+                    >
+                      Annuler
+                    </Button>
+                  </div>
+                </Card>
+              ) : (
+                <Popover open={showSchedulePicker} onOpenChange={setShowSchedulePicker}>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full gap-2 text-purple-600 border-purple-200 hover:bg-purple-50"
+                    >
+                      <CalendarClock className="w-4 h-4" />
+                      Commander pour plus tard
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="center">
+                    <div className="p-4 space-y-4">
+                      <h4 className="font-semibold text-center">Choisir date et heure</h4>
+                      <Calendar
+                        mode="single"
+                        selected={tempDate}
+                        onSelect={setTempDate}
+                        locale={fr}
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const maxDate = addMonths(today, 1);
+                          return date < today || date > maxDate || isSunday(date);
+                        }}
+                        modifiers={{ sunday: (date) => isSunday(date) }}
+                        modifiersClassNames={{ sunday: 'text-red-500 line-through' }}
+                        className="rounded-md border"
+                      />
+                      <Select value={tempTime} onValueChange={setTempTime}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Heure" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeSlots.map(slot => (
+                            <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={() => setShowSchedulePicker(false)}
+                        >
+                          Annuler
+                        </Button>
+                        <Button 
+                          className="flex-1"
+                          onClick={handleConfirmSchedule}
+                          disabled={!tempDate}
+                        >
+                          Confirmer
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+
               {pizzaPromo.supplementsTotal > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Suppléments pizza</span>
