@@ -10,7 +10,6 @@ import { Footer } from '@/components/Footer';
 import { DeliveryMapSection } from '@/components/DeliveryMapSection';
 import { PromoBanner } from '@/components/PromoBanner';
 import { Header } from '@/components/Header';
-import { FloatingCartButton } from '@/components/FloatingCartButton';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ShoppingBag, Phone } from 'lucide-react';
@@ -52,7 +51,6 @@ function MainApp() {
     return <>
         <CategoryMenu onBack={handleBackToHome} onOpenCart={() => setIsCartOpen(true)} />
         <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
-        <FloatingCartButton onClick={() => setIsCartOpen(true)} />
       </>;
   }
 
