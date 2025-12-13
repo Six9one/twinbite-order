@@ -8,12 +8,15 @@ import {
   Clock, CheckCircle, XCircle, ChefHat, Package,
   MapPin, Truck, Store, Utensils,
   Volume2, VolumeX, RefreshCw, History, Home,
-  CreditCard, Banknote, Play, ArrowRight, Printer
+  CreditCard, Banknote, Play, ArrowRight, Printer,
+  CalendarClock
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import logoImage from '@/assets/logo.png';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 // Admin authentication check hook
 const useAdminAuth = () => {
@@ -563,15 +566,29 @@ function ActiveOrderCard({
   const displayItems = items.slice(0, 6);
   const moreCount = items.length - 6;
 
+  // Check if order is scheduled
+  const isScheduled = order.is_scheduled === true;
+  const scheduledTime = order.scheduled_for ? new Date(order.scheduled_for) : null;
+
   return (
-    <div className={`rounded-xl overflow-hidden flex flex-col bg-white/5 ${
-      isNew ? 'ring-4 ring-yellow-400 animate-pulse' : 
-      isReady ? 'ring-4 ring-green-400' : ''
+    <div className={`rounded-xl overflow-hidden flex flex-col ${
+      isScheduled ? 'bg-purple-900/30 ring-4 ring-purple-500' :
+      isNew ? 'ring-4 ring-yellow-400 animate-pulse bg-white/5' : 
+      isReady ? 'ring-4 ring-green-400 bg-white/5' : 'bg-white/5'
     }`}>
+      {/* Scheduled Banner */}
+      {isScheduled && scheduledTime && (
+        <div className="bg-purple-600 text-white px-4 py-2 flex items-center justify-center gap-2">
+          <CalendarClock className="w-5 h-5" />
+          <span className="font-bold">POUR PLUS TARD:</span>
+          <span>{format(scheduledTime, "EEEE d MMM 'à' HH:mm", { locale: fr })}</span>
+        </div>
+      )}
+
       {/* Header */}
-      <div className={`${config.color} text-white px-4 py-3 flex items-center justify-between`}>
+      <div className={`${isScheduled ? 'bg-purple-700' : config.color} text-white px-4 py-3 flex items-center justify-between`}>
         <div className="flex items-center gap-3">
-          <Icon className="w-8 h-8" />
+          {isScheduled ? <CalendarClock className="w-8 h-8" /> : <Icon className="w-8 h-8" />}
           <span className="text-4xl font-black">#{orderNumber}</span>
         </div>
         <div className="flex items-center gap-2">

@@ -10,9 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe, Loader2, CalendarClock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 // Customer info validation schema
 const customerInfoSchema = z.object({
@@ -43,7 +45,7 @@ interface NewCheckoutProps {
 }
 
 export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
-  const { cart, orderType, clearCart } = useOrder();
+  const { cart, orderType, clearCart, scheduledInfo } = useOrder();
   const createOrder = useCreateOrder();
   const [step, setStep] = useState<'info' | 'payment' | 'confirm' | 'success'>('info');
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
@@ -267,6 +269,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         total: finalTtc,
         delivery_fee: 0,
         status: 'pending',
+        is_scheduled: scheduledInfo.isScheduled,
+        scheduled_for: scheduledInfo.scheduledFor?.toISOString() || null,
       });
 
       console.log('[CHECKOUT] Order created successfully:', result);
@@ -288,6 +292,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               quantity: item.quantity,
               price: item.calculatedPrice || item.item.price,
             })),
+            isScheduled: scheduledInfo.isScheduled,
+            scheduledFor: scheduledInfo.scheduledFor?.toISOString() || null,
           },
         });
         console.log('[CHECKOUT] Telegram notification sent');
@@ -329,11 +335,22 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         <Card className="max-w-md w-full p-8 text-center animate-scale-in">
           <PartyPopper className="w-16 h-16 mx-auto text-primary mb-4" />
           <h1 className="text-2xl font-display font-bold mb-2">Commande Confirmée!</h1>
-          <p className="text-muted-foreground mb-6">
+          <p className="text-muted-foreground mb-4">
             Merci {customerInfo.name}! Votre commande a été envoyée.
             {paymentMethod === 'especes' && ' Paiement à la réception.'}
             {paymentMethod === 'cb' && ' Paiement par carte à la réception.'}
           </p>
+          {scheduledInfo.isScheduled && scheduledInfo.scheduledFor && (
+            <Card className="p-4 bg-purple-50 border-purple-200 mb-4">
+              <div className="flex items-center justify-center gap-2 text-purple-700">
+                <CalendarClock className="w-5 h-5" />
+                <span className="font-semibold">Commande programmée</span>
+              </div>
+              <p className="text-sm text-purple-600 mt-1">
+                {format(new Date(scheduledInfo.scheduledFor), "EEEE d MMMM 'à' HH:mm", { locale: fr })}
+              </p>
+            </Card>
+          )}
           <Button onClick={onComplete} className="w-full">
             Retour à l'accueil
           </Button>
@@ -489,6 +506,21 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
         {step === 'confirm' && (
           <div className="space-y-4">
+            {/* Scheduled Order Banner */}
+            {scheduledInfo.isScheduled && scheduledInfo.scheduledFor && (
+              <Card className="p-4 bg-purple-50 border-purple-300 border-2">
+                <div className="flex items-center gap-3">
+                  <CalendarClock className="w-8 h-8 text-purple-600" />
+                  <div>
+                    <p className="font-bold text-purple-700">Commande programmée</p>
+                    <p className="text-sm text-purple-600">
+                      📅 {format(new Date(scheduledInfo.scheduledFor), "EEEE d MMMM 'à' HH:mm", { locale: fr })}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             <Card className="p-4">
               <h3 className="font-semibold mb-3">Récapitulatif</h3>
               <div className="space-y-2 text-sm">

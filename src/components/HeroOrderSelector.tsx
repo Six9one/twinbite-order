@@ -1,10 +1,20 @@
+import { useState } from 'react';
 import { useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
 import { Card } from '@/components/ui/card';
-import { ShoppingBag, Truck, UtensilsCrossed } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ShoppingBag, Truck, UtensilsCrossed, CalendarClock } from 'lucide-react';
+import { format, addDays, setHours, setMinutes } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+
 interface HeroOrderSelectorProps {
   onSelect: () => void;
 }
+
 const orderOptions = [{
   type: 'emporter' as OrderType,
   label: 'À Emporter',
@@ -24,25 +34,80 @@ const orderOptions = [{
   icon: UtensilsCrossed,
   promo: '1 achetée = 1 offerte'
 }];
+
+// Generate time slots for ordering
+const generateTimeSlots = () => {
+  const slots: string[] = [];
+  // Midi: 11:30 - 14:30
+  for (let h = 11; h <= 14; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      if (h === 11 && m < 30) continue;
+      if (h === 14 && m > 30) continue;
+      slots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+    }
+  }
+  // Soir: 18:00 - 22:30
+  for (let h = 18; h <= 22; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      if (h === 22 && m > 30) continue;
+      slots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+    }
+  }
+  return slots;
+};
+
+const timeSlots = generateTimeSlots();
+
 export function HeroOrderSelector({
   onSelect
 }: HeroOrderSelectorProps) {
   const {
-    setOrderType
+    setOrderType,
+    setScheduledInfo
   } = useOrder();
+  
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [selectedOrderType, setSelectedOrderType] = useState<OrderType>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedTime, setSelectedTime] = useState<string>('');
+
   const handleSelect = (type: OrderType) => {
     setOrderType(type);
+    setScheduledInfo({ isScheduled: false, scheduledFor: null });
     onSelect();
   };
-  return <div className="max-w-4xl mx-auto">
+
+  const handleScheduleClick = () => {
+    setShowScheduleDialog(true);
+  };
+
+  const handleConfirmSchedule = () => {
+    if (!selectedOrderType || !selectedDate || !selectedTime) return;
+    
+    const [hours, minutes] = selectedTime.split(':').map(Number);
+    const scheduledDateTime = setMinutes(setHours(selectedDate, hours), minutes);
+    
+    setOrderType(selectedOrderType);
+    setScheduledInfo({ isScheduled: true, scheduledFor: scheduledDateTime });
+    setShowScheduleDialog(false);
+    onSelect();
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
       <p className="text-center text-white/80 mb-6 text-lg">
         Comment souhaitez-vous commander ?
       </p>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {orderOptions.map(option => {
-        const Icon = option.icon;
-        return <Card key={option.type} className="p-6 cursor-pointer transition-all duration-300 bg-background/90 hover:bg-primary/10 hover:scale-105 hover:ring-2 hover:ring-primary active:scale-100" onClick={() => handleSelect(option.type)}>
+          const Icon = option.icon;
+          return (
+            <Card 
+              key={option.type} 
+              className="p-6 cursor-pointer transition-all duration-300 bg-background/90 hover:bg-primary/10 hover:scale-105 hover:ring-2 hover:ring-primary active:scale-100" 
+              onClick={() => handleSelect(option.type)}
+            >
               <div className="text-center">
                 <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 transition-colors bg-primary">
                   <Icon className="w-8 h-8" />
@@ -53,8 +118,125 @@ export function HeroOrderSelector({
                   🍕 {option.promo}
                 </span>
               </div>
-            </Card>;
-      })}
+            </Card>
+          );
+        })}
       </div>
-    </div>;
+
+      {/* Schedule Order Button - Different Style */}
+      <div className="flex justify-center mt-8">
+        <Button
+          onClick={handleScheduleClick}
+          variant="outline"
+          size="lg"
+          className="gap-3 px-8 py-6 text-lg rounded-full border-2 border-purple-500 text-purple-600 bg-purple-50 hover:bg-purple-100 hover:text-purple-700 hover:border-purple-600 shadow-lg hover:scale-105 transition-all duration-300"
+        >
+          <CalendarClock className="w-6 h-6" />
+          Commander pour plus tard
+        </Button>
+      </div>
+
+      {/* Schedule Dialog */}
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <CalendarClock className="w-6 h-6 text-purple-500" />
+              Programmer votre commande
+            </DialogTitle>
+            <DialogDescription>
+              Choisissez la date, l'heure et le type de commande
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Order Type Selection */}
+            <div>
+              <label className="block text-sm font-medium mb-3">Type de commande</label>
+              <div className="grid grid-cols-3 gap-2">
+                {orderOptions.map(option => {
+                  const Icon = option.icon;
+                  return (
+                    <Card
+                      key={option.type}
+                      className={cn(
+                        "p-3 cursor-pointer transition-all text-center",
+                        selectedOrderType === option.type 
+                          ? "ring-2 ring-purple-500 bg-purple-50" 
+                          : "hover:bg-muted"
+                      )}
+                      onClick={() => setSelectedOrderType(option.type)}
+                    >
+                      <Icon className="w-6 h-6 mx-auto mb-1 text-purple-600" />
+                      <p className="text-xs font-medium">{option.label}</p>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Date Selection */}
+            <div>
+              <label className="block text-sm font-medium mb-3">Date</label>
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                disabled={(date) => date < new Date() || date > addDays(new Date(), 7)}
+                locale={fr}
+                className={cn("rounded-md border mx-auto pointer-events-auto")}
+              />
+            </div>
+
+            {/* Time Selection */}
+            <div>
+              <label className="block text-sm font-medium mb-3">Heure</label>
+              <Select value={selectedTime} onValueChange={setSelectedTime}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choisir une heure" />
+                </SelectTrigger>
+                <SelectContent>
+                  <div className="text-xs text-muted-foreground px-2 py-1 font-medium">Midi (11h30 - 14h30)</div>
+                  {timeSlots.filter(t => {
+                    const h = parseInt(t.split(':')[0]);
+                    return h < 15;
+                  }).map(slot => (
+                    <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                  ))}
+                  <div className="text-xs text-muted-foreground px-2 py-1 font-medium border-t mt-1">Soir (18h00 - 22h30)</div>
+                  {timeSlots.filter(t => {
+                    const h = parseInt(t.split(':')[0]);
+                    return h >= 18;
+                  }).map(slot => (
+                    <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Summary */}
+            {selectedDate && selectedTime && selectedOrderType && (
+              <Card className="p-4 bg-purple-50 border-purple-200">
+                <p className="text-sm text-purple-700">
+                  <span className="font-semibold">📅 Récapitulatif:</span><br />
+                  {orderOptions.find(o => o.type === selectedOrderType)?.label} le{' '}
+                  <span className="font-semibold">{format(selectedDate, 'EEEE d MMMM', { locale: fr })}</span> à{' '}
+                  <span className="font-semibold">{selectedTime}</span>
+                </p>
+              </Card>
+            )}
+
+            <Button
+              onClick={handleConfirmSchedule}
+              disabled={!selectedOrderType || !selectedDate || !selectedTime}
+              className="w-full bg-purple-600 hover:bg-purple-700 gap-2"
+            >
+              <CalendarClock className="w-5 h-5" />
+              Confirmer et commander
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }

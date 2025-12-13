@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { OrderType, CartItem, MenuItem, ProductCustomization, SouffletOrder, PizzaCustomization, TacosCustomization, SouffletCustomization, MakloubCustomization } from '@/types/order';
+import { OrderType, CartItem, MenuItem, ProductCustomization, SouffletOrder, PizzaCustomization, TacosCustomization, SouffletCustomization, MakloubCustomization, ScheduledOrderInfo } from '@/types/order';
 import { pizzaPrices, menuOptionPrices, supplementOptions, cheeseSupplementOptions } from '@/data/menu';
 
 interface OrderContextType {
   orderType: OrderType;
   setOrderType: (type: OrderType) => void;
+  scheduledInfo: ScheduledOrderInfo;
+  setScheduledInfo: (info: ScheduledOrderInfo) => void;
   cart: CartItem[];
   addToCart: (item: MenuItem, quantity?: number, customization?: ProductCustomization | SouffletOrder, calculatedPrice?: number) => void;
   removeFromCart: (itemId: string) => void;
@@ -113,6 +115,7 @@ const calculateItemPrice = (item: MenuItem, customization?: ProductCustomization
 
 export function OrderProvider({ children }: { children: ReactNode }) {
   const [orderType, setOrderType] = useState<OrderType>(null);
+  const [scheduledInfo, setScheduledInfo] = useState<ScheduledOrderInfo>({ isScheduled: false, scheduledFor: null });
   const [cart, setCart] = useState<CartItem[]>([]);
 
   const addToCart = (item: MenuItem, quantity = 1, customization?: ProductCustomization | SouffletOrder, calculatedPrice?: number) => {
@@ -173,6 +176,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     <OrderContext.Provider value={{
       orderType,
       setOrderType,
+      scheduledInfo,
+      setScheduledInfo,
       cart,
       addToCart,
       removeFromCart,

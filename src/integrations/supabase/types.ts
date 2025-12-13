@@ -219,10 +219,12 @@ export type Database = {
           delivery_fee: number | null
           delivery_zone_id: string | null
           id: string
+          is_scheduled: boolean
           items: Json
           order_number: string
           order_type: Database["public"]["Enums"]["order_type"]
           payment_method: Database["public"]["Enums"]["payment_method"]
+          scheduled_for: string | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
           total: number
@@ -238,10 +240,12 @@ export type Database = {
           delivery_fee?: number | null
           delivery_zone_id?: string | null
           id?: string
+          is_scheduled?: boolean
           items: Json
           order_number: string
           order_type: Database["public"]["Enums"]["order_type"]
           payment_method: Database["public"]["Enums"]["payment_method"]
+          scheduled_for?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal: number
           total: number
@@ -257,10 +261,12 @@ export type Database = {
           delivery_fee?: number | null
           delivery_zone_id?: string | null
           id?: string
+          is_scheduled?: boolean
           items?: Json
           order_number?: string
           order_type?: Database["public"]["Enums"]["order_type"]
           payment_method?: Database["public"]["Enums"]["payment_method"]
+          scheduled_for?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
           total?: number

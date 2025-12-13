@@ -73,6 +73,8 @@ export interface Order {
   delivery_fee: number;
   total: number;
   payment_method: 'cb' | 'especes' | 'en_ligne';
+  is_scheduled: boolean;
+  scheduled_for?: string | null;
   created_at: string;
   updated_at: string;
 }
