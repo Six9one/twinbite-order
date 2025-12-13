@@ -270,6 +270,31 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       });
 
       console.log('[CHECKOUT] Order created successfully:', result);
+
+      // Send Telegram notification for non-Stripe orders
+      try {
+        await supabase.functions.invoke('send-telegram-notification', {
+          body: {
+            orderNumber: orderNumberRef.current,
+            customerName: customerInfo.name.trim(),
+            customerPhone: customerInfo.phone.trim(),
+            customerAddress: customerInfo.address?.trim() || null,
+            customerNotes: customerInfo.notes?.trim() || null,
+            orderType,
+            paymentMethod,
+            total: finalTtc,
+            items: cart.map(item => ({
+              name: item.item.name,
+              quantity: item.quantity,
+              price: item.calculatedPrice || item.item.price,
+            })),
+          },
+        });
+        console.log('[CHECKOUT] Telegram notification sent');
+      } catch (telegramError) {
+        console.error('[CHECKOUT] Telegram notification failed:', telegramError);
+        // Don't fail the order if Telegram fails
+      }
       
       clearCart();
       setStep('success');
