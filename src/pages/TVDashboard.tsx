@@ -224,9 +224,12 @@ export default function TVDashboard() {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [flashEffect, setFlashEffect] = useState(false);
+  const [showNewOrderOverlay, setShowNewOrderOverlay] = useState(false);
+  const [newOrderInfo, setNewOrderInfo] = useState<{ orderNumber: string; orderType: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'live' | 'history'>('live');
   const previousOrdersCount = useRef(0);
   const printedOrders = useRef<Set<string>>(new Set());
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const { data: orders, isLoading, refetch } = useOrders(dateFilter);
   const updateStatus = useUpdateOrderStatus();
@@ -236,7 +239,7 @@ export default function TVDashboard() {
     localStorage.setItem('autoPrintEnabled', autoPrintEnabled.toString());
   }, [autoPrintEnabled]);
 
-  // Auto-refresh every 8 seconds
+  // Auto-refresh every 10 seconds (fallback)
   useEffect(() => {
     const interval = setInterval(() => {
       setIsRefreshing(true);
@@ -244,38 +247,82 @@ export default function TVDashboard() {
         setLastRefresh(new Date());
         setTimeout(() => setIsRefreshing(false), 500);
       });
-    }, 8000);
+    }, 10000);
     return () => clearInterval(interval);
   }, [refetch]);
 
-  // Real-time subscription with auto-print
+  // Real-time subscription with auto-print and auto-reconnect
   useEffect(() => {
-    const channel = supabase
-      .channel('tv-orders-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
-        refetch();
-        setLastRefresh(new Date());
-        if (soundEnabled) {
-          playOrderSound();
+    const setupChannel = () => {
+      // Clean up existing channel
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+
+      const channel = supabase
+        .channel('tv-orders-changes-' + Date.now())
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+          refetch();
+          setLastRefresh(new Date());
+          
+          const newOrder = payload.new as Order;
+          const orderTypeLabels: Record<string, string> = {
+            livraison: 'LIVRAISON',
+            emporter: 'À EMPORTER',
+            surplace: 'SUR PLACE'
+          };
+          
+          if (soundEnabled) {
+            // Play loud alarm
+            playOrderSound();
+            
+            // Show full-screen white overlay
+            setNewOrderInfo({
+              orderNumber: newOrder.order_number,
+              orderType: orderTypeLabels[newOrder.order_type] || newOrder.order_type
+            });
+            setShowNewOrderOverlay(true);
+            
+            // Hide overlay after 3 seconds
+            setTimeout(() => {
+              setShowNewOrderOverlay(false);
+              setNewOrderInfo(null);
+            }, 3000);
+          }
+          
           setFlashEffect(true);
           setTimeout(() => setFlashEffect(false), 1000);
-        }
-        // Auto-print new order
-        if (autoPrintEnabled && payload.new) {
-          const newOrder = payload.new as Order;
-          if (!printedOrders.current.has(newOrder.id)) {
-            printedOrders.current.add(newOrder.id);
-            setTimeout(() => printOrderTicket(newOrder), 500);
+          
+          // Auto-print new order
+          if (autoPrintEnabled && payload.new) {
+            if (!printedOrders.current.has(newOrder.id)) {
+              printedOrders.current.add(newOrder.id);
+              setTimeout(() => printOrderTicket(newOrder), 500);
+            }
           }
-        }
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
-        refetch();
-        setLastRefresh(new Date());
-      })
-      .subscribe();
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
+          refetch();
+          setLastRefresh(new Date());
+        })
+        .subscribe((status) => {
+          console.log('Realtime subscription status:', status);
+          if (status === 'CHANNEL_ERROR') {
+            // Auto-reconnect after 5 seconds
+            setTimeout(setupChannel, 5000);
+          }
+        });
 
-    return () => { supabase.removeChannel(channel); };
+      channelRef.current = channel;
+    };
+
+    setupChannel();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
   }, [refetch, soundEnabled, autoPrintEnabled]);
 
   // Check for new orders (fallback)
@@ -325,6 +372,25 @@ export default function TVDashboard() {
 
   return (
     <div className={`min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white flex flex-col ${flashEffect ? 'animate-pulse bg-amber-500/20' : ''}`}>
+      {/* Full-screen NEW ORDER overlay */}
+      {showNewOrderOverlay && newOrderInfo && (
+        <div className="fixed inset-0 z-[99999] bg-white flex flex-col items-center justify-center animate-pulse">
+          <div className="text-center">
+            <div className="text-8xl mb-8">🍕</div>
+            <h1 className="text-6xl md:text-8xl font-bold text-amber-500 mb-4">
+              NOUVELLE COMMANDE
+            </h1>
+            <h2 className="text-4xl md:text-6xl font-bold text-black mb-8">
+              REÇUE !
+            </h2>
+            <div className="bg-black text-white px-12 py-6 rounded-2xl inline-block">
+              <p className="text-3xl font-bold">{newOrderInfo.orderType}</p>
+              <p className="text-5xl font-mono font-bold mt-2">N° {newOrderInfo.orderNumber}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Compact Header */}
       <header className="flex items-center justify-between px-4 py-2 bg-black/60 border-b border-white/10">
         <div className="flex items-center gap-4">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useOrder } from '@/context/OrderContext';
 import { CustomerInfo, PaymentMethod, PizzaCustomization } from '@/types/order';
 import { applyPizzaPromotions, calculateTVA } from '@/utils/promotions';
@@ -54,8 +54,18 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('en_ligne');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [orderSubmitted, setOrderSubmitted] = useState(false);
+  const orderNumberRef = useRef<string | null>(null);
 
-  // Calculate totals with promotions
+  // Prevent duplicate submissions
+  useEffect(() => {
+    return () => {
+      // Cleanup on unmount
+      orderNumberRef.current = null;
+    };
+  }, []);
+
+  // Calculate totals with promotions - recalculate on every render to ensure accuracy
   const pizzaItems = cart.filter(item => item.item.category === 'pizzas');
   const otherItems = cart.filter(item => item.item.category !== 'pizzas');
   
@@ -65,6 +75,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   
   const subtotal = pizzaPromo.discountedTotal + otherTotal;
   const { ht, tva, ttc } = calculateTVA(subtotal);
+
+  // Validate cart has items and total is valid
+  const isCartValid = cart.length > 0 && ttc > 0;
 
   const orderTypeLabels = {
     emporter: 'À emporter',
@@ -98,22 +111,46 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   };
 
   const handleStripePayment = async () => {
+    // Validate cart before proceeding
+    if (!isCartValid) {
+      toast({ 
+        title: 'Erreur', 
+        description: 'Votre panier est vide ou invalide. Veuillez ajouter des articles.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     if (!orderType) {
       toast({ title: 'Erreur', description: 'Type de commande non sélectionné', variant: 'destructive' });
       return;
     }
     
+    // Prevent duplicate submissions
+    if (orderSubmitted) {
+      toast({ title: 'Commande en cours', description: 'Veuillez patienter...', variant: 'default' });
+      return;
+    }
+
     setIsProcessing(true);
-    const orderNumber = generateOrderNumber();
+    setOrderSubmitted(true);
+    
+    // Generate order number only once
+    if (!orderNumberRef.current) {
+      orderNumberRef.current = generateOrderNumber();
+    }
+    const orderNumber = orderNumberRef.current;
     
     try {
+      // Recalculate totals server-side friendly format
+      const finalTotal = Math.max(ttc, 0.01); // Ensure minimum price for Stripe
+      
       // Create Stripe checkout session with ALL order data
-      // Order will be created in database ONLY after payment succeeds (via webhook)
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
-          amount: ttc,
-          customerName: customerInfo.name,
-          customerPhone: customerInfo.phone,
+          amount: finalTotal,
+          customerName: customerInfo.name.trim(),
+          customerPhone: customerInfo.phone.trim(),
           customerEmail: null,
           orderNumber,
           items: cart.map(item => ({
@@ -123,8 +160,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             customization: item.customization,
           })),
           orderType,
-          customerAddress: customerInfo.address,
-          customerNotes: customerInfo.notes,
+          customerAddress: customerInfo.address?.trim() || null,
+          customerNotes: customerInfo.notes?.trim() || null,
           subtotal: ht,
           tva,
         },
@@ -138,6 +175,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       window.location.href = data.url;
     } catch (error) {
       console.error('Stripe checkout error:', error);
+      setOrderSubmitted(false);
+      orderNumberRef.current = null;
       toast({ 
         title: 'Erreur de paiement', 
         description: 'Impossible de créer la session de paiement. Veuillez réessayer.', 
@@ -149,8 +188,24 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   };
 
   const handleConfirmOrder = async () => {
+    // Validate cart before proceeding
+    if (!isCartValid) {
+      toast({ 
+        title: 'Erreur', 
+        description: 'Votre panier est vide ou invalide. Veuillez ajouter des articles.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     if (!orderType) {
       toast({ title: 'Erreur', description: 'Type de commande non sélectionné', variant: 'destructive' });
+      return;
+    }
+
+    // Prevent duplicate submissions
+    if (orderSubmitted) {
+      toast({ title: 'Commande en cours', description: 'Veuillez patienter...', variant: 'default' });
       return;
     }
 
@@ -161,17 +216,23 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     }
     
     setIsProcessing(true);
+    setOrderSubmitted(true);
+    
+    // Generate order number only once
+    if (!orderNumberRef.current) {
+      orderNumberRef.current = generateOrderNumber();
+    }
     
     try {
       // Create order in database
       await createOrder.mutateAsync({
-        order_number: generateOrderNumber(),
+        order_number: orderNumberRef.current,
         order_type: orderType,
         items: cart as unknown as import('@/integrations/supabase/types').Json,
-        customer_name: customerInfo.name,
-        customer_phone: customerInfo.phone,
-        customer_address: customerInfo.address || null,
-        customer_notes: customerInfo.notes || null,
+        customer_name: customerInfo.name.trim(),
+        customer_phone: customerInfo.phone.trim(),
+        customer_address: customerInfo.address?.trim() || null,
+        customer_notes: customerInfo.notes?.trim() || null,
         payment_method: paymentMethod,
         subtotal: ht,
         tva,
@@ -184,6 +245,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       setStep('success');
     } catch (error) {
       console.error('Failed to create order:', error);
+      setOrderSubmitted(false);
+      orderNumberRef.current = null;
       toast({ 
         title: 'Erreur', 
         description: 'Impossible de créer la commande. Veuillez réessayer.', 
@@ -223,6 +286,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               variant="ghost" 
               size="icon" 
               onClick={() => step === 'info' ? onBack() : setStep(step === 'confirm' ? 'payment' : 'info')}
+              disabled={isProcessing}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -249,6 +313,15 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       </div>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
+        {/* Cart validation warning */}
+        {!isCartValid && (
+          <Card className="p-4 bg-destructive/10 border-destructive">
+            <p className="text-destructive font-medium">
+              ⚠️ Votre panier est vide ou le total est invalide. Veuillez ajouter des articles.
+            </p>
+          </Card>
+        )}
+
         {step === 'info' && (
           <div className="space-y-4">
             <div>
@@ -431,6 +504,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             <Button 
               className="w-full h-14 text-lg" 
               onClick={() => validateInfo() && setStep('payment')}
+              disabled={!isCartValid}
             >
               Continuer
             </Button>
@@ -439,6 +513,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             <Button 
               className="w-full h-14 text-lg" 
               onClick={() => setStep('confirm')}
+              disabled={!isCartValid}
             >
               Continuer - {ttc.toFixed(2)}€
             </Button>
@@ -447,7 +522,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             <Button 
               className="w-full h-14 text-lg" 
               onClick={handleConfirmOrder}
-              disabled={isProcessing}
+              disabled={isProcessing || orderSubmitted || !isCartValid}
             >
               {isProcessing ? (
                 <>
@@ -457,7 +532,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               ) : (
                 paymentMethod === 'en_ligne' 
                   ? `Payer maintenant - ${ttc.toFixed(2)}€`
-                  : `Confirmer la commande - ${ttc.toFixed(2)}€`
+                  : `Confirmer - ${ttc.toFixed(2)}€`
               )}
             </Button>
           )}
