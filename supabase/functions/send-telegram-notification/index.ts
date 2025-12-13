@@ -77,7 +77,8 @@ serve(async (req) => {
     message += `• Tél: ${order.customerPhone}\n`;
     
     if (order.customerAddress) {
-      message += `• Adresse: ${order.customerAddress}\n`;
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.customerAddress)}`;
+      message += `• Adresse: [${order.customerAddress}](${mapsUrl})\n`;
     }
     
     message += `\n🛒 *ARTICLES:*\n${itemsList}\n`;
