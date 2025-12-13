@@ -203,8 +203,19 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       return;
     }
 
+    // Validate customer info first
+    if (!customerInfo.name?.trim() || !customerInfo.phone?.trim()) {
+      toast({ title: 'Erreur', description: 'Veuillez remplir votre nom et téléphone', variant: 'destructive' });
+      return;
+    }
+
+    if (orderType === 'livraison' && !customerInfo.address?.trim()) {
+      toast({ title: 'Erreur', description: 'Veuillez entrer votre adresse de livraison', variant: 'destructive' });
+      return;
+    }
+
     // Prevent duplicate submissions
-    if (orderSubmitted) {
+    if (orderSubmitted || isProcessing) {
       toast({ title: 'Commande en cours', description: 'Veuillez patienter...', variant: 'default' });
       return;
     }
@@ -224,8 +235,25 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     }
     
     try {
+      // Double check totals are valid
+      const finalHt = Math.max(ht, 0);
+      const finalTva = Math.max(tva, 0);
+      const finalTtc = Math.max(ttc, 0.01);
+
+      if (finalTtc <= 0) {
+        throw new Error('Total invalide');
+      }
+
+      console.log('[CHECKOUT] Creating order:', {
+        orderNumber: orderNumberRef.current,
+        orderType,
+        paymentMethod,
+        total: finalTtc,
+        itemCount: cart.length
+      });
+
       // Create order in database
-      await createOrder.mutateAsync({
+      const result = await createOrder.mutateAsync({
         order_number: orderNumberRef.current,
         order_type: orderType,
         items: cart as unknown as import('@/integrations/supabase/types').Json,
@@ -234,22 +262,26 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         customer_address: customerInfo.address?.trim() || null,
         customer_notes: customerInfo.notes?.trim() || null,
         payment_method: paymentMethod,
-        subtotal: ht,
-        tva,
-        total: ttc,
+        subtotal: finalHt,
+        tva: finalTva,
+        total: finalTtc,
         delivery_fee: 0,
         status: 'pending',
       });
+
+      console.log('[CHECKOUT] Order created successfully:', result);
       
       clearCart();
       setStep('success');
     } catch (error) {
-      console.error('Failed to create order:', error);
+      console.error('[CHECKOUT] Failed to create order:', error);
       setOrderSubmitted(false);
       orderNumberRef.current = null;
+      
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       toast({ 
-        title: 'Erreur', 
-        description: 'Impossible de créer la commande. Veuillez réessayer.', 
+        title: 'Impossible de créer la commande', 
+        description: `${errorMessage}. Veuillez réessayer ou appeler le restaurant.`, 
         variant: 'destructive' 
       });
     } finally {

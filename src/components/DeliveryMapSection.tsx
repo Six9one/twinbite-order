@@ -30,8 +30,13 @@ export function DeliveryMapSection() {
   const map = useRef<mapboxgl.Map | null>(null);
   const [hoveredZone, setHoveredZone] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [zonesLoaded, setZonesLoaded] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
+
+  // Check if Mapbox token exists
+  const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
+  const hasValidToken = mapboxToken && mapboxToken !== '' && mapboxToken !== 'undefined';
 
   // Fetch delivery zones from database
   useEffect(() => {
@@ -44,32 +49,37 @@ export function DeliveryMapSection() {
         
         if (error) {
           console.error('Error fetching zones:', error);
-          setMapFailed(true);
+          setZonesLoaded(true);
           setLoading(false);
           return;
         }
         
         if (data) {
-          // Keep all zones (even without coordinates for the fallback list)
           setZones(data);
+        }
+        setZonesLoaded(true);
+        
+        // If no valid token, immediately show fallback
+        if (!hasValidToken) {
+          setMapFailed(true);
+          setLoading(false);
         }
       } catch (err) {
         console.error('Fetch zones error:', err);
-        setMapFailed(true);
+        setZonesLoaded(true);
         setLoading(false);
       }
     }
     fetchZones();
-  }, []);
+  }, [hasValidToken]);
 
   useEffect(() => {
     async function initMap() {
-      if (!mapContainer.current) return;
+      if (!mapContainer.current || !zonesLoaded) return;
       
       // Check for valid token
-      const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
-      if (!mapboxToken || mapboxToken === '' || mapboxToken === 'undefined') {
-        console.log('No Mapbox token, showing fallback');
+      if (!hasValidToken) {
+        console.log('No Mapbox token, showing fallback list');
         setMapFailed(true);
         setLoading(false);
         return;
@@ -210,14 +220,14 @@ export function DeliveryMapSection() {
       }
     }
     
-    if (zones.length > 0 || !loading) {
+    if (zonesLoaded) {
       initMap();
     }
     
     return () => {
       map.current?.remove();
     };
-  }, [zones]);
+  }, [zones, zonesLoaded, hasValidToken]);
 
   // Helper function to create a circle GeoJSON
   function createCircle(center: [number, number], radiusInMeters: number): GeoJSON.FeatureCollection {
