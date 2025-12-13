@@ -223,13 +223,11 @@ export function useCreateOrder() {
   
   return useMutation({
     mutationFn: async (order: Omit<Order, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('orders')
-        .insert(order)
-        .select()
-        .single();
+        .insert(order as any, { returning: 'minimal' } as any); // avoid SELECT to satisfy RLS policies
       if (error) throw error;
-      return data;
+      return null;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
