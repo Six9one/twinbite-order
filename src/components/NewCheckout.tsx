@@ -278,7 +278,16 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       setOrderSubmitted(false);
       orderNumberRef.current = null;
       
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      const anyError = error as any;
+      let errorMessage = 'Erreur inconnue';
+      if (anyError?.message) {
+        errorMessage = anyError.message;
+      } else if (typeof anyError === 'string') {
+        errorMessage = anyError;
+      } else if (anyError?.code) {
+        errorMessage = `Code ${anyError.code}`;
+      }
+
       toast({ 
         title: 'Impossible de créer la commande', 
         description: `${errorMessage}. Veuillez réessayer ou appeler le restaurant.`, 
