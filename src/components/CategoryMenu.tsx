@@ -3,11 +3,6 @@ import { MenuCategory } from '@/types/order';
 import { 
   categoryLabels, 
   categoryOrder,
-  pizzasTomate,
-  pizzasCreme,
-  tacos,
-  soufflets,
-  makloub,
   mlawi,
   panini,
   croques,
@@ -35,9 +30,32 @@ interface CategoryMenuProps {
   onOpenCart: () => void;
 }
 
+// Extended category labels with sandwiches
+const extendedCategoryLabels: Record<string, string> = {
+  ...categoryLabels,
+  sandwiches: "🥖 Sandwiches",
+};
+
+// Extended category order with sandwiches
+const extendedCategoryOrder: string[] = [
+  'pizzas',
+  'sandwiches', // NEW
+  'tacos',
+  'soufflets',
+  'makloub',
+  'mlawi',
+  'panini',
+  'croques',
+  'frites',
+  'milkshakes',
+  'crepes',
+  'gaufres',
+  'boissons',
+];
+
 export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
   const { orderType, getItemCount, getTotal } = useOrder();
-  const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const itemCount = getItemCount();
 
   const orderTypeLabels = {
@@ -52,7 +70,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
 
   const showMenuMidi = isMenuMidiTime();
 
-  const handleCategoryClick = (category: MenuCategory) => {
+  const handleCategoryClick = (category: string) => {
     setSelectedCategory(category);
   };
 
@@ -60,14 +78,16 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
     switch (selectedCategory) {
       case 'pizzas':
         return <PizzaWizard onClose={() => setSelectedCategory(null)} />;
+      case 'sandwiches':
+        return <SandwichWizard onClose={() => setSelectedCategory(null)} />;
       case 'tacos':
         return <TacosWizard onClose={() => setSelectedCategory(null)} />;
       case 'soufflets':
         return <SouffletWizard onClose={() => setSelectedCategory(null)} />;
       case 'makloub':
         return <MakloubWizard onClose={() => setSelectedCategory(null)} />;
-      case 'panini':
-        return <SandwichWizard onClose={() => setSelectedCategory(null)} />;
+      case 'mlawi':
+        return (
           <SimpleProductWizard 
             items={mlawi} 
             title="Mlawi" 
@@ -197,15 +217,20 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       {/* Categories Grid */}
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {categoryOrder.map((category) => (
+          {extendedCategoryOrder.map((category) => (
             <Card
               key={category}
-              className="p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30 text-center overflow-hidden"
+              className="p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30 text-center overflow-hidden relative"
               onClick={() => handleCategoryClick(category)}
             >
-              <span className="text-3xl sm:text-4xl mb-3 block">{categoryLabels[category].split(' ')[0]}</span>
+              {category === 'sandwiches' && (
+                <Badge className="absolute top-2 right-2 bg-green-500 text-white text-xs">NEW</Badge>
+              )}
+              <span className="text-3xl sm:text-4xl mb-3 block">
+                {extendedCategoryLabels[category]?.split(' ')[0]}
+              </span>
               <h3 className="font-display font-semibold text-base sm:text-lg truncate">
-                {categoryLabels[category].split(' ').slice(1).join(' ')}
+                {extendedCategoryLabels[category]?.split(' ').slice(1).join(' ')}
               </h3>
               {category === 'pizzas' && promoText && (
                 <p className="text-xs text-primary mt-1 truncate">{promoText}</p>

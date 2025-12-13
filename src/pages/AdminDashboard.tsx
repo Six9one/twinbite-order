@@ -8,6 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrders, useUpdateOrderStatus, Order } from '@/hooks/useSupabaseData';
 import { ProductsManager } from '@/components/admin/ProductsManager';
 import { PizzaManager } from '@/components/admin/PizzaManager';
+import { SandwichManager } from '@/components/admin/SandwichManager';
+import { CruditesManager } from '@/components/admin/CruditesManager';
+import { SettingsManager } from '@/components/admin/SettingsManager';
 import { ImageUploadTable } from '@/components/admin/ImageUploadTable';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { PromotionsManager } from '@/components/admin/PromotionsManager';
@@ -23,7 +26,7 @@ import {
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'pizzas' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'pizzas' | 'sandwiches' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard';
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', icon: Clock },
@@ -382,16 +385,20 @@ export default function AdminDashboard() {
           {/* Pizzas */}
           {activeTab === 'pizzas' && <PizzaManager />}
           
+          {/* Sandwiches */}
+          {activeTab === 'sandwiches' && <SandwichManager />}
+          
           {/* Products */}
           {activeTab === 'products' && <ProductsManager />}
           
           {/* Zones */}
           {activeTab === 'zones' && <AdminTable tableName="delivery_zones" title="Zones de livraison" />}
           
-          {/* Meats, Sauces, Garnitures, Supplements, Drinks, Desserts */}
+          {/* Meats, Sauces, Garnitures, Crudites, Supplements, Drinks, Desserts */}
           {activeTab === 'meats' && <ImageUploadTable tableName="meat_options" title="Options viandes" hasImage />}
           {activeTab === 'sauces' && <ImageUploadTable tableName="sauce_options" title="Options sauces" hasImage />}
           {activeTab === 'garnitures' && <ImageUploadTable tableName="garniture_options" title="Options garnitures" hasImage />}
+          {activeTab === 'crudites' && <CruditesManager />}
           {activeTab === 'supplements' && <ImageUploadTable tableName="supplement_options" title="Options suppléments" hasImage />}
           {activeTab === 'drinks' && <ImageUploadTable tableName="drinks" title="Boissons" hasImage />}
           {activeTab === 'desserts' && <ImageUploadTable tableName="desserts" title="Desserts" hasImage />}
@@ -407,6 +414,9 @@ export default function AdminDashboard() {
           {activeTab === 'loyalty' && <LoyaltyManager />}
           {activeTab === 'hours' && <OpeningHoursManager />}
           {activeTab === 'stats' && <StatisticsSection orders={orders || []} />}
+          
+          {/* Settings */}
+          {activeTab === 'settings' && <SettingsManager />}
         </main>
       </div>
     </div>
