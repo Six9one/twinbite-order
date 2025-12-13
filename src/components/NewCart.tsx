@@ -1,6 +1,6 @@
 import { useOrder } from '@/context/OrderContext';
-import { PizzaCustomization, TacosCustomization, SouffletCustomization } from '@/types/order';
-import { meatOptions, sauceOptions, garnitureOptions, pizzaPrices, cheeseSupplementOptions } from '@/data/menu';
+import { PizzaCustomization, TacosCustomization, SouffletCustomization, MakloubCustomization } from '@/types/order';
+import { meatOptions, sauceOptions, garnitureOptions, souffletGarnitureOptions, makloubGarnitureOptions, pizzaPrices, cheeseSupplementOptions } from '@/data/menu';
 import { applyPizzaPromotions } from '@/utils/promotions';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -31,14 +31,13 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
     if (!item.customization) return null;
     
     const custom = item.customization;
+    const parts: string[] = [];
     
+    // Check if it's a Pizza customization
     if ('base' in custom && 'size' in custom && !('meats' in custom)) {
-      // Pizza
       const pizzaCustom = custom as PizzaCustomization;
-      const parts = [
-        pizzaCustom.size === 'mega' ? 'Mega' : 'Senior',
-        pizzaCustom.base === 'creme' ? 'Base crème' : 'Base tomate',
-      ];
+      parts.push(pizzaCustom.size === 'mega' ? 'Mega' : 'Senior');
+      parts.push(pizzaCustom.base === 'creme' ? 'Base crème' : 'Base tomate');
       if (pizzaCustom.isMenuMidi) parts.push('Menu Midi');
       // Show supplements with prices
       if (pizzaCustom.supplements && pizzaCustom.supplements.length > 0) {
@@ -51,22 +50,70 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
       return parts.join(' • ');
     }
     
+    // Check if it's a Tacos, Soufflet, or Makloub customization
     if ('meats' in custom && 'sauces' in custom) {
-      // Tacos or Soufflet
-      const parts: string[] = [];
+      // Size
+      if ('size' in custom) {
+        parts.push((custom as any).size.charAt(0).toUpperCase() + (custom as any).size.slice(1));
+      }
+      
+      // Meats
       if (custom.meats.length > 0) {
         const meatNames = custom.meats.map(id => meatOptions.find(m => m.id === id)?.name).filter(Boolean);
-        parts.push(meatNames.join(', '));
+        parts.push('🥩 ' + meatNames.join(', '));
       }
+      
+      // Sauces
       if (custom.sauces.length > 0) {
         const sauceNames = custom.sauces.map(id => sauceOptions.find(s => s.id === id)?.name).filter(Boolean);
-        parts.push(sauceNames.join(', '));
+        parts.push('🍯 ' + sauceNames.join(', '));
       }
-      if ('garnitures' in custom && (custom as SouffletCustomization).garnitures.length > 0) {
-        const garNames = (custom as SouffletCustomization).garnitures
-          .map(id => garnitureOptions.find(g => g.id === id)?.name).filter(Boolean);
-        parts.push(garNames.join(', '));
+      
+      // Garnitures - check for soufflet or makloub specific garnitures
+      if ('garnitures' in custom) {
+        const garnitures = (custom as SouffletCustomization | MakloubCustomization).garnitures;
+        if (garnitures && garnitures.length > 0) {
+          // Try soufflet garnitures first, then makloub, then general
+          const garNames = garnitures.map(id => {
+            const sGar = souffletGarnitureOptions.find(g => g.id === id);
+            const mGar = makloubGarnitureOptions.find(g => g.id === id);
+            const gGar = garnitureOptions.find(g => g.id === id);
+            return sGar?.name || mGar?.name || gGar?.name || null;
+          }).filter(Boolean);
+          if (garNames.length > 0) parts.push('🥗 ' + garNames.join(', '));
+        }
       }
+      
+      // Supplements (cheese)
+      if ('supplements' in custom) {
+        const supplements = (custom as SouffletCustomization | MakloubCustomization | TacosCustomization).supplements;
+        if (supplements && supplements.length > 0) {
+          const supNames = supplements.map(id => {
+            const sup = cheeseSupplementOptions.find(s => s.id === id);
+            return sup ? `+${sup.name} (${sup.price}€)` : null;
+          }).filter(Boolean);
+          if (supNames.length > 0) parts.push('🧀 ' + supNames.join(', '));
+        }
+      }
+      
+      // Menu option
+      if ('menuOption' in custom) {
+        const menuOpt = (custom as TacosCustomization | SouffletCustomization).menuOption;
+        if (menuOpt && menuOpt !== 'none') {
+          const menuLabels: Record<string, string> = {
+            'frites': '+Frites',
+            'boisson': '+Boisson',
+            'menu': '+Menu complet'
+          };
+          parts.push(menuLabels[menuOpt] || '');
+        }
+      }
+      
+      // Note
+      if ('note' in custom && custom.note) {
+        parts.push(`📝 "${custom.note}"`);
+      }
+      
       return parts.join(' • ');
     }
     

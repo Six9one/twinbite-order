@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ShoppingBag, Truck, UtensilsCrossed, CalendarClock } from 'lucide-react';
-import { format, addDays, setHours, setMinutes } from 'date-fns';
+import { format, addDays, setHours, setMinutes, isSunday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -93,46 +93,64 @@ export function HeroOrderSelector({
     onSelect();
   };
 
+  // Check if a date is a Sunday (closed day)
+  const isDisabledDay = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Disable past dates, dates more than 30 days ahead, and Sundays
+    return date < today || date > addDays(new Date(), 30) || isSunday(date);
+  };
+
   return (
-    <div className="max-w-4xl mx-auto">
-      <p className="text-center text-white/80 mb-6 text-lg">
-        Comment souhaitez-vous commander ?
-      </p>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {orderOptions.map(option => {
-          const Icon = option.icon;
-          return (
-            <Card 
-              key={option.type} 
-              className="p-6 cursor-pointer transition-all duration-300 bg-background/90 hover:bg-primary/10 hover:scale-105 hover:ring-2 hover:ring-primary active:scale-100" 
-              onClick={() => handleSelect(option.type)}
-            >
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 transition-colors bg-primary">
-                  <Icon className="w-8 h-8" />
+    <div className="max-w-5xl mx-auto flex gap-6">
+      {/* Main Order Options */}
+      <div className="flex-1">
+        <p className="text-center text-white/80 mb-6 text-lg">
+          Comment souhaitez-vous commander ?
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {orderOptions.map(option => {
+            const Icon = option.icon;
+            return (
+              <Card 
+                key={option.type} 
+                className="p-6 cursor-pointer transition-all duration-300 bg-background/90 hover:bg-primary/10 hover:scale-105 hover:ring-2 hover:ring-primary active:scale-100" 
+                onClick={() => handleSelect(option.type)}
+              >
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 transition-colors bg-primary">
+                    <Icon className="w-8 h-8" />
+                  </div>
+                  <h3 className="font-display font-bold text-xl mb-1">{option.label}</h3>
+                  <p className="text-sm text-muted-foreground mb-3">{option.description}</p>
+                  <span className="inline-block text-xs font-medium px-3 py-1 rounded-full bg-primary/10 text-primary">
+                    🍕 {option.promo}
+                  </span>
                 </div>
-                <h3 className="font-display font-bold text-xl mb-1">{option.label}</h3>
-                <p className="text-sm text-muted-foreground mb-3">{option.description}</p>
-                <span className="inline-block text-xs font-medium px-3 py-1 rounded-full bg-primary/10 text-primary">
-                  🍕 {option.promo}
-                </span>
-              </div>
-            </Card>
-          );
-        })}
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Schedule Order Button - Different Style */}
-      <div className="flex justify-center mt-8">
+      {/* Schedule Order - Right Side Vertical Strip */}
+      <div className="hidden md:flex flex-col w-24 bg-gradient-to-b from-purple-600 to-purple-800 rounded-2xl p-3 items-center justify-center cursor-pointer hover:from-purple-500 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-purple-500/30 hover:scale-105"
+           onClick={handleScheduleClick}>
+        <CalendarClock className="w-10 h-10 text-white mb-3" />
+        <span className="text-white text-xs font-semibold text-center leading-tight">
+          Commander pour plus tard
+        </span>
+      </div>
+
+      {/* Mobile Schedule Button */}
+      <div className="md:hidden fixed bottom-24 right-4 z-50">
         <Button
           onClick={handleScheduleClick}
-          variant="outline"
-          size="lg"
-          className="gap-3 px-8 py-6 text-lg rounded-full border-2 border-purple-500 text-purple-600 bg-purple-50 hover:bg-purple-100 hover:text-purple-700 hover:border-purple-600 shadow-lg hover:scale-105 transition-all duration-300"
+          className="gap-2 px-4 py-6 rounded-full bg-purple-600 hover:bg-purple-700 shadow-lg"
         >
-          <CalendarClock className="w-6 h-6" />
-          Commander pour plus tard
+          <CalendarClock className="w-5 h-5" />
+          <span className="text-sm">Plus tard</span>
         </Button>
       </div>
 
@@ -145,7 +163,7 @@ export function HeroOrderSelector({
               Programmer votre commande
             </DialogTitle>
             <DialogDescription>
-              Choisissez la date, l'heure et le type de commande
+              Choisissez la date, l'heure et le type de commande. <span className="text-red-500 font-medium">Fermé le dimanche.</span>
             </DialogDescription>
           </DialogHeader>
 
@@ -177,13 +195,19 @@ export function HeroOrderSelector({
 
             {/* Date Selection */}
             <div>
-              <label className="block text-sm font-medium mb-3">Date</label>
+              <label className="block text-sm font-medium mb-3">Date <span className="text-red-500">(Dimanche = Fermé)</span></label>
               <Calendar
                 mode="single"
                 selected={selectedDate}
                 onSelect={setSelectedDate}
-                disabled={(date) => date < new Date() || date > addDays(new Date(), 7)}
+                disabled={isDisabledDay}
                 locale={fr}
+                modifiers={{
+                  sunday: (date) => isSunday(date)
+                }}
+                modifiersStyles={{
+                  sunday: { color: 'red', textDecoration: 'line-through', opacity: 0.5 }
+                }}
                 className={cn("rounded-md border mx-auto pointer-events-auto")}
               />
             </div>
