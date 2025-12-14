@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { 
-  mlawi,
   panini,
   croques,
   frites,
@@ -12,8 +11,7 @@ import {
 import { useOrder } from '@/context/OrderContext';
 import { PizzaWizard } from '@/components/wizards/PizzaWizard';
 import { TacosWizard } from '@/components/wizards/TacosWizard';
-import { SouffletWizard } from '@/components/wizards/SouffletWizard';
-import { MakloubWizard } from '@/components/wizards/MakloubWizard';
+import { UnifiedProductWizard } from '@/components/wizards/UnifiedProductWizard';
 import { SandwichWizard } from '@/components/wizards/SandwichWizard';
 import { SimpleProductWizard } from '@/components/wizards/SimpleProductWizard';
 import { Button } from '@/components/ui/button';
@@ -100,7 +98,6 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
   const itemCount = getItemCount();
 
   // Load products from backend for simple categories (fallback to static data)
-  const { data: mlawiProducts } = useProductsByCategory('mlawi');
   const { data: paniniProducts } = useProductsByCategory('panini');
   const { data: croquesProducts } = useProductsByCategory('croques');
   const { data: fritesProducts } = useProductsByCategory('frites');
@@ -134,18 +131,11 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       case 'tacos':
         return <TacosWizard onClose={() => setSelectedCategory(null)} />;
       case 'soufflets':
-        return <SouffletWizard onClose={() => setSelectedCategory(null)} />;
+        return <UnifiedProductWizard productType="soufflet" onClose={() => setSelectedCategory(null)} />;
       case 'makloub':
-        return <MakloubWizard onClose={() => setSelectedCategory(null)} />;
+        return <UnifiedProductWizard productType="makloub" onClose={() => setSelectedCategory(null)} />;
       case 'mlawi':
-        return (
-          <SimpleProductWizard 
-            items={mapProductsToMenuItems(mlawiProducts, 'mlawi', mlawi)} 
-            title="Mlawi" 
-            showMenuOption 
-            onClose={() => setSelectedCategory(null)} 
-          />
-        );
+        return <UnifiedProductWizard productType="mlawi" onClose={() => setSelectedCategory(null)} />;
       case 'panini':
         return (
           <SimpleProductWizard 
