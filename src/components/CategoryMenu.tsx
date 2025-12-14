@@ -30,23 +30,48 @@ interface CategoryMenuProps {
   onOpenCart: () => void;
 }
 
-// Extended category labels with sandwiches
-const extendedCategoryLabels: Record<string, string> = {
-  ...categoryLabels,
-  sandwiches: "🥖 Sandwiches",
+// Product category labels (ordered as requested)
+const productCategoryLabels: Record<string, string> = {
+  pizzas: "🍕 Pizzas",
+  soufflets: "🥙 Soufflé",
+  makloub: "🌯 Makloub",
+  mlawi: "🫓 Mlawi",
+  sandwiches: "🥖 Sandwich (Pain Maison)",
+  tacos: "🌮 Tacos",
+  panini: "🥪 Panini",
+  croques: "🧀 Croques & Tex-Mex",
+  frites: "🍟 Frites",
 };
 
-// Extended category order with sandwiches
-const extendedCategoryOrder: string[] = [
+// Dessert category labels
+const dessertCategoryLabels: Record<string, string> = {
+  milkshakes: "🥤 Milkshakes",
+  crepes: "🥞 Crêpes",
+  gaufres: "🧇 Gaufres",
+  boissons: "🥤 Boissons",
+};
+
+// Combined labels for rendering
+const allCategoryLabels: Record<string, string> = {
+  ...productCategoryLabels,
+  ...dessertCategoryLabels,
+};
+
+// Product category order (exactly as specified)
+const productCategoryOrder: string[] = [
   'pizzas',
-  'sandwiches', // NEW
-  'tacos',
   'soufflets',
   'makloub',
   'mlawi',
+  'sandwiches',
+  'tacos',
   'panini',
   'croques',
   'frites',
+];
+
+// Dessert category order
+const dessertCategoryOrder: string[] = [
   'milkshakes',
   'crepes',
   'gaufres',
@@ -214,10 +239,11 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
         </div>
       </div>
 
-      {/* Categories Grid */}
+      {/* Products Grid */}
       <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {extendedCategoryOrder.map((category) => (
+        <h2 className="text-xl font-display font-bold mb-4 text-foreground">🍽️ Nos Produits</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+          {productCategoryOrder.map((category) => (
             <Card
               key={category}
               className="p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30 text-center overflow-hidden relative"
@@ -227,14 +253,33 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
                 <Badge className="absolute top-2 right-2 bg-green-500 text-white text-xs">NEW</Badge>
               )}
               <span className="text-3xl sm:text-4xl mb-3 block">
-                {extendedCategoryLabels[category]?.split(' ')[0]}
+                {allCategoryLabels[category]?.split(' ')[0]}
               </span>
-              <h3 className="font-display font-semibold text-base sm:text-lg truncate">
-                {extendedCategoryLabels[category]?.split(' ').slice(1).join(' ')}
+              <h3 className="font-display font-semibold text-sm sm:text-base truncate">
+                {allCategoryLabels[category]?.split(' ').slice(1).join(' ')}
               </h3>
               {category === 'pizzas' && promoText && (
                 <p className="text-xs text-primary mt-1 truncate">{promoText}</p>
               )}
+            </Card>
+          ))}
+        </div>
+
+        {/* Desserts Grid */}
+        <h2 className="text-xl font-display font-bold mb-4 text-foreground">🍨 Desserts & Boissons</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {dessertCategoryOrder.map((category) => (
+            <Card
+              key={category}
+              className="p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30 text-center overflow-hidden relative"
+              onClick={() => handleCategoryClick(category)}
+            >
+              <span className="text-3xl sm:text-4xl mb-3 block">
+                {allCategoryLabels[category]?.split(' ')[0]}
+              </span>
+              <h3 className="font-display font-semibold text-sm sm:text-base truncate">
+                {allCategoryLabels[category]?.split(' ').slice(1).join(' ')}
+              </h3>
             </Card>
           ))}
         </div>

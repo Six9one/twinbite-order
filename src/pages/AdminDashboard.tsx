@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrders, useUpdateOrderStatus, Order } from '@/hooks/useSupabaseData';
-import { ProductsManager } from '@/components/admin/ProductsManager';
+import { ProductCategoryManager } from '@/components/admin/ProductCategoryManager';
 import { PizzaManager } from '@/components/admin/PizzaManager';
 import { SandwichManager } from '@/components/admin/SandwichManager';
 import { CruditesManager } from '@/components/admin/CruditesManager';
@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'products' | 'pizzas' | 'sandwiches' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments';
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', icon: Clock },
@@ -390,20 +390,31 @@ export default function AdminDashboard() {
           {/* Sandwiches */}
           {activeTab === 'sandwiches' && <SandwichManager />}
           
-          {/* Products */}
-          {activeTab === 'products' && <ProductsManager />}
+          {/* Product Categories */}
+          {activeTab === 'soufflet' && <ProductCategoryManager categorySlug="soufflets" title="Soufflé" />}
+          {activeTab === 'makloub' && <ProductCategoryManager categorySlug="makloub" title="Makloub" />}
+          {activeTab === 'mlawi' && <ProductCategoryManager categorySlug="mlawi" title="Mlawi" />}
+          {activeTab === 'tacos' && <ProductCategoryManager categorySlug="tacos" title="Tacos" />}
+          {activeTab === 'panini' && <ProductCategoryManager categorySlug="panini" title="Panini" />}
+          {activeTab === 'croques' && <ProductCategoryManager categorySlug="croques" title="Croques & Tex-Mex" />}
+          {activeTab === 'frites' && <ProductCategoryManager categorySlug="frites" title="Frites" />}
+          
+          {/* Desserts */}
+          {activeTab === 'milkshakes' && <ProductCategoryManager categorySlug="milkshakes" title="Milkshakes" />}
+          {activeTab === 'crepes' && <ProductCategoryManager categorySlug="crepes" title="Crêpes" />}
+          {activeTab === 'gaufres' && <ProductCategoryManager categorySlug="gaufres" title="Gaufres" />}
+          {activeTab === 'drinks' && <ImageUploadTable tableName="drinks" title="Boissons" hasImage />}
+          {activeTab === 'desserts' && <ImageUploadTable tableName="desserts" title="Desserts (Autres)" hasImage />}
           
           {/* Zones */}
           {activeTab === 'zones' && <AdminTable tableName="delivery_zones" title="Zones de livraison" />}
           
-          {/* Meats, Sauces, Garnitures, Crudites, Supplements, Drinks, Desserts */}
+          {/* Options & Extras */}
           {activeTab === 'meats' && <ImageUploadTable tableName="meat_options" title="Options viandes" hasImage />}
           {activeTab === 'sauces' && <ImageUploadTable tableName="sauce_options" title="Options sauces" hasImage />}
           {activeTab === 'garnitures' && <ImageUploadTable tableName="garniture_options" title="Options garnitures" hasImage />}
           {activeTab === 'crudites' && <CruditesManager />}
           {activeTab === 'supplements' && <ImageUploadTable tableName="supplement_options" title="Options suppléments" hasImage />}
-          {activeTab === 'drinks' && <ImageUploadTable tableName="drinks" title="Boissons" hasImage />}
-          {activeTab === 'desserts' && <ImageUploadTable tableName="desserts" title="Desserts" hasImage />}
           
           {/* Ventes */}
           {activeTab === 'ventes' && <VentesSection orders={orders || []} />}
