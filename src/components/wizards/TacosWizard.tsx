@@ -3,6 +3,7 @@ import { MenuItem, TacosCustomization } from '@/types/order';
 import { tacos, meatOptions, sauceOptions, menuOptionPrices, supplementOptions, cheeseSupplementOptions } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
+import { useProductsByCategory, Product } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,32 @@ interface TacosWizardProps {
 
 type TacosSize = 'solo' | 'double' | 'triple';
 
+// Helper to map database products to expected shape
+function mapDbProductsToTacos(products: Product[] | undefined): MenuItem[] {
+  if (!products || products.length === 0) return tacos;
+  
+  // Sort by base_price to determine size
+  const sorted = [...products].sort((a, b) => Number(a.base_price) - Number(b.base_price));
+  
+  return sorted.map((p, idx) => {
+    let size: TacosSize = 'solo';
+    const nameLower = p.name.toLowerCase();
+    if (nameLower.includes('triple')) size = 'triple';
+    else if (nameLower.includes('double')) size = 'double';
+    else if (idx === 1) size = 'double';
+    else if (idx === 2) size = 'triple';
+    
+    return {
+      id: `tacos-${size}`,
+      name: p.name,
+      description: p.description || '',
+      price: Number(p.base_price),
+      category: 'tacos' as const,
+      imageUrl: p.image_url || undefined,
+    };
+  });
+}
+
 export function TacosWizard({ onClose }: TacosWizardProps) {
   const { addToCart } = useOrder();
   const [step, setStep] = useState(1);
@@ -27,8 +54,12 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   const [supplements, setSupplements] = useState<string[]>([]);
   const [note, setNote] = useState('');
 
+  // Load tacos from database (fallback to static)
+  const { data: dbTacos } = useProductsByCategory('tacos');
+  const tacosProducts = mapDbProductsToTacos(dbTacos);
+
   const maxMeats = size === 'solo' ? 1 : size === 'double' ? 2 : 3;
-  const tacosItem = tacos.find(t => t.id === `tacos-${size}`);
+  const tacosItem = tacosProducts.find(t => t.id === `tacos-${size}`) || tacos.find(t => t.id === `tacos-${size}`);
 
   const toggleMeat = (meatId: string) => {
     if (selectedMeats.includes(meatId)) {
@@ -120,7 +151,7 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
             <h2 className="text-lg font-semibold">Choisir la taille</h2>
             <div className="grid grid-cols-3 gap-4">
               {(['solo', 'double', 'triple'] as TacosSize[]).map((s) => {
-                const item = tacos.find(t => t.id === `tacos-${s}`);
+                const item = tacosProducts.find(t => t.id === `tacos-${s}`) || tacos.find(t => t.id === `tacos-${s}`);
                 return (
                   <Card
                     key={s}

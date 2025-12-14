@@ -3,6 +3,7 @@ import { MenuItem, SouffletCustomization } from '@/types/order';
 import { soufflets, meatOptions, sauceOptions, souffletGarnitureOptions, cheeseSupplementOptions, menuOptionPrices } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
+import { useProductsByCategory, Product } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,33 @@ interface SouffletWizardProps {
 
 type SouffletSize = 'solo' | 'double' | 'triple';
 
+// Helper to map database products to expected shape
+function mapDbProductsToSoufflets(products: Product[] | undefined): MenuItem[] {
+  if (!products || products.length === 0) return soufflets;
+  
+  // Sort by base_price to determine size
+  const sorted = [...products].sort((a, b) => Number(a.base_price) - Number(b.base_price));
+  
+  return sorted.map((p, idx) => {
+    // Try to detect size from name or use index-based fallback
+    let size: SouffletSize = 'solo';
+    const nameLower = p.name.toLowerCase();
+    if (nameLower.includes('triple')) size = 'triple';
+    else if (nameLower.includes('double')) size = 'double';
+    else if (idx === 1) size = 'double';
+    else if (idx === 2) size = 'triple';
+    
+    return {
+      id: `souffle-${size}`,
+      name: p.name,
+      description: p.description || '',
+      price: Number(p.base_price),
+      category: 'soufflets' as const,
+      imageUrl: p.image_url || undefined,
+    };
+  });
+}
+
 export function SouffletWizard({ onClose }: SouffletWizardProps) {
   const { addToCart } = useOrder();
   const [step, setStep] = useState(1);
@@ -28,8 +56,12 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
   const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'menu'>('none');
   const [note, setNote] = useState('');
 
+  // Load soufflets from database (fallback to static)
+  const { data: dbSoufflets } = useProductsByCategory('soufflets');
+  const souffletProducts = mapDbProductsToSoufflets(dbSoufflets);
+
   const maxMeats = size === 'solo' ? 1 : size === 'double' ? 2 : 3;
-  const souffletItem = soufflets.find(s => s.id === `souffle-${size}`);
+  const souffletItem = souffletProducts.find(s => s.id === `souffle-${size}`) || soufflets.find(s => s.id === `souffle-${size}`);
 
   const toggleMeat = (meatId: string) => {
     if (selectedMeats.includes(meatId)) {
@@ -122,7 +154,7 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
             <h2 className="text-lg font-semibold">Choisir la taille</h2>
             <div className="grid grid-cols-3 gap-4">
               {(['solo', 'double', 'triple'] as SouffletSize[]).map((s) => {
-                const item = soufflets.find(t => t.id === `souffle-${s}`);
+                const item = souffletProducts.find(t => t.id === `souffle-${s}`) || soufflets.find(t => t.id === `souffle-${s}`);
                 return (
                   <Card
                     key={s}

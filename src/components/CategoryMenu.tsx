@@ -77,10 +77,37 @@ const dessertCategoryOrder: string[] = [
   'boissons',
 ];
 
+// Helper to map DB products to MenuItem format
+function mapProductsToMenuItems(
+  products: Product[] | undefined,
+  category: MenuCategory,
+  fallback: MenuItem[],
+): MenuItem[] {
+  if (!products || products.length === 0) return fallback;
+  return products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description ?? '',
+    price: Number(p.base_price),
+    category,
+    imageUrl: p.image_url ?? undefined,
+  }));
+}
+
 export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
   const { orderType, getItemCount, getTotal } = useOrder();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const itemCount = getItemCount();
+
+  // Load products from backend for simple categories (fallback to static data)
+  const { data: mlawiProducts } = useProductsByCategory('mlawi');
+  const { data: paniniProducts } = useProductsByCategory('panini');
+  const { data: croquesProducts } = useProductsByCategory('croques');
+  const { data: fritesProducts } = useProductsByCategory('frites');
+  const { data: milkshakeProducts } = useProductsByCategory('milkshakes');
+  const { data: crepeProducts } = useProductsByCategory('crepes');
+  const { data: gaufreProducts } = useProductsByCategory('gaufres');
+  const { data: boissonsProducts } = useProductsByCategory('boissons');
 
   const orderTypeLabels = {
     emporter: 'À emporter',
@@ -113,7 +140,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       case 'mlawi':
         return (
           <SimpleProductWizard 
-            items={mlawi} 
+            items={mapProductsToMenuItems(mlawiProducts, 'mlawi', mlawi)} 
             title="Mlawi" 
             showMenuOption 
             onClose={() => setSelectedCategory(null)} 
@@ -122,7 +149,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       case 'panini':
         return (
           <SimpleProductWizard 
-            items={panini} 
+            items={mapProductsToMenuItems(paniniProducts, 'panini', panini)} 
             title="Panini" 
             showMenuOption 
             onClose={() => setSelectedCategory(null)} 
@@ -131,7 +158,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       case 'croques':
         return (
           <SimpleProductWizard 
-            items={croques} 
+            items={mapProductsToMenuItems(croquesProducts, 'croques', croques)} 
             title="Croques & Tex-Mex" 
             showMenuOption 
             onClose={() => setSelectedCategory(null)} 
@@ -140,7 +167,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       case 'frites':
         return (
           <SimpleProductWizard 
-            items={frites} 
+            items={mapProductsToMenuItems(fritesProducts, 'frites', frites)} 
             title="Frites" 
             onClose={() => setSelectedCategory(null)} 
           />
@@ -148,7 +175,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       case 'milkshakes':
         return (
           <SimpleProductWizard 
-            items={milkshakes} 
+            items={mapProductsToMenuItems(milkshakeProducts, 'milkshakes', milkshakes)} 
             title="Milkshakes" 
             onClose={() => setSelectedCategory(null)} 
           />
@@ -156,7 +183,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       case 'crepes':
         return (
           <SimpleProductWizard 
-            items={crepes} 
+            items={mapProductsToMenuItems(crepeProducts, 'crepes', crepes)} 
             title="Crêpes" 
             onClose={() => setSelectedCategory(null)} 
           />
@@ -164,7 +191,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       case 'gaufres':
         return (
           <SimpleProductWizard 
-            items={gaufres} 
+            items={mapProductsToMenuItems(gaufreProducts, 'gaufres', gaufres)} 
             title="Gaufres" 
             onClose={() => setSelectedCategory(null)} 
           />
@@ -172,7 +199,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       case 'boissons':
         return (
           <SimpleProductWizard 
-            items={boissons} 
+            items={mapProductsToMenuItems(boissonsProducts, 'boissons', boissons)} 
             title="Boissons" 
             onClose={() => setSelectedCategory(null)} 
           />
