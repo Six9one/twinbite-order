@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MenuItem, SouffletCustomization, MakloubCustomization, MlawiCustomization } from '@/types/order';
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
-import { useMeatOptions, useSauceOptions, useGarnitureOptions, useSupplementOptions } from '@/hooks/useCustomizationOptions';
+import { useMeatOptions, useSauceOptions, useSupplementOptions } from '@/hooks/useCustomizationOptions';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,8 +66,20 @@ const productConfigs: Record<ProductType, ProductConfig> = {
   },
 };
 
-// Mlawi garnitures: salade, tomate, oignon, olives
-const mlawiGarnitureOptions = [
+// Product-specific garnitures
+const souffletGarnitures = [
+  { id: 'pomme_de_terre', name: 'Pomme de terre', price: 0 },
+  { id: 'oignon', name: 'Oignon', price: 0 },
+  { id: 'olive', name: 'Olive', price: 0 },
+];
+
+const makloubGarnitures = [
+  { id: 'salade', name: 'Salade', price: 0 },
+  { id: 'tomate', name: 'Tomate', price: 0 },
+  { id: 'oignon', name: 'Oignon', price: 0 },
+];
+
+const mlawiGarnitures = [
   { id: 'salade', name: 'Salade', price: 0 },
   { id: 'tomate', name: 'Tomate', price: 0 },
   { id: 'oignon', name: 'Oignon', price: 0 },
@@ -95,7 +107,6 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
   // Load options from database (with static fallback)
   const { data: dbMeats } = useMeatOptions();
   const { data: dbSauces } = useSauceOptions();
-  const { data: dbGarnitures } = useGarnitureOptions();
   const { data: dbSupplements } = useSupplementOptions();
 
   // Use database options if available, otherwise fallback to static
@@ -111,20 +122,15 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
     ? dbSupplements.map(s => ({ id: s.id, name: s.name, price: Number(s.price), image_url: s.image_url }))
     : staticSupplements;
 
-  // Garniture options based on product type
+  // Garniture options - product-specific (not from database)
   const getGarnitureOptions = () => {
-    // Try database first
-    if (dbGarnitures && dbGarnitures.length > 0) {
-      return dbGarnitures.map(g => ({ id: g.id, name: g.name, price: Number(g.price), image_url: g.image_url }));
-    }
-    // Fallback to static based on product type
-    switch (config.garnitureType) {
+    switch (productType) {
       case 'soufflet':
-        return souffletGarnitureOptions;
+        return souffletGarnitures;
       case 'makloub':
-        return makloubGarnitureOptions;
+        return makloubGarnitures;
       case 'mlawi':
-        return mlawiGarnitureOptions;
+        return mlawiGarnitures;
       default:
         return [];
     }
