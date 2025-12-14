@@ -307,11 +307,38 @@ export const makloub: MenuItem[] = [
     price: 8,
     category: "makloub",
   },
+  {
+    id: "makloub-triple",
+    name: "Makloub Triple",
+    description: "3 viandes, garnitures, sauces",
+    price: 10,
+    category: "makloub",
+  },
 ];
 
 // ============= MLAWI =============
 export const mlawi: MenuItem[] = [
-  { id: "mlawi-1", name: "Mlawi", description: "Galette feuilletée, garnitures au choix", price: 6, category: "mlawi" },
+  { 
+    id: "mlawi-solo", 
+    name: "Mlawi Solo", 
+    description: "1 viande, garnitures, sauces", 
+    price: 6, 
+    category: "mlawi" 
+  },
+  { 
+    id: "mlawi-double", 
+    name: "Mlawi Double", 
+    description: "2 viandes, garnitures, sauces", 
+    price: 8, 
+    category: "mlawi" 
+  },
+  { 
+    id: "mlawi-triple", 
+    name: "Mlawi Triple", 
+    description: "3 viandes, garnitures, sauces", 
+    price: 10, 
+    category: "mlawi" 
+  },
 ];
 
 // ============= PANINI =============
@@ -468,6 +495,14 @@ export const makloubGarnitureOptions = [
   { id: "salade", name: "Salade", price: 0 },
   { id: "tomate", name: "Tomate", price: 0 },
   { id: "oignon", name: "Oignon", price: 0 },
+];
+
+// Garnitures for Mlawi (Salade, Tomate, Oignon, Olives)
+export const mlawiGarnitureOptions = [
+  { id: "salade", name: "Salade", price: 0 },
+  { id: "tomate", name: "Tomate", price: 0 },
+  { id: "oignon", name: "Oignon", price: 0 },
+  { id: "olive", name: "Olive", price: 0 },
 ];
 
 // Legacy garniture options

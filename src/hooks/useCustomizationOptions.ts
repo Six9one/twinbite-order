@@ -74,6 +74,22 @@ export function useSupplementOptions() {
   });
 }
 
+export function useCruditesOptions() {
+  return useQuery({
+    queryKey: ['crudites_options'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('crudites_options')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+      
+      if (error) throw error;
+      return data as CustomizationOption[];
+    },
+  });
+}
+
 export function useDrinks() {
   return useQuery({
     queryKey: ['drinks'],

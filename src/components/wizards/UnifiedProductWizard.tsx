@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { MenuItem, SouffletCustomization } from '@/types/order';
-import { soufflets, meatOptions, sauceOptions, souffletGarnitureOptions, cheeseSupplementOptions, menuOptionPrices } from '@/data/menu';
+import { MenuItem, SouffletCustomization, MakloubCustomization, MlawiCustomization } from '@/types/order';
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
-import { useProductsByCategory, Product } from '@/hooks/useProducts';
+import { useMeatOptions, useSauceOptions, useGarnitureOptions, useSupplementOptions } from '@/hooks/useCustomizationOptions';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,44 +10,81 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Check } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { 
+  meatOptions as staticMeatOptions, 
+  sauceOptions as staticSauceOptions,
+  souffletGarnitureOptions,
+  makloubGarnitureOptions,
+  cheeseSupplementOptions as staticSupplements,
+  menuOptionPrices
+} from '@/data/menu';
 
-interface SouffletWizardProps {
+export type ProductType = 'soufflet' | 'mlawi' | 'makloub';
+type ProductSize = 'solo' | 'double' | 'triple';
+
+interface ProductConfig {
+  title: string;
+  categorySlug: string;
+  garnitureType: 'soufflet' | 'makloub' | 'mlawi';
+  sizes: { id: ProductSize; label: string; maxMeats: number; price: number }[];
+  showMenuOption: boolean;
+}
+
+const productConfigs: Record<ProductType, ProductConfig> = {
+  soufflet: {
+    title: 'Soufflé',
+    categorySlug: 'soufflets',
+    garnitureType: 'soufflet',
+    sizes: [
+      { id: 'solo', label: 'Solo', maxMeats: 1, price: 6 },
+      { id: 'double', label: 'Double', maxMeats: 2, price: 8 },
+      { id: 'triple', label: 'Triple', maxMeats: 3, price: 10 },
+    ],
+    showMenuOption: true,
+  },
+  mlawi: {
+    title: 'Mlawi',
+    categorySlug: 'mlawi',
+    garnitureType: 'mlawi',
+    sizes: [
+      { id: 'solo', label: 'Solo', maxMeats: 1, price: 6 },
+      { id: 'double', label: 'Double', maxMeats: 2, price: 8 },
+      { id: 'triple', label: 'Triple', maxMeats: 3, price: 10 },
+    ],
+    showMenuOption: true,
+  },
+  makloub: {
+    title: 'Makloub',
+    categorySlug: 'makloub',
+    garnitureType: 'makloub',
+    sizes: [
+      { id: 'solo', label: 'Solo', maxMeats: 1, price: 6 },
+      { id: 'double', label: 'Double', maxMeats: 2, price: 8 },
+      { id: 'triple', label: 'Triple', maxMeats: 3, price: 10 },
+    ],
+    showMenuOption: true,
+  },
+};
+
+// Mlawi garnitures: salade, tomate, oignon, olives
+const mlawiGarnitureOptions = [
+  { id: 'salade', name: 'Salade', price: 0 },
+  { id: 'tomate', name: 'Tomate', price: 0 },
+  { id: 'oignon', name: 'Oignon', price: 0 },
+  { id: 'olive', name: 'Olive', price: 0 },
+];
+
+interface UnifiedProductWizardProps {
+  productType: ProductType;
   onClose: () => void;
 }
 
-type SouffletSize = 'solo' | 'double' | 'triple';
-
-// Helper to map database products to expected shape
-function mapDbProductsToSoufflets(products: Product[] | undefined): MenuItem[] {
-  if (!products || products.length === 0) return soufflets;
-  
-  // Sort by base_price to determine size
-  const sorted = [...products].sort((a, b) => Number(a.base_price) - Number(b.base_price));
-  
-  return sorted.map((p, idx) => {
-    // Try to detect size from name or use index-based fallback
-    let size: SouffletSize = 'solo';
-    const nameLower = p.name.toLowerCase();
-    if (nameLower.includes('triple')) size = 'triple';
-    else if (nameLower.includes('double')) size = 'double';
-    else if (idx === 1) size = 'double';
-    else if (idx === 2) size = 'triple';
-    
-    return {
-      id: `souffle-${size}`,
-      name: p.name,
-      description: p.description || '',
-      price: Number(p.base_price),
-      category: 'soufflets' as const,
-      imageUrl: p.image_url || undefined,
-    };
-  });
-}
-
-export function SouffletWizard({ onClose }: SouffletWizardProps) {
+export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWizardProps) {
   const { addToCart } = useOrder();
+  const config = productConfigs[productType];
+  
   const [step, setStep] = useState(1);
-  const [size, setSize] = useState<SouffletSize>('solo');
+  const [size, setSize] = useState<ProductSize>('solo');
   const [selectedMeats, setSelectedMeats] = useState<string[]>([]);
   const [selectedSauces, setSelectedSauces] = useState<string[]>([]);
   const [selectedGarnitures, setSelectedGarnitures] = useState<string[]>([]);
@@ -56,12 +92,48 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
   const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'menu'>('none');
   const [note, setNote] = useState('');
 
-  // Load soufflets from database (fallback to static)
-  const { data: dbSoufflets } = useProductsByCategory('soufflets');
-  const souffletProducts = mapDbProductsToSoufflets(dbSoufflets);
+  // Load options from database (with static fallback)
+  const { data: dbMeats } = useMeatOptions();
+  const { data: dbSauces } = useSauceOptions();
+  const { data: dbGarnitures } = useGarnitureOptions();
+  const { data: dbSupplements } = useSupplementOptions();
 
-  const maxMeats = size === 'solo' ? 1 : size === 'double' ? 2 : 3;
-  const souffletItem = souffletProducts.find(s => s.id === `souffle-${size}`) || soufflets.find(s => s.id === `souffle-${size}`);
+  // Use database options if available, otherwise fallback to static
+  const meatOptions = dbMeats && dbMeats.length > 0 
+    ? dbMeats.map(m => ({ id: m.id, name: m.name, price: Number(m.price), image_url: m.image_url }))
+    : staticMeatOptions;
+  
+  const sauceOptions = dbSauces && dbSauces.length > 0
+    ? dbSauces.map(s => ({ id: s.id, name: s.name, price: Number(s.price), image_url: s.image_url }))
+    : staticSauceOptions;
+  
+  const supplementOptions = dbSupplements && dbSupplements.length > 0
+    ? dbSupplements.map(s => ({ id: s.id, name: s.name, price: Number(s.price), image_url: s.image_url }))
+    : staticSupplements;
+
+  // Garniture options based on product type
+  const getGarnitureOptions = () => {
+    // Try database first
+    if (dbGarnitures && dbGarnitures.length > 0) {
+      return dbGarnitures.map(g => ({ id: g.id, name: g.name, price: Number(g.price), image_url: g.image_url }));
+    }
+    // Fallback to static based on product type
+    switch (config.garnitureType) {
+      case 'soufflet':
+        return souffletGarnitureOptions;
+      case 'makloub':
+        return makloubGarnitureOptions;
+      case 'mlawi':
+        return mlawiGarnitureOptions;
+      default:
+        return [];
+    }
+  };
+
+  const garnitureOptions = getGarnitureOptions();
+  const currentSizeConfig = config.sizes.find(s => s.id === size) || config.sizes[0];
+  const maxMeats = currentSizeConfig.maxMeats;
+  const totalSteps = config.showMenuOption ? 5 : 4;
 
   const toggleMeat = (meatId: string) => {
     if (selectedMeats.includes(meatId)) {
@@ -96,51 +168,90 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
   };
 
   const calculatePrice = () => {
-    let price = souffletItem?.price || 0;
-    price += menuOptionPrices[menuOption];
+    let price = currentSizeConfig.price;
     
-    // Add supplement costs (1€ each)
-    price += selectedSupplements.length * 1;
+    // Add menu option price
+    if (config.showMenuOption) {
+      price += menuOptionPrices[menuOption];
+    }
+    
+    // Add supplement costs
+    selectedSupplements.forEach(supId => {
+      const sup = supplementOptions.find(s => s.id === supId);
+      if (sup) price += sup.price;
+    });
     
     return price;
   };
 
   const canContinue = () => {
-    if (step === 1) return true;
+    if (step === 1) return true; // Size selection always allowed
     if (step === 2) return selectedMeats.length > 0;
     if (step === 3) return selectedSauces.length > 0;
-    return true;
+    return true; // Steps 4 and 5 are optional
   };
 
   const handleAddToCart = () => {
-    if (!souffletItem) return;
-
-    const customization: SouffletCustomization = {
-      size,
-      meats: selectedMeats,
-      sauces: selectedSauces,
-      garnitures: selectedGarnitures,
-      supplements: selectedSupplements,
-      menuOption,
-      note: note || undefined,
+    const baseItem: MenuItem = {
+      id: `${productType}-${size}`,
+      name: `${config.title} ${currentSizeConfig.label}`,
+      description: `${maxMeats} viande${maxMeats > 1 ? 's' : ''}, sauce, garnitures`,
+      price: currentSizeConfig.price,
+      category: config.categorySlug as any,
     };
+
+    let customization: SouffletCustomization | MakloubCustomization | MlawiCustomization;
+    
+    if (productType === 'soufflet') {
+      customization = {
+        size,
+        meats: selectedMeats,
+        sauces: selectedSauces,
+        garnitures: selectedGarnitures,
+        supplements: selectedSupplements,
+        menuOption,
+        note: note || undefined,
+      } as SouffletCustomization;
+    } else if (productType === 'makloub') {
+      customization = {
+        size,
+        meats: selectedMeats,
+        sauces: selectedSauces,
+        garnitures: selectedGarnitures,
+        supplements: selectedSupplements,
+        menuOption,
+        note: note || undefined,
+      } as MakloubCustomization;
+    } else {
+      customization = {
+        size,
+        meats: selectedMeats,
+        sauces: selectedSauces,
+        garnitures: selectedGarnitures,
+        supplements: selectedSupplements,
+        menuOption,
+        note: note || undefined,
+      } as MlawiCustomization;
+    }
 
     const cartItem: MenuItem = {
-      ...souffletItem,
-      id: `${souffletItem.id}-${Date.now()}`,
+      ...baseItem,
+      id: `${baseItem.id}-${Date.now()}`,
     };
 
-    // Pass calculated price
     const calculatedPrice = calculatePrice();
     addToCart(cartItem, 1, customization, calculatedPrice);
     
-    // Track analytics
-    trackAddToCart(souffletItem.id, `Soufflé ${size}`, 'soufflets');
+    trackAddToCart(baseItem.id, `${config.title} ${size}`, config.categorySlug);
     
-    const meatNames = selectedMeats.map(id => meatOptions.find(m => m.id === id)?.name).join(', ');
+    const meatNames = selectedMeats.map(id => {
+      const meat = meatOptions.find(m => m.id === id);
+      return meat?.name;
+    }).filter(Boolean).join(', ');
+    
     toast({
       title: 'Ajouté au panier',
-      description: `Soufflé ${size} - ${meatNames}`,
+      description: `${config.title} ${currentSizeConfig.label} - ${meatNames}`,
     });
     
     onClose();
@@ -153,25 +264,22 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Choisir la taille</h2>
             <div className="grid grid-cols-3 gap-4">
-              {(['solo', 'double', 'triple'] as SouffletSize[]).map((s) => {
-                const item = souffletProducts.find(t => t.id === `souffle-${s}`) || soufflets.find(t => t.id === `souffle-${s}`);
-                return (
-                  <Card
-                    key={s}
-                    className={`p-4 cursor-pointer transition-all text-center ${size === s ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                    onClick={() => {
-                      setSize(s);
-                      setSelectedMeats([]);
-                    }}
-                  >
-                    <h3 className="font-semibold capitalize">{s}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {s === 'solo' ? '1' : s === 'double' ? '2' : '3'} viande{s !== 'solo' ? 's' : ''}
-                    </p>
-                    <p className="text-xl font-bold text-primary mt-2">{item?.price}€</p>
-                  </Card>
-                );
-              })}
+              {config.sizes.map((s) => (
+                <Card
+                  key={s.id}
+                  className={`p-4 cursor-pointer transition-all text-center ${size === s.id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                  onClick={() => {
+                    setSize(s.id);
+                    setSelectedMeats([]);
+                  }}
+                >
+                  <h3 className="font-semibold capitalize">{s.label}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {s.maxMeats} viande{s.maxMeats > 1 ? 's' : ''}
+                  </p>
+                  <p className="text-xl font-bold text-primary mt-2">{s.price}€</p>
+                </Card>
+              ))}
             </div>
           </div>
         );
@@ -194,6 +302,9 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
                     <span className="font-medium">{meat.name}</span>
                     {selectedMeats.includes(meat.id) && <Check className="w-5 h-5 text-primary" />}
                   </div>
+                  {meat.price > 0 && (
+                    <span className="text-sm text-primary">+{meat.price}€</span>
+                  )}
                 </Card>
               ))}
             </div>
@@ -228,7 +339,7 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
             <h2 className="text-lg font-semibold">Choisir les garnitures</h2>
             <p className="text-sm text-muted-foreground">Sélection multiple possible</p>
             <div className="grid grid-cols-3 gap-3">
-              {souffletGarnitureOptions.map((gar) => (
+              {garnitureOptions.map((gar) => (
                 <Card
                   key={gar.id}
                   className={`p-3 cursor-pointer transition-all ${selectedGarnitures.includes(gar.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
@@ -244,10 +355,10 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
 
             <Separator className="my-4" />
 
-            <h3 className="text-lg font-semibold">Suppléments fromage</h3>
-            <p className="text-sm text-muted-foreground">1€ par supplément</p>
+            <h3 className="text-lg font-semibold">Suppléments</h3>
+            <p className="text-sm text-muted-foreground">Optionnel</p>
             <div className="grid grid-cols-2 gap-3">
-              {cheeseSupplementOptions.map((sup) => (
+              {supplementOptions.map((sup) => (
                 <Card
                   key={sup.id}
                   className={`p-3 cursor-pointer transition-all ${selectedSupplements.includes(sup.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
@@ -323,15 +434,15 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex-1">
-              <h1 className="text-2xl font-display font-bold">Soufflé</h1>
-              <p className="text-sm text-muted-foreground">Étape {step}/5</p>
+              <h1 className="text-2xl font-display font-bold">{config.title}</h1>
+              <p className="text-sm text-muted-foreground">Étape {step}/{totalSteps}</p>
             </div>
             <span className="text-xl font-bold text-primary">{calculatePrice().toFixed(2)}€</span>
           </div>
           
           {/* Progress */}
           <div className="flex gap-2 mt-4">
-            {[1, 2, 3, 4, 5].map((s) => (
+            {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
               <div
                 key={s}
                 className={`h-1 flex-1 rounded-full transition-colors ${s <= step ? 'bg-primary' : 'bg-muted'}`}
@@ -348,7 +459,7 @@ export function SouffletWizard({ onClose }: SouffletWizardProps) {
       {/* Bottom Action */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4">
         <div className="container mx-auto">
-          {step < 5 ? (
+          {step < totalSteps ? (
             <Button 
               className="w-full h-14 text-lg" 
               onClick={() => setStep(step + 1)}

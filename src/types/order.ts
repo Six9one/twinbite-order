@@ -65,19 +65,23 @@ export interface SouffletCustomization {
 }
 
 export interface MakloubCustomization {
-  size: 'solo' | 'double';
+  size: 'solo' | 'double' | 'triple';
   meats: string[];
   sauces: string[];
   garnitures: string[];
   supplements: string[];
+  menuOption?: 'none' | 'frites' | 'boisson' | 'menu';
   cheeseSupplements?: string[];
   note?: string;
 }
 
 export interface MlawiCustomization {
+  size: 'solo' | 'double' | 'triple';
   meats: string[];
   sauces: string[];
   garnitures: string[];
+  supplements: string[];
+  menuOption?: 'none' | 'frites' | 'boisson' | 'menu';
   note?: string;
 }
 
