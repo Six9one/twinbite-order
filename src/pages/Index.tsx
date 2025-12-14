@@ -10,6 +10,7 @@ import { Footer } from '@/components/Footer';
 import { DeliveryMapSection } from '@/components/DeliveryMapSection';
 import { PromoBanner } from '@/components/PromoBanner';
 import { Header } from '@/components/Header';
+import { ClosedBanner } from '@/components/ClosedBanner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ShoppingBag, Phone } from 'lucide-react';
@@ -61,6 +62,9 @@ function MainApp() {
 
   // Home view
   return <div className="min-h-screen bg-background">
+      {/* Closed Banner - shows when restaurant is closed */}
+      <ClosedBanner />
+
       {/* Header with Order Now */}
       <Header onCartClick={() => setIsCartOpen(true)} onOrderTypeSelect={handleNavOrderTypeSelect} onMenuClick={scrollToOrderSelector} onScheduleClick={scrollToOrderSelector} />
 

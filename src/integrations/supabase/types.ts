@@ -35,6 +35,39 @@ export type Database = {
         }
         Relationships: []
       }
+      carousel_images: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number
+          id: string
+          image_url: string
+          is_active: boolean
+          link_url: string | null
+          title: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url: string
+          is_active?: boolean
+          link_url?: string | null
+          title?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          link_url?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string | null
@@ -260,6 +293,39 @@ export type Database = {
         }
         Relationships: []
       }
+      opening_hours: {
+        Row: {
+          day_name: string
+          day_of_week: number
+          evening_close: string | null
+          evening_open: string | null
+          id: string
+          is_open: boolean
+          morning_close: string | null
+          morning_open: string | null
+        }
+        Insert: {
+          day_name: string
+          day_of_week: number
+          evening_close?: string | null
+          evening_open?: string | null
+          id?: string
+          is_open?: boolean
+          morning_close?: string | null
+          morning_open?: string | null
+        }
+        Update: {
+          day_name?: string
+          day_of_week?: number
+          evening_close?: string | null
+          evening_open?: string | null
+          id?: string
+          is_open?: boolean
+          morning_close?: string | null
+          morning_open?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string | null
@@ -465,6 +531,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      promotions: {
+        Row: {
+          buy_quantity: number | null
+          cart_min_amount: number | null
+          created_at: string | null
+          description: string | null
+          discount_percent: number | null
+          end_date: string | null
+          free_item_name: string | null
+          get_quantity: number | null
+          id: string
+          is_active: boolean
+          promo_type: string
+          start_date: string | null
+          title: string
+        }
+        Insert: {
+          buy_quantity?: number | null
+          cart_min_amount?: number | null
+          created_at?: string | null
+          description?: string | null
+          discount_percent?: number | null
+          end_date?: string | null
+          free_item_name?: string | null
+          get_quantity?: number | null
+          id?: string
+          is_active?: boolean
+          promo_type?: string
+          start_date?: string | null
+          title: string
+        }
+        Update: {
+          buy_quantity?: number | null
+          cart_min_amount?: number | null
+          created_at?: string | null
+          description?: string | null
+          discount_percent?: number | null
+          end_date?: string | null
+          free_item_name?: string | null
+          get_quantity?: number | null
+          id?: string
+          is_active?: boolean
+          promo_type?: string
+          start_date?: string | null
+          title?: string
+        }
+        Relationships: []
       }
       sandwich_types: {
         Row: {

@@ -90,7 +90,7 @@ const navItems: NavItem[] = [
     ]
   },
   { label: 'Zones de Livraison', icon: MapPin, value: 'zones' },
-  { label: 'Carousel & Média', icon: Image, value: 'media' },
+  { label: 'Carousel & Média', icon: Image, value: 'carousel' },
   { label: 'Promotions', icon: Gift, value: 'promotions' },
   { label: 'Fidélité', icon: Star, value: 'loyalty' },
   { label: 'Statistiques', icon: BarChart3, value: 'stats' },
