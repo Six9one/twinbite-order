@@ -21,6 +21,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { isMenuMidiTime } from '@/utils/promotions';
+import { MenuItem, MenuCategory } from '@/types/order';
+import { useProductsByCategory, Product } from '@/hooks/useProducts';
 
 interface CategoryMenuProps {
   onBack: () => void;
