@@ -58,15 +58,35 @@ const navItems: NavItem[] = [
     icon: Pizza,
     children: [
       { label: '🍕 Pizzas', icon: Pizza, value: 'pizzas' },
-      { label: '🥖 Sandwiches', icon: Sandwich, value: 'sandwiches' },
-      { label: 'Autres Produits', icon: Package, value: 'products' },
+      { label: '🥙 Soufflé', icon: Package, value: 'soufflet' },
+      { label: '🌯 Makloub', icon: Package, value: 'makloub' },
+      { label: '🫓 Mlawi', icon: Package, value: 'mlawi' },
+      { label: '🥖 Sandwich (Pain Maison)', icon: Sandwich, value: 'sandwiches' },
+      { label: '🌮 Tacos', icon: Package, value: 'tacos' },
+      { label: '🥪 Panini', icon: Package, value: 'panini' },
+      { label: '🧀 Croques & Tex-Mex', icon: Package, value: 'croques' },
+      { label: '🍟 Frites', icon: Package, value: 'frites' },
+    ]
+  },
+  {
+    label: 'Desserts',
+    icon: Cake,
+    children: [
+      { label: '🥤 Milkshakes', icon: GlassWater, value: 'milkshakes' },
+      { label: '🥞 Crêpes', icon: Cake, value: 'crepes' },
+      { label: '🧇 Gaufres', icon: Cake, value: 'gaufres' },
+      { label: '🥤 Boissons', icon: GlassWater, value: 'drinks' },
+    ]
+  },
+  {
+    label: 'Options & Extras',
+    icon: Plus,
+    children: [
       { label: 'Viandes', icon: Utensils, value: 'meats' },
       { label: 'Sauces', icon: Droplet, value: 'sauces' },
       { label: 'Garnitures', icon: Leaf, value: 'garnitures' },
       { label: 'Crudités', icon: Salad, value: 'crudites' },
       { label: 'Suppléments', icon: Plus, value: 'supplements' },
-      { label: 'Boissons', icon: GlassWater, value: 'drinks' },
-      { label: 'Desserts', icon: Cake, value: 'desserts' },
     ]
   },
   { label: 'Zones de Livraison', icon: MapPin, value: 'zones' },
