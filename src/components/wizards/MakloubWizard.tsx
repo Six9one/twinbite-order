@@ -3,6 +3,7 @@ import { MenuItem, MakloubCustomization } from '@/types/order';
 import { makloub, meatOptions, sauceOptions, makloubGarnitureOptions, cheeseSupplementOptions } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
+import { useProductsByCategory, Product } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,30 @@ interface MakloubWizardProps {
 
 type MakloubSize = 'solo' | 'double';
 
+// Helper to map database products to expected shape
+function mapDbProductsToMakloub(products: Product[] | undefined): MenuItem[] {
+  if (!products || products.length === 0) return makloub;
+  
+  // Sort by base_price to determine size
+  const sorted = [...products].sort((a, b) => Number(a.base_price) - Number(b.base_price));
+  
+  return sorted.map((p, idx) => {
+    let size: MakloubSize = 'solo';
+    const nameLower = p.name.toLowerCase();
+    if (nameLower.includes('double')) size = 'double';
+    else if (idx === 1) size = 'double';
+    
+    return {
+      id: `makloub-${size}`,
+      name: p.name,
+      description: p.description || '',
+      price: Number(p.base_price),
+      category: 'makloub' as const,
+      imageUrl: p.image_url || undefined,
+    };
+  });
+}
+
 export function MakloubWizard({ onClose }: MakloubWizardProps) {
   const { addToCart } = useOrder();
   const [step, setStep] = useState(1);
@@ -27,8 +52,12 @@ export function MakloubWizard({ onClose }: MakloubWizardProps) {
   const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
   const [note, setNote] = useState('');
 
+  // Load makloub from database (fallback to static)
+  const { data: dbMakloub } = useProductsByCategory('makloub');
+  const makloubProducts = mapDbProductsToMakloub(dbMakloub);
+
   const maxMeats = size === 'solo' ? 1 : 2;
-  const makloubItem = makloub.find(m => m.id === `makloub-${size}`);
+  const makloubItem = makloubProducts.find(m => m.id === `makloub-${size}`) || makloub.find(m => m.id === `makloub-${size}`);
 
   const toggleMeat = (meatId: string) => {
     if (selectedMeats.includes(meatId)) {
@@ -118,7 +147,7 @@ export function MakloubWizard({ onClose }: MakloubWizardProps) {
             <h2 className="text-lg font-semibold">Choisir la taille</h2>
             <div className="grid grid-cols-2 gap-4">
               {(['solo', 'double'] as MakloubSize[]).map((s) => {
-                const item = makloub.find(m => m.id === `makloub-${s}`);
+                const item = makloubProducts.find(m => m.id === `makloub-${s}`) || makloub.find(m => m.id === `makloub-${s}`);
                 return (
                   <Card
                     key={s}

@@ -4,7 +4,7 @@ import { menuOptionPrices } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowLeft, Check, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, Check, Plus, Minus, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface SimpleProductWizardProps {
@@ -67,29 +67,52 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
         </div>
 
         <div className="container mx-auto px-4 py-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {items.map((item) => (
-              <Card
-                key={item.id}
-                className="p-4 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30"
-                onClick={() => setSelectedItem(item)}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-display font-semibold text-lg">{item.name}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <span className="text-xl font-bold text-primary">{item.price.toFixed(2)}€</span>
-                </div>
-              </Card>
-            ))}
-          </div>
+          {items.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Aucun produit disponible dans cette catégorie.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {items.map((item) => {
+                const imageUrl = item.imageUrl || item.image;
+                return (
+                  <Card
+                    key={item.id}
+                    className="overflow-hidden cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30"
+                    onClick={() => setSelectedItem(item)}
+                  >
+                    {/* Image */}
+                    {imageUrl ? (
+                      <div className="aspect-video relative">
+                        <img
+                          src={imageUrl}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="aspect-video bg-muted flex items-center justify-center">
+                        <Image className="w-12 h-12 text-primary/30" />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <h3 className="font-display font-semibold text-lg">{item.name}</h3>
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
+                      <div className="mt-3">
+                        <span className="text-xl font-bold text-primary">{item.price.toFixed(2)}€</span>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     );
   }
+
+  const selectedImageUrl = selectedItem.imageUrl || selectedItem.image;
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -108,6 +131,17 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
       </div>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
+        {/* Product Image */}
+        {selectedImageUrl && (
+          <div className="aspect-video max-w-md mx-auto rounded-lg overflow-hidden">
+            <img
+              src={selectedImageUrl}
+              alt={selectedItem.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+
         {/* Quantity */}
         <div>
           <h2 className="text-lg font-semibold mb-3">Quantité</h2>
