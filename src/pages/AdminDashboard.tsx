@@ -19,6 +19,7 @@ import { OpeningHoursManager } from '@/components/admin/OpeningHoursManager';
 import { StatisticsSection } from '@/components/admin/StatisticsSection';
 import { PaymentSettingsManager } from '@/components/admin/PaymentSettingsManager';
 import { TicketTemplateManager } from '@/components/admin/TicketTemplateManager';
+import { CarouselManager } from '@/components/admin/CarouselManager';
 import { 
   LogOut, Home, Search, RefreshCw, Download, Printer, 
   Clock, CheckCircle, XCircle, ChefHat, Package,
@@ -28,7 +29,7 @@ import {
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments' | 'carousel';
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', icon: Clock },
@@ -427,6 +428,7 @@ export default function AdminDashboard() {
           
           {/* New Sections */}
           {activeTab === 'promotions' && <PromotionsManager />}
+          {activeTab === 'carousel' && <CarouselManager />}
           {activeTab === 'loyalty' && <LoyaltyManager />}
           {activeTab === 'hours' && <OpeningHoursManager />}
           {activeTab === 'stats' && <StatisticsSection orders={orders || []} />}

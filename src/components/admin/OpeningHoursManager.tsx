@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Clock, Save } from 'lucide-react';
+import { Clock, Save, AlertCircle } from 'lucide-react';
 
 interface OpeningHour {
   id: string;
@@ -17,6 +17,16 @@ interface OpeningHour {
   evening_open: string | null;
   evening_close: string | null;
 }
+
+const DEFAULT_HOURS: Omit<OpeningHour, 'id'>[] = [
+  { day_of_week: 1, day_name: 'Lundi', is_open: true, morning_open: '11:00', morning_close: '15:00', evening_open: '17:30', evening_close: '00:00' },
+  { day_of_week: 2, day_name: 'Mardi', is_open: true, morning_open: '11:00', morning_close: '15:00', evening_open: '17:30', evening_close: '00:00' },
+  { day_of_week: 3, day_name: 'Mercredi', is_open: true, morning_open: '11:00', morning_close: '15:00', evening_open: '17:30', evening_close: '00:00' },
+  { day_of_week: 4, day_name: 'Jeudi', is_open: true, morning_open: '11:00', morning_close: '15:00', evening_open: '17:30', evening_close: '00:00' },
+  { day_of_week: 5, day_name: 'Vendredi', is_open: true, morning_open: '11:00', morning_close: '15:00', evening_open: '17:30', evening_close: '00:00' },
+  { day_of_week: 6, day_name: 'Samedi', is_open: true, morning_open: '11:00', morning_close: '15:00', evening_open: '17:30', evening_close: '00:00' },
+  { day_of_week: 0, day_name: 'Dimanche', is_open: false, morning_open: null, morning_close: null, evening_open: null, evening_close: null },
+];
 
 export function OpeningHoursManager() {
   const [hours, setHours] = useState<OpeningHour[]>([]);
