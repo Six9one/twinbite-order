@@ -192,6 +192,27 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
   };
 
   const handleAddToCart = () => {
+    // Convert IDs to names for display in cart/notifications
+    const meatNames = selectedMeats.map(id => {
+      const meat = meatOptions.find(m => m.id === id);
+      return meat?.name || id;
+    });
+    
+    const sauceNames = selectedSauces.map(id => {
+      const sauce = sauceOptions.find(s => s.id === id);
+      return sauce?.name || id;
+    });
+    
+    const garnitureNames = selectedGarnitures.map(id => {
+      const gar = garnitureOptions.find(g => g.id === id);
+      return gar?.name || id;
+    });
+    
+    const supplementNames = selectedSupplements.map(id => {
+      const sup = supplementOptions.find(s => s.id === id);
+      return sup?.name || id;
+    });
+
     const baseItem: MenuItem = {
       id: `${productType}-${size}`,
       name: `${config.title} ${currentSizeConfig.label}`,
@@ -202,33 +223,34 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
 
     let customization: SouffletCustomization | MakloubCustomization | MlawiCustomization;
     
+    // Store NAMES instead of IDs for display in cart/notifications
     if (productType === 'soufflet') {
       customization = {
         size,
-        meats: selectedMeats,
-        sauces: selectedSauces,
-        garnitures: selectedGarnitures,
-        supplements: selectedSupplements,
+        meats: meatNames,
+        sauces: sauceNames,
+        garnitures: garnitureNames,
+        supplements: supplementNames,
         menuOption,
         note: note || undefined,
       } as SouffletCustomization;
     } else if (productType === 'makloub') {
       customization = {
         size,
-        meats: selectedMeats,
-        sauces: selectedSauces,
-        garnitures: selectedGarnitures,
-        supplements: selectedSupplements,
+        meats: meatNames,
+        sauces: sauceNames,
+        garnitures: garnitureNames,
+        supplements: supplementNames,
         menuOption,
         note: note || undefined,
       } as MakloubCustomization;
     } else {
       customization = {
         size,
-        meats: selectedMeats,
-        sauces: selectedSauces,
-        garnitures: selectedGarnitures,
-        supplements: selectedSupplements,
+        meats: meatNames,
+        sauces: sauceNames,
+        garnitures: garnitureNames,
+        supplements: supplementNames,
         menuOption,
         note: note || undefined,
       } as MlawiCustomization;
@@ -244,14 +266,9 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
     
     trackAddToCart(baseItem.id, `${config.title} ${size}`, config.categorySlug);
     
-    const meatNames = selectedMeats.map(id => {
-      const meat = meatOptions.find(m => m.id === id);
-      return meat?.name;
-    }).filter(Boolean).join(', ');
-    
     toast({
       title: 'Ajouté au panier',
-      description: `${config.title} ${currentSizeConfig.label} - ${meatNames}`,
+      description: `${config.title} ${currentSizeConfig.label} - ${meatNames.join(', ')}`,
     });
     
     onClose();
