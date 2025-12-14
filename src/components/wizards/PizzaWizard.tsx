@@ -322,6 +322,7 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
                 <div>
                   <h3 className="font-semibold">Senior</h3>
                   <p className="text-2xl font-bold text-primary">{pizzaPrices.senior}€</p>
+                  <p className="text-xs text-muted-foreground/70">31cm • 1-2 personnes</p>
                 </div>
                 {size === 'senior' && <Check className="w-6 h-6 text-primary" />}
               </div>
@@ -334,7 +335,7 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
                 <div>
                   <h3 className="font-semibold">Mega</h3>
                   <p className="text-2xl font-bold text-primary">{pizzaPrices.mega}€</p>
-                  <p className="text-xs text-muted-foreground">+7€</p>
+                  <p className="text-xs text-muted-foreground/70">40cm • 2-3 personnes</p>
                 </div>
                 {size === 'mega' && <Check className="w-6 h-6 text-primary" />}
               </div>
