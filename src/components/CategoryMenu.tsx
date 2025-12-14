@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import { MenuCategory } from '@/types/order';
 import { 
-  categoryLabels, 
-  categoryOrder,
   mlawi,
   panini,
   croques,
