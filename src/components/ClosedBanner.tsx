@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, X, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface OpeningHour {
@@ -15,9 +15,13 @@ interface OpeningHour {
 export function ClosedBanner() {
   const [isVisible, setIsVisible] = useState(false);
   const [closedMessage, setClosedMessage] = useState('');
+  const [isBreakTime, setIsBreakTime] = useState(false);
 
   useEffect(() => {
     checkIfClosed();
+    // Recheck every minute
+    const interval = setInterval(checkIfClosed, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const checkIfClosed = async () => {
@@ -38,7 +42,13 @@ export function ClosedBanner() {
 
     // If closed today (like Sunday)
     if (!todayHours.is_open) {
-      setClosedMessage(`Nous sommes fermés le ${todayHours.day_name}. À bientôt!`);
+      // Find next open day
+      const tomorrowDay = (currentDay + 1) % 7;
+      const tomorrowHours = hours.find(h => h.day_of_week === tomorrowDay);
+      const nextOpenTime = tomorrowHours?.morning_open || '11:00';
+      
+      setClosedMessage(`Nous sommes fermés le ${todayHours.day_name}. Réouverture demain à ${nextOpenTime.slice(0, 5)}.`);
+      setIsBreakTime(false);
       setIsVisible(true);
       return;
     }
@@ -56,15 +66,16 @@ export function ClosedBanner() {
     const eveningClose = timeToMinutes(todayHours.evening_close);
 
     let isCurrentlyOpen = false;
+    let statusType: 'closed_before' | 'break' | 'closed_after' | 'open' = 'open';
 
-    // Check morning hours
+    // Check morning hours (11:00 - 15:00)
     if (morningOpen !== null && morningClose !== null) {
       if (currentTime >= morningOpen && currentTime < morningClose) {
         isCurrentlyOpen = true;
       }
     }
 
-    // Check evening hours (handle midnight crossing)
+    // Check evening hours (17:30 - 00:00)
     if (eveningOpen !== null && eveningClose !== null) {
       if (eveningClose < eveningOpen) {
         // Closes after midnight
@@ -78,41 +89,59 @@ export function ClosedBanner() {
       }
     }
 
+    // Determine status type
     if (!isCurrentlyOpen) {
-      // Format next opening time
-      let nextOpening = '';
       if (morningOpen !== null && currentTime < morningOpen) {
-        const hours = Math.floor(morningOpen / 60);
-        const mins = morningOpen % 60;
-        nextOpening = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-      } else if (eveningOpen !== null && currentTime < eveningOpen) {
-        const hours = Math.floor(eveningOpen / 60);
-        const mins = eveningOpen % 60;
-        nextOpening = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        statusType = 'closed_before';
+      } else if (morningClose !== null && eveningOpen !== null && currentTime >= morningClose && currentTime < eveningOpen) {
+        statusType = 'break';
+      } else {
+        statusType = 'closed_after';
       }
 
-      setClosedMessage(
-        nextOpening 
-          ? `Nous sommes actuellement fermés. Réouverture à ${nextOpening}.`
-          : 'Nous sommes actuellement fermés.'
-      );
+      // Build message based on status
+      let message = '';
+      
+      switch (statusType) {
+        case 'closed_before':
+          const openHour = morningOpen !== null ? `${Math.floor(morningOpen / 60).toString().padStart(2, '0')}:${(morningOpen % 60).toString().padStart(2, '0')}` : '11:00';
+          message = `🌅 Nous ouvrons à ${openHour}. À très vite !`;
+          setIsBreakTime(false);
+          break;
+          
+        case 'break':
+          const reopenHour = eveningOpen !== null ? `${Math.floor(eveningOpen / 60).toString().padStart(2, '0')}:${(eveningOpen % 60).toString().padStart(2, '0')}` : '17:30';
+          message = `☕ Pause en cours ! Réouverture à ${reopenHour}.`;
+          setIsBreakTime(true);
+          break;
+          
+        case 'closed_after':
+          message = `🌙 Nous sommes fermés pour aujourd'hui. À demain dès 11:00 !`;
+          setIsBreakTime(false);
+          break;
+      }
+
+      setClosedMessage(message);
       setIsVisible(true);
+    } else {
+      setIsVisible(false);
     }
   };
 
   if (!isVisible) return null;
 
   return (
-    <div className="bg-destructive text-destructive-foreground">
+    <div className={`${isBreakTime ? 'bg-amber-500' : 'bg-destructive'} text-white`}>
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <Clock className="w-5 h-5 flex-shrink-0 animate-pulse" />
             <span className="text-sm font-medium">{closedMessage}</span>
           </div>
           <button 
             onClick={() => setIsVisible(false)}
-            className="p-1 hover:bg-destructive-foreground/10 rounded"
+            className="p-1 hover:bg-white/20 rounded transition-colors"
+            aria-label="Fermer"
           >
             <X className="w-4 h-4" />
           </button>
