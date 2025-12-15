@@ -35,7 +35,7 @@ const allowedMeatNames = [
 
 export function PaniniWizard({ onClose }: PaniniWizardProps) {
   const { addToCart } = useOrder();
-  
+
   const [step, setStep] = useState(1);
   const [size, setSize] = useState<PaniniSize>('solo');
   const [selectedMeats, setSelectedMeats] = useState<string[]>([]);
@@ -52,8 +52,8 @@ export function PaniniWizard({ onClose }: PaniniWizardProps) {
   // Filter meats to only allowed ones
   const meatOptions = (dbMeats || [])
     .map(m => ({ id: m.id, name: m.name, price: Number(m.price) }))
-    .filter(m => allowedMeatNames.some(allowed => 
-      m.name.toLowerCase().includes(allowed.toLowerCase()) || 
+    .filter(m => allowedMeatNames.some(allowed =>
+      m.name.toLowerCase().includes(allowed.toLowerCase()) ||
       allowed.toLowerCase().includes(m.name.toLowerCase())
     ));
 
@@ -90,16 +90,16 @@ export function PaniniWizard({ onClose }: PaniniWizardProps) {
 
   const calculatePrice = () => {
     let price = currentSizeConfig.price;
-    
+
     // Add menu option price
     price += menuOptionPrices[menuOption];
-    
+
     // Add supplement costs
     selectedSupplements.forEach(supId => {
       const sup = supplementOptions.find(s => s.id === supId);
       if (sup) price += sup.price;
     });
-    
+
     return price;
   };
 
@@ -115,12 +115,12 @@ export function PaniniWizard({ onClose }: PaniniWizardProps) {
       const meat = meatOptions.find(m => m.id === id);
       return meat?.name || id;
     });
-    
+
     const sauceNames = selectedSauces.map(id => {
       const sauce = sauceOptions.find(s => s.id === id);
       return sauce?.name || id;
     });
-    
+
     const supplementNames = selectedSupplements.map(id => {
       const sup = supplementOptions.find(s => s.id === id);
       return sup?.name || id;
@@ -150,14 +150,14 @@ export function PaniniWizard({ onClose }: PaniniWizardProps) {
 
     const calculatedPrice = calculatePrice();
     addToCart(cartItem, 1, customization, calculatedPrice);
-    
+
     trackAddToCart(baseItem.id, `Panini ${size}`, 'panini');
-    
+
     toast({
       title: 'Ajouté au panier',
       description: `Panini ${currentSizeConfig.label} - ${meatNames.join(', ')}`,
     });
-    
+
     onClose();
   };
 
@@ -322,7 +322,7 @@ export function PaniniWizard({ onClose }: PaniniWizardProps) {
             </div>
             <span className="text-xl font-bold text-primary">{calculatePrice().toFixed(2)}€</span>
           </div>
-          
+
           <div className="flex gap-2 mt-4">
             {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
               <div
@@ -341,16 +341,16 @@ export function PaniniWizard({ onClose }: PaniniWizardProps) {
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
         <div className="container mx-auto">
           {step < totalSteps ? (
-            <Button 
-              className="w-full h-14 text-lg" 
+            <Button
+              className="w-full h-14 text-lg"
               onClick={() => setStep(step + 1)}
               disabled={!canContinue()}
             >
               Continuer
             </Button>
           ) : (
-            <Button 
-              className="w-full h-14 text-lg" 
+            <Button
+              className="w-full h-14 text-lg"
               onClick={handleAddToCart}
             >
               Ajouter au panier - {calculatePrice().toFixed(2)}€

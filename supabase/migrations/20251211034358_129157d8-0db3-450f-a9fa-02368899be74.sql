@@ -202,7 +202,7 @@ INSERT INTO public.delivery_zones (name, min_order, delivery_fee, estimated_time
 INSERT INTO public.categories (slug, name, display_order) VALUES
 ('pizzas', 'Pizzas', 1),
 ('tacos', 'Tacos', 2),
-('soufflets', 'Soufflés', 3),
+('soufflets', 'Soufflets', 3),
 ('makloub', 'Makloub', 4),
 ('mlawi', 'Mlawi', 5),
 ('panini', 'Panini', 6),

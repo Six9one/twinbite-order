@@ -15,44 +15,46 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ShoppingBag, Phone } from 'lucide-react';
 import heroPizza from '@/assets/hero-pizza.jpg';
+
 function MainApp() {
-  const {
-    orderType,
-    setOrderType
-  } = useOrder();
+  const { orderType, setOrderType } = useOrder();
   const [view, setView] = useState<'home' | 'menu' | 'checkout'>('home');
   const [isCartOpen, setIsCartOpen] = useState(false);
   const orderSelectorRef = useRef<HTMLDivElement>(null);
+
   const handleOrderTypeSelect = () => {
     setView('menu');
   };
+
   const handleBackToHome = () => {
     setView('home');
     setOrderType(null);
   };
+
   const handleCheckout = () => {
     setIsCartOpen(false);
     setView('checkout');
   };
+
   const handleOrderComplete = () => {
     setView('home');
     setOrderType(null);
   };
+
   const handleNavOrderTypeSelect = (type: OrderType) => {
     setView('menu');
   };
+
   const scrollToOrderSelector = () => {
-    orderSelectorRef.current?.scrollIntoView({
-      behavior: 'smooth'
-    });
+    orderSelectorRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   // Menu view
   if (view === 'menu') {
     return <>
-        <CategoryMenu onBack={handleBackToHome} onOpenCart={() => setIsCartOpen(true)} />
-        <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
-      </>;
+      <CategoryMenu onBack={handleBackToHome} onOpenCart={() => setIsCartOpen(true)} />
+      <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
+    </>;
   }
 
   // Checkout view
@@ -61,29 +63,25 @@ function MainApp() {
   }
 
   // Home view
-  return <div className="min-h-screen bg-background">
-      {/* Closed Banner - shows when restaurant is closed */}
+  return (
+    <div className="min-h-screen bg-background">
       <ClosedBanner />
-
-      {/* Header with Order Now */}
-      <Header onCartClick={() => setIsCartOpen(true)} onOrderTypeSelect={handleNavOrderTypeSelect} onMenuClick={scrollToOrderSelector} onScheduleClick={scrollToOrderSelector} />
-
-      {/* Cart */}
+      <Header
+        onCartClick={() => setIsCartOpen(true)}
+        onOrderTypeSelect={handleNavOrderTypeSelect}
+        onMenuClick={scrollToOrderSelector}
+        onScheduleClick={scrollToOrderSelector}
+      />
       <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
-
-      {/* Promo Banner */}
       <PromoBanner />
 
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-cover bg-center" style={{
-        backgroundImage: `url(${heroPizza})`
-      }} />
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroPizza})` }} />
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-background" />
-        
+
         <div className="relative z-10 container mx-auto px-4 py-12">
           <div className="text-center mb-10 animate-fade-in">
-            {/* Logo Twin Pizza - Clickable */}
             <div className="mb-6">
               <a href="/" className="hover:opacity-80 transition-opacity">
                 <h1 className="text-6xl md:text-8xl font-medium tracking-wide whitespace-nowrap">
@@ -92,8 +90,6 @@ function MainApp() {
                 </h1>
               </a>
             </div>
-            
-            {/* Subtitle */}
             <p className="text-lg mb-2 font-sans font-extrabold md:text-xl text-secondary">
               Grand-Couronne
             </p>
@@ -101,13 +97,12 @@ function MainApp() {
               Pizzas • Soufflés • Makloub • Mlawi • Tacos • Sandwiches et plus encore...
             </p>
           </div>
-          
+
           <div ref={orderSelectorRef}>
             <HeroOrderSelector onSelect={handleOrderTypeSelect} />
           </div>
         </div>
-        
-        {/* Decorative elements */}
+
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
       </section>
 
@@ -137,8 +132,6 @@ function MainApp() {
       <section className="py-12 bg-gradient-to-b from-muted/30 to-background">
         <div className="container mx-auto px-4">
           <DealsCarousel />
-          
-          {/* Commander Button under carousel */}
           <div className="flex justify-center mt-8">
             <Button onClick={scrollToOrderSelector} size="lg" className="btn-primary gap-2 px-8 py-6 text-lg rounded-full shadow-lg hover:scale-105 transition-transform">
               <ShoppingBag className="w-5 h-5" />
@@ -155,29 +148,22 @@ function MainApp() {
             <div className="group p-6 rounded-2xl bg-card hover:bg-primary/5 transition-all duration-300 hover:-translate-y-2">
               <span className="text-5xl block mb-4 group-hover:scale-110 transition-transform">🍕</span>
               <h3 className="text-xl font-display font-semibold mb-2">Pizzas Artisanales</h3>
-              <p className="text-muted-foreground">
-                30 recettes uniques, base tomate ou crème fraîche
-              </p>
+              <p className="text-muted-foreground">30 recettes uniques, base tomate ou crème fraîche</p>
             </div>
             <div className="group p-6 rounded-2xl bg-card hover:bg-primary/5 transition-all duration-300 hover:-translate-y-2">
               <span className="text-5xl block mb-4 group-hover:scale-110 transition-transform">🚗</span>
               <h3 className="text-xl font-display font-semibold mb-2">Livraison Rapide</h3>
-              <p className="text-muted-foreground">
-                Grand-Couronne et environs en 30-45 min
-              </p>
+              <p className="text-muted-foreground">Grand-Couronne et environs en 30-45 min</p>
             </div>
             <div className="group p-6 rounded-2xl bg-card hover:bg-primary/5 transition-all duration-300 hover:-translate-y-2">
               <span className="text-5xl block mb-4 group-hover:scale-110 transition-transform">🎉</span>
               <h3 className="text-xl font-display font-semibold mb-2">Promos Exclusives</h3>
-              <p className="text-muted-foreground">
-                1 achetée = 1 offerte sur place & à emporter
-              </p>
+              <p className="text-muted-foreground">1 achetée = 1 offerte sur place & à emporter</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Interactive Delivery Map */}
       <DeliveryMapSection />
 
       {/* Contact Section */}
@@ -216,10 +202,14 @@ function MainApp() {
       </section>
 
       <Footer />
-    </div>;
+    </div>
+  );
 }
+
 export default function Index() {
-  return <OrderProvider>
+  return (
+    <OrderProvider>
       <MainApp />
-    </OrderProvider>;
+    </OrderProvider>
+  );
 }

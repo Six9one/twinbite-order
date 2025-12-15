@@ -318,26 +318,26 @@ export const makloub: MenuItem[] = [
 
 // ============= MLAWI =============
 export const mlawi: MenuItem[] = [
-  { 
-    id: "mlawi-solo", 
-    name: "Mlawi Solo", 
-    description: "1 viande, garnitures, sauces", 
-    price: 6, 
-    category: "mlawi" 
+  {
+    id: "mlawi-solo",
+    name: "Mlawi Solo",
+    description: "1 viande, garnitures, sauces",
+    price: 6,
+    category: "mlawi"
   },
-  { 
-    id: "mlawi-double", 
-    name: "Mlawi Double", 
-    description: "2 viandes, garnitures, sauces", 
-    price: 8, 
-    category: "mlawi" 
+  {
+    id: "mlawi-double",
+    name: "Mlawi Double",
+    description: "2 viandes, garnitures, sauces",
+    price: 8,
+    category: "mlawi"
   },
-  { 
-    id: "mlawi-triple", 
-    name: "Mlawi Triple", 
-    description: "3 viandes, garnitures, sauces", 
-    price: 10, 
-    category: "mlawi" 
+  {
+    id: "mlawi-triple",
+    name: "Mlawi Triple",
+    description: "3 viandes, garnitures, sauces",
+    price: 10,
+    category: "mlawi"
   },
 ];
 

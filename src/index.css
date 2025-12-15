@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,54 +8,49 @@
 
 /* Custom animations */
 @keyframes bounce-slow {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 .animate-bounce-slow {
   animation: bounce-slow 2s ease-in-out infinite;
 }
+
 @layer base {
   :root {
     --background: 30 30% 97%;
     --foreground: 20 20% 15%;
-
     --card: 30 25% 95%;
     --card-foreground: 20 20% 15%;
-
     --popover: 30 30% 97%;
     --popover-foreground: 20 20% 15%;
-
     --primary: 24 80% 50%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 30 20% 90%;
     --secondary-foreground: 20 20% 20%;
-
     --muted: 30 15% 88%;
     --muted-foreground: 20 10% 45%;
-
     --accent: 10 70% 45%;
     --accent-foreground: 0 0% 100%;
-
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-
     --border: 30 20% 85%;
     --input: 30 20% 85%;
     --ring: 24 80% 50%;
-
     --radius: 0.75rem;
-
-    /* Custom tokens */
     --pizza-gold: 45 90% 55%;
     --pizza-red: 10 70% 45%;
     --pizza-cream: 35 40% 92%;
     --pizza-brown: 25 35% 25%;
-
     --font-display: 'Comfortaa', sans-serif;
     --font-body: 'Comfortaa', sans-serif;
-
     --shadow-warm: 0 4px 20px -4px hsl(24 80% 50% / 0.2);
     --shadow-soft: 0 2px 12px -2px hsl(20 20% 15% / 0.1);
   }
@@ -61,28 +58,20 @@
   .dark {
     --background: 20 20% 10%;
     --foreground: 30 20% 95%;
-
     --card: 20 18% 14%;
     --card-foreground: 30 20% 95%;
-
     --popover: 20 20% 10%;
     --popover-foreground: 30 20% 95%;
-
     --primary: 24 80% 55%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 20 15% 20%;
     --secondary-foreground: 30 20% 90%;
-
     --muted: 20 15% 25%;
     --muted-foreground: 30 10% 60%;
-
     --accent: 10 70% 50%;
     --accent-foreground: 0 0% 100%;
-
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-
     --border: 20 15% 25%;
     --input: 20 15% 25%;
     --ring: 24 80% 55%;
@@ -99,7 +88,12 @@
     font-family: var(--font-body);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
   }
 }
@@ -167,16 +161,22 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
   }
 
   @keyframes slideUp {
-    from { 
+    from {
       opacity: 0;
       transform: translateY(20px);
     }
-    to { 
+
+    to {
       opacity: 1;
       transform: translateY(0);
     }
