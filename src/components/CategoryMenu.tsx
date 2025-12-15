@@ -98,10 +98,8 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
   const itemCount = getItemCount();
 
   // Load products from backend for simple categories (fallback to static data)
-  const { data: paniniProducts } = useProductsByCategory('panini');
   const { data: croquesProducts } = useProductsByCategory('croques');
   const { data: fritesProducts } = useProductsByCategory('frites');
-  const { data: milkshakeProducts } = useProductsByCategory('milkshakes');
   const { data: crepeProducts } = useProductsByCategory('crepes');
   const { data: gaufreProducts } = useProductsByCategory('gaufres');
   const { data: boissonsProducts } = useProductsByCategory('boissons');
