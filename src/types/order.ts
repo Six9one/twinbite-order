@@ -86,6 +86,7 @@ export interface MlawiCustomization {
 }
 
 export interface PaniniCustomization {
+  size: 'solo' | 'duo';
   meats: string[];
   sauces: string[];
   menuOption: 'none' | 'frites' | 'boisson' | 'menu';

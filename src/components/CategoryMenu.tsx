@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { 
-  panini,
   croques,
   frites,
-  milkshakes,
   crepes,
   gaufres,
   boissons,
@@ -13,6 +11,8 @@ import { PizzaWizard } from '@/components/wizards/PizzaWizard';
 import { TacosWizard } from '@/components/wizards/TacosWizard';
 import { UnifiedProductWizard } from '@/components/wizards/UnifiedProductWizard';
 import { SandwichWizard } from '@/components/wizards/SandwichWizard';
+import { PaniniWizard } from '@/components/wizards/PaniniWizard';
+import { MilkshakeWizard } from '@/components/wizards/MilkshakeWizard';
 import { SimpleProductWizard } from '@/components/wizards/SimpleProductWizard';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -30,7 +30,7 @@ interface CategoryMenuProps {
 // Product category labels (ordered as requested)
 const productCategoryLabels: Record<string, string> = {
   pizzas: "🍕 Pizzas",
-  soufflets: "🥙 Soufflé",
+  soufflets: "🥙 Soufflet",
   makloub: "🌯 Makloub",
   mlawi: "🫓 Mlawi",
   sandwiches: "🥖 Sandwich (Pain Maison)",
@@ -137,14 +137,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       case 'mlawi':
         return <UnifiedProductWizard productType="mlawi" onClose={() => setSelectedCategory(null)} />;
       case 'panini':
-        return (
-          <SimpleProductWizard 
-            items={mapProductsToMenuItems(paniniProducts, 'panini', panini)} 
-            title="Panini" 
-            showMenuOption 
-            onClose={() => setSelectedCategory(null)} 
-          />
-        );
+        return <PaniniWizard onClose={() => setSelectedCategory(null)} />;
       case 'croques':
         return (
           <SimpleProductWizard 
@@ -163,13 +156,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
           />
         );
       case 'milkshakes':
-        return (
-          <SimpleProductWizard 
-            items={mapProductsToMenuItems(milkshakeProducts, 'milkshakes', milkshakes)} 
-            title="Milkshakes" 
-            onClose={() => setSelectedCategory(null)} 
-          />
-        );
+        return <MilkshakeWizard onClose={() => setSelectedCategory(null)} />;
       case 'crepes':
         return (
           <SimpleProductWizard 
@@ -266,7 +253,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
               onClick={() => handleCategoryClick(category)}
             >
               {category === 'sandwiches' && (
-                <Badge className="absolute top-2 right-2 bg-green-500 text-white text-xs">NEW</Badge>
+                <Badge className="absolute top-2 right-2 bg-green-500 text-white text-xs">Nouveau</Badge>
               )}
               <span className="text-3xl sm:text-4xl mb-3 block">
                 {allCategoryLabels[category]?.split(' ')[0]}

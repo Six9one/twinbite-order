@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { MenuItem, SouffletCustomization, MakloubCustomization, MlawiCustomization } from '@/types/order';
+import { MenuItem, PaniniCustomization } from '@/types/order';
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { useMeatOptions, useSauceOptions, useSupplementOptions } from '@/hooks/useCustomizationOptions';
+import { menuOptionPrices } from '@/data/menu';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,63 +11,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Check } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { 
-  meatOptions as staticMeatOptions, 
-  sauceOptions as staticSauceOptions,
-  souffletGarnitureOptions,
-  makloubGarnitureOptions,
-  cheeseSupplementOptions as staticSupplements,
-  menuOptionPrices
-} from '@/data/menu';
 
-export type ProductType = 'soufflet' | 'mlawi' | 'makloub';
-type ProductSize = 'solo' | 'double' | 'triple';
-
-interface ProductConfig {
-  title: string;
-  categorySlug: string;
-  garnitureType: 'soufflet' | 'makloub' | 'mlawi';
-  sizes: { id: ProductSize; label: string; maxMeats: number; price: number }[];
-  showMenuOption: boolean;
+interface PaniniWizardProps {
+  onClose: () => void;
 }
 
-const productConfigs: Record<ProductType, ProductConfig> = {
-  soufflet: {
-    title: 'Soufflet',
-    categorySlug: 'soufflets',
-    garnitureType: 'soufflet',
-    sizes: [
-      { id: 'solo', label: 'Solo', maxMeats: 1, price: 6 },
-      { id: 'double', label: 'Double', maxMeats: 2, price: 8 },
-      { id: 'triple', label: 'Triple', maxMeats: 3, price: 10 },
-    ],
-    showMenuOption: true,
-  },
-  mlawi: {
-    title: 'Mlawi',
-    categorySlug: 'mlawi',
-    garnitureType: 'mlawi',
-    sizes: [
-      { id: 'solo', label: 'Solo', maxMeats: 1, price: 6 },
-      { id: 'double', label: 'Double', maxMeats: 2, price: 8 },
-      { id: 'triple', label: 'Triple', maxMeats: 3, price: 10 },
-    ],
-    showMenuOption: true,
-  },
-  makloub: {
-    title: 'Makloub',
-    categorySlug: 'makloub',
-    garnitureType: 'makloub',
-    sizes: [
-      { id: 'solo', label: 'Solo', maxMeats: 1, price: 6 },
-      { id: 'double', label: 'Double', maxMeats: 2, price: 8 },
-      { id: 'triple', label: 'Triple', maxMeats: 3, price: 10 },
-    ],
-    showMenuOption: true,
-  },
-};
+type PaniniSize = 'solo' | 'duo';
 
-// Allowed meats for Soufflet, Makloub, Mlawi, Tacos, Panini
+const paniniSizes = [
+  { id: 'solo' as PaniniSize, label: 'Solo', maxMeats: 1, price: 5 },
+  { id: 'duo' as PaniniSize, label: 'Duo', maxMeats: 2, price: 7 },
+];
+
+// Allowed meats for Panini
 const allowedMeatNames = [
   'Escalope marinée',
   'Tenders',
@@ -76,85 +33,36 @@ const allowedMeatNames = [
   'Nuggets',
 ];
 
-// Product-specific garnitures
-const souffletGarnitures = [
-  { id: 'pomme_de_terre', name: 'Pomme de terre', price: 0 },
-  { id: 'oignon', name: 'Oignon', price: 0 },
-  { id: 'olive', name: 'Olive', price: 0 },
-];
-
-const makloubGarnitures = [
-  { id: 'salade', name: 'Salade', price: 0 },
-  { id: 'tomate', name: 'Tomate', price: 0 },
-  { id: 'oignon', name: 'Oignon', price: 0 },
-];
-
-const mlawiGarnitures = [
-  { id: 'salade', name: 'Salade', price: 0 },
-  { id: 'tomate', name: 'Tomate', price: 0 },
-  { id: 'oignon', name: 'Oignon', price: 0 },
-  { id: 'olive', name: 'Olive', price: 0 },
-];
-
-interface UnifiedProductWizardProps {
-  productType: ProductType;
-  onClose: () => void;
-}
-
-export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWizardProps) {
+export function PaniniWizard({ onClose }: PaniniWizardProps) {
   const { addToCart } = useOrder();
-  const config = productConfigs[productType];
   
   const [step, setStep] = useState(1);
-  const [size, setSize] = useState<ProductSize>('solo');
+  const [size, setSize] = useState<PaniniSize>('solo');
   const [selectedMeats, setSelectedMeats] = useState<string[]>([]);
   const [selectedSauces, setSelectedSauces] = useState<string[]>([]);
-  const [selectedGarnitures, setSelectedGarnitures] = useState<string[]>([]);
   const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
   const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'menu'>('none');
   const [note, setNote] = useState('');
 
-  // Load options from database (with static fallback)
+  // Load options from database
   const { data: dbMeats } = useMeatOptions();
   const { data: dbSauces } = useSauceOptions();
   const { data: dbSupplements } = useSupplementOptions();
 
-  // Use database options if available, otherwise fallback to static
-  // Filter to only allowed meats
-  const allMeats = dbMeats && dbMeats.length > 0 
-    ? dbMeats.map(m => ({ id: m.id, name: m.name, price: Number(m.price), image_url: m.image_url }))
-    : staticMeatOptions;
-  
-  const meatOptions = allMeats.filter(m => 
-    allowedMeatNames.some(allowed => m.name.toLowerCase().includes(allowed.toLowerCase()))
-  );
-  
-  const sauceOptions = dbSauces && dbSauces.length > 0
-    ? dbSauces.map(s => ({ id: s.id, name: s.name, price: Number(s.price), image_url: s.image_url }))
-    : staticSauceOptions;
-  
-  const supplementOptions = dbSupplements && dbSupplements.length > 0
-    ? dbSupplements.map(s => ({ id: s.id, name: s.name, price: Number(s.price), image_url: s.image_url }))
-    : staticSupplements;
+  // Filter meats to only allowed ones
+  const meatOptions = (dbMeats || [])
+    .map(m => ({ id: m.id, name: m.name, price: Number(m.price) }))
+    .filter(m => allowedMeatNames.some(allowed => 
+      m.name.toLowerCase().includes(allowed.toLowerCase()) || 
+      allowed.toLowerCase().includes(m.name.toLowerCase())
+    ));
 
-  // Garniture options - product-specific (not from database)
-  const getGarnitureOptions = () => {
-    switch (productType) {
-      case 'soufflet':
-        return souffletGarnitures;
-      case 'makloub':
-        return makloubGarnitures;
-      case 'mlawi':
-        return mlawiGarnitures;
-      default:
-        return [];
-    }
-  };
+  const sauceOptions = (dbSauces || []).map(s => ({ id: s.id, name: s.name, price: Number(s.price) }));
+  const supplementOptions = (dbSupplements || []).map(s => ({ id: s.id, name: s.name, price: Number(s.price) }));
 
-  const garnitureOptions = getGarnitureOptions();
-  const currentSizeConfig = config.sizes.find(s => s.id === size) || config.sizes[0];
+  const currentSizeConfig = paniniSizes.find(s => s.id === size) || paniniSizes[0];
   const maxMeats = currentSizeConfig.maxMeats;
-  const totalSteps = config.showMenuOption ? 5 : 4;
+  const totalSteps = 4;
 
   const toggleMeat = (meatId: string) => {
     if (selectedMeats.includes(meatId)) {
@@ -172,14 +80,6 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
     }
   };
 
-  const toggleGarniture = (garId: string) => {
-    if (selectedGarnitures.includes(garId)) {
-      setSelectedGarnitures(selectedGarnitures.filter(g => g !== garId));
-    } else {
-      setSelectedGarnitures([...selectedGarnitures, garId]);
-    }
-  };
-
   const toggleSupplement = (supId: string) => {
     if (selectedSupplements.includes(supId)) {
       setSelectedSupplements(selectedSupplements.filter(s => s !== supId));
@@ -192,9 +92,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
     let price = currentSizeConfig.price;
     
     // Add menu option price
-    if (config.showMenuOption) {
-      price += menuOptionPrices[menuOption];
-    }
+    price += menuOptionPrices[menuOption];
     
     // Add supplement costs
     selectedSupplements.forEach(supId => {
@@ -206,14 +104,13 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
   };
 
   const canContinue = () => {
-    if (step === 1) return true; // Size selection always allowed
+    if (step === 1) return true;
     if (step === 2) return selectedMeats.length > 0;
     if (step === 3) return selectedSauces.length > 0;
-    return true; // Steps 4 and 5 are optional
+    return true;
   };
 
   const handleAddToCart = () => {
-    // Convert IDs to names for display in cart/notifications
     const meatNames = selectedMeats.map(id => {
       const meat = meatOptions.find(m => m.id === id);
       return meat?.name || id;
@@ -224,58 +121,27 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
       return sauce?.name || id;
     });
     
-    const garnitureNames = selectedGarnitures.map(id => {
-      const gar = garnitureOptions.find(g => g.id === id);
-      return gar?.name || id;
-    });
-    
     const supplementNames = selectedSupplements.map(id => {
       const sup = supplementOptions.find(s => s.id === id);
       return sup?.name || id;
     });
 
     const baseItem: MenuItem = {
-      id: `${productType}-${size}`,
-      name: `${config.title} ${currentSizeConfig.label}`,
-      description: `${maxMeats} viande${maxMeats > 1 ? 's' : ''}, sauce, garnitures`,
+      id: `panini-${size}`,
+      name: `Panini ${currentSizeConfig.label}`,
+      description: `${maxMeats} viande${maxMeats > 1 ? 's' : ''}, sauce`,
       price: currentSizeConfig.price,
-      category: config.categorySlug as any,
+      category: 'panini',
     };
 
-    let customization: SouffletCustomization | MakloubCustomization | MlawiCustomization;
-    
-    // Store NAMES instead of IDs for display in cart/notifications
-    if (productType === 'soufflet') {
-      customization = {
-        size,
-        meats: meatNames,
-        sauces: sauceNames,
-        garnitures: garnitureNames,
-        supplements: supplementNames,
-        menuOption,
-        note: note || undefined,
-      } as SouffletCustomization;
-    } else if (productType === 'makloub') {
-      customization = {
-        size,
-        meats: meatNames,
-        sauces: sauceNames,
-        garnitures: garnitureNames,
-        supplements: supplementNames,
-        menuOption,
-        note: note || undefined,
-      } as MakloubCustomization;
-    } else {
-      customization = {
-        size,
-        meats: meatNames,
-        sauces: sauceNames,
-        garnitures: garnitureNames,
-        supplements: supplementNames,
-        menuOption,
-        note: note || undefined,
-      } as MlawiCustomization;
-    }
+    const customization: PaniniCustomization = {
+      size,
+      meats: meatNames,
+      sauces: sauceNames,
+      supplements: supplementNames,
+      menuOption,
+      note: note || undefined,
+    };
 
     const cartItem: MenuItem = {
       ...baseItem,
@@ -285,11 +151,11 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
     const calculatedPrice = calculatePrice();
     addToCart(cartItem, 1, customization, calculatedPrice);
     
-    trackAddToCart(baseItem.id, `${config.title} ${size}`, config.categorySlug);
+    trackAddToCart(baseItem.id, `Panini ${size}`, 'panini');
     
     toast({
       title: 'Ajouté au panier',
-      description: `${config.title} ${currentSizeConfig.label} - ${meatNames.join(', ')}`,
+      description: `Panini ${currentSizeConfig.label} - ${meatNames.join(', ')}`,
     });
     
     onClose();
@@ -301,8 +167,8 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
         return (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Choisir la taille</h2>
-            <div className="grid grid-cols-3 gap-4">
-              {config.sizes.map((s) => (
+            <div className="grid grid-cols-2 gap-4">
+              {paniniSizes.map((s) => (
                 <Card
                   key={s.id}
                   className={`p-4 cursor-pointer transition-all text-center ${size === s.id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
@@ -371,48 +237,6 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
       case 4:
         return (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Choisir les garnitures</h2>
-            <p className="text-sm text-muted-foreground">Sélection multiple possible</p>
-            <div className="grid grid-cols-3 gap-3">
-              {garnitureOptions.map((gar) => (
-                <Card
-                  key={gar.id}
-                  className={`p-3 cursor-pointer transition-all ${selectedGarnitures.includes(gar.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                  onClick={() => toggleGarniture(gar.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm">{gar.name}</span>
-                    {selectedGarnitures.includes(gar.id) && <Check className="w-4 h-4 text-primary" />}
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            <Separator className="my-4" />
-
-            <h3 className="text-lg font-semibold">Suppléments</h3>
-            <p className="text-sm text-muted-foreground">Optionnel</p>
-            <div className="grid grid-cols-2 gap-3">
-              {supplementOptions.map((sup) => (
-                <Card
-                  key={sup.id}
-                  className={`p-3 cursor-pointer transition-all ${selectedSupplements.includes(sup.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                  onClick={() => toggleSupplement(sup.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{sup.name}</span>
-                    {selectedSupplements.includes(sup.id) && <Check className="w-5 h-5 text-primary" />}
-                  </div>
-                  <span className="text-sm text-primary font-semibold">+{sup.price}€</span>
-                </Card>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-4">
             <h2 className="text-lg font-semibold">Option Menu</h2>
             <div className="grid grid-cols-2 gap-3">
               {[
@@ -439,6 +263,30 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
                 </Card>
               ))}
             </div>
+
+            {/* Show supplements when frites or menu is selected */}
+            {(menuOption === 'frites' || menuOption === 'menu') && supplementOptions.length > 0 && (
+              <>
+                <Separator className="my-4" />
+                <h3 className="text-lg font-semibold">Suppléments</h3>
+                <p className="text-sm text-muted-foreground">Optionnel</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {supplementOptions.map((sup) => (
+                    <Card
+                      key={sup.id}
+                      className={`p-3 cursor-pointer transition-all ${selectedSupplements.includes(sup.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                      onClick={() => toggleSupplement(sup.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{sup.name}</span>
+                        {selectedSupplements.includes(sup.id) && <Check className="w-5 h-5 text-primary" />}
+                      </div>
+                      <span className="text-sm text-primary font-semibold">+{sup.price}€</span>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )}
 
             <Separator className="my-4" />
 
@@ -469,13 +317,12 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex-1">
-              <h1 className="text-2xl font-display font-bold">{config.title}</h1>
+              <h1 className="text-2xl font-display font-bold">Panini</h1>
               <p className="text-sm text-muted-foreground">Étape {step}/{totalSteps}</p>
             </div>
             <span className="text-xl font-bold text-primary">{calculatePrice().toFixed(2)}€</span>
           </div>
           
-          {/* Progress */}
           <div className="flex gap-2 mt-4">
             {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
               <div
@@ -491,8 +338,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
         {renderStep()}
       </div>
 
-      {/* Bottom Action */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
         <div className="container mx-auto">
           {step < totalSteps ? (
             <Button 

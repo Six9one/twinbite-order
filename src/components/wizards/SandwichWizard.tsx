@@ -362,9 +362,9 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div>
-                <h1 className="text-2xl font-display font-bold">
-                  Sandwiches
-                  <Badge variant="secondary" className="ml-2 bg-green-500 text-white">NEW</Badge>
+              <h1 className="text-2xl font-display font-bold">
+                  Sandwiches (pain maison)
+                  <Badge variant="secondary" className="ml-2 bg-green-500 text-white">Nouveau</Badge>
                 </h1>
                 <p className="text-sm text-muted-foreground">Étape {step}/{totalSteps}</p>
               </div>

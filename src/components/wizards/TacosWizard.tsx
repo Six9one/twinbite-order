@@ -181,7 +181,10 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
               <Badge>{selectedMeats.length}/{maxMeats}</Badge>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {meatOptions.map((meat) => (
+              {meatOptions.filter(m => 
+                ['Escalope marinée', 'Tenders', 'Viande hachée', 'Merguez', 'Cordon bleu', 'Nuggets']
+                  .some(allowed => m.name.toLowerCase().includes(allowed.toLowerCase()) || allowed.toLowerCase().includes(m.name.toLowerCase()))
+              ).map((meat) => (
                 <Card
                   key={meat.id}
                   className={`p-3 cursor-pointer transition-all ${selectedMeats.includes(meat.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'} ${selectedMeats.length >= maxMeats && !selectedMeats.includes(meat.id) ? 'opacity-50' : ''}`}
@@ -191,9 +194,6 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
                     <span className="font-medium">{meat.name}</span>
                     {selectedMeats.includes(meat.id) && <Check className="w-5 h-5 text-primary" />}
                   </div>
-                  {meat.price > 0 && (
-                    <span className="text-xs text-muted-foreground">+{meat.price}€</span>
-                  )}
                 </Card>
               ))}
             </div>

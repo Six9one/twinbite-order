@@ -266,25 +266,25 @@ export const tacos: MenuItem[] = [
   },
 ];
 
-// ============= SOUFFLÉS =============
+// ============= SOUFFLETS =============
 export const soufflets: MenuItem[] = [
   {
     id: "souffle-solo",
-    name: "Soufflé Solo",
+    name: "Soufflet Solo",
     description: "1 viande, sauce, garnitures au choix",
     price: 6,
     category: "soufflets",
   },
   {
     id: "souffle-double",
-    name: "Soufflé Double",
+    name: "Soufflet Double",
     description: "2 viandes, sauces, garnitures au choix",
     price: 8,
     category: "soufflets",
   },
   {
     id: "souffle-triple",
-    name: "Soufflé Triple",
+    name: "Soufflet Triple",
     description: "3 viandes, sauces, garnitures au choix",
     price: 10,
     category: "soufflets",
@@ -461,14 +461,14 @@ export const menuItems: MenuItem[] = [
 ];
 
 // ============= OPTIONS =============
-// Removed kebab meat option as per requirements
+// Meats allowed: Escalope marinée, Tenders, Viande hachée, Merguez, Cordon bleu, Nuggets
 export const meatOptions = [
-  { id: "poulet", name: "Poulet", price: 0 },
-  { id: "escalope", name: "Escalope", price: 0 },
-  { id: "viande", name: "Viande Hachée", price: 0 },
+  { id: "escalope", name: "Escalope marinée", price: 0 },
+  { id: "tenders", name: "Tenders", price: 0 },
+  { id: "viande", name: "Viande hachée", price: 0 },
   { id: "merguez", name: "Merguez", price: 0 },
-  { id: "cordon-bleu", name: "Cordon Bleu", price: 0.5 },
-  { id: "nuggets", name: "Nuggets", price: 0.5 },
+  { id: "cordon-bleu", name: "Cordon bleu", price: 0 },
+  { id: "nuggets", name: "Nuggets", price: 0 },
 ];
 
 export const sauceOptions = [
@@ -536,7 +536,7 @@ export const categoryLabels: Record<MenuCategory, string> = {
   pizzas: "🍕 Pizzas",
   "menus-midi": "☀️ Menus Midi",
   tacos: "🌮 Tacos",
-  soufflets: "🥟 Soufflés",
+  soufflets: "🥟 Soufflet",
   makloub: "🌯 Makloub",
   mlawi: "🫓 Mlawi",
   panini: "🥪 Panini",
