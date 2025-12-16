@@ -5,15 +5,16 @@ export interface ScheduledOrderInfo {
   scheduledFor?: Date | null;
 }
 
-export type MenuCategory = 
-  | 'pizzas' 
+export type MenuCategory =
+  | 'pizzas'
   | 'menus-midi'
-  | 'tacos' 
-  | 'soufflets' 
-  | 'makloub' 
+  | 'tacos'
+  | 'soufflets'
+  | 'makloub'
   | 'mlawi'
-  | 'panini' 
+  | 'panini'
   | 'croques'
+  | 'texmex'
   | 'frites'
   | 'milkshakes'
   | 'crepes'
@@ -102,10 +103,10 @@ export interface SandwichCustomization {
   note?: string;
 }
 
-export type ProductCustomization = 
-  | PizzaCustomization 
-  | TacosCustomization 
-  | SouffletCustomization 
+export type ProductCustomization =
+  | PizzaCustomization
+  | TacosCustomization
+  | SouffletCustomization
   | MakloubCustomization
   | MlawiCustomization
   | PaniniCustomization

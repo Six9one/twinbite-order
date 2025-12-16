@@ -14,14 +14,16 @@ import { SettingsManager } from '@/components/admin/SettingsManager';
 import { ImageUploadTable } from '@/components/admin/ImageUploadTable';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { PromotionsManager } from '@/components/admin/PromotionsManager';
-import { LoyaltyManager } from '@/components/admin/LoyaltyManager';
+import { EnhancedLoyaltyManager } from '@/components/admin/EnhancedLoyaltyManager';
 import { OpeningHoursManager } from '@/components/admin/OpeningHoursManager';
 import { StatisticsSection } from '@/components/admin/StatisticsSection';
 import { PaymentSettingsManager } from '@/components/admin/PaymentSettingsManager';
 import { TicketTemplateManager } from '@/components/admin/TicketTemplateManager';
 import { CarouselManager } from '@/components/admin/CarouselManager';
-import { 
-  LogOut, Home, Search, RefreshCw, Download, Printer, 
+import { TexMexManager } from '@/components/admin/TexMexManager';
+import { ReviewsManager } from '@/components/admin/ReviewsManager';
+import {
+  LogOut, Home, Search, RefreshCw, Download, Printer,
   Clock, CheckCircle, XCircle, ChefHat, Package,
   MapPin, Phone, User, MessageSquare, CreditCard, Banknote,
   Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv, TrendingUp,
@@ -29,7 +31,7 @@ import {
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments' | 'carousel';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments' | 'carousel' | 'reviews';
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', icon: Clock },
@@ -62,7 +64,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     let mounted = true;
-    
+
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -70,7 +72,7 @@ export default function AdminDashboard() {
           if (mounted) navigate('/admin');
           return;
         }
-        
+
         // Verify admin role - redirect if not admin
         const { data: roleData, error: roleError } = await supabase
           .from('user_roles')
@@ -78,14 +80,14 @@ export default function AdminDashboard() {
           .eq('user_id', session.user.id)
           .eq('role', 'admin')
           .maybeSingle();
-        
+
         if (roleError || !roleData) {
           toast.error('Accès non autorisé');
           await supabase.auth.signOut();
           if (mounted) navigate('/admin');
           return;
         }
-        
+
         if (mounted) setIsAuthenticated(true);
       } catch (error) {
         if (mounted) navigate('/admin');
@@ -127,7 +129,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredOrders = orders?.filter(order => 
+  const filteredOrders = orders?.filter(order =>
     order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
     order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     order.customer_phone.includes(searchQuery)
@@ -135,7 +137,7 @@ export default function AdminDashboard() {
 
   const exportOrders = () => {
     if (!filteredOrders) return;
-    
+
     const csv = [
       ['N° Commande', 'Type', 'Client', 'Téléphone', 'Total', 'Statut', 'Heure'].join(';'),
       ...filteredOrders.map(o => [
@@ -177,7 +179,7 @@ export default function AdminDashboard() {
     const price = cartItem.calculatedPrice || cartItem.item?.price || cartItem.price || 0;
     const customization = cartItem.customization;
     const note = cartItem.note || customization?.note;
-    
+
     let details: string[] = [];
     if (customization?.size) details.push('📏 ' + customization.size.toUpperCase());
     if (customization?.base) details.push('🍕 ' + customization.base);
@@ -188,7 +190,7 @@ export default function AdminDashboard() {
     if (customization?.supplements?.length) details.push('➕ ' + customization.supplements.join(', '));
     if (customization?.cheeseSupplements?.length) details.push('🧀 ' + customization.cheeseSupplements.join(', '));
     if (customization?.menuOption && customization.menuOption !== 'none') details.push('🍟 ' + customization.menuOption);
-    
+
     let html = '<div class="item"><span>' + cartItem.quantity + 'x ' + escapeHtml(productName) + '</span><span>' + Number(price).toFixed(2) + '€</span></div>';
     if (details.length > 0) {
       html += '<div style="font-size: 10px; margin-left: 10px; color: #555;">' + details.join(' | ') + '</div>';
@@ -373,9 +375,9 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   filteredOrders?.map((order) => (
-                    <OrderCard 
-                      key={order.id} 
-                      order={order} 
+                    <OrderCard
+                      key={order.id}
+                      order={order}
                       onStatusUpdate={handleStatusUpdate}
                       onPrint={printTicket}
                     />
@@ -387,55 +389,57 @@ export default function AdminDashboard() {
 
           {/* Pizzas */}
           {activeTab === 'pizzas' && <PizzaManager />}
-          
+
           {/* Sandwiches */}
           {activeTab === 'sandwiches' && <SandwichManager />}
-          
+
           {/* Product Categories */}
           {activeTab === 'soufflet' && <ProductCategoryManager categorySlug="soufflets" title="Soufflé" />}
           {activeTab === 'makloub' && <ProductCategoryManager categorySlug="makloub" title="Makloub" />}
           {activeTab === 'mlawi' && <ProductCategoryManager categorySlug="mlawi" title="Mlawi" />}
           {activeTab === 'tacos' && <ProductCategoryManager categorySlug="tacos" title="Tacos" />}
           {activeTab === 'panini' && <ProductCategoryManager categorySlug="panini" title="Panini" />}
-          {activeTab === 'croques' && <ProductCategoryManager categorySlug="croques" title="Croques & Tex-Mex" />}
+          {activeTab === 'croques' && <ProductCategoryManager categorySlug="croques" title="Croques" />}
+          {activeTab === 'texmex' && <TexMexManager />}
           {activeTab === 'frites' && <ProductCategoryManager categorySlug="frites" title="Frites" />}
-          
+
           {/* Desserts */}
           {activeTab === 'milkshakes' && <ProductCategoryManager categorySlug="milkshakes" title="Milkshakes" />}
           {activeTab === 'crepes' && <ProductCategoryManager categorySlug="crepes" title="Crêpes" />}
           {activeTab === 'gaufres' && <ProductCategoryManager categorySlug="gaufres" title="Gaufres" />}
           {activeTab === 'drinks' && <ImageUploadTable tableName="drinks" title="Boissons" hasImage />}
           {activeTab === 'desserts' && <ImageUploadTable tableName="desserts" title="Desserts (Autres)" hasImage />}
-          
+
           {/* Zones */}
           {activeTab === 'zones' && <AdminTable tableName="delivery_zones" title="Zones de livraison" />}
-          
+
           {/* Options & Extras */}
           {activeTab === 'meats' && <ImageUploadTable tableName="meat_options" title="Options viandes" hasImage />}
           {activeTab === 'sauces' && <ImageUploadTable tableName="sauce_options" title="Options sauces" hasImage />}
           {activeTab === 'garnitures' && <ImageUploadTable tableName="garniture_options" title="Options garnitures" hasImage />}
           {activeTab === 'crudites' && <CruditesManager />}
           {activeTab === 'supplements' && <ImageUploadTable tableName="supplement_options" title="Options suppléments" hasImage />}
-          
+
           {/* Ventes */}
           {activeTab === 'ventes' && <VentesSection orders={orders || []} />}
-          
+
           {/* Printer */}
           {activeTab === 'printer' && <PrinterConfig />}
-          
+
           {/* Ticket Templates */}
           {activeTab === 'tickets' && <TicketTemplateManager />}
-          
+
           {/* New Sections */}
           {activeTab === 'promotions' && <PromotionsManager />}
           {activeTab === 'carousel' && <CarouselManager />}
-          {activeTab === 'loyalty' && <LoyaltyManager />}
+          {activeTab === 'loyalty' && <EnhancedLoyaltyManager />}
+          {activeTab === 'reviews' && <ReviewsManager />}
           {activeTab === 'hours' && <OpeningHoursManager />}
           {activeTab === 'stats' && <StatisticsSection orders={orders || []} />}
-          
+
           {/* Payments */}
           {activeTab === 'payments' && <PaymentSettingsManager />}
-          
+
           {/* Settings */}
           {activeTab === 'settings' && <SettingsManager />}
         </main>
@@ -444,12 +448,12 @@ export default function AdminDashboard() {
   );
 }
 
-function OrderCard({ 
-  order, 
-  onStatusUpdate, 
-  onPrint 
-}: { 
-  order: Order; 
+function OrderCard({
+  order,
+  onStatusUpdate,
+  onPrint
+}: {
+  order: Order;
   onStatusUpdate: (id: string, status: Order['status']) => void;
   onPrint: (order: Order) => void;
 }) {
@@ -504,7 +508,7 @@ function OrderCard({
             const price = cartItem.calculatedPrice || cartItem.item?.price || cartItem.price || 0;
             const customization = cartItem.customization;
             const note = cartItem.note || customization?.note;
-            
+
             return (
               <div key={idx} className="border-b border-border/50 pb-2 last:border-0">
                 <div className="flex justify-between font-medium">
@@ -588,7 +592,7 @@ function OrderCard({
             <Printer className="w-4 h-4 mr-1" />
             Imprimer
           </Button>
-          
+
           {order.status === 'pending' && (
             <Button size="sm" className="bg-blue-500 hover:bg-blue-600" onClick={() => onStatusUpdate(order.id, 'preparing')}>
               <ChefHat className="w-4 h-4 mr-1" />
@@ -636,7 +640,7 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
       .from(tableName as any)
       .select('*')
       .order(orderColumn, { ascending: true });
-    
+
     if (!error && data) {
       setItems(data);
     }
@@ -648,7 +652,7 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
       .from(tableName as any)
       .update(updates)
       .eq('id', id);
-    
+
     if (!error) {
       toast.success('Mis à jour!');
       fetchItems();
@@ -660,12 +664,12 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
 
   const handleDelete = async (id: string) => {
     if (!confirm('Supprimer cet élément?')) return;
-    
+
     const { error } = await supabase
       .from(tableName as any)
       .update({ is_active: false })
       .eq('id', id);
-    
+
     if (!error) {
       toast.success('Supprimé!');
       fetchItems();
@@ -676,7 +680,7 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
     const { error } = await supabase
       .from(tableName as any)
       .insert({ ...newItem, is_active: true });
-    
+
     if (!error) {
       toast.success('Ajouté!');
       fetchItems();
@@ -693,7 +697,7 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-display font-bold">{title}</h2>
-      
+
       {/* Help box for delivery zones */}
       {tableName === 'delivery_zones' && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
@@ -709,7 +713,7 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
           </p>
         </div>
       )}
-      
+
       <div className="bg-card rounded-lg p-4 border">
         <h3 className="font-semibold mb-3">Ajouter</h3>
         <div className="flex flex-wrap gap-2 items-end">
@@ -851,7 +855,7 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
                           className="w-8 h-8 rounded cursor-pointer border border-input"
                         />
                       ) : (
-                        <div 
+                        <div
                           className="w-6 h-6 rounded-full border-2 border-white shadow"
                           style={{ backgroundColor: item.color || '#f59e0b' }}
                         />
@@ -959,7 +963,7 @@ function VentesSection({ orders }: { orders: Order[] }) {
     const orderDate = new Date(order.created_at).toISOString().slice(0, 10);
     const matchesDate = orderDate >= startDate && orderDate <= endDate;
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const matchesPayment = paymentFilter === 'all' || 
+    const matchesPayment = paymentFilter === 'all' ||
       (paymentFilter === 'paid' && order.payment_method === 'en_ligne') ||
       (paymentFilter === 'unpaid' && order.payment_method !== 'en_ligne');
     return matchesDate && matchesStatus && matchesPayment;
@@ -1122,7 +1126,7 @@ function VentesSection({ orders }: { orders: Order[] }) {
                       )}
                     </td>
                     <td className="p-3">
-                      <Badge 
+                      <Badge
                         className={`${statusConfig[order.status].color} text-white text-xs`}
                       >
                         {statusConfig[order.status].label}
@@ -1168,19 +1172,19 @@ function VentesSection({ orders }: { orders: Order[] }) {
 function PrinterConfig() {
   const [printerName, setPrinterName] = useState(localStorage.getItem('printerName') || '');
   const [testPrinting, setTestPrinting] = useState(false);
-  
+
   // Ticket customization
   const [ticketHeader, setTicketHeader] = useState(localStorage.getItem('ticketHeader') || 'TWIN PIZZA');
   const [ticketSubheader, setTicketSubheader] = useState(localStorage.getItem('ticketSubheader') || 'Grand-Couronne');
   const [ticketPhone, setTicketPhone] = useState(localStorage.getItem('ticketPhone') || '02 32 11 26 13');
   const [ticketFooter, setTicketFooter] = useState(localStorage.getItem('ticketFooter') || 'Merci de votre commande!');
   const [ticketLogo, setTicketLogo] = useState(localStorage.getItem('ticketLogo') || '🍕 TWIN PIZZA 🍕');
-  
+
   // Font customization
   const [ticketFontFamily, setTicketFontFamily] = useState(localStorage.getItem('ticketFontFamily') || 'monospace');
   const [ticketFontSize, setTicketFontSize] = useState(localStorage.getItem('ticketFontSize') || '12');
   const [ticketHeaderSize, setTicketHeaderSize] = useState(localStorage.getItem('ticketHeaderSize') || '20');
-  
+
   // Order number settings
   const [orderPrefix, setOrderPrefix] = useState(localStorage.getItem('orderPrefix') || 'TW');
   const [lastOrderNumber, setLastOrderNumber] = useState(localStorage.getItem('lastOrderNumber') || '0');
@@ -1217,7 +1221,7 @@ function PrinterConfig() {
 
   const testPrint = () => {
     setTestPrinting(true);
-    
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast.error("Impossible d'ouvrir la fenêtre d'impression");
@@ -1259,7 +1263,7 @@ function PrinterConfig() {
     printWindow.document.close();
     printWindow.print();
     printWindow.close();
-    
+
     setTimeout(() => {
       setTestPrinting(false);
       toast.success("Test d'impression envoyé!");
@@ -1278,7 +1282,7 @@ function PrinterConfig() {
         <h3 className="font-semibold text-lg flex items-center gap-2">
           🎫 Personnalisation du Ticket
         </h3>
-        
+
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-2">En-tête principal</label>
@@ -1321,7 +1325,7 @@ function PrinterConfig() {
             />
           </div>
         </div>
-        
+
         {/* Font Customization */}
         <div className="border-t pt-4 mt-4">
           <h4 className="font-medium mb-3">🔤 Police et Taille</h4>
@@ -1376,7 +1380,7 @@ function PrinterConfig() {
         <h3 className="font-semibold text-lg flex items-center gap-2">
           🔢 Numéro de Commande
         </h3>
-        
+
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-2">Préfixe</label>
@@ -1457,8 +1461,8 @@ function PrinterConfig() {
           <Button onClick={savePrinterConfig}>
             Sauvegarder
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={testPrint}
             disabled={testPrinting}
           >

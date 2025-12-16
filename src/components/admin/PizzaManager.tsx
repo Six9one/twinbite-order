@@ -12,30 +12,32 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { usePizzasByBase, useUpdateProduct, useCreateProduct, useDeleteProduct, uploadProductImage, Product } from '@/hooks/useProducts';
 import { useProductPopularity } from '@/hooks/useProductAnalytics';
-import { Plus, Edit2, Trash2, Upload, X, Pizza, TrendingUp, Eye, ShoppingCart, Package } from 'lucide-react';
+import { Plus, Edit2, Trash2, Upload, X, Pizza, TrendingUp, Eye, ShoppingCart, Package, Star, Sparkles } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 export function PizzaManager() {
   const { data: pizzasTomate, isLoading: loadingTomate, refetch: refetchTomate } = usePizzasByBase('tomate');
   const { data: pizzasCreme, isLoading: loadingCreme, refetch: refetchCreme } = usePizzasByBase('creme');
   const { data: popularityData } = useProductPopularity(30);
-  
+
   const updateProduct = useUpdateProduct();
   const createProduct = useCreateProduct();
   const deleteProduct = useDeleteProduct();
-  
+
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // New pizza form state
   const [newPizza, setNewPizza] = useState({
     name: '',
     description: '',
     base_price: 18,
-    pizza_base: 'tomate' as 'tomate' | 'creme',
-    image_url: null as string | null
+    pizza_base: 'tomate' as 'tomate' | 'creme' | 'speciale',
+    image_url: null as string | null,
+    is_top_picked: false
   });
 
   const refetchAll = () => {
@@ -91,11 +93,25 @@ export function PizzaManager() {
           name: editingProduct.name,
           description: editingProduct.description,
           base_price: editingProduct.base_price,
-          pizza_base: editingProduct.pizza_base
+          pizza_base: editingProduct.pizza_base,
+          is_top_picked: (editingProduct as any).is_top_picked || false
         }
       });
       toast.success('Pizza mise à jour!');
       setEditingProduct(null);
+      refetchAll();
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
+  const handleToggleTopPicked = async (pizzaId: string, currentValue: boolean) => {
+    try {
+      await updateProduct.mutateAsync({
+        id: pizzaId,
+        updates: { is_top_picked: !currentValue }
+      });
+      toast.success(currentValue ? 'Retiré des favoris' : 'Ajouté aux favoris!');
       refetchAll();
     } catch (error) {
       toast.error('Erreur lors de la mise à jour');
@@ -107,7 +123,7 @@ export function PizzaManager() {
       toast.error('Le nom est requis');
       return;
     }
-    
+
     try {
       // Get pizza category ID
       const { data: category } = await supabase
@@ -115,7 +131,7 @@ export function PizzaManager() {
         .select('id')
         .eq('slug', 'pizzas')
         .single();
-      
+
       if (!category) {
         toast.error('Catégorie pizzas introuvable');
         return;
@@ -129,9 +145,10 @@ export function PizzaManager() {
         category_id: category.id,
         image_url: newPizza.image_url,
         display_order: 999,
-        is_active: true
+        is_active: true,
+        is_top_picked: newPizza.is_top_picked
       });
-      
+
       toast.success('Pizza ajoutée!');
       setIsAddDialogOpen(false);
       setNewPizza({
@@ -139,7 +156,8 @@ export function PizzaManager() {
         description: '',
         base_price: 18,
         pizza_base: 'tomate',
-        image_url: null
+        image_url: null,
+        is_top_picked: false
       });
       refetchAll();
     } catch (error) {
@@ -181,11 +199,18 @@ export function PizzaManager() {
 
   const renderPizzaCard = (pizza: Product) => {
     const stats = getPopularityStats(pizza.name);
-    
+    const isTopPicked = (pizza as any).is_top_picked || false;
+
     return (
-      <Card key={pizza.id} className="overflow-hidden">
+      <Card key={pizza.id} className={`overflow-hidden ${isTopPicked ? 'ring-2 ring-amber-400' : ''}`}>
         {/* Image Section */}
         <div className="relative aspect-video bg-muted">
+          {isTopPicked && (
+            <Badge className="absolute top-2 left-2 bg-amber-500 text-white z-10">
+              <Star className="w-3 h-3 mr-1 fill-white" />
+              Top Picked
+            </Badge>
+          )}
           {pizza.image_url ? (
             <>
               <img src={pizza.image_url} alt={pizza.name} className="w-full h-full object-cover" />
@@ -204,7 +229,7 @@ export function PizzaManager() {
               <span className="text-sm">Pas d'image</span>
             </div>
           )}
-          
+
           <Button
             variant="secondary"
             size="sm"
@@ -231,9 +256,20 @@ export function PizzaManager() {
               <h3 className="font-semibold">{pizza.name}</h3>
               <p className="text-sm text-muted-foreground line-clamp-2">{pizza.description}</p>
             </div>
-            <Badge variant="outline" className="ml-2">
-              {pizza.pizza_base === 'tomate' ? '🍅' : '🥛'}
-            </Badge>
+            <div className="flex flex-col items-end gap-1">
+              <Badge variant="outline">
+                {pizza.pizza_base === 'tomate' ? '🍅' : pizza.pizza_base === 'speciale' ? '⭐' : '🥛'}
+              </Badge>
+              <Button
+                variant={isTopPicked ? "default" : "outline"}
+                size="sm"
+                className={`h-7 text-xs ${isTopPicked ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
+                onClick={() => handleToggleTopPicked(pizza.id, isTopPicked)}
+              >
+                <Star className={`w-3 h-3 mr-1 ${isTopPicked ? 'fill-white' : ''}`} />
+                {isTopPicked ? 'Favori' : 'Marquer'}
+              </Button>
+            </div>
           </div>
 
           {/* Analytics Stats */}
@@ -335,7 +371,7 @@ export function PizzaManager() {
             {allPizzas.length} pizzas ({pizzasTomate?.length || 0} tomate, {pizzasCreme?.length || 0} crème)
           </p>
         </div>
-        
+
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -386,7 +422,7 @@ export function PizzaManager() {
                   </Button>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Nom *</Label>
                 <Input
@@ -395,7 +431,7 @@ export function PizzaManager() {
                   placeholder="Ex: Margherita"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea
@@ -404,7 +440,7 @@ export function PizzaManager() {
                   placeholder="Ex: Sauce tomate, mozzarella, basilic"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Prix de base (€)</Label>
                 <Input
@@ -414,7 +450,7 @@ export function PizzaManager() {
                   onChange={(e) => setNewPizza(prev => ({ ...prev, base_price: parseFloat(e.target.value) || 0 }))}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Base de sauce</Label>
                 <Select
@@ -430,7 +466,7 @@ export function PizzaManager() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <Button onClick={handleAddPizza} className="w-full" disabled={!newPizza.name.trim()}>
                 Ajouter la pizza
               </Button>

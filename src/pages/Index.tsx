@@ -11,6 +11,7 @@ import { DeliveryMapSection } from '@/components/DeliveryMapSection';
 import { PromoBanner } from '@/components/PromoBanner';
 import { Header } from '@/components/Header';
 import { ClosedBanner } from '@/components/ClosedBanner';
+import { ReviewSection } from '@/components/ReviewSection';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ShoppingBag, Phone } from 'lucide-react';
@@ -165,6 +166,8 @@ function MainApp() {
       </section>
 
       <DeliveryMapSection />
+
+      <ReviewSection />
 
       {/* Contact Section */}
       <section className="py-16 bg-gradient-to-b from-background to-muted/30">

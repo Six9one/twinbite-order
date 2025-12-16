@@ -7,10 +7,14 @@ export interface Product {
   description: string | null;
   base_price: number;
   pizza_base: string | null;
+  pizza_base_special?: string | null;
   category_id: string | null;
   image_url: string | null;
   display_order: number;
   is_active: boolean;
+  is_top_picked?: boolean;
+  image_fit?: string;
+  image_zoom?: number;
 }
 
 export interface Category {
@@ -47,16 +51,16 @@ export function useProductsByCategory(categorySlug: string) {
         .select('id')
         .eq('slug', categorySlug)
         .single();
-      
+
       if (!category) return [];
-      
+
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('category_id', category.id)
         .eq('is_active', true)
         .order('display_order', { ascending: true });
-      
+
       if (error) throw error;
       return data as Product[];
     },
@@ -74,9 +78,9 @@ export function usePizzasByBase(base: 'tomate' | 'creme') {
         .select('id')
         .eq('slug', 'pizzas')
         .single();
-      
+
       if (!category) return [];
-      
+
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -84,7 +88,7 @@ export function usePizzasByBase(base: 'tomate' | 'creme') {
         .eq('pizza_base', base)
         .eq('is_active', true)
         .order('display_order', { ascending: true });
-      
+
       if (error) throw error;
       return data as Product[];
     }
@@ -131,7 +135,7 @@ export async function uploadProductImage(file: File, productId: string): Promise
 // Update product
 export function useUpdateProduct() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Product> }) => {
       const { data, error } = await supabase
@@ -154,7 +158,7 @@ export function useUpdateProduct() {
 // Create product
 export function useCreateProduct() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (product: Omit<Product, 'id'>) => {
       const { data, error } = await supabase
@@ -176,7 +180,7 @@ export function useCreateProduct() {
 // Delete product (soft delete)
 export function useDeleteProduct() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase

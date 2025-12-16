@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { 
+import {
   croques,
   frites,
   crepes,
@@ -14,6 +14,7 @@ import { SandwichWizard } from '@/components/wizards/SandwichWizard';
 import { PaniniWizard } from '@/components/wizards/PaniniWizard';
 import { MilkshakeWizard } from '@/components/wizards/MilkshakeWizard';
 import { SimpleProductWizard } from '@/components/wizards/SimpleProductWizard';
+import { TexMexWizard } from '@/components/wizards/TexMexWizard';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +37,8 @@ const productCategoryLabels: Record<string, string> = {
   sandwiches: "🥖 Sandwich (Pain Maison)",
   tacos: "🌮 Tacos",
   panini: "🥪 Panini",
-  croques: "🧀 Croques & Tex-Mex",
+  croques: "🧀 Croques",
+  texmex: "🌶️ Tex-Mex",
   frites: "🍟 Frites",
 };
 
@@ -64,6 +66,7 @@ const productCategoryOrder: string[] = [
   'tacos',
   'panini',
   'croques',
+  'texmex',
   'frites',
 ];
 
@@ -110,8 +113,8 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
     surplace: 'Sur place',
   };
 
-  const promoText = orderType === 'livraison' 
-    ? '2 achetées = 1 offerte' 
+  const promoText = orderType === 'livraison'
+    ? '2 achetées = 1 offerte'
     : orderType ? '1 achetée = 1 offerte' : null;
 
   const showMenuMidi = isMenuMidiTime();
@@ -138,45 +141,47 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
         return <PaniniWizard onClose={() => setSelectedCategory(null)} />;
       case 'croques':
         return (
-          <SimpleProductWizard 
-            items={mapProductsToMenuItems(croquesProducts, 'croques', croques)} 
-            title="Croques & Tex-Mex" 
-            showMenuOption 
-            onClose={() => setSelectedCategory(null)} 
+          <SimpleProductWizard
+            items={mapProductsToMenuItems(croquesProducts, 'croques', croques)}
+            title="Croques"
+            showMenuOption
+            onClose={() => setSelectedCategory(null)}
           />
         );
+      case 'texmex':
+        return <TexMexWizard onClose={() => setSelectedCategory(null)} />;
       case 'frites':
         return (
-          <SimpleProductWizard 
-            items={mapProductsToMenuItems(fritesProducts, 'frites', frites)} 
-            title="Frites" 
-            onClose={() => setSelectedCategory(null)} 
+          <SimpleProductWizard
+            items={mapProductsToMenuItems(fritesProducts, 'frites', frites)}
+            title="Frites"
+            onClose={() => setSelectedCategory(null)}
           />
         );
       case 'milkshakes':
         return <MilkshakeWizard onClose={() => setSelectedCategory(null)} />;
       case 'crepes':
         return (
-          <SimpleProductWizard 
-            items={mapProductsToMenuItems(crepeProducts, 'crepes', crepes)} 
-            title="Crêpes" 
-            onClose={() => setSelectedCategory(null)} 
+          <SimpleProductWizard
+            items={mapProductsToMenuItems(crepeProducts, 'crepes', crepes)}
+            title="Crêpes"
+            onClose={() => setSelectedCategory(null)}
           />
         );
       case 'gaufres':
         return (
-          <SimpleProductWizard 
-            items={mapProductsToMenuItems(gaufreProducts, 'gaufres', gaufres)} 
-            title="Gaufres" 
-            onClose={() => setSelectedCategory(null)} 
+          <SimpleProductWizard
+            items={mapProductsToMenuItems(gaufreProducts, 'gaufres', gaufres)}
+            title="Gaufres"
+            onClose={() => setSelectedCategory(null)}
           />
         );
       case 'boissons':
         return (
-          <SimpleProductWizard 
-            items={mapProductsToMenuItems(boissonsProducts, 'boissons', boissons)} 
-            title="Boissons" 
-            onClose={() => setSelectedCategory(null)} 
+          <SimpleProductWizard
+            items={mapProductsToMenuItems(boissonsProducts, 'boissons', boissons)}
+            title="Boissons"
+            onClose={() => setSelectedCategory(null)}
           />
         );
       default:
@@ -207,8 +212,8 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
                 )}
               </div>
             </div>
-            <Button 
-              variant="default" 
+            <Button
+              variant="default"
               className="relative"
               onClick={onOpenCart}
             >
@@ -289,7 +294,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       {/* Floating Cart Button (Mobile) */}
       {itemCount > 0 && (
         <div className="fixed bottom-4 left-4 right-4 md:hidden">
-          <Button 
+          <Button
             className="w-full h-14 text-lg shadow-lg"
             onClick={onOpenCart}
           >

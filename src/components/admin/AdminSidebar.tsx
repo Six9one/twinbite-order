@@ -23,7 +23,9 @@ import {
   GlassWater,
   Cake,
   Sandwich,
-  Salad
+  Salad,
+  MessageSquare,
+  Flame
 } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -64,7 +66,8 @@ const navItems: NavItem[] = [
       { label: '🥖 Sandwich (Pain Maison)', icon: Sandwich, value: 'sandwiches' },
       { label: '🌮 Tacos', icon: Package, value: 'tacos' },
       { label: '🥪 Panini', icon: Package, value: 'panini' },
-      { label: '🧀 Croques & Tex-Mex', icon: Package, value: 'croques' },
+      { label: '🧀 Croques', icon: Package, value: 'croques' },
+      { label: '🌶️ Tex-Mex', icon: Flame, value: 'texmex' },
       { label: '🍟 Frites', icon: Package, value: 'frites' },
     ]
   },
@@ -93,6 +96,7 @@ const navItems: NavItem[] = [
   { label: 'Carousel & Média', icon: Image, value: 'carousel' },
   { label: 'Promotions', icon: Gift, value: 'promotions' },
   { label: 'Fidélité', icon: Star, value: 'loyalty' },
+  { label: 'Avis Clients', icon: MessageSquare, value: 'reviews' },
   { label: 'Statistiques', icon: BarChart3, value: 'stats' },
   { label: 'Horaires', icon: Clock, value: 'hours' },
   { label: 'Ventes', icon: BarChart3, value: 'ventes' },
@@ -109,7 +113,7 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
   const [openGroups, setOpenGroups] = useState<string[]>(['Produits']);
 
   const toggleGroup = (label: string) => {
-    setOpenGroups(prev => 
+    setOpenGroups(prev =>
       prev.includes(label) ? prev.filter(g => g !== label) : [...prev, label]
     );
   };
@@ -164,8 +168,8 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
         onClick={() => item.value && onTabChange(item.value)}
         className={cn(
           "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full text-left",
-          isActive 
-            ? "bg-amber-500 text-black" 
+          isActive
+            ? "bg-amber-500 text-black"
             : "hover:bg-amber-500/10 hover:text-amber-500 text-muted-foreground"
         )}
         style={{ paddingLeft: `${12 + depth * 16}px` }}
