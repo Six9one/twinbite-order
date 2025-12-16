@@ -324,7 +324,7 @@ export default function TVDashboard() {
   const [newOrderInfo, setNewOrderInfo] = useState<{ orderNumber: string; orderType: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'live' | 'history'>('live');
   const previousOrdersCount = useRef(0);
-  const printedOrders = useRef<Set<string>>(new Set());
+  const processedOrders = useRef<Set<string>>(new Set()); // Track notified orders to prevent duplicates
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const autoPrintRef = useRef(autoPrintEnabled); // Track current auto-print state
 
@@ -372,50 +372,45 @@ export default function TVDashboard() {
           setLastRefresh(new Date());
 
           const newOrder = payload.new as Order;
+
+          // Skip if already processed (prevents duplicates)
+          if (processedOrders.current.has(newOrder.id)) {
+            console.log('⚠️ Order already processed, skipping:', newOrder.order_number);
+            return;
+          }
+          processedOrders.current.add(newOrder.id);
+
           const orderTypeLabels: Record<string, string> = {
             livraison: 'LIVRAISON',
             emporter: 'À EMPORTER',
             surplace: 'SUR PLACE'
           };
 
+          // ALWAYS show overlay (regardless of sound setting)
+          setNewOrderInfo({
+            orderNumber: newOrder.order_number,
+            orderType: orderTypeLabels[newOrder.order_type] || newOrder.order_type
+          });
+          setShowNewOrderOverlay(true);
+          setFlashEffect(true);
+
+          // Hide overlay after 5 seconds
+          setTimeout(() => {
+            setShowNewOrderOverlay(false);
+            setNewOrderInfo(null);
+            setFlashEffect(false);
+          }, 5000);
+
+          // Play sound if enabled
           if (soundEnabled) {
-            // Play notification sound
             playOrderSound();
-
-            // Show full-screen white overlay for 5 seconds
-            setNewOrderInfo({
-              orderNumber: newOrder.order_number,
-              orderType: orderTypeLabels[newOrder.order_type] || newOrder.order_type
-            });
-            setShowNewOrderOverlay(true);
-
-            // Hide overlay after 5 seconds (longer to ensure visibility)
-            setTimeout(() => {
-              setShowNewOrderOverlay(false);
-              setNewOrderInfo(null);
-            }, 5000);
           }
 
-          // Flash effect always triggers (regardless of sound setting)
-          setFlashEffect(true);
-          setTimeout(() => setFlashEffect(false), 5000); // Match overlay duration
-
-          // Auto-print new order - use ref to get current value (avoids stale closure)
+          // Auto-print if enabled
           const shouldAutoPrint = autoPrintRef.current || localStorage.getItem('autoPrintEnabled') === 'true';
-          console.log('🖨️ Auto-print check:', { shouldAutoPrint, orderId: newOrder.id });
-
-          if (shouldAutoPrint && payload.new) {
-            console.log('🔄 Auto-print triggered for new order:', payload.new.order_number);
-            if (!printedOrders.current.has(newOrder.id)) {
-              printedOrders.current.add(newOrder.id);
-              // Print immediately - no delay needed
-              console.log('🚀 Executing auto-print for order:', newOrder.order_number);
-              printOrderTicket(newOrder);
-            } else {
-              console.log('⚠️ Order already printed, skipping:', newOrder.order_number);
-            }
-          } else {
-            console.log('⏸️ Auto-print disabled, not printing');
+          if (shouldAutoPrint) {
+            console.log('� Auto-printing order:', newOrder.order_number);
+            printOrderTicket(newOrder);
           }
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
@@ -442,13 +437,29 @@ export default function TVDashboard() {
     };
   }, [refetch, soundEnabled, autoPrintEnabled]);
 
-  // Check for new orders (fallback)
+  // Check for new orders (fallback) - only if realtime missed it
   useEffect(() => {
     if (orders && orders.length > previousOrdersCount.current && previousOrdersCount.current > 0) {
-      if (soundEnabled) {
-        playOrderSound();
+      // Find the newest order
+      const newestOrder = orders[0];
+      if (newestOrder && !processedOrders.current.has(newestOrder.id)) {
+        processedOrders.current.add(newestOrder.id);
+        // Show overlay
+        setNewOrderInfo({
+          orderNumber: newestOrder.order_number,
+          orderType: newestOrder.order_type.toUpperCase()
+        });
+        setShowNewOrderOverlay(true);
         setFlashEffect(true);
-        setTimeout(() => setFlashEffect(false), 1000);
+        setTimeout(() => {
+          setShowNewOrderOverlay(false);
+          setNewOrderInfo(null);
+          setFlashEffect(false);
+        }, 5000);
+        // Play sound if enabled
+        if (soundEnabled) {
+          playOrderSound();
+        }
       }
     }
     previousOrdersCount.current = orders?.length || 0;
@@ -503,7 +514,7 @@ export default function TVDashboard() {
     <div className={`h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white flex flex-col ${flashEffect ? 'animate-pulse bg-amber-500/20' : ''}`}>
       {/* Full-screen NEW ORDER overlay */}
       {showNewOrderOverlay && newOrderInfo && (
-        <div className="fixed inset-0 z-[99999] bg-white flex flex-col items-center justify-center animate-pulse">
+        <div className="fixed inset-0 z-[99999] bg-white flex flex-col items-center justify-center">
           <div className="text-center">
             <div className="text-6xl mb-4">🍕</div>
             <h1 className="text-5xl md:text-6xl font-bold text-amber-500 mb-2">NOUVELLE COMMANDE</h1>
