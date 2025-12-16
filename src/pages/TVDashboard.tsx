@@ -234,22 +234,19 @@ const printOrderTicket = (order: Order) => {
       console.error('❌ Print failed:', printError);
     }
     // Remove iframe after printing
-    setTimeout(() => iframe.remove(), 2000);
+    setTimeout(() => iframe.remove(), 1000);
   };
 
-  // Fallback: trigger load manually if already loaded
+  // Trigger print immediately (for cases where onload doesn't fire)
   setTimeout(() => {
-    if (document.getElementById('print-frame')) {
-      try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        console.log('✅ Fallback print triggered for order:', order.order_number);
-      } catch (e) {
-        console.error('❌ Fallback print failed:', e);
-      }
-      setTimeout(() => iframe.remove(), 2000);
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      console.log('✅ Print command sent for order:', order.order_number);
+    } catch (e) {
+      console.error('❌ Print error:', e);
     }
-  }, 500);
+  }, 100);
 };
 
 export default function TVDashboard() {
@@ -354,11 +351,9 @@ export default function TVDashboard() {
             console.log('🔄 Auto-print triggered for new order:', payload.new.order_number);
             if (!printedOrders.current.has(newOrder.id)) {
               printedOrders.current.add(newOrder.id);
-              console.log('🖨️ Scheduling auto-print in 500ms...');
-              setTimeout(() => {
-                console.log('🚀 Executing auto-print for order:', newOrder.order_number);
-                printOrderTicket(newOrder);
-              }, 500);
+              // Print immediately - no delay needed
+              console.log('🚀 Executing auto-print for order:', newOrder.order_number);
+              printOrderTicket(newOrder);
             } else {
               console.log('⚠️ Order already printed, skipping:', newOrder.order_number);
             }
