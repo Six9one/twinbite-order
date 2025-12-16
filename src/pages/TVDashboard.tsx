@@ -399,7 +399,7 @@ export default function TVDashboard() {
             setShowNewOrderOverlay(false);
             setNewOrderInfo(null);
             setFlashEffect(false);
-          }, 5000);
+          }, 3000);
 
           // Play sound if enabled
           if (soundEnabled) {
