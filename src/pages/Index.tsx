@@ -10,7 +10,7 @@ import { Footer } from '@/components/Footer';
 import { DeliveryMapSection } from '@/components/DeliveryMapSection';
 import { PromoBanner } from '@/components/PromoBanner';
 import { Header } from '@/components/Header';
-import { ClosedBanner } from '@/components/ClosedBanner';
+import { AnnouncementBanner } from '@/components/AnnouncementBanner';
 import { ReviewSection } from '@/components/ReviewSection';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -66,7 +66,7 @@ function MainApp() {
   // Home view
   return (
     <div className="min-h-screen bg-background">
-      <ClosedBanner />
+      <AnnouncementBanner />
       <Header
         onCartClick={() => setIsCartOpen(true)}
         onOrderTypeSelect={handleNavOrderTypeSelect}

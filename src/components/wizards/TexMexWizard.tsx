@@ -32,7 +32,7 @@ interface TexMexWizardProps {
 }
 
 export function TexMexWizard({ onClose }: TexMexWizardProps) {
-    const { addItem } = useOrder();
+    const { addToCart } = useOrder();
     const [products, setProducts] = useState<TexMexProduct[]>([]);
     const [offers, setOffers] = useState<TexMexOffer[]>([]);
     const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
@@ -157,13 +157,15 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
             .join(', ');
 
         // Add as a single "Tex-Mex Box" item
-        addItem({
+        const texMexItem = {
             id: `texmex-${Date.now()}`,
             name: 'Tex-Mex Box',
             description: itemNames,
             price: price,
             category: 'texmex' as any,
-        });
+        };
+
+        addToCart(texMexItem, 1, undefined, price);
 
         toast.success('Tex-Mex ajouté au panier !');
         onClose();
@@ -224,13 +226,13 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
                                 variant={totalQty >= offer.quantity ? "default" : "outline"}
                                 className={totalQty >= offer.quantity ? "bg-orange-500" : ""}
                             >
-                                {offer.quantity} items = {offer.price}€
+                                {offer.quantity} pièces = {offer.price}€
                             </Badge>
                         ))}
                     </div>
                     {nextOffer && totalQty > 0 && (
                         <p className="text-sm text-muted-foreground mt-2">
-                            Ajoutez {nextOffer.quantity - totalQty} items de plus pour {nextOffer.price}€ !
+                            Ajoutez {nextOffer.quantity - totalQty} pièce(s) de plus pour {nextOffer.price}€ !
                         </p>
                     )}
                 </Card>
@@ -297,7 +299,7 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
                 <div className="container mx-auto">
                     <div className="flex items-center justify-between mb-3">
                         <div>
-                            <span className="text-sm text-muted-foreground">Total: {totalQty} items</span>
+                            <span className="text-sm text-muted-foreground">Total: {totalQty} pièce(s)</span>
                             {savings > 0 && (
                                 <Badge variant="secondary" className="ml-2 bg-green-500/10 text-green-600">
                                     Économie: {savings.toFixed(2)}€
