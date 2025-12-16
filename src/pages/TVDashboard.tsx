@@ -479,13 +479,13 @@ export default function TVDashboard() {
       await updateStatus.mutateAsync({ id: orderId, status: newStatus });
       toast.success(`Statut: ${statusConfig[newStatus].label}`);
 
-      // Send SMS when order is completed
+      // Send WhatsApp when order is completed
       if (newStatus === 'completed') {
         const order = orders?.find(o => o.id === orderId);
         if (order && order.customer_phone) {
           try {
             const response = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-order-ready-sms`,
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp-notification`,
               {
                 method: 'POST',
                 headers: {
@@ -502,12 +502,12 @@ export default function TVDashboard() {
             );
             const result = await response.json();
             if (result.success) {
-              toast.success('📱 SMS envoyé au client');
+              toast.success('📱 WhatsApp envoyé au client');
             } else {
-              console.log('SMS not sent:', result.message);
+              console.log('WhatsApp not sent:', result.message);
             }
-          } catch (smsError) {
-            console.error('SMS error:', smsError);
+          } catch (whatsappError) {
+            console.error('WhatsApp error:', whatsappError);
           }
         }
       }
