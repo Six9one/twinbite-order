@@ -82,15 +82,15 @@ const orderTypeConfig = {
   surplace: { icon: Utensils, label: 'Sur place', color: 'bg-green-600' },
 };
 
-// Notification sound - iOS-like "Chord" sound using reliable Audio element
+// Notification sound - LOUD attention-grabbing alert
 // Plays multiple times to ensure it's heard
 const playOrderSound = () => {
   try {
-    // Use a reliable notification sound URL (iOS-style chord/ding)
-    // This is a short notification sound that works well
+    // Use LOUD notification sounds - alert/bell style
     const soundUrls = [
-      'https://cdn.freesound.org/previews/320/320655_5260872-lq.mp3', // Primary
-      'https://cdn.pixabay.com/audio/2022/03/15/audio_8cb749bb58.mp3', // Backup notification
+      'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3', // Loud alert bell
+      'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3', // Attention ding
+      'https://cdn.pixabay.com/audio/2022/10/30/audio_946d65349d.mp3', // Notification chime
     ];
 
     let soundPlayed = false;
