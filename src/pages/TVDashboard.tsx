@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrders, useUpdateOrderStatus, Order } from '@/hooks/useSupabaseData';
-import { 
+import {
   Clock, CheckCircle, XCircle, ChefHat, Package,
   MapPin, Truck, Store, Utensils,
   Volume2, VolumeX, RefreshCw, History, Home,
@@ -26,7 +26,7 @@ const useAdminAuth = () => {
 
   useEffect(() => {
     let mounted = true;
-    
+
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -34,21 +34,21 @@ const useAdminAuth = () => {
           if (mounted) navigate('/admin');
           return;
         }
-        
+
         const { data: roleData, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', session.user.id)
           .eq('role', 'admin')
           .maybeSingle();
-        
+
         if (roleError || !roleData) {
           toast.error('Accès non autorisé');
           await supabase.auth.signOut();
           if (mounted) navigate('/admin');
           return;
         }
-        
+
         if (mounted) {
           setIsAuthenticated(true);
           setIsLoading(false);
@@ -61,7 +61,7 @@ const useAdminAuth = () => {
       }
     };
     checkAuth();
-    
+
     return () => { mounted = false; };
   }, [navigate]);
 
@@ -86,43 +86,42 @@ const orderTypeConfig = {
 const playOrderSound = () => {
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    
+
     const playAlarm = (frequency: number, startTime: number, duration: number, volume: number) => {
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-      
+
       // Use square wave for loud, clear alarm
       oscillator.type = 'square';
       oscillator.frequency.setValueAtTime(frequency, startTime);
-      
+
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
-      
+
       gainNode.gain.setValueAtTime(volume, startTime);
       gainNode.gain.linearRampToValueAtTime(volume * 0.8, startTime + duration * 0.5);
       gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
-      
+
       oscillator.start(startTime);
       oscillator.stop(startTime + duration);
     };
-    
+
     const now = audioContext.currentTime;
-    
+
     // Loud repeating alarm pattern (3 bursts)
     for (let i = 0; i < 3; i++) {
       playAlarm(880, now + i * 0.4, 0.15, 0.4);  // A5
       playAlarm(1174.7, now + i * 0.4 + 0.15, 0.15, 0.4);  // D6
     }
-    
+
   } catch (error) {
     console.log('Audio not supported');
   }
 };
 
-// Auto-print ticket function
+// Auto-print ticket function using hidden iframe (no popup needed)
 const printOrderTicket = (order: Order) => {
   console.log('🖨️ Starting print process for order:', order.order_number);
-  setPrinterStatus('printing');
 
   const ticketSettings = {
     header: localStorage.getItem('ticketHeader') || 'TWIN PIZZA',
@@ -131,29 +130,18 @@ const printOrderTicket = (order: Order) => {
     footer: localStorage.getItem('ticketFooter') || 'Merci de votre visite!',
   };
 
-  try {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      console.error('❌ Failed to open print window - popup blocker?');
-      setPrinterStatus('error');
-      alert('Popup blocker detected! Please allow popups for this site and try again.');
-      return;
-    }
-
-    console.log('✅ Print window opened successfully');
-
   const items = Array.isArray(order.items) ? order.items : [];
   const itemsHtml = items.map((cartItem: any) => {
     const productName = cartItem.item?.name || cartItem.name || 'Produit';
     const customization = cartItem.customization;
-    let details = [];
+    let details: string[] = [];
     if (customization?.size) details.push(customization.size.toUpperCase());
     if (customization?.meats?.length) details.push(`Viandes: ${customization.meats.join(', ')}`);
     if (customization?.sauces?.length) details.push(`Sauces: ${customization.sauces.join(', ')}`);
     if (customization?.garnitures?.length) details.push(`Garnitures: ${customization.garnitures.join(', ')}`);
     if (customization?.supplements?.length) details.push(`Supp: ${customization.supplements.join(', ')}`);
     if (customization?.notes) details.push(`Note: ${customization.notes}`);
-    
+
     return `
       <div style="margin-bottom:8px;border-bottom:1px dashed #ccc;padding-bottom:8px;">
         <div style="font-weight:bold;">${cartItem.quantity}x ${productName} - ${cartItem.totalPrice?.toFixed(2) || '0.00'}€</div>
@@ -173,71 +161,95 @@ const printOrderTicket = (order: Order) => {
     cb: 'CB',
     especes: 'ESP'
   };
-  
-  // Get font settings from localStorage
+
   const fontFamily = localStorage.getItem('ticketFontFamily') || 'monospace';
   const fontSize = localStorage.getItem('ticketFontSize') || '12';
   const headerSize = localStorage.getItem('ticketHeaderSize') || '20';
 
-  printWindow.document.write(`
+  const ticketHtml = `
+    <!DOCTYPE html>
     <html><head><title>Ticket ${order.order_number}</title>
     <style>
-      body { font-family: ${fontFamily}; font-size: ${fontSize}px; padding: 10px; max-width: 300px; margin: 0 auto; }
+      @page { size: 80mm auto; margin: 0; }
+      @media print { body { width: 80mm; } }
+      body { font-family: ${fontFamily}; font-size: ${fontSize}px; padding: 5px; width: 76mm; margin: 0 auto; }
       .center { text-align: center; }
       .bold { font-weight: bold; }
-      .divider { border-top: 2px dashed #000; margin: 10px 0; }
-      h2 { font-size: ${headerSize}px; }
+      .divider { border-top: 2px dashed #000; margin: 8px 0; }
+      h2 { font-size: ${headerSize}px; margin: 5px 0; }
     </style></head><body>
       <div class="center">
-        <h2 style="margin:5px 0;">${ticketSettings.header}</h2>
-        <p style="margin:0;">${ticketSettings.subheader}</p>
-        <p style="margin:0;">${ticketSettings.phone}</p>
+        <h2>${ticketSettings.header}</h2>
+        <p style="margin:2px 0;">${ticketSettings.subheader}</p>
+        <p style="margin:2px 0;">${ticketSettings.phone}</p>
       </div>
       <div class="divider"></div>
-      <div class="center bold" style="font-size:20px;">N° ${order.order_number}</div>
-      <div class="center" style="font-size:14px;margin:5px 0;">${new Date(order.created_at || '').toLocaleString('fr-FR')}</div>
-      <div class="center bold" style="background:#000;color:#fff;padding:5px;margin:10px 0;">${orderTypeLabels[order.order_type] || order.order_type}</div>
+      <div class="center bold" style="font-size:22px;">N° ${order.order_number}</div>
+      <div class="center" style="font-size:12px;margin:5px 0;">${new Date(order.created_at || '').toLocaleString('fr-FR')}</div>
+      <div class="center bold" style="background:#000;color:#fff;padding:6px;margin:8px 0;font-size:16px;">${orderTypeLabels[order.order_type] || order.order_type}</div>
       <div class="divider"></div>
       <div style="margin-bottom:5px;"><strong>Client:</strong> ${order.customer_name}</div>
+      <div style="margin-bottom:5px;"><strong>Tél:</strong> ${order.customer_phone || ''}</div>
       ${order.customer_address ? `<div style="margin-bottom:5px;"><strong>Adresse:</strong> ${order.customer_address}</div>` : ''}
       ${order.customer_notes ? `<div style="margin-bottom:5px;background:#ffe;padding:5px;"><strong>Note:</strong> ${order.customer_notes}</div>` : ''}
       <div class="divider"></div>
       ${itemsHtml}
       <div class="divider"></div>
-      <div style="text-align:right;font-size:14px;">Sous-total: ${order.subtotal?.toFixed(2)}€</div>
-      <div style="text-align:right;font-size:14px;">TVA (10%): ${order.tva?.toFixed(2)}€</div>
-      <div style="text-align:right;font-size:20px;font-weight:bold;margin-top:5px;">TOTAL: ${order.total?.toFixed(2)}€</div>
-      <div class="center bold" style="margin-top:10px;padding:5px;${order.payment_method === 'en_ligne' ? 'background:#d4edda;' : 'background:#f8d7da;'}">${paymentLabels[order.payment_method] || order.payment_method}</div>
+      <div style="text-align:right;font-size:12px;">Sous-total: ${order.subtotal?.toFixed(2)}€</div>
+      <div style="text-align:right;font-size:12px;">TVA (10%): ${order.tva?.toFixed(2)}€</div>
+      <div style="text-align:right;font-size:18px;font-weight:bold;margin-top:5px;">TOTAL: ${order.total?.toFixed(2)}€</div>
+      <div class="center bold" style="margin-top:8px;padding:6px;font-size:14px;${order.payment_method === 'en_ligne' ? 'background:#d4edda;' : 'background:#f8d7da;'}">${paymentLabels[order.payment_method] || order.payment_method}</div>
       <div class="divider"></div>
-      <div class="center">${ticketSettings.footer}</div>
+      <div class="center" style="font-size:11px;">${ticketSettings.footer}</div>
+      <div style="height:20px;"></div>
     </body></html>
-  `);
-  printWindow.document.close();
+  `;
 
-  console.log('📄 HTML written to print window, attempting to print...');
+  // Create hidden iframe for printing (no popup blocker issues)
+  const existingFrame = document.getElementById('print-frame');
+  if (existingFrame) existingFrame.remove();
 
-  // Add error handling for print
-  try {
-    printWindow.focus();
-    printWindow.print();
-    console.log('✅ Print command sent successfully');
-    setPrinterStatus('ready');
-    setLastPrintTime(new Date());
-  } catch (printError) {
-    console.error('❌ Print failed:', printError);
-    setPrinterStatus('error');
-    alert('Erreur d\'impression: ' + printError.message);
+  const iframe = document.createElement('iframe');
+  iframe.id = 'print-frame';
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc) {
+    console.error('❌ Failed to create print iframe');
+    return;
   }
 
-  // Close window after a delay
-  setTimeout(() => {
+  doc.open();
+  doc.write(ticketHtml);
+  doc.close();
+
+  // Wait for content to load then print
+  iframe.onload = () => {
     try {
-      printWindow.close();
-      console.log('🔒 Print window closed');
-    } catch (closeError) {
-      console.error('❌ Failed to close print window:', closeError);
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      console.log('✅ Print command sent successfully for order:', order.order_number);
+    } catch (printError) {
+      console.error('❌ Print failed:', printError);
     }
-  }, 1000);
+    // Remove iframe after printing
+    setTimeout(() => iframe.remove(), 2000);
+  };
+
+  // Fallback: trigger load manually if already loaded
+  setTimeout(() => {
+    if (document.getElementById('print-frame')) {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        console.log('✅ Fallback print triggered for order:', order.order_number);
+      } catch (e) {
+        console.error('❌ Fallback print failed:', e);
+      }
+      setTimeout(() => iframe.remove(), 2000);
+    }
+  }, 500);
 };
 
 export default function TVDashboard() {
@@ -299,35 +311,35 @@ export default function TVDashboard() {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
           refetch();
           setLastRefresh(new Date());
-          
+
           const newOrder = payload.new as Order;
           const orderTypeLabels: Record<string, string> = {
             livraison: 'LIVRAISON',
             emporter: 'À EMPORTER',
             surplace: 'SUR PLACE'
           };
-          
+
           if (soundEnabled) {
             // Play loud alarm
             playOrderSound();
-            
+
             // Show full-screen white overlay
             setNewOrderInfo({
               orderNumber: newOrder.order_number,
               orderType: orderTypeLabels[newOrder.order_type] || newOrder.order_type
             });
             setShowNewOrderOverlay(true);
-            
+
             // Hide overlay after 3 seconds
             setTimeout(() => {
               setShowNewOrderOverlay(false);
               setNewOrderInfo(null);
             }, 3000);
           }
-          
+
           setFlashEffect(true);
           setTimeout(() => setFlashEffect(false), 1000);
-          
+
           // Auto-print new order
           if (autoPrintEnabled && payload.new) {
             console.log('🔄 Auto-print triggered for new order:', payload.new.order_number);
@@ -409,10 +421,10 @@ export default function TVDashboard() {
   const livraisonOrders = liveOrders.filter(o => o.order_type === 'livraison');
 
   // Get all orders sorted by creation time for global sequential numbering
-  const allOrdersSorted = [...(orders || [])].sort((a, b) => 
+  const allOrdersSorted = [...(orders || [])].sort((a, b) =>
     new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
-  
+
   // Create a map of order id to global sequential number
   const orderNumberMap = new Map<string, number>();
   allOrdersSorted.forEach((order, idx) => {
@@ -448,7 +460,7 @@ export default function TVDashboard() {
             <img src={logoImage} alt="Twin Pizza" className="w-8 h-8 rounded-full" />
             <span className="text-lg font-bold"><span className="text-amber-500">TWIN</span> <span className="text-white/80">TV</span></span>
           </Link>
-          
+
           {/* Compact Status counters */}
           <div className="flex gap-1.5">
             <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${pendingCount > 0 ? 'bg-yellow-500 animate-pulse' : 'bg-yellow-500/30'}`}>
@@ -538,8 +550,8 @@ export default function TVDashboard() {
       {activeTab === 'live' ? (
         <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Column 1: Sur Place (25%) */}
-          <OrderColumn 
-            title="Sur Place" 
+          <OrderColumn
+            title="Sur Place"
             icon={Utensils}
             orders={surplaceOrders}
             orderNumberMap={orderNumberMap}
@@ -550,8 +562,8 @@ export default function TVDashboard() {
           />
           <div className="w-px bg-white/10" />
           {/* Column 2: À Emporter (25%) */}
-          <OrderColumn 
-            title="À Emporter" 
+          <OrderColumn
+            title="À Emporter"
             icon={Store}
             orders={emporterOrders}
             orderNumberMap={orderNumberMap}
@@ -562,8 +574,8 @@ export default function TVDashboard() {
           />
           <div className="w-px bg-white/10" />
           {/* Column 3: Livraison (25%) */}
-          <OrderColumn 
-            title="Livraison" 
+          <OrderColumn
+            title="Livraison"
             icon={Truck}
             orders={livraisonOrders}
             orderNumberMap={orderNumberMap}
@@ -574,7 +586,7 @@ export default function TVDashboard() {
           />
           <div className="w-px bg-purple-500/50" />
           {/* Column 4: Plus Tard (25%) */}
-          <ScheduledOrderColumn 
+          <ScheduledOrderColumn
             orders={scheduledOrders}
             orderNumberMap={orderNumberMap}
             onStatusUpdate={handleStatusUpdate}
@@ -625,16 +637,16 @@ function CurrentTime() {
 }
 
 // Order Column Component for the 4-column layout
-function OrderColumn({ 
-  title, 
-  icon: Icon, 
-  orders, 
+function OrderColumn({
+  title,
+  icon: Icon,
+  orders,
   orderNumberMap,
   onStatusUpdate,
   colorClass,
   emptyIcon,
   showPrices
-}: { 
+}: {
   title: string;
   icon: React.ComponentType<{ className?: string }>;
   orders: Order[];
@@ -670,9 +682,9 @@ function OrderColumn({
           </div>
         ) : (
           sortedOrders.map((order) => (
-            <ColumnOrderCard 
-              key={order.id} 
-              order={order} 
+            <ColumnOrderCard
+              key={order.id}
+              order={order}
               orderNumber={orderNumberMap.get(order.id) || 0}
               onStatusUpdate={onStatusUpdate}
               showPrices={showPrices}
@@ -685,12 +697,12 @@ function OrderColumn({
 }
 
 // Scheduled Order Column (Plus Tard)
-function ScheduledOrderColumn({ 
-  orders, 
+function ScheduledOrderColumn({
+  orders,
   orderNumberMap,
   onStatusUpdate,
   showPrices
-}: { 
+}: {
   orders: Order[];
   orderNumberMap: Map<string, number>;
   onStatusUpdate: (id: string, status: Order['status']) => void;
@@ -724,9 +736,9 @@ function ScheduledOrderColumn({
           </div>
         ) : (
           sortedOrders.map((order) => (
-            <ScheduledOrderCard 
-              key={order.id} 
-              order={order} 
+            <ScheduledOrderCard
+              key={order.id}
+              order={order}
               orderNumber={orderNumberMap.get(order.id) || 0}
               onStatusUpdate={onStatusUpdate}
               showPrices={showPrices}
@@ -739,13 +751,13 @@ function ScheduledOrderColumn({
 }
 
 // Compact order card for columns
-function ColumnOrderCard({ 
-  order, 
+function ColumnOrderCard({
+  order,
   orderNumber,
   onStatusUpdate,
   showPrices
-}: { 
-  order: Order; 
+}: {
+  order: Order;
   orderNumber: number;
   onStatusUpdate: (id: string, status: Order['status']) => void;
   showPrices: boolean;
@@ -770,10 +782,9 @@ function ColumnOrderCard({
   };
 
   return (
-    <div className={`rounded overflow-hidden ${
-      isNew ? 'ring-1 ring-yellow-400 animate-pulse' : 
-      isReady ? 'ring-1 ring-green-400' : ''
-    } bg-white/5`}>
+    <div className={`rounded overflow-hidden ${isNew ? 'ring-1 ring-yellow-400 animate-pulse' :
+        isReady ? 'ring-1 ring-green-400' : ''
+      } bg-white/5`}>
       {/* Header - Ultra compact */}
       <div className={`${config.color} px-2 py-1 flex items-center justify-between`}>
         <div className="flex items-center gap-1.5">
@@ -798,7 +809,7 @@ function ColumnOrderCard({
           <span className="text-[10px] text-white/50 truncate">{order.customer_name}</span>
           {showPrices && <span className="text-xs font-bold text-green-400">{order.total?.toFixed(2)}€</span>}
         </div>
-        
+
         {/* Address for delivery - compact */}
         {order.order_type === 'livraison' && order.customer_address && (
           <div className="flex items-start gap-1 text-amber-300 text-[10px] bg-amber-500/10 rounded px-1.5 py-0.5">
@@ -814,7 +825,7 @@ function ColumnOrderCard({
             const menuLabel = getMenuLabel(customization);
             const productName = item.item?.name || item.name || 'Produit';
             const sizeLabel = customization?.size ? customization.size.toUpperCase() : '';
-            
+
             return (
               <div key={idx} className="border-b border-white/10 pb-1.5 last:border-0 last:pb-0">
                 {/* Product name - BOLD and bigger */}
@@ -822,35 +833,35 @@ function ColumnOrderCard({
                   <span>{item.quantity}x {productName} {sizeLabel}{menuLabel}</span>
                   {showPrices && <span className="text-[10px] text-green-400 font-normal">{item.totalPrice?.toFixed(2)}€</span>}
                 </div>
-                
+
                 {/* Meats on one line */}
                 {customization?.meats?.length > 0 && (
                   <div className="text-xs font-bold text-blue-400 pl-1">
                     {customization.meats.join(' . ')}
                   </div>
                 )}
-                
+
                 {/* Sauces on one line */}
                 {customization?.sauces?.length > 0 && (
                   <div className="text-xs font-bold text-blue-400 pl-1">
                     {customization.sauces.join(', ')}
                   </div>
                 )}
-                
+
                 {/* Garnitures on one line */}
                 {customization?.garnitures?.length > 0 && (
                   <div className="text-xs font-bold text-blue-400 pl-1">
                     {customization.garnitures.join(' . ')}
                   </div>
                 )}
-                
+
                 {/* Supplements in amber */}
                 {customization?.supplements?.length > 0 && (
                   <div className="text-xs font-bold text-amber-400 pl-1">
                     + {customization.supplements.join(', ')}
                   </div>
                 )}
-                
+
                 {customization?.notes && (
                   <div className="text-[10px] text-pink-300 pl-1 italic">📝 {customization.notes}</div>
                 )}
@@ -864,8 +875,8 @@ function ColumnOrderCard({
 
         {/* Status Buttons - Compact */}
         <div className="flex gap-1">
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             variant="outline"
             className="bg-white/10 border-white/20 hover:bg-white/20 text-[10px] py-0.5 h-6 px-1.5 gap-0.5"
             onClick={() => printOrderTicket(order)}
@@ -873,8 +884,8 @@ function ColumnOrderCard({
             <Printer className="w-3 h-3" />
           </Button>
           {order.status === 'pending' && (
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               className="flex-1 bg-blue-500 hover:bg-blue-600 text-[10px] py-0.5 h-6 gap-0.5"
               onClick={() => onStatusUpdate(order.id, 'preparing')}
             >
@@ -882,8 +893,8 @@ function ColumnOrderCard({
             </Button>
           )}
           {order.status === 'preparing' && (
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               className="flex-1 bg-green-500 hover:bg-green-600 text-[10px] py-0.5 h-6 gap-0.5"
               onClick={() => onStatusUpdate(order.id, 'ready')}
             >
@@ -891,8 +902,8 @@ function ColumnOrderCard({
             </Button>
           )}
           {order.status === 'ready' && (
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               className="flex-1 bg-gray-600 hover:bg-gray-700 text-[10px] py-0.5 h-6 gap-0.5"
               onClick={() => onStatusUpdate(order.id, 'completed')}
             >
@@ -900,8 +911,8 @@ function ColumnOrderCard({
             </Button>
           )}
           {['pending', 'preparing'].includes(order.status) && (
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               size="sm"
               className="text-[10px] py-0.5 h-6 px-1.5"
               onClick={() => onStatusUpdate(order.id, 'cancelled')}
@@ -916,13 +927,13 @@ function ColumnOrderCard({
 }
 
 // Scheduled Order Card with delivery mode indicator
-function ScheduledOrderCard({ 
-  order, 
+function ScheduledOrderCard({
+  order,
   orderNumber,
   onStatusUpdate,
   showPrices
-}: { 
-  order: Order; 
+}: {
+  order: Order;
   orderNumber: number;
   onStatusUpdate: (id: string, status: Order['status']) => void;
   showPrices: boolean;
@@ -999,7 +1010,7 @@ function ScheduledOrderCard({
             const menuLabel = getMenuLabel(customization);
             const productName = item.item?.name || item.name || 'Produit';
             const sizeLabel = customization?.size ? customization.size.toUpperCase() : '';
-            
+
             return (
               <div key={idx} className="border-b border-white/10 pb-1 last:border-0 last:pb-0">
                 {/* Product name - BOLD */}
@@ -1007,28 +1018,28 @@ function ScheduledOrderCard({
                   <span>{item.quantity}x {productName} {sizeLabel}{menuLabel}</span>
                   {showPrices && <span className="text-[9px] text-green-400 font-normal">{item.totalPrice?.toFixed(2)}€</span>}
                 </div>
-                
+
                 {/* Meats on one line */}
                 {customization?.meats?.length > 0 && (
                   <div className="text-[10px] font-bold text-blue-400 pl-1">
                     {customization.meats.join(' . ')}
                   </div>
                 )}
-                
+
                 {/* Sauces on one line */}
                 {customization?.sauces?.length > 0 && (
                   <div className="text-[10px] font-bold text-blue-400 pl-1">
                     {customization.sauces.join(', ')}
                   </div>
                 )}
-                
+
                 {/* Garnitures on one line */}
                 {customization?.garnitures?.length > 0 && (
                   <div className="text-[10px] font-bold text-blue-400 pl-1">
                     {customization.garnitures.join(' . ')}
                   </div>
                 )}
-                
+
                 {/* Supplements in amber */}
                 {customization?.supplements?.length > 0 && (
                   <div className="text-[10px] font-bold text-amber-400 pl-1">
@@ -1047,8 +1058,8 @@ function ScheduledOrderCard({
         <div className="flex items-center gap-1">
           <Badge className={`${config.color} text-[10px] h-4`}>{config.label}</Badge>
           {order.status === 'pending' && (
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               className="flex-1 bg-blue-500 hover:bg-blue-600 text-[10px] py-0.5 h-5 gap-0.5"
               onClick={() => onStatusUpdate(order.id, 'preparing')}
             >
@@ -1056,8 +1067,8 @@ function ScheduledOrderCard({
             </Button>
           )}
           {order.status === 'preparing' && (
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               className="flex-1 bg-green-500 hover:bg-green-600 text-[10px] py-0.5 h-5 gap-0.5"
               onClick={() => onStatusUpdate(order.id, 'ready')}
             >
@@ -1065,8 +1076,8 @@ function ScheduledOrderCard({
             </Button>
           )}
           {order.status === 'ready' && (
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               className="flex-1 bg-gray-600 hover:bg-gray-700 text-[10px] py-0.5 h-5 gap-0.5"
               onClick={() => onStatusUpdate(order.id, 'completed')}
             >
@@ -1089,7 +1100,7 @@ function HistoryOrderRow({ order }: { order: Order }) {
 
   return (
     <div className="bg-white/5 rounded-lg border border-white/10">
-      <div 
+      <div
         className="p-3 flex items-center justify-between cursor-pointer hover:bg-white/5"
         onClick={() => setExpanded(!expanded)}
       >
@@ -1103,7 +1114,7 @@ function HistoryOrderRow({ order }: { order: Order }) {
           <ArrowRight className={`w-4 h-4 transition-transform ${expanded ? 'rotate-90' : ''}`} />
         </div>
       </div>
-      
+
       {expanded && (
         <div className="px-3 pb-3 border-t border-white/10 pt-3 space-y-2">
           {/* Phone visible in history expanded view */}
