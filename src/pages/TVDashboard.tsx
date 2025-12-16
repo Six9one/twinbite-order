@@ -273,6 +273,12 @@ export default function TVDashboard() {
   const previousOrdersCount = useRef(0);
   const printedOrders = useRef<Set<string>>(new Set());
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const autoPrintRef = useRef(autoPrintEnabled); // Track current auto-print state
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    autoPrintRef.current = autoPrintEnabled;
+  }, [autoPrintEnabled]);
 
   const { data: orders, isLoading, refetch } = useOrders(dateFilter);
   const updateStatus = useUpdateOrderStatus();
@@ -340,8 +346,11 @@ export default function TVDashboard() {
           setFlashEffect(true);
           setTimeout(() => setFlashEffect(false), 1000);
 
-          // Auto-print new order
-          if (autoPrintEnabled && payload.new) {
+          // Auto-print new order - use ref to get current value (avoids stale closure)
+          const shouldAutoPrint = autoPrintRef.current || localStorage.getItem('autoPrintEnabled') === 'true';
+          console.log('🖨️ Auto-print check:', { shouldAutoPrint, orderId: newOrder.id });
+
+          if (shouldAutoPrint && payload.new) {
             console.log('🔄 Auto-print triggered for new order:', payload.new.order_number);
             if (!printedOrders.current.has(newOrder.id)) {
               printedOrders.current.add(newOrder.id);
@@ -353,6 +362,8 @@ export default function TVDashboard() {
             } else {
               console.log('⚠️ Order already printed, skipping:', newOrder.order_number);
             }
+          } else {
+            console.log('⏸️ Auto-print disabled, not printing');
           }
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
@@ -783,7 +794,7 @@ function ColumnOrderCard({
 
   return (
     <div className={`rounded overflow-hidden ${isNew ? 'ring-1 ring-yellow-400 animate-pulse' :
-        isReady ? 'ring-1 ring-green-400' : ''
+      isReady ? 'ring-1 ring-green-400' : ''
       } bg-white/5`}>
       {/* Header - Ultra compact */}
       <div className={`${config.color} px-2 py-1 flex items-center justify-between`}>
