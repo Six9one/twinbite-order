@@ -121,6 +121,9 @@ const playOrderSound = () => {
 
 // Auto-print ticket function
 const printOrderTicket = (order: Order) => {
+  console.log('🖨️ Starting print process for order:', order.order_number);
+  setPrinterStatus('printing');
+
   const ticketSettings = {
     header: localStorage.getItem('ticketHeader') || 'TWIN PIZZA',
     subheader: localStorage.getItem('ticketSubheader') || 'Grand-Couronne',
@@ -128,8 +131,16 @@ const printOrderTicket = (order: Order) => {
     footer: localStorage.getItem('ticketFooter') || 'Merci de votre visite!',
   };
 
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
+  try {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      console.error('❌ Failed to open print window - popup blocker?');
+      setPrinterStatus('error');
+      alert('Popup blocker detected! Please allow popups for this site and try again.');
+      return;
+    }
+
+    console.log('✅ Print window opened successfully');
 
   const items = Array.isArray(order.items) ? order.items : [];
   const itemsHtml = items.map((cartItem: any) => {
@@ -202,9 +213,31 @@ const printOrderTicket = (order: Order) => {
     </body></html>
   `);
   printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
-  printWindow.close();
+
+  console.log('📄 HTML written to print window, attempting to print...');
+
+  // Add error handling for print
+  try {
+    printWindow.focus();
+    printWindow.print();
+    console.log('✅ Print command sent successfully');
+    setPrinterStatus('ready');
+    setLastPrintTime(new Date());
+  } catch (printError) {
+    console.error('❌ Print failed:', printError);
+    setPrinterStatus('error');
+    alert('Erreur d\'impression: ' + printError.message);
+  }
+
+  // Close window after a delay
+  setTimeout(() => {
+    try {
+      printWindow.close();
+      console.log('🔒 Print window closed');
+    } catch (closeError) {
+      console.error('❌ Failed to close print window:', closeError);
+    }
+  }, 1000);
 };
 
 export default function TVDashboard() {
@@ -218,6 +251,8 @@ export default function TVDashboard() {
     return localStorage.getItem('tvShowPrices') !== 'false';
   });
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [printerStatus, setPrinterStatus] = useState<'ready' | 'printing' | 'error'>('ready');
+  const [lastPrintTime, setLastPrintTime] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [flashEffect, setFlashEffect] = useState(false);
   const [showNewOrderOverlay, setShowNewOrderOverlay] = useState(false);
@@ -295,9 +330,16 @@ export default function TVDashboard() {
           
           // Auto-print new order
           if (autoPrintEnabled && payload.new) {
+            console.log('🔄 Auto-print triggered for new order:', payload.new.order_number);
             if (!printedOrders.current.has(newOrder.id)) {
               printedOrders.current.add(newOrder.id);
-              setTimeout(() => printOrderTicket(newOrder), 500);
+              console.log('🖨️ Scheduling auto-print in 500ms...');
+              setTimeout(() => {
+                console.log('🚀 Executing auto-print for order:', newOrder.order_number);
+                printOrderTicket(newOrder);
+              }, 500);
+            } else {
+              console.log('⚠️ Order already printed, skipping:', newOrder.order_number);
             }
           }
         })
@@ -466,6 +508,18 @@ export default function TVDashboard() {
           <div className="flex items-center gap-1 text-[10px] text-white/50">
             <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-green-400' : 'text-white/40'}`} />
             <span>MAJ {lastRefresh.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+          </div>
+
+          <div className="flex items-center gap-1 text-[10px]">
+            <Printer className={`w-3 h-3 ${printerStatus === 'printing' ? 'text-blue-400 animate-pulse' : printerStatus === 'error' ? 'text-red-400' : 'text-green-400'}`} />
+            <span className={printerStatus === 'error' ? 'text-red-400' : 'text-white/50'}>
+              {printerStatus === 'printing' ? 'IMPRESSION...' : printerStatus === 'error' ? 'ERREUR' : 'PRÊT'}
+            </span>
+            {lastPrintTime && (
+              <span className="text-white/30">
+                {lastPrintTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
 
           <div className="text-sm font-mono bg-amber-500 text-black px-2 py-0.5 rounded">
@@ -810,6 +864,14 @@ function ColumnOrderCard({
 
         {/* Status Buttons - Compact */}
         <div className="flex gap-1">
+          <Button 
+            size="sm" 
+            variant="outline"
+            className="bg-white/10 border-white/20 hover:bg-white/20 text-[10px] py-0.5 h-6 px-1.5 gap-0.5"
+            onClick={() => printOrderTicket(order)}
+          >
+            <Printer className="w-3 h-3" />
+          </Button>
           {order.status === 'pending' && (
             <Button 
               size="sm" 
