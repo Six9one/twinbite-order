@@ -33,5 +33,15 @@ INSERT INTO public.site_settings (key, value, category) VALUES
 ('delivery_time', '20-35 min', 'delivery'),
 ('free_delivery_min', '15', 'delivery'),
 ('closed_message', 'Nous sommes actuellement fermés. Revenez pendant nos heures d''ouverture!', 'messages'),
-('order_success_message', 'Merci pour votre commande! Nous vous contacterons bientôt.', 'messages')
+('order_success_message', 'Merci pour votre commande! Nous vous contacterons bientôt.', 'messages'),
+-- Store status settings
+('store_is_open', 'true', 'store'),
+('store_is_pause', 'false', 'store'),
+('store_pause_message', 'Nous sommes en pause. Retour dans quelques minutes!', 'store'),
+('store_is_temp_closed', 'false', 'store'),
+('store_temp_closed_until', '', 'store'),
+('store_temp_closed_message', 'Fermé exceptionnellement. Réouverture bientôt!', 'store'),
+('store_show_banner', 'false', 'store'),
+('store_banner_message', '', 'store'),
+('store_banner_type', 'info', 'store')
 ON CONFLICT (key) DO NOTHING;

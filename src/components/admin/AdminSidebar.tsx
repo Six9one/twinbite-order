@@ -27,7 +27,8 @@ import {
   MessageSquare,
   Flame,
   Globe,
-  CreditCard
+  CreditCard,
+  Power
 } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -100,8 +101,8 @@ const navItems: NavItem[] = [
   { label: 'Fidélité', icon: Star, value: 'loyalty' },
   { label: 'Avis Clients', icon: MessageSquare, value: 'reviews' },
   { label: 'Contenu du Site', icon: Globe, value: 'content' },
+  { label: '⚡ Statut & Horaires', icon: Power, value: 'store-status' },
   { label: 'Statistiques', icon: BarChart3, value: 'stats' },
-  { label: 'Horaires', icon: Clock, value: 'hours' },
   { label: 'Ventes', icon: BarChart3, value: 'ventes' },
   { label: 'Paiements', icon: CreditCard, value: 'payments' },
   { label: 'Paramètres', icon: Settings, value: 'settings' },
