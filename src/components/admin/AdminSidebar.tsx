@@ -42,9 +42,8 @@ interface NavItem {
   children?: NavItem[];
 }
 
-import { CreditCard } from 'lucide-react';
-
 import { FileText } from 'lucide-react';
+
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, value: 'dashboard' },
@@ -97,6 +96,7 @@ const navItems: NavItem[] = [
   },
   { label: 'Zones de Livraison', icon: MapPin, value: 'zones' },
   { label: 'Carousel & Média', icon: Image, value: 'carousel' },
+  { label: '🖼️ Images Catégories', icon: Image, value: 'category-images' },
   { label: 'Promotions', icon: Gift, value: 'promotions' },
   { label: 'Fidélité', icon: Star, value: 'loyalty' },
   { label: 'Avis Clients', icon: MessageSquare, value: 'reviews' },

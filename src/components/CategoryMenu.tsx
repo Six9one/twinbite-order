@@ -22,6 +22,7 @@ import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { isMenuMidiTime } from '@/utils/promotions';
 import { MenuItem, MenuCategory } from '@/types/order';
 import { useProductsByCategory, Product } from '@/hooks/useProducts';
+import { useCategoryImages } from '@/hooks/useCategoryImages';
 
 interface CategoryMenuProps {
   onBack: () => void;
@@ -99,6 +100,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
   const { orderType, getItemCount, getTotal } = useOrder();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const itemCount = getItemCount();
+  const { getImageOrEmoji, getDisplayName } = useCategoryImages();
 
   // Load products from backend for simple categories (fallback to static data)
   const { data: croquesProducts } = useProductsByCategory('croques');
@@ -106,6 +108,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
   const { data: crepeProducts } = useProductsByCategory('crepes');
   const { data: gaufreProducts } = useProductsByCategory('gaufres');
   const { data: boissonsProducts } = useProductsByCategory('boissons');
+
 
   const orderTypeLabels = {
     emporter: 'À emporter',
@@ -249,45 +252,76 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
       <div className="container mx-auto px-4 py-6">
         <h2 className="text-xl font-display font-bold mb-4 text-foreground">🍽️ Nos Produits</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-          {productCategoryOrder.map((category) => (
-            <Card
-              key={category}
-              className="p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30 text-center overflow-hidden relative"
-              onClick={() => handleCategoryClick(category)}
-            >
-              {category === 'sandwiches' && (
-                <Badge className="absolute top-2 right-2 bg-green-500 text-white text-xs">Nouveau</Badge>
-              )}
-              <span className="text-3xl sm:text-4xl mb-3 block">
-                {allCategoryLabels[category]?.split(' ')[0]}
-              </span>
-              <h3 className="font-display font-semibold text-sm sm:text-base truncate">
-                {allCategoryLabels[category]?.split(' ').slice(1).join(' ')}
-              </h3>
-              {category === 'pizzas' && promoText && (
-                <p className="text-xs text-primary mt-1 truncate">{promoText}</p>
-              )}
-            </Card>
-          ))}
+          {productCategoryOrder.map((category) => {
+            const imageData = getImageOrEmoji(category);
+            const displayName = getDisplayName(category) || allCategoryLabels[category]?.split(' ').slice(1).join(' ');
+
+            return (
+              <Card
+                key={category}
+                className="p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30 text-center overflow-hidden relative"
+                onClick={() => handleCategoryClick(category)}
+              >
+                {category === 'sandwiches' && (
+                  <Badge className="absolute top-2 right-2 bg-green-500 text-white text-xs">Nouveau</Badge>
+                )}
+
+                {/* Image or Emoji */}
+                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 rounded-full overflow-hidden border-4 border-amber-400/30 bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
+                  {imageData.type === 'image' ? (
+                    <img
+                      src={imageData.value}
+                      alt={displayName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-3xl sm:text-4xl">{imageData.value}</span>
+                  )}
+                </div>
+
+                <h3 className="font-display font-semibold text-sm sm:text-base truncate">
+                  {displayName}
+                </h3>
+                {category === 'pizzas' && promoText && (
+                  <p className="text-xs text-primary mt-1 truncate">{promoText}</p>
+                )}
+              </Card>
+            );
+          })}
         </div>
 
         {/* Desserts Grid */}
         <h2 className="text-xl font-display font-bold mb-4 text-foreground">🍨 Desserts & Boissons</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {dessertCategoryOrder.map((category) => (
-            <Card
-              key={category}
-              className="p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30 text-center overflow-hidden relative"
-              onClick={() => handleCategoryClick(category)}
-            >
-              <span className="text-3xl sm:text-4xl mb-3 block">
-                {allCategoryLabels[category]?.split(' ')[0]}
-              </span>
-              <h3 className="font-display font-semibold text-sm sm:text-base truncate">
-                {allCategoryLabels[category]?.split(' ').slice(1).join(' ')}
-              </h3>
-            </Card>
-          ))}
+          {dessertCategoryOrder.map((category) => {
+            const imageData = getImageOrEmoji(category);
+            const displayName = getDisplayName(category) || allCategoryLabels[category]?.split(' ').slice(1).join(' ');
+
+            return (
+              <Card
+                key={category}
+                className="p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30 text-center overflow-hidden relative"
+                onClick={() => handleCategoryClick(category)}
+              >
+                {/* Image or Emoji */}
+                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 rounded-full overflow-hidden border-4 border-amber-400/30 bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
+                  {imageData.type === 'image' ? (
+                    <img
+                      src={imageData.value}
+                      alt={displayName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-3xl sm:text-4xl">{imageData.value}</span>
+                  )}
+                </div>
+
+                <h3 className="font-display font-semibold text-sm sm:text-base truncate">
+                  {displayName}
+                </h3>
+              </Card>
+            );
+          })}
         </div>
       </div>
 
