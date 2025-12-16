@@ -22,6 +22,7 @@ import { TicketTemplateManager } from '@/components/admin/TicketTemplateManager'
 import { CarouselManager } from '@/components/admin/CarouselManager';
 import { TexMexManager } from '@/components/admin/TexMexManager';
 import { ReviewsManager } from '@/components/admin/ReviewsManager';
+import { SiteContentManager } from '@/components/admin/SiteContentManager';
 import {
   LogOut, Home, Search, RefreshCw, Download, Printer,
   Clock, CheckCircle, XCircle, ChefHat, Package,
@@ -31,7 +32,8 @@ import {
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments' | 'carousel' | 'reviews';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments' | 'carousel' | 'reviews' | 'content';
+
 
 const statusConfig = {
   pending: { label: 'En attente', color: 'bg-yellow-500', icon: Clock },
@@ -439,6 +441,9 @@ export default function AdminDashboard() {
 
           {/* Payments */}
           {activeTab === 'payments' && <PaymentSettingsManager />}
+
+          {/* Site Content */}
+          {activeTab === 'content' && <SiteContentManager />}
 
           {/* Settings */}
           {activeTab === 'settings' && <SettingsManager />}

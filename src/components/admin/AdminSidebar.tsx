@@ -25,7 +25,9 @@ import {
   Sandwich,
   Salad,
   MessageSquare,
-  Flame
+  Flame,
+  Globe,
+  CreditCard
 } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -97,6 +99,7 @@ const navItems: NavItem[] = [
   { label: 'Promotions', icon: Gift, value: 'promotions' },
   { label: 'Fidélité', icon: Star, value: 'loyalty' },
   { label: 'Avis Clients', icon: MessageSquare, value: 'reviews' },
+  { label: 'Contenu du Site', icon: Globe, value: 'content' },
   { label: 'Statistiques', icon: BarChart3, value: 'stats' },
   { label: 'Horaires', icon: Clock, value: 'hours' },
   { label: 'Ventes', icon: BarChart3, value: 'ventes' },
