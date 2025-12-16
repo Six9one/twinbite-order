@@ -478,6 +478,39 @@ export default function TVDashboard() {
     try {
       await updateStatus.mutateAsync({ id: orderId, status: newStatus });
       toast.success(`Statut: ${statusConfig[newStatus].label}`);
+
+      // Send SMS when order is completed
+      if (newStatus === 'completed') {
+        const order = orders?.find(o => o.id === orderId);
+        if (order && order.customer_phone) {
+          try {
+            const response = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-order-ready-sms`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                },
+                body: JSON.stringify({
+                  customerPhone: order.customer_phone,
+                  customerName: order.customer_name,
+                  orderNumber: order.order_number,
+                  orderType: order.order_type,
+                }),
+              }
+            );
+            const result = await response.json();
+            if (result.success) {
+              toast.success('📱 SMS envoyé au client');
+            } else {
+              console.log('SMS not sent:', result.message);
+            }
+          } catch (smsError) {
+            console.error('SMS error:', smsError);
+          }
+        }
+      }
     } catch (error) {
       toast.error('Erreur');
     }
@@ -947,7 +980,7 @@ function ColumnOrderCard({
           )}
         </div>
 
-        {/* Status Buttons - Compact */}
+        {/* Single "Ready" Button - Simplified workflow */}
         <div className="flex gap-1">
           <Button
             size="sm"
@@ -957,34 +990,16 @@ function ColumnOrderCard({
           >
             <Printer className="w-3 h-3" />
           </Button>
-          {order.status === 'pending' && (
+          {order.status !== 'completed' && order.status !== 'cancelled' && (
             <Button
               size="sm"
-              className="flex-1 bg-blue-500 hover:bg-blue-600 text-[10px] py-0.5 h-6 gap-0.5"
-              onClick={() => onStatusUpdate(order.id, 'preparing')}
-            >
-              <ChefHat className="w-3 h-3" /> Préparer
-            </Button>
-          )}
-          {order.status === 'preparing' && (
-            <Button
-              size="sm"
-              className="flex-1 bg-green-500 hover:bg-green-600 text-[10px] py-0.5 h-6 gap-0.5"
-              onClick={() => onStatusUpdate(order.id, 'ready')}
-            >
-              <Package className="w-3 h-3" /> Prêt
-            </Button>
-          )}
-          {order.status === 'ready' && (
-            <Button
-              size="sm"
-              className="flex-1 bg-gray-600 hover:bg-gray-700 text-[10px] py-0.5 h-6 gap-0.5"
+              className="flex-1 bg-green-500 hover:bg-green-600 text-[10px] py-0.5 h-6 gap-0.5 font-bold"
               onClick={() => onStatusUpdate(order.id, 'completed')}
             >
-              <CheckCircle className="w-3 h-3" /> OK
+              <CheckCircle className="w-3 h-3" /> PRÊTE
             </Button>
           )}
-          {['pending', 'preparing'].includes(order.status) && (
+          {order.status !== 'completed' && order.status !== 'cancelled' && (
             <Button
               variant="destructive"
               size="sm"
