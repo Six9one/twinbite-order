@@ -82,25 +82,79 @@ const orderTypeConfig = {
   surplace: { icon: Utensils, label: 'Sur place', color: 'bg-green-600' },
 };
 
-// Loud alarm notification sound for new orders
+// Notification sound - iOS-like "Chord" sound using reliable Audio element
+// Plays multiple times to ensure it's heard
 const playOrderSound = () => {
+  try {
+    // Use a reliable notification sound URL (iOS-style chord/ding)
+    // This is a short notification sound that works well
+    const soundUrls = [
+      'https://cdn.freesound.org/previews/320/320655_5260872-lq.mp3', // Primary
+      'https://cdn.pixabay.com/audio/2022/03/15/audio_8cb749bb58.mp3', // Backup notification
+    ];
+
+    let soundPlayed = false;
+
+    // Try to play sound from URLs
+    const tryPlaySound = (urlIndex: number) => {
+      if (soundPlayed || urlIndex >= soundUrls.length) {
+        // If all URLs fail, use Web Audio API fallback
+        if (!soundPlayed) {
+          playFallbackSound();
+        }
+        return;
+      }
+
+      const audio = new Audio(soundUrls[urlIndex]);
+      audio.volume = 1.0;
+
+      audio.play()
+        .then(() => {
+          soundPlayed = true;
+          console.log('🔔 Notification sound played successfully');
+          // Play 2 more times for emphasis
+          setTimeout(() => {
+            const audio2 = new Audio(soundUrls[urlIndex]);
+            audio2.volume = 1.0;
+            audio2.play().catch(() => { });
+          }, 400);
+          setTimeout(() => {
+            const audio3 = new Audio(soundUrls[urlIndex]);
+            audio3.volume = 1.0;
+            audio3.play().catch(() => { });
+          }, 800);
+        })
+        .catch(() => {
+          console.log('Sound URL failed, trying next...');
+          tryPlaySound(urlIndex + 1);
+        });
+    };
+
+    tryPlaySound(0);
+
+  } catch (error) {
+    console.log('Audio playback error, using fallback');
+    playFallbackSound();
+  }
+};
+
+// Fallback sound using Web Audio API (in case audio files don't load)
+const playFallbackSound = () => {
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
 
-    const playAlarm = (frequency: number, startTime: number, duration: number, volume: number) => {
+    const playTone = (frequency: number, startTime: number, duration: number, volume: number) => {
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
-      // Use square wave for loud, clear alarm
-      oscillator.type = 'square';
+      oscillator.type = 'sine'; // Softer sine wave
       oscillator.frequency.setValueAtTime(frequency, startTime);
 
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
 
       gainNode.gain.setValueAtTime(volume, startTime);
-      gainNode.gain.linearRampToValueAtTime(volume * 0.8, startTime + duration * 0.5);
-      gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
 
       oscillator.start(startTime);
       oscillator.stop(startTime + duration);
@@ -108,12 +162,14 @@ const playOrderSound = () => {
 
     const now = audioContext.currentTime;
 
-    // Loud repeating alarm pattern (3 bursts)
+    // iOS-like "Chord" sound pattern - pleasant repeating ding
     for (let i = 0; i < 3; i++) {
-      playAlarm(880, now + i * 0.4, 0.15, 0.4);  // A5
-      playAlarm(1174.7, now + i * 0.4 + 0.15, 0.15, 0.4);  // D6
+      playTone(880, now + i * 0.5, 0.3, 0.5);   // A5
+      playTone(1108, now + i * 0.5 + 0.05, 0.25, 0.4); // C#6
+      playTone(1318, now + i * 0.5 + 0.1, 0.2, 0.3);  // E6
     }
 
+    console.log('🔔 Fallback sound played');
   } catch (error) {
     console.log('Audio not supported');
   }
@@ -323,25 +379,26 @@ export default function TVDashboard() {
           };
 
           if (soundEnabled) {
-            // Play loud alarm
+            // Play notification sound
             playOrderSound();
 
-            // Show full-screen white overlay
+            // Show full-screen white overlay for 5 seconds
             setNewOrderInfo({
               orderNumber: newOrder.order_number,
               orderType: orderTypeLabels[newOrder.order_type] || newOrder.order_type
             });
             setShowNewOrderOverlay(true);
 
-            // Hide overlay after 3 seconds
+            // Hide overlay after 5 seconds (longer to ensure visibility)
             setTimeout(() => {
               setShowNewOrderOverlay(false);
               setNewOrderInfo(null);
-            }, 3000);
+            }, 5000);
           }
 
+          // Flash effect always triggers (regardless of sound setting)
           setFlashEffect(true);
-          setTimeout(() => setFlashEffect(false), 1000);
+          setTimeout(() => setFlashEffect(false), 5000); // Match overlay duration
 
           // Auto-print new order - use ref to get current value (avoids stale closure)
           const shouldAutoPrint = autoPrintRef.current || localStorage.getItem('autoPrintEnabled') === 'true';
