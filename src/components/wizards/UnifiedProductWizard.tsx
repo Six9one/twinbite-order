@@ -279,7 +279,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
         menuOption,
         note: note || undefined,
       } as MakloubCustomization;
-    } else {
+    } else if (productType === 'mlawi') {
       customization = {
         size,
         meats: meatNames,
@@ -289,6 +289,16 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
         menuOption,
         note: note || undefined,
       } as MlawiCustomization;
+    } else {
+      // Panini uses same structure
+      customization = {
+        size,
+        meats: meatNames,
+        sauces: sauceNames,
+        supplements: supplementNames,
+        menuOption,
+        note: note || undefined,
+      } as any;
     }
 
     const cartItem: MenuItem = {
