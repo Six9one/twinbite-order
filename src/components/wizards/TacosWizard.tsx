@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { MenuItem, TacosCustomization } from '@/types/order';
-import { tacos, meatOptions, sauceOptions, menuOptionPrices, supplementOptions, cheeseSupplementOptions } from '@/data/menu';
+import { tacos, meatOptions as staticMeatOptions, sauceOptions as staticSauceOptions, menuOptionPrices, supplementOptions, cheeseSupplementOptions } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { useProductsByCategory, Product } from '@/hooks/useProducts';
+import { useMeatOptions, useSauceOptions } from '@/hooks/useCustomizationOptions';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Check, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+
+// Allowed meats for Tacos (same as other products)
+const allowedMeatNames = [
+  'Escalope marinée',
+  'Tenders',
+  'Viande hachée',
+  'Merguez',
+  'Cordon bleu',
+  'Nuggets',
+];
 
 interface TacosWizardProps {
   onClose: () => void;
@@ -21,10 +32,10 @@ type TacosSize = 'solo' | 'double' | 'triple';
 // Helper to map database products to expected shape
 function mapDbProductsToTacos(products: Product[] | undefined): MenuItem[] {
   if (!products || products.length === 0) return tacos;
-  
+
   // Sort by base_price to determine size
   const sorted = [...products].sort((a, b) => Number(a.base_price) - Number(b.base_price));
-  
+
   return sorted.map((p, idx) => {
     let size: TacosSize = 'solo';
     const nameLower = p.name.toLowerCase();
@@ -32,7 +43,7 @@ function mapDbProductsToTacos(products: Product[] | undefined): MenuItem[] {
     else if (nameLower.includes('double')) size = 'double';
     else if (idx === 1) size = 'double';
     else if (idx === 2) size = 'triple';
-    
+
     return {
       id: `tacos-${size}`,
       name: p.name,
@@ -57,6 +68,23 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   // Load tacos from database (fallback to static)
   const { data: dbTacos } = useProductsByCategory('tacos');
   const tacosProducts = mapDbProductsToTacos(dbTacos);
+
+  // Load meat and sauce options from database (fallback to static)
+  const { data: dbMeats } = useMeatOptions();
+  const { data: dbSauces } = useSauceOptions();
+
+  // Use database options if available, else static
+  const meatOptions = (dbMeats && dbMeats.length > 0)
+    ? dbMeats.filter(m => allowedMeatNames.some(allowed =>
+      m.name.toLowerCase().includes(allowed.toLowerCase()) ||
+      allowed.toLowerCase().includes(m.name.toLowerCase())
+    ))
+    : staticMeatOptions.filter(m => allowedMeatNames.some(allowed =>
+      m.name.toLowerCase().includes(allowed.toLowerCase()) ||
+      allowed.toLowerCase().includes(m.name.toLowerCase())
+    ));
+
+  const sauceOptions = (dbSauces && dbSauces.length > 0) ? dbSauces : staticSauceOptions;
 
   const maxMeats = size === 'solo' ? 1 : size === 'double' ? 2 : 3;
   const tacosItem = tacosProducts.find(t => t.id === `tacos-${size}`) || tacos.find(t => t.id === `tacos-${size}`);
@@ -88,19 +116,19 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   const calculatePrice = () => {
     let price = tacosItem?.price || 0;
     price += menuOptionPrices[menuOption];
-    
+
     // Add meat supplements
     selectedMeats.forEach(meatId => {
       const meat = meatOptions.find(m => m.id === meatId);
       if (meat) price += meat.price;
     });
-    
+
     // Add other supplements (cheese)
     supplements.forEach(supId => {
       const sup = supplementOptions.find(s => s.id === supId) || cheeseSupplementOptions.find(s => s.id === supId);
       if (sup) price += sup.price;
     });
-    
+
     return price;
   };
 
@@ -130,16 +158,16 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
 
     const calculatedPrice = calculatePrice();
     addToCart(cartItem, 1, customization, calculatedPrice);
-    
+
     // Track analytics
     trackAddToCart(tacosItem.id, `Tacos ${size}`, 'tacos');
-    
+
     const meatNames = selectedMeats.map(id => meatOptions.find(m => m.id === id)?.name).join(', ');
     toast({
       title: 'Ajouté au panier',
       description: `Tacos ${size} - ${meatNames}`,
     });
-    
+
     onClose();
   };
 
@@ -181,10 +209,7 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
               <Badge>{selectedMeats.length}/{maxMeats}</Badge>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {meatOptions.filter(m => 
-                ['Escalope marinée', 'Tenders', 'Viande hachée', 'Merguez', 'Cordon bleu', 'Nuggets']
-                  .some(allowed => m.name.toLowerCase().includes(allowed.toLowerCase()) || allowed.toLowerCase().includes(m.name.toLowerCase()))
-              ).map((meat) => (
+              {meatOptions.map((meat) => (
                 <Card
                   key={meat.id}
                   className={`p-3 cursor-pointer transition-all ${selectedMeats.includes(meat.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'} ${selectedMeats.length >= maxMeats && !selectedMeats.includes(meat.id) ? 'opacity-50' : ''}`}
@@ -313,7 +338,7 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
             </div>
             <span className="text-xl font-bold text-primary">{calculatePrice().toFixed(2)}€</span>
           </div>
-          
+
           {/* Progress */}
           <div className="flex gap-2 mt-4">
             {[1, 2, 3, 4].map((s) => (
@@ -334,16 +359,16 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
         <div className="container mx-auto">
           {step < 4 ? (
-            <Button 
-              className="w-full h-14 text-lg" 
+            <Button
+              className="w-full h-14 text-lg"
               onClick={() => setStep(step + 1)}
               disabled={!canContinue()}
             >
               Continuer
             </Button>
           ) : (
-            <Button 
-              className="w-full h-14 text-lg" 
+            <Button
+              className="w-full h-14 text-lg"
               onClick={handleAddToCart}
             >
               Ajouter au panier - {calculatePrice().toFixed(2)}€
