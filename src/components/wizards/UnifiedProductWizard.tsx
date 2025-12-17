@@ -89,18 +89,21 @@ const allowedMeatNames = [
 
 // Product-specific garnitures
 const souffletGarnitures = [
+  { id: 'sans_crudite', name: 'Sans crudité', price: 0 },
   { id: 'pomme_de_terre', name: 'Pomme de terre', price: 0 },
   { id: 'oignon', name: 'Oignon', price: 0 },
   { id: 'olive', name: 'Olive', price: 0 },
 ];
 
 const makloubGarnitures = [
+  { id: 'sans_crudite', name: 'Sans crudité', price: 0 },
   { id: 'salade', name: 'Salade', price: 0 },
   { id: 'tomate', name: 'Tomate', price: 0 },
   { id: 'oignon', name: 'Oignon', price: 0 },
 ];
 
 const mlawiGarnitures = [
+  { id: 'sans_crudite', name: 'Sans crudité', price: 0 },
   { id: 'salade', name: 'Salade', price: 0 },
   { id: 'tomate', name: 'Tomate', price: 0 },
   { id: 'oignon', name: 'Oignon', price: 0 },
