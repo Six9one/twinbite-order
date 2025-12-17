@@ -83,12 +83,12 @@ export function ImageUploadTable({ tableName, title, hasImage = false }: ImageUp
   const handleSave = async (item: any) => {
     const updateData: any = { name: item.name };
     if (item.price !== undefined) updateData.price = item.price;
-    
+
     const { error } = await supabase
       .from(tableName as any)
       .update(updateData)
       .eq('id', item.id);
-    
+
     if (!error) {
       toast.success('Mis à jour!');
       setEditingId(null);
@@ -101,7 +101,7 @@ export function ImageUploadTable({ tableName, title, hasImage = false }: ImageUp
       .from(tableName as any)
       .update({ is_active: false })
       .eq('id', id);
-    
+
     if (!error) {
       toast.success('Supprimé!');
       fetchItems();
@@ -109,16 +109,27 @@ export function ImageUploadTable({ tableName, title, hasImage = false }: ImageUp
   };
 
   const handleAdd = async () => {
+    // Get the next display order
+    const maxOrder = items.reduce((max, item) => Math.max(max, item.display_order || 0), 0);
+
+    const insertData = {
+      ...newItem,
+      is_active: true,
+      display_order: maxOrder + 1,
+      price: newItem.price || 0
+    };
+
     const { error } = await supabase
       .from(tableName as any)
-      .insert({ ...newItem, is_active: true });
-    
+      .insert(insertData);
+
     if (!error) {
       toast.success('Ajouté!');
       fetchItems();
       setNewItem({});
     } else {
-      toast.error("Erreur lors de l'ajout");
+      console.error('Insert error:', error);
+      toast.error("Erreur lors de l'ajout: " + (error.message || 'Vérifiez les permissions'));
     }
   };
 
@@ -129,7 +140,7 @@ export function ImageUploadTable({ tableName, title, hasImage = false }: ImageUp
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-display font-bold">{title}</h2>
-      
+
       <input
         type="file"
         ref={fileInputRef}
@@ -143,7 +154,7 @@ export function ImageUploadTable({ tableName, title, hasImage = false }: ImageUp
           e.target.value = '';
         }}
       />
-      
+
       {/* Add Form */}
       <div className="bg-card rounded-lg p-4 border">
         <h3 className="font-semibold mb-3">Ajouter</h3>
@@ -218,7 +229,7 @@ export function ImageUploadTable({ tableName, title, hasImage = false }: ImageUp
                 <>
                   <Input
                     value={item.name}
-                    onChange={(e) => setItems(items.map(i => 
+                    onChange={(e) => setItems(items.map(i =>
                       i.id === item.id ? { ...i, name: e.target.value } : i
                     ))}
                   />
@@ -226,7 +237,7 @@ export function ImageUploadTable({ tableName, title, hasImage = false }: ImageUp
                     type="number"
                     step="0.01"
                     value={item.price}
-                    onChange={(e) => setItems(items.map(i => 
+                    onChange={(e) => setItems(items.map(i =>
                       i.id === item.id ? { ...i, price: parseFloat(e.target.value) } : i
                     ))}
                   />
