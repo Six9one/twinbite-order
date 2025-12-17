@@ -33,7 +33,7 @@ serve(async (req) => {
 
   try {
     const order: OrderNotification = await req.json();
-    
+
     const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
     const chatIds = [
       Deno.env.get('TELEGRAM_ADMIN_CHAT_ID_1'),
@@ -51,65 +51,69 @@ serve(async (req) => {
     }
 
     // Format order items with full customization details
-    const formatCustomization = (customization: any): string => {
+    const formatCustomization = (customization: any, productName: string): string => {
       if (!customization) return '';
       const parts: string[] = [];
-      
-      // Size (pizza/tacos)
+      const nameLower = productName.toLowerCase();
+
+      // Size (pizza/tacos) - only show if not already in product name
       if (customization.size) {
-        parts.push(customization.size.toUpperCase());
+        const sizeLower = customization.size.toLowerCase();
+        if (!nameLower.includes(sizeLower)) {
+          parts.push(customization.size.toUpperCase());
+        }
       }
-      
+
       // Base (pizza)
       if (customization.base) {
         parts.push(customization.base === 'creme' ? 'Base crème' : 'Base tomate');
       }
-      
+
       // Menu Midi
       if (customization.isMenuMidi) {
         parts.push('Menu Midi');
       }
-      
+
       // Meats
       if (customization.meats && customization.meats.length > 0) {
         parts.push(`🥩 ${customization.meats.join(', ')}`);
       }
-      
+
       // Single meat (legacy)
       if (customization.meat) {
         parts.push(`🥩 ${customization.meat}`);
       }
-      
+
       // Sauces
       if (customization.sauces && customization.sauces.length > 0) {
         parts.push(`🍯 ${customization.sauces.join(', ')}`);
       }
-      
+
       // Single sauce (legacy)
       if (customization.sauce) {
         parts.push(`🍯 ${customization.sauce}`);
       }
-      
+
       // Garnitures
       if (customization.garnitures && customization.garnitures.length > 0) {
         parts.push(`🥗 ${customization.garnitures.join(', ')}`);
       }
-      
+
       // Toppings (legacy)
       if (customization.toppings && customization.toppings.length > 0) {
         parts.push(`🥗 ${customization.toppings.join(', ')}`);
       }
-      
+
       // Supplements
       if (customization.supplements && customization.supplements.length > 0) {
         parts.push(`🧀 ${customization.supplements.join(', ')}`);
       }
-      
+
       // Cheese supplements
       if (customization.cheeseSupplements && customization.cheeseSupplements.length > 0) {
         parts.push(`🧀 ${customization.cheeseSupplements.join(', ')}`);
       }
-      
+
       // Menu option
       if (customization.menuOption && customization.menuOption !== 'none') {
         const menuLabels: Record<string, string> = {
@@ -119,18 +123,18 @@ serve(async (req) => {
         };
         parts.push(menuLabels[customization.menuOption] || '');
       }
-      
+
       // Note
       if (customization.note) {
         parts.push(`📝 "${customization.note}"`);
       }
-      
+
       return parts.length > 0 ? `\n   └ ${parts.join(' | ')}` : '';
     };
 
     const itemsList = order.items
       .map(item => {
-        const customDetails = formatCustomization(item.customization);
+        const customDetails = formatCustomization(item.customization, item.name);
         return `• ${item.quantity}x ${item.name} - ${item.price.toFixed(2)}€${customDetails}`;
       })
       .join('\n');
@@ -161,14 +165,14 @@ serve(async (req) => {
     let scheduledText = '';
     if (isScheduled && order.scheduledFor) {
       const scheduledDate = new Date(order.scheduledFor);
-      const formattedDate = scheduledDate.toLocaleDateString('fr-FR', { 
-        weekday: 'long', 
-        day: 'numeric', 
-        month: 'long' 
+      const formattedDate = scheduledDate.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
       });
-      const formattedTime = scheduledDate.toLocaleTimeString('fr-FR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      const formattedTime = scheduledDate.toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit'
       });
       scheduledText = `\n\n⏰ *COMMANDE PROGRAMMÉE*\n📅 ${formattedDate}\n🕐 ${formattedTime}`;
     }
@@ -176,28 +180,28 @@ serve(async (req) => {
     // Build message with color coding
     const headerEmoji = isScheduled ? '📆⏰' : '🍕';
     const headerText = isScheduled ? 'COMMANDE PROGRAMMÉE' : 'NOUVELLE COMMANDE';
-    
+
     let message = `${headerEmoji} *${headerText}* ${headerEmoji}\n`;
     message += `${orderTypeInfo.color} ${orderTypeInfo.color} ${orderTypeInfo.color}\n\n`;
     message += `📋 *Commande:* #${order.orderNumber}\n`;
     message += `${orderTypeInfo.emoji} ${orderTypeInfo.text}\n`;
     message += `${paymentText}\n`;
-    
+
     if (isScheduled) {
       message += scheduledText;
     }
-    
+
     message += `\n\n👤 *CLIENT:*\n`;
     message += `• Nom: ${order.customerName}\n`;
     message += `• Tél: ${order.customerPhone}\n`;
-    
+
     if (order.customerAddress) {
       const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.customerAddress)}`;
       message += `• Adresse: [${order.customerAddress}](${mapsUrl})\n`;
     }
-    
+
     message += `\n🛒 *ARTICLES:*\n${itemsList}\n`;
-    
+
     // Show full pricing breakdown
     if (order.subtotal) {
       message += `\n📊 *Sous-total HT:* ${order.subtotal.toFixed(2)}€`;
@@ -206,7 +210,7 @@ serve(async (req) => {
       message += `\n📊 *TVA (10%):* ${order.tva.toFixed(2)}€`;
     }
     message += `\n💰 *TOTAL TTC: ${order.total.toFixed(2)}€*\n`;
-    
+
     if (order.customerNotes) {
       message += `\n📝 *Notes:* ${order.customerNotes}`;
     }

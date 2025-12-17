@@ -156,19 +156,16 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
             .map(i => `${i.quantity}x ${i.product.name}`)
             .join(', ');
 
-        // Build detailed name for display on TV/Telegram
-        const detailedName = `Tex-Mex Box (${totalQty} pièces)`;
-
-        // Add as a single "Tex-Mex Box" item with details
+        // Add as items with just the product names (no "Tex-Mex Box" text)
         const texMexItem = {
             id: `texmex-${Date.now()}`,
-            name: detailedName,
-            description: itemNames,
+            name: itemNames,
+            description: `${totalQty} pièces`,
             price: price,
             category: 'texmex' as any,
         };
 
-        addToCart(texMexItem, 1, { note: itemNames }, price);
+        addToCart(texMexItem, 1, undefined, price);
 
         toast.success('Tex-Mex ajouté au panier !');
         onClose();

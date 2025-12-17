@@ -931,13 +931,36 @@ function ColumnOrderCard({
             const customization = item.customization;
             const menuLabel = getMenuLabel(customization);
             const productName = item.item?.name || item.name || 'Produit';
-            const sizeLabel = customization?.size ? customization.size.toUpperCase() : '';
+            const sizeValue = customization?.size?.toLowerCase() || '';
+
+            // Check if size is already in product name to avoid "Soufflet Double DOUBLE"
+            const productNameLower = productName.toLowerCase();
+            const sizeAlreadyInName = productNameLower.includes(sizeValue);
+
+            // Build size label with color for pizzas
+            const getSizeLabel = () => {
+              if (!sizeValue || sizeAlreadyInName) return null;
+
+              // For pizzas: use special styling
+              if (productNameLower.includes('pizza') || customization?.base) {
+                if (sizeValue === 'senior') {
+                  return <span className="text-blue-400 text-[10px] font-medium ml-1">SENIOR</span>;
+                } else if (sizeValue === 'mega') {
+                  return <span className="text-orange-400 text-sm font-bold ml-1">MEGA</span>;
+                }
+              }
+
+              // For other products: show uppercase
+              return <span className="text-amber-300 text-[10px] font-bold ml-1">{sizeValue.toUpperCase()}</span>;
+            };
 
             return (
               <div key={idx} className="border-b border-white/10 pb-1.5 last:border-0 last:pb-0">
                 {/* Product name - BOLD and bigger */}
-                <div className="font-bold text-sm text-white flex items-baseline gap-1">
-                  <span>{item.quantity}x {productName} {sizeLabel}{menuLabel}</span>
+                <div className="font-bold text-sm text-white flex items-baseline gap-1 flex-wrap">
+                  <span>{item.quantity}x {productName}</span>
+                  {getSizeLabel()}
+                  {menuLabel && <span className="text-purple-300 text-[10px]">{menuLabel}</span>}
                   {showPrices && <span className="text-[10px] text-green-400 font-normal">{item.totalPrice?.toFixed(2)}€</span>}
                 </div>
 
@@ -1098,13 +1121,34 @@ function ScheduledOrderCard({
             const customization = item.customization;
             const menuLabel = getMenuLabel(customization);
             const productName = item.item?.name || item.name || 'Produit';
-            const sizeLabel = customization?.size ? customization.size.toUpperCase() : '';
+            const sizeValue = customization?.size?.toLowerCase() || '';
+
+            // Check if size is already in product name to avoid duplication
+            const productNameLower = productName.toLowerCase();
+            const sizeAlreadyInName = productNameLower.includes(sizeValue);
+
+            // Build size label with color for pizzas
+            const getSizeLabel = () => {
+              if (!sizeValue || sizeAlreadyInName) return null;
+
+              if (productNameLower.includes('pizza') || customization?.base) {
+                if (sizeValue === 'senior') {
+                  return <span className="text-blue-400 text-[9px] font-medium ml-1">SENIOR</span>;
+                } else if (sizeValue === 'mega') {
+                  return <span className="text-orange-400 text-xs font-bold ml-1">MEGA</span>;
+                }
+              }
+
+              return <span className="text-amber-300 text-[9px] font-bold ml-1">{sizeValue.toUpperCase()}</span>;
+            };
 
             return (
               <div key={idx} className="border-b border-white/10 pb-1 last:border-0 last:pb-0">
                 {/* Product name - BOLD */}
-                <div className="font-bold text-xs text-white flex items-baseline gap-1">
-                  <span>{item.quantity}x {productName} {sizeLabel}{menuLabel}</span>
+                <div className="font-bold text-xs text-white flex items-baseline gap-1 flex-wrap">
+                  <span>{item.quantity}x {productName}</span>
+                  {getSizeLabel()}
+                  {menuLabel && <span className="text-purple-300 text-[9px]">{menuLabel}</span>}
                   {showPrices && <span className="text-[9px] text-green-400 font-normal">{item.totalPrice?.toFixed(2)}€</span>}
                 </div>
 
