@@ -10,8 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Check } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { 
-  meatOptions as staticMeatOptions, 
+import {
+  meatOptions as staticMeatOptions,
   sauceOptions as staticSauceOptions,
   souffletGarnitureOptions,
   makloubGarnitureOptions,
@@ -20,12 +20,13 @@ import {
 } from '@/data/menu';
 
 export type ProductType = 'soufflet' | 'mlawi' | 'makloub';
-type ProductSize = 'solo' | 'double' | 'triple';
+export type ProductType = 'soufflet' | 'mlawi' | 'makloub' | 'panini';
+type ProductSize = 'solo' | 'double' | 'triple' | 'duo';
 
 interface ProductConfig {
   title: string;
   categorySlug: string;
-  garnitureType: 'soufflet' | 'makloub' | 'mlawi';
+  garnitureType: 'soufflet' | 'makloub' | 'mlawi' | 'panini';
   sizes: { id: ProductSize; label: string; maxMeats: number; price: number }[];
   showMenuOption: boolean;
 }
@@ -61,6 +62,16 @@ const productConfigs: Record<ProductType, ProductConfig> = {
       { id: 'solo', label: 'Solo', maxMeats: 1, price: 6 },
       { id: 'double', label: 'Double', maxMeats: 2, price: 8 },
       { id: 'triple', label: 'Triple', maxMeats: 3, price: 10 },
+    ],
+    showMenuOption: true,
+  },
+  panini: {
+    title: 'Panini',
+    categorySlug: 'panini',
+    garnitureType: 'panini',
+    sizes: [
+      { id: 'solo', label: 'Solo', maxMeats: 2, price: 5 },
+      { id: 'duo', label: 'Duo', maxMeats: 2, price: 7 },
     ],
     showMenuOption: true,
   },
@@ -104,7 +115,7 @@ interface UnifiedProductWizardProps {
 export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWizardProps) {
   const { addToCart } = useOrder();
   const config = productConfigs[productType];
-  
+
   const [step, setStep] = useState(1);
   const [size, setSize] = useState<ProductSize>('solo');
   const [selectedMeats, setSelectedMeats] = useState<string[]>([]);
@@ -121,18 +132,18 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
 
   // Use database options if available, otherwise fallback to static
   // Filter to only allowed meats
-  const allMeats = dbMeats && dbMeats.length > 0 
+  const allMeats = dbMeats && dbMeats.length > 0
     ? dbMeats.map(m => ({ id: m.id, name: m.name, price: Number(m.price), image_url: m.image_url }))
     : staticMeatOptions;
-  
-  const meatOptions = allMeats.filter(m => 
+
+  const meatOptions = allMeats.filter(m =>
     allowedMeatNames.some(allowed => m.name.toLowerCase().includes(allowed.toLowerCase()))
   );
-  
+
   const sauceOptions = dbSauces && dbSauces.length > 0
     ? dbSauces.map(s => ({ id: s.id, name: s.name, price: Number(s.price), image_url: s.image_url }))
     : staticSauceOptions;
-  
+
   const supplementOptions = dbSupplements && dbSupplements.length > 0
     ? dbSupplements.map(s => ({ id: s.id, name: s.name, price: Number(s.price), image_url: s.image_url }))
     : staticSupplements;
@@ -190,18 +201,18 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
 
   const calculatePrice = () => {
     let price = currentSizeConfig.price;
-    
+
     // Add menu option price
     if (config.showMenuOption) {
       price += menuOptionPrices[menuOption];
     }
-    
+
     // Add supplement costs
     selectedSupplements.forEach(supId => {
       const sup = supplementOptions.find(s => s.id === supId);
       if (sup) price += sup.price;
     });
-    
+
     return price;
   };
 
@@ -218,17 +229,17 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
       const meat = meatOptions.find(m => m.id === id);
       return meat?.name || id;
     });
-    
+
     const sauceNames = selectedSauces.map(id => {
       const sauce = sauceOptions.find(s => s.id === id);
       return sauce?.name || id;
     });
-    
+
     const garnitureNames = selectedGarnitures.map(id => {
       const gar = garnitureOptions.find(g => g.id === id);
       return gar?.name || id;
     });
-    
+
     const supplementNames = selectedSupplements.map(id => {
       const sup = supplementOptions.find(s => s.id === id);
       return sup?.name || id;
@@ -243,7 +254,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
     };
 
     let customization: SouffletCustomization | MakloubCustomization | MlawiCustomization;
-    
+
     // Store NAMES instead of IDs for display in cart/notifications
     if (productType === 'soufflet') {
       customization = {
@@ -284,14 +295,14 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
 
     const calculatedPrice = calculatePrice();
     addToCart(cartItem, 1, customization, calculatedPrice);
-    
+
     trackAddToCart(baseItem.id, `${config.title} ${size}`, config.categorySlug);
-    
+
     toast({
       title: 'Ajouté au panier',
       description: `${config.title} ${currentSizeConfig.label} - ${meatNames.join(', ')}`,
     });
-    
+
     onClose();
   };
 
@@ -474,7 +485,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
             </div>
             <span className="text-xl font-bold text-primary">{calculatePrice().toFixed(2)}€</span>
           </div>
-          
+
           {/* Progress */}
           <div className="flex gap-2 mt-4">
             {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
@@ -495,16 +506,16 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4">
         <div className="container mx-auto">
           {step < totalSteps ? (
-            <Button 
-              className="w-full h-14 text-lg" 
+            <Button
+              className="w-full h-14 text-lg"
               onClick={() => setStep(step + 1)}
               disabled={!canContinue()}
             >
               Continuer
             </Button>
           ) : (
-            <Button 
-              className="w-full h-14 text-lg" 
+            <Button
+              className="w-full h-14 text-lg"
               onClick={handleAddToCart}
             >
               Ajouter au panier - {calculatePrice().toFixed(2)}€
