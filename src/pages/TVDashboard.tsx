@@ -877,15 +877,42 @@ function ColumnOrderCard({
   const items = Array.isArray(order.items) ? order.items : [];
   const orderTime = new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-  // Helper to format menu option (frite/boisson/menu)
-  const getMenuLabel = (customization: any) => {
-    if (!customization) return '';
+  // Helper to format menu option as styled badge
+  const getMenuBadge = (customization: any) => {
+    if (!customization) return null;
+
+    // Check menuOption first (from wizards)
+    const menuOpt = customization.menuOption;
+    if (menuOpt) {
+      if (menuOpt === 'menu') {
+        return <span className="bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">MENU</span>;
+      }
+      if (menuOpt === 'frites') {
+        return <span className="bg-yellow-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">🍟 FRITES</span>;
+      }
+      if (menuOpt === 'boisson') {
+        return <span className="bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">🥤 BOISSON</span>;
+      }
+      if (menuOpt === 'none') {
+        return <span className="bg-gray-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">SEULE</span>;
+      }
+    }
+
+    // Fallback: check legacy fields
     const hasFrites = customization.withFrites;
     const hasBoisson = customization.withBoisson || customization.selectedDrink;
-    if (hasFrites && hasBoisson) return ' (menu)';
-    if (hasFrites) return ' (frite)';
-    if (hasBoisson) return ' (boisson)';
-    return '';
+    if (hasFrites && hasBoisson) {
+      return <span className="bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">MENU</span>;
+    }
+    if (hasFrites) {
+      return <span className="bg-yellow-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">🍟 FRITES</span>;
+    }
+    if (hasBoisson) {
+      return <span className="bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">🥤 BOISSON</span>;
+    }
+
+    // No menu option = seule
+    return <span className="bg-gray-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">SEULE</span>;
   };
 
   return (
@@ -929,7 +956,7 @@ function ColumnOrderCard({
         <div className="bg-black/30 rounded p-1.5 space-y-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {items.slice(0, 4).map((item: any, idx: number) => {
             const customization = item.customization;
-            const menuLabel = getMenuLabel(customization);
+            const menuBadge = getMenuBadge(customization);
             const productName = item.item?.name || item.name || 'Produit';
             const sizeValue = customization?.size?.toLowerCase() || '';
 
@@ -957,10 +984,10 @@ function ColumnOrderCard({
             return (
               <div key={idx} className="border-b border-white/10 pb-1.5 last:border-0 last:pb-0">
                 {/* Product name - BOLD and bigger */}
-                <div className="font-bold text-sm text-white flex items-baseline gap-1 flex-wrap">
+                <div className="font-bold text-sm text-white flex items-center gap-1 flex-wrap">
                   <span>{item.quantity}x {productName}</span>
                   {getSizeLabel()}
-                  {menuLabel && <span className="text-purple-300 text-[10px]">{menuLabel}</span>}
+                  {menuBadge}
                   {showPrices && <span className="text-[10px] text-green-400 font-normal">{item.totalPrice?.toFixed(2)}€</span>}
                 </div>
 
@@ -1058,15 +1085,39 @@ function ScheduledOrderCard({
 
   const items = Array.isArray(order.items) ? order.items : [];
 
-  // Helper to format menu option (frite/boisson/menu)
-  const getMenuLabel = (customization: any) => {
-    if (!customization) return '';
+  // Helper to format menu option as styled badge
+  const getMenuBadge = (customization: any) => {
+    if (!customization) return null;
+
+    const menuOpt = customization.menuOption;
+    if (menuOpt) {
+      if (menuOpt === 'menu') {
+        return <span className="bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">MENU</span>;
+      }
+      if (menuOpt === 'frites') {
+        return <span className="bg-yellow-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">🍟 FRITES</span>;
+      }
+      if (menuOpt === 'boisson') {
+        return <span className="bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">🥤 BOISSON</span>;
+      }
+      if (menuOpt === 'none') {
+        return <span className="bg-gray-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">SEULE</span>;
+      }
+    }
+
     const hasFrites = customization.withFrites;
     const hasBoisson = customization.withBoisson || customization.selectedDrink;
-    if (hasFrites && hasBoisson) return ' (menu)';
-    if (hasFrites) return ' (frite)';
-    if (hasBoisson) return ' (boisson)';
-    return '';
+    if (hasFrites && hasBoisson) {
+      return <span className="bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">MENU</span>;
+    }
+    if (hasFrites) {
+      return <span className="bg-yellow-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">🍟 FRITES</span>;
+    }
+    if (hasBoisson) {
+      return <span className="bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">🥤 BOISSON</span>;
+    }
+
+    return <span className="bg-gray-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">SEULE</span>;
   };
 
   return (
@@ -1119,7 +1170,7 @@ function ScheduledOrderCard({
         <div className="bg-black/30 rounded p-1 space-y-1.5" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {items.slice(0, 3).map((item: any, idx: number) => {
             const customization = item.customization;
-            const menuLabel = getMenuLabel(customization);
+            const menuBadge = getMenuBadge(customization);
             const productName = item.item?.name || item.name || 'Produit';
             const sizeValue = customization?.size?.toLowerCase() || '';
 
@@ -1145,10 +1196,10 @@ function ScheduledOrderCard({
             return (
               <div key={idx} className="border-b border-white/10 pb-1 last:border-0 last:pb-0">
                 {/* Product name - BOLD */}
-                <div className="font-bold text-xs text-white flex items-baseline gap-1 flex-wrap">
+                <div className="font-bold text-xs text-white flex items-center gap-1 flex-wrap">
                   <span>{item.quantity}x {productName}</span>
                   {getSizeLabel()}
-                  {menuLabel && <span className="text-purple-300 text-[9px]">{menuLabel}</span>}
+                  {menuBadge}
                   {showPrices && <span className="text-[9px] text-green-400 font-normal">{item.totalPrice?.toFixed(2)}€</span>}
                 </div>
 
