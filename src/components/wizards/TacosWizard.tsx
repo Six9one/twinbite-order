@@ -142,12 +142,32 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   const handleAddToCart = () => {
     if (!tacosItem) return;
 
+    // Convert IDs to names for display
+    const meatNames = selectedMeats.map(id => {
+      const meat = meatOptions.find(m => m.id === id);
+      return meat?.name || id;
+    });
+
+    const sauceNames = selectedSauces.map(id => {
+      const sauce = sauceOptions.find(s => s.id === id);
+      return sauce?.name || id;
+    });
+
+    // For supplements in Tacos, we also need to map them if they come from DB (cheese supplements usually static, but better to be safe)
+    // Supplements in TacosWizard uses specific logic: meat supplements or cheese supplements
+    // Line 128: const sup = supplementOptions.find(s => s.id === supId) || cheeseSupplementOptions.find(s => s.id === supId);
+
+    const supplementNames = supplements.map(id => {
+      const sup = supplementOptions.find(s => s.id === id) || cheeseSupplementOptions.find(s => s.id === id);
+      return sup?.name || id;
+    });
+
     const customization: TacosCustomization = {
       size,
-      meats: selectedMeats,
-      sauces: selectedSauces,
+      meats: meatNames,
+      sauces: sauceNames,
       menuOption,
-      supplements,
+      supplements: supplementNames,
       note: note || undefined,
     };
 
@@ -162,10 +182,9 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
     // Track analytics
     trackAddToCart(tacosItem.id, `Tacos ${size}`, 'tacos');
 
-    const meatNames = selectedMeats.map(id => meatOptions.find(m => m.id === id)?.name).join(', ');
     toast({
       title: 'Ajouté au panier',
-      description: `Tacos ${size} - ${meatNames}`,
+      description: `Tacos ${size} - ${meatNames.join(', ')}`,
     });
 
     onClose();
