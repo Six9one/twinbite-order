@@ -878,8 +878,17 @@ function ColumnOrderCard({
   const orderTime = new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
   // Helper to format menu option as styled badge
-  const getMenuBadge = (customization: any) => {
+  const getMenuBadge = (customization: any, productName: string) => {
     if (!customization) return null;
+
+    // Only show badges for products that have menu options
+    const productNameLower = productName?.toLowerCase() || '';
+    const hasMenuOptionCategory =
+      productNameLower.includes('tacos') ||
+      productNameLower.includes('soufflet') ||
+      productNameLower.includes('makloub') ||
+      productNameLower.includes('mlawi') ||
+      productNameLower.includes('panini');
 
     // Check menuOption first (from wizards)
     const menuOpt = customization.menuOption;
@@ -893,7 +902,7 @@ function ColumnOrderCard({
       if (menuOpt === 'boisson') {
         return <span className="bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">🥤 BOISSON</span>;
       }
-      if (menuOpt === 'none') {
+      if (menuOpt === 'none' && hasMenuOptionCategory) {
         return <span className="bg-gray-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">SEULE</span>;
       }
     }
@@ -911,8 +920,12 @@ function ColumnOrderCard({
       return <span className="bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">🥤 BOISSON</span>;
     }
 
-    // No menu option = seule
-    return <span className="bg-gray-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">SEULE</span>;
+    // Only show SEULE for products that should have menu options
+    if (hasMenuOptionCategory) {
+      return <span className="bg-gray-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">SEULE</span>;
+    }
+
+    return null;
   };
 
   return (
@@ -956,8 +969,8 @@ function ColumnOrderCard({
         <div className="bg-black/30 rounded p-1.5 space-y-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {items.slice(0, 4).map((item: any, idx: number) => {
             const customization = item.customization;
-            const menuBadge = getMenuBadge(customization);
             const productName = item.item?.name || item.name || 'Produit';
+            const menuBadge = getMenuBadge(customization, productName);
             const sizeValue = customization?.size?.toLowerCase() || '';
 
             // Check if size is already in product name to avoid "Soufflet Double DOUBLE"
@@ -1086,8 +1099,17 @@ function ScheduledOrderCard({
   const items = Array.isArray(order.items) ? order.items : [];
 
   // Helper to format menu option as styled badge
-  const getMenuBadge = (customization: any) => {
+  const getMenuBadge = (customization: any, productName: string) => {
     if (!customization) return null;
+
+    // Only show badges for products that have menu options
+    const productNameLower = productName?.toLowerCase() || '';
+    const hasMenuOptionCategory =
+      productNameLower.includes('tacos') ||
+      productNameLower.includes('soufflet') ||
+      productNameLower.includes('makloub') ||
+      productNameLower.includes('mlawi') ||
+      productNameLower.includes('panini');
 
     const menuOpt = customization.menuOption;
     if (menuOpt) {
@@ -1100,7 +1122,7 @@ function ScheduledOrderCard({
       if (menuOpt === 'boisson') {
         return <span className="bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">🥤 BOISSON</span>;
       }
-      if (menuOpt === 'none') {
+      if (menuOpt === 'none' && hasMenuOptionCategory) {
         return <span className="bg-gray-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">SEULE</span>;
       }
     }
@@ -1117,7 +1139,11 @@ function ScheduledOrderCard({
       return <span className="bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">🥤 BOISSON</span>;
     }
 
-    return <span className="bg-gray-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">SEULE</span>;
+    if (hasMenuOptionCategory) {
+      return <span className="bg-gray-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">SEULE</span>;
+    }
+
+    return null;
   };
 
   return (
@@ -1170,8 +1196,8 @@ function ScheduledOrderCard({
         <div className="bg-black/30 rounded p-1 space-y-1.5" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {items.slice(0, 3).map((item: any, idx: number) => {
             const customization = item.customization;
-            const menuBadge = getMenuBadge(customization);
             const productName = item.item?.name || item.name || 'Produit';
+            const menuBadge = getMenuBadge(customization, productName);
             const sizeValue = customization?.size?.toLowerCase() || '';
 
             // Check if size is already in product name to avoid duplication

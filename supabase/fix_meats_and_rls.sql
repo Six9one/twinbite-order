@@ -61,33 +61,24 @@ ALTER TABLE public.sauce_options ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE public.supplement_options ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE public.garniture_options ADD COLUMN IF NOT EXISTS image_url TEXT;
 
--- Insert the 6 meats if they don't exist
-INSERT INTO public.meat_options (name, price, display_order, is_active)
-SELECT 'Escalope marinée', 0, 1, true
-WHERE NOT EXISTS (SELECT 1 FROM public.meat_options WHERE name ILIKE '%escalope%');
+-- Delete all existing meats first (clean slate)
+DELETE FROM public.meat_options;
 
-INSERT INTO public.meat_options (name, price, display_order, is_active)
-SELECT 'Tenders', 0, 2, true
-WHERE NOT EXISTS (SELECT 1 FROM public.meat_options WHERE name ILIKE '%tenders%');
+-- Insert the 6 meats in the correct order
+-- 1. Escalope marinée
+-- 2. Tenders
+-- 3. Viande hachée
+-- 4. Merguez
+-- 5. Cordon bleu
+-- 6. Nuggets
 
-INSERT INTO public.meat_options (name, price, display_order, is_active)
-SELECT 'Viande hachée', 0, 3, true
-WHERE NOT EXISTS (SELECT 1 FROM public.meat_options WHERE name ILIKE '%hachée%' OR name ILIKE '%hachee%');
-
-INSERT INTO public.meat_options (name, price, display_order, is_active)
-SELECT 'Merguez', 0, 4, true
-WHERE NOT EXISTS (SELECT 1 FROM public.meat_options WHERE name ILIKE '%merguez%');
-
-INSERT INTO public.meat_options (name, price, display_order, is_active)
-SELECT 'Cordon bleu', 0, 5, true
-WHERE NOT EXISTS (SELECT 1 FROM public.meat_options WHERE name ILIKE '%cordon%');
-
-INSERT INTO public.meat_options (name, price, display_order, is_active)
-SELECT 'Nuggets', 0, 6, true
-WHERE NOT EXISTS (SELECT 1 FROM public.meat_options WHERE name ILIKE '%nuggets%');
-
--- Verify all meats are active
-UPDATE public.meat_options SET is_active = true WHERE is_active = false;
+INSERT INTO public.meat_options (name, price, display_order, is_active) VALUES
+('Escalope marinée', 0, 1, true),
+('Tenders', 0, 2, true),
+('Viande hachée', 0, 3, true),
+('Merguez', 0, 4, true),
+('Cordon bleu', 0, 5, true),
+('Nuggets', 0, 6, true);
 
 -- Show results
 SELECT id, name, price, display_order, is_active FROM public.meat_options ORDER BY display_order;
