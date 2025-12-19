@@ -185,25 +185,18 @@ const autoPrintOrderTicket = (order: Order) => {
   doc.write(ticketHtml);
   doc.close();
 
-  iframe.onload = () => {
-    try {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-      console.log('✅ Print sent for order:', order.order_number);
-    } catch (printError) {
-      console.error('Print failed:', printError);
-    }
-    setTimeout(() => iframe.remove(), 1000);
-  };
-
+  // Only ONE print call - wait for iframe to load then print
   setTimeout(() => {
     try {
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
+      console.log('✅ Print sent for order:', order.order_number);
     } catch (e) {
       console.error('Print error:', e);
     }
-  }, 100);
+    // Remove iframe after printing
+    setTimeout(() => iframe.remove(), 2000);
+  }, 300);
 };
 
 export default function AdminDashboard() {
@@ -251,6 +244,17 @@ export default function AdminDashboard() {
     }, 5000);
     return () => clearInterval(interval);
   }, [refetch]);
+
+  // Request notification permission on page load
+  useEffect(() => {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        console.log('Notification permission:', permission);
+      });
+    }
+    console.log('🖨️ Auto-print status:', autoPrintEnabled ? 'ENABLED' : 'DISABLED');
+    console.log('🔊 Sound status:', soundEnabled ? 'ENABLED' : 'DISABLED');
+  }, []);
 
   useEffect(() => {
     let mounted = true;
