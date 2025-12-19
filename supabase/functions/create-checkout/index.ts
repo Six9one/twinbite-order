@@ -12,25 +12,25 @@ serve(async (req) => {
   }
 
   try {
-    const { 
-      amount, 
-      customerName, 
-      customerPhone, 
-      customerEmail, 
-      orderNumber, 
-      items, 
-      orderType, 
-      customerAddress, 
+    const {
+      amount,
+      customerName,
+      customerPhone,
+      customerEmail,
+      orderNumber,
+      items,
+      orderType,
+      customerAddress,
       customerNotes,
       subtotal,
-      tva 
+      tva
     } = await req.json();
-    
-    console.log("[CREATE-CHECKOUT] Starting checkout session creation", { 
-      amount, 
-      orderNumber, 
+
+    console.log("[CREATE-CHECKOUT] Starting checkout session creation", {
+      amount,
+      orderNumber,
       customerName,
-      itemsCount: items?.length 
+      itemsCount: items?.length
     });
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
@@ -49,9 +49,9 @@ serve(async (req) => {
       console.error("[CREATE-CHECKOUT] Error stringifying items:", e);
     }
 
-    // Get origin for logo URL
-    const origin = req.headers.get("origin") || 'https://twin-pizza.lovable.app';
-    
+    // Get origin for logo URL - use request origin or empty string (logo is optional)
+    const origin = req.headers.get("origin") || '';
+
     // Create checkout session with all order data in metadata
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -86,9 +86,9 @@ serve(async (req) => {
       },
     });
 
-    console.log("[CREATE-CHECKOUT] Checkout session created", { 
-      sessionId: session.id, 
-      url: session.url 
+    console.log("[CREATE-CHECKOUT] Checkout session created", {
+      sessionId: session.id,
+      url: session.url
     });
 
     return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
