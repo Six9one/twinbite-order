@@ -343,13 +343,10 @@ export default function AdminDashboard() {
       })
       .subscribe((status) => {
         console.log('Admin realtime status:', status);
-        if (status === 'CHANNEL_ERROR') {
-          setTimeout(() => {
-            // Reconnect
-            if (channelRef.current) {
-              supabase.removeChannel(channelRef.current);
-            }
-          }, 5000);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Realtime connected - listening for new orders');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Realtime channel error - will retry on page refresh');
         }
       });
 
