@@ -49,9 +49,11 @@ const statusConfig = {
 // Notification sound function
 const playOrderSound = () => {
   try {
+    // Shop notification sound - loud and attention-grabbing
     const soundUrls = [
-      'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3',
-      'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3',
+      'https://cdn.pixabay.com/audio/2024/11/27/audio_7939388a16.mp3', // shop notification
+      'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3', // fallback ding
+      'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3', // fallback bell
     ];
     let soundPlayed = false;
     const tryPlaySound = (urlIndex: number) => {
@@ -61,12 +63,13 @@ const playOrderSound = () => {
       audio.play()
         .then(() => {
           soundPlayed = true;
+          console.log('🔔 Notification sound played!');
           // Play again for emphasis
           setTimeout(() => {
             const audio2 = new Audio(soundUrls[urlIndex]);
             audio2.volume = 1.0;
             audio2.play().catch(() => { });
-          }, 400);
+          }, 500);
         })
         .catch(() => tryPlaySound(urlIndex + 1));
     };

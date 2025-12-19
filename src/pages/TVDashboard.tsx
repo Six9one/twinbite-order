@@ -87,11 +87,11 @@ const orderTypeConfig = {
 // Plays multiple times to ensure it's heard
 const playOrderSound = () => {
   try {
-    // Use LOUD notification sounds - alert/bell style
+    // Shop notification sound - attention grabbing
     const soundUrls = [
+      'https://cdn.pixabay.com/audio/2024/11/27/audio_7939388a16.mp3', // Shop notification
       'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3', // Loud alert bell
       'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3', // Attention ding
-      'https://cdn.pixabay.com/audio/2022/10/30/audio_946d65349d.mp3', // Notification chime
     ];
 
     let soundPlayed = false;
