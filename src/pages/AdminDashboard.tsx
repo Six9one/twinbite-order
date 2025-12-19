@@ -106,8 +106,11 @@ const autoPrintOrderTicket = (order: Order) => {
     if (customization?.menuOption && customization.menuOption !== 'none') details.push(`Menu: ${customization.menuOption}`);
     return `
       <div style="margin-bottom:10px;border-bottom:1px dashed #000;padding-bottom:10px;">
-        <div style="font-weight:bold;font-size:${fontSize + 2}px;">${cartItem.quantity}x ${productName} - ${cartItem.totalPrice?.toFixed(2) || '0.00'}€</div>
-        ${details.length > 0 ? `<div style="color:#333;font-size:${fontSize}px;margin-top:4px;">${details.join(' | ')}</div>` : ''}
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:bold;font-size:${fontSize + 2}px;">${cartItem.quantity}x ${productName}</span>
+          <span style="font-size:${fontSize - 2}px;color:#666;">${cartItem.totalPrice?.toFixed(2) || '0.00'}€</span>
+        </div>
+        ${details.length > 0 ? `<div style="color:#333;font-size:${fontSize - 2}px;margin-top:4px;">${details.join(' | ')}</div>` : ''}
       </div>
     `;
   }).join('');
