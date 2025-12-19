@@ -236,14 +236,81 @@ export default function AdminDashboard() {
     localStorage.setItem('adminSoundEnabled', soundEnabled.toString());
   }, [soundEnabled]);
 
-  // Auto-refresh every 5 seconds
+  // Auto-refresh every 3 seconds with new order detection (polling method - more reliable than WebSocket)
+  const lastOrderCountRef = useRef<number>(0);
+  const lastOrderIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      refetch();
+    const checkForNewOrders = async () => {
+      const previousCount = lastOrderCountRef.current;
+      const previousLastId = lastOrderIdRef.current;
+
+      await refetch();
       setLastUpdate(new Date());
-    }, 5000);
+
+      // Check if we have new orders
+      if (orders && orders.length > 0) {
+        const currentCount = orders.length;
+        const currentLastId = orders[0]?.id;
+
+        // Initialize on first load
+        if (previousCount === 0) {
+          lastOrderCountRef.current = currentCount;
+          lastOrderIdRef.current = currentLastId;
+          return;
+        }
+
+        // Detect new order
+        if (currentLastId && currentLastId !== previousLastId) {
+          const newOrder = orders[0];
+          console.log('🆕 New order detected:', newOrder.order_number);
+
+          // Skip if already processed
+          if (!processedOrders.current.has(newOrder.id)) {
+            processedOrders.current.add(newOrder.id);
+
+            // Show visual alert
+            setNewOrderNumber(newOrder.order_number);
+            setShowNewOrderAlert(true);
+            setTimeout(() => {
+              setShowNewOrderAlert(false);
+              setNewOrderNumber(null);
+            }, 5000);
+
+            // Play sound if enabled
+            if (soundRef.current) {
+              playOrderSound();
+            }
+
+            // Browser notification
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+              new Notification('🍕 Nouvelle commande!', {
+                body: `Commande ${newOrder.order_number} - ${newOrder.order_type.toUpperCase()}`,
+                icon: '/favicon.ico'
+              });
+            }
+
+            // Auto-print if enabled
+            if (autoPrintRef.current) {
+              console.log('🖨️ Auto-print enabled, printing order:', newOrder.order_number);
+              autoPrintOrderTicket(newOrder);
+              toast.success(`🖨️ Impression automatique: ${newOrder.order_number}`);
+            }
+          }
+        }
+
+        lastOrderCountRef.current = currentCount;
+        lastOrderIdRef.current = currentLastId;
+      }
+    };
+
+    // Check immediately
+    checkForNewOrders();
+
+    // Then check every 3 seconds
+    const interval = setInterval(checkForNewOrders, 3000);
     return () => clearInterval(interval);
-  }, [refetch]);
+  }, [refetch, orders]);
 
   // Request notification permission on page load
   useEffect(() => {
@@ -289,68 +356,8 @@ export default function AdminDashboard() {
     };
     checkAuth();
 
-    // Clean up existing channel
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-    }
-
-    const channel = supabase
-      .channel('admin-orders-changes-' + Date.now())
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
-        refetch();
-        setLastUpdate(new Date());
-
-        const newOrder = payload.new as Order;
-
-        // Skip if already processed
-        if (processedOrders.current.has(newOrder.id)) {
-          console.log('Order already processed:', newOrder.order_number);
-          return;
-        }
-        processedOrders.current.add(newOrder.id);
-
-        // Show visual alert
-        setNewOrderNumber(newOrder.order_number);
-        setShowNewOrderAlert(true);
-        setTimeout(() => {
-          setShowNewOrderAlert(false);
-          setNewOrderNumber(null);
-        }, 5000);
-
-        // Play sound if enabled
-        if (soundRef.current) {
-          playOrderSound();
-        }
-
-        // Browser notification
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          new Notification('🍕 Nouvelle commande!', {
-            body: `Commande ${newOrder.order_number} - ${newOrder.order_type.toUpperCase()}`,
-            icon: '/favicon.ico'
-          });
-        }
-
-        // Auto-print if enabled
-        if (autoPrintRef.current) {
-          console.log('🖨️ Auto-print enabled, printing order:', newOrder.order_number);
-          autoPrintOrderTicket(newOrder);
-          toast.success(`🖨️ Impression automatique: ${newOrder.order_number}`);
-        }
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
-        refetch();
-        setLastUpdate(new Date());
-      })
-      .subscribe((status) => {
-        console.log('Admin realtime status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Realtime connected - listening for new orders');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Realtime channel error - will retry on page refresh');
-        }
-      });
-
-    channelRef.current = channel;
+    // NOTE: Realtime WebSocket disabled - using polling instead (see checkForNewOrders above)
+    // This is more reliable with the current Supabase configuration
 
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission();
@@ -358,9 +365,6 @@ export default function AdminDashboard() {
 
     return () => {
       mounted = false;
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
     };
   }, [navigate, refetch]);
 
