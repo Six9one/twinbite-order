@@ -49,11 +49,10 @@ const statusConfig = {
 // Notification sound function
 const playOrderSound = () => {
   try {
-    // Store/shop notification sounds - loud and clear
+    // Custom shop notification sound uploaded to Supabase
     const soundUrls = [
-      'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3', // Store door chime
-      'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3', // Bell notification
-      'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3', // Alert ding
+      'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/sound/shop-notification-355746.mp3',
+      'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3', // fallback
     ];
     let soundPlayed = false;
     const tryPlaySound = (urlIndex: number) => {
