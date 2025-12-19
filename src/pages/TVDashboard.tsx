@@ -9,7 +9,7 @@ import {
   MapPin, Truck, Store, Utensils,
   Volume2, VolumeX, RefreshCw, History, Home,
   CreditCard, Banknote, Play, ArrowRight, Printer,
-  CalendarClock
+  CalendarClock, Wifi
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import logoImage from '@/assets/logo.png';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useNetworkPrinter } from '@/hooks/useNetworkPrinter';
 
 // Admin authentication check hook
 const useAdminAuth = () => {
@@ -312,6 +313,9 @@ export default function TVDashboard() {
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(() => {
     return localStorage.getItem('autoPrintEnabled') === 'true';
   });
+  const [useNetworkPrint, setUseNetworkPrint] = useState(() => {
+    return localStorage.getItem('useNetworkPrint') === 'true';
+  });
   const [showPrices, setShowPrices] = useState(() => {
     return localStorage.getItem('tvShowPrices') !== 'false';
   });
@@ -327,11 +331,31 @@ export default function TVDashboard() {
   const processedOrders = useRef<Set<string>>(new Set()); // Track notified orders to prevent duplicates
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const autoPrintRef = useRef(autoPrintEnabled); // Track current auto-print state
+  const useNetworkPrintRef = useRef(useNetworkPrint);
 
-  // Keep ref in sync with state
+  // Network printer hook
+  const { printOrder, isPrinting, lastError: networkPrintError } = useNetworkPrinter();
+
+  // Keep refs in sync with state
   useEffect(() => {
     autoPrintRef.current = autoPrintEnabled;
   }, [autoPrintEnabled]);
+
+  useEffect(() => {
+    useNetworkPrintRef.current = useNetworkPrint;
+    localStorage.setItem('useNetworkPrint', useNetworkPrint.toString());
+  }, [useNetworkPrint]);
+
+  // Update printer status based on network printer state
+  useEffect(() => {
+    if (isPrinting) {
+      setPrinterStatus('printing');
+    } else if (networkPrintError) {
+      setPrinterStatus('error');
+    } else {
+      setPrinterStatus('ready');
+    }
+  }, [isPrinting, networkPrintError]);
 
   const { data: orders, isLoading, refetch } = useOrders(dateFilter);
   const updateStatus = useUpdateOrderStatus();
@@ -409,8 +433,29 @@ export default function TVDashboard() {
           // Auto-print if enabled
           const shouldAutoPrint = autoPrintRef.current || localStorage.getItem('autoPrintEnabled') === 'true';
           if (shouldAutoPrint) {
-            console.log('� Auto-printing order:', newOrder.order_number);
-            printOrderTicket(newOrder);
+            console.log('🖨️ Auto-printing order:', newOrder.order_number);
+
+            // Check if network printing is enabled
+            const useNetwork = useNetworkPrintRef.current || localStorage.getItem('useNetworkPrint') === 'true';
+
+            if (useNetwork) {
+              // Use network printer (via Edge Function with retry logic)
+              console.log('🌐 Using network printer for order:', newOrder.order_number);
+              printOrder(newOrder.id, newOrder).then((result) => {
+                if (result.success) {
+                  console.log('✅ Network print successful:', result.message);
+                  setLastPrintTime(new Date());
+                } else {
+                  console.error('❌ Network print failed:', result.message);
+                  // Fallback to browser printing
+                  console.log('🔄 Falling back to browser printing');
+                  printOrderTicket(newOrder);
+                }
+              });
+            } else {
+              // Use browser printing (existing logic)
+              printOrderTicket(newOrder);
+            }
           }
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
@@ -602,9 +647,22 @@ export default function TVDashboard() {
             size="sm"
             onClick={() => setAutoPrintEnabled(!autoPrintEnabled)}
             className={`h-7 px-2 text-xs gap-1 ${autoPrintEnabled ? 'bg-green-600 hover:bg-green-700' : ''}`}
+            title={autoPrintEnabled ? 'Auto-print activé' : 'Auto-print désactivé'}
           >
             <Printer className="w-3 h-3" />
           </Button>
+
+          {autoPrintEnabled && (
+            <Button
+              variant={useNetworkPrint ? "default" : "outline"}
+              size="sm"
+              onClick={() => setUseNetworkPrint(!useNetworkPrint)}
+              className={`h-7 px-2 text-xs gap-1 ${useNetworkPrint ? 'bg-cyan-600 hover:bg-cyan-700' : ''}`}
+              title={useNetworkPrint ? 'Impression réseau (IP directe)' : 'Impression navigateur'}
+            >
+              <Wifi className="w-3 h-3" />
+            </Button>
+          )}
 
           <Button
             variant={soundEnabled ? "default" : "outline"}

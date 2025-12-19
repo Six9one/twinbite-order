@@ -5,6 +5,7 @@ import {
   crepes,
   gaufres,
   boissons,
+  salades,
 } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
 import { PizzaWizard } from '@/components/wizards/PizzaWizard';
@@ -41,6 +42,7 @@ const productCategoryLabels: Record<string, string> = {
   croques: "🧀 Croques",
   texmex: "🌶️ Tex-Mex",
   frites: "🍟 Frites",
+  salades: "🥗 Salade",
 };
 
 // Dessert category labels
@@ -69,6 +71,7 @@ const productCategoryOrder: string[] = [
   'croques',
   'texmex',
   'frites',
+  'salades',
 ];
 
 // Dessert category order
@@ -108,6 +111,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
   const { data: crepeProducts } = useProductsByCategory('crepes');
   const { data: gaufreProducts } = useProductsByCategory('gaufres');
   const { data: boissonsProducts } = useProductsByCategory('boissons');
+  const { data: saladesProducts } = useProductsByCategory('salades');
 
 
   const orderTypeLabels = {
@@ -184,6 +188,14 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
           <SimpleProductWizard
             items={mapProductsToMenuItems(boissonsProducts, 'boissons', boissons)}
             title="Boissons"
+            onClose={() => setSelectedCategory(null)}
+          />
+        );
+      case 'salades':
+        return (
+          <SimpleProductWizard
+            items={mapProductsToMenuItems(saladesProducts, 'salades', salades)}
+            title="Salade"
             onClose={() => setSelectedCategory(null)}
           />
         );

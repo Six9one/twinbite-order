@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +30,7 @@ import {
   Clock, CheckCircle, XCircle, ChefHat, Package,
   MapPin, Phone, User, MessageSquare, CreditCard, Banknote,
   Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv, TrendingUp,
-  Menu
+  Menu, Volume2, VolumeX, Bell
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
@@ -46,6 +46,162 @@ const statusConfig = {
   cancelled: { label: 'Annulé', color: 'bg-red-500', icon: XCircle },
 };
 
+// Notification sound function
+const playOrderSound = () => {
+  try {
+    const soundUrls = [
+      'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3',
+      'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3',
+    ];
+    let soundPlayed = false;
+    const tryPlaySound = (urlIndex: number) => {
+      if (soundPlayed || urlIndex >= soundUrls.length) return;
+      const audio = new Audio(soundUrls[urlIndex]);
+      audio.volume = 1.0;
+      audio.play()
+        .then(() => {
+          soundPlayed = true;
+          // Play again for emphasis
+          setTimeout(() => {
+            const audio2 = new Audio(soundUrls[urlIndex]);
+            audio2.volume = 1.0;
+            audio2.play().catch(() => { });
+          }, 400);
+        })
+        .catch(() => tryPlaySound(urlIndex + 1));
+    };
+    tryPlaySound(0);
+  } catch (error) {
+    console.log('Audio not supported');
+  }
+};
+
+// Auto-print ticket function
+const autoPrintOrderTicket = (order: Order) => {
+  console.log('🖨️ Auto-printing order:', order.order_number);
+
+  const ticketSettings = {
+    header: localStorage.getItem('ticketHeader') || 'TWIN PIZZA',
+    subheader: localStorage.getItem('ticketSubheader') || 'Grand-Couronne',
+    phone: localStorage.getItem('ticketPhone') || '02 32 11 26 13',
+    footer: localStorage.getItem('ticketFooter') || 'Merci de votre visite!',
+  };
+
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemsHtml = items.map((cartItem: any) => {
+    const productName = cartItem.item?.name || cartItem.name || 'Produit';
+    const customization = cartItem.customization;
+    let details: string[] = [];
+    if (customization?.size) details.push(customization.size.toUpperCase());
+    if (customization?.meats?.length) details.push(`Viandes: ${customization.meats.join(', ')}`);
+    if (customization?.sauces?.length) details.push(`Sauces: ${customization.sauces.join(', ')}`);
+    if (customization?.garnitures?.length) details.push(`Garnitures: ${customization.garnitures.join(', ')}`);
+    if (customization?.supplements?.length) details.push(`Supp: ${customization.supplements.join(', ')}`);
+    if (customization?.notes) details.push(`Note: ${customization.notes}`);
+    if (customization?.menuOption && customization.menuOption !== 'none') details.push(`Menu: ${customization.menuOption}`);
+    return `
+      <div style="margin-bottom:8px;border-bottom:1px dashed #ccc;padding-bottom:8px;">
+        <div style="font-weight:bold;">${cartItem.quantity}x ${productName} - ${cartItem.totalPrice?.toFixed(2) || '0.00'}€</div>
+        ${details.length > 0 ? `<div style="color:#555;font-size:11px;">${details.join(' | ')}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  const orderTypeLabels: Record<string, string> = {
+    livraison: 'LIVRAISON',
+    emporter: 'À EMPORTER',
+    surplace: 'SUR PLACE'
+  };
+
+  const paymentLabels: Record<string, string> = {
+    en_ligne: 'PAYÉE EN LIGNE ✓',
+    cb: 'CB - À PAYER',
+    especes: 'ESPÈCES - À PAYER'
+  };
+
+  const fontFamily = localStorage.getItem('ticketFontFamily') || 'monospace';
+  const fontSize = localStorage.getItem('ticketFontSize') || '12';
+  const headerSize = localStorage.getItem('ticketHeaderSize') || '20';
+
+  const ticketHtml = `
+    <!DOCTYPE html>
+    <html><head><title>Ticket ${order.order_number}</title>
+    <style>
+      @page { size: 80mm auto; margin: 0; }
+      @media print { body { width: 80mm; } }
+      body { font-family: ${fontFamily}; font-size: ${fontSize}px; padding: 5px; width: 76mm; margin: 0 auto; }
+      .center { text-align: center; }
+      .bold { font-weight: bold; }
+      .divider { border-top: 2px dashed #000; margin: 8px 0; }
+      h2 { font-size: ${headerSize}px; margin: 5px 0; }
+    </style></head><body>
+      <div class="center">
+        <h2>${ticketSettings.header}</h2>
+        <p style="margin:2px 0;">${ticketSettings.subheader}</p>
+        <p style="margin:2px 0;">${ticketSettings.phone}</p>
+      </div>
+      <div class="divider"></div>
+      <div class="center bold" style="font-size:22px;">N° ${order.order_number}</div>
+      <div class="center" style="font-size:12px;margin:5px 0;">${new Date(order.created_at || '').toLocaleString('fr-FR')}</div>
+      <div class="center bold" style="background:#000;color:#fff;padding:6px;margin:8px 0;font-size:16px;">${orderTypeLabels[order.order_type] || order.order_type}</div>
+      <div class="divider"></div>
+      <div style="margin-bottom:5px;"><strong>Client:</strong> ${order.customer_name}</div>
+      <div style="margin-bottom:5px;"><strong>Tél:</strong> ${order.customer_phone || ''}</div>
+      ${order.customer_address ? `<div style="margin-bottom:5px;"><strong>Adresse:</strong> ${order.customer_address}</div>` : ''}
+      ${order.customer_notes ? `<div style="margin-bottom:5px;background:#ffe;padding:5px;"><strong>Note:</strong> ${order.customer_notes}</div>` : ''}
+      <div class="divider"></div>
+      ${itemsHtml}
+      <div class="divider"></div>
+      <div style="text-align:right;font-size:12px;">Sous-total: ${order.subtotal?.toFixed(2)}€</div>
+      <div style="text-align:right;font-size:12px;">TVA (10%): ${order.tva?.toFixed(2)}€</div>
+      <div style="text-align:right;font-size:18px;font-weight:bold;margin-top:5px;">TOTAL: ${order.total?.toFixed(2)}€</div>
+      <div class="center bold" style="margin-top:8px;padding:6px;font-size:14px;${order.payment_method === 'en_ligne' ? 'background:#d4edda;' : 'background:#f8d7da;'}">${paymentLabels[order.payment_method] || order.payment_method}</div>
+      <div class="divider"></div>
+      <div class="center" style="font-size:11px;">${ticketSettings.footer}</div>
+      <div style="height:20px;"></div>
+    </body></html>
+  `;
+
+  // Create hidden iframe for printing
+  const existingFrame = document.getElementById('admin-print-frame');
+  if (existingFrame) existingFrame.remove();
+
+  const iframe = document.createElement('iframe');
+  iframe.id = 'admin-print-frame';
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc) {
+    console.error('Failed to create print iframe');
+    return;
+  }
+
+  doc.open();
+  doc.write(ticketHtml);
+  doc.close();
+
+  iframe.onload = () => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      console.log('✅ Print sent for order:', order.order_number);
+    } catch (printError) {
+      console.error('Print failed:', printError);
+    }
+    setTimeout(() => iframe.remove(), 1000);
+  };
+
+  setTimeout(() => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch (e) {
+      console.error('Print error:', e);
+    }
+  }, 100);
+};
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<AdminTab>('orders');
@@ -54,9 +210,34 @@ export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // Auto-print states
+  const [autoPrintEnabled, setAutoPrintEnabled] = useState(() => {
+    return localStorage.getItem('adminAutoPrintEnabled') === 'true';
+  });
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    return localStorage.getItem('adminSoundEnabled') !== 'false';
+  });
+  const [showNewOrderAlert, setShowNewOrderAlert] = useState(false);
+  const [newOrderNumber, setNewOrderNumber] = useState<string | null>(null);
+  const processedOrders = useRef<Set<string>>(new Set());
+  const autoPrintRef = useRef(autoPrintEnabled);
+  const soundRef = useRef(soundEnabled);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
   const { data: orders, isLoading, refetch } = useOrders(dateFilter);
   const updateStatus = useUpdateOrderStatus();
   const [lastUpdate, setLastUpdate] = useState(new Date());
+
+  // Keep refs in sync
+  useEffect(() => {
+    autoPrintRef.current = autoPrintEnabled;
+    localStorage.setItem('adminAutoPrintEnabled', autoPrintEnabled.toString());
+  }, [autoPrintEnabled]);
+
+  useEffect(() => {
+    soundRef.current = soundEnabled;
+    localStorage.setItem('adminSoundEnabled', soundEnabled.toString());
+  }, [soundEnabled]);
 
   // Auto-refresh every 5 seconds
   useEffect(() => {
@@ -100,15 +281,71 @@ export default function AdminDashboard() {
     };
     checkAuth();
 
+    // Clean up existing channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
     const channel = supabase
-      .channel('orders-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+      .channel('admin-orders-changes-' + Date.now())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
         refetch();
+        setLastUpdate(new Date());
+
+        const newOrder = payload.new as Order;
+
+        // Skip if already processed
+        if (processedOrders.current.has(newOrder.id)) {
+          console.log('Order already processed:', newOrder.order_number);
+          return;
+        }
+        processedOrders.current.add(newOrder.id);
+
+        // Show visual alert
+        setNewOrderNumber(newOrder.order_number);
+        setShowNewOrderAlert(true);
+        setTimeout(() => {
+          setShowNewOrderAlert(false);
+          setNewOrderNumber(null);
+        }, 5000);
+
+        // Play sound if enabled
+        if (soundRef.current) {
+          playOrderSound();
+        }
+
+        // Browser notification
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          new Notification('Nouvelle commande!', { body: 'Une nouvelle commande a été reçue.' });
+          new Notification('🍕 Nouvelle commande!', {
+            body: `Commande ${newOrder.order_number} - ${newOrder.order_type.toUpperCase()}`,
+            icon: '/favicon.ico'
+          });
+        }
+
+        // Auto-print if enabled
+        if (autoPrintRef.current) {
+          console.log('🖨️ Auto-print enabled, printing order:', newOrder.order_number);
+          autoPrintOrderTicket(newOrder);
+          toast.success(`🖨️ Impression automatique: ${newOrder.order_number}`);
         }
       })
-      .subscribe();
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
+        refetch();
+        setLastUpdate(new Date());
+      })
+      .subscribe((status) => {
+        console.log('Admin realtime status:', status);
+        if (status === 'CHANNEL_ERROR') {
+          setTimeout(() => {
+            // Reconnect
+            if (channelRef.current) {
+              supabase.removeChannel(channelRef.current);
+            }
+          }, 5000);
+        }
+      });
+
+    channelRef.current = channel;
 
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission();
@@ -116,7 +353,9 @@ export default function AdminDashboard() {
 
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
     };
   }, [navigate, refetch]);
 
@@ -290,6 +529,29 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {/* Auto-Print Toggle */}
+              <Button
+                variant={autoPrintEnabled ? "default" : "outline"}
+                size="sm"
+                onClick={() => setAutoPrintEnabled(!autoPrintEnabled)}
+                className={`gap-2 ${autoPrintEnabled ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+                title={autoPrintEnabled ? 'Auto-impression activée' : 'Auto-impression désactivée'}
+              >
+                <Printer className="w-4 h-4" />
+                {autoPrintEnabled ? 'Auto' : 'Manuel'}
+              </Button>
+
+              {/* Sound Toggle */}
+              <Button
+                variant={soundEnabled ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className={soundEnabled ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+                title={soundEnabled ? 'Son activé' : 'Son désactivé'}
+              >
+                {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              </Button>
+
               <Link to="/tv" target="_blank">
                 <Button variant="outline" size="sm" className="gap-2 bg-amber-500 text-black hover:bg-amber-600">
                   <Tv className="w-4 h-4" />
@@ -305,6 +567,17 @@ export default function AdminDashboard() {
               </Button>
             </div>
           </div>
+
+          {/* New Order Alert Banner */}
+          {showNewOrderAlert && newOrderNumber && (
+            <div className="bg-green-500 text-white px-4 py-2 flex items-center justify-center gap-3 animate-pulse">
+              <Bell className="w-5 h-5" />
+              <span className="font-bold text-lg">🍕 NOUVELLE COMMANDE: {newOrderNumber}</span>
+              {autoPrintEnabled && (
+                <span className="text-sm bg-white/20 px-2 py-0.5 rounded">🖨️ Impression en cours...</span>
+              )}
+            </div>
+          )}
         </header>
 
         <main className="flex-1 p-6 overflow-auto">

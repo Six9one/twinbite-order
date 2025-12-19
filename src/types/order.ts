@@ -19,7 +19,8 @@ export type MenuCategory =
   | 'milkshakes'
   | 'crepes'
   | 'gaufres'
-  | 'boissons';
+  | 'boissons'
+  | 'salades';
 
 export type PizzaBase = 'tomate' | 'creme';
 export type PizzaSize = 'senior' | 'mega';

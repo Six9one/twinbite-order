@@ -443,6 +443,31 @@ export const boissons: MenuItem[] = [
   { id: "jus-orange", name: "Jus d'Orange", description: "33cl", price: 2.5, category: "boissons" },
 ];
 
+// ============= SALADES =============
+export const salades: MenuItem[] = [
+  {
+    id: "salade-cesar",
+    name: "Salade César",
+    description: "Salade, poulet grillé, croûtons, parmesan, sauce césar",
+    price: 8.5,
+    category: "salades",
+  },
+  {
+    id: "salade-nicoise",
+    name: "Salade Niçoise",
+    description: "Salade, thon, œuf dur, tomates, olives, haricots verts",
+    price: 8.0,
+    category: "salades",
+  },
+  {
+    id: "salade-chevre-chaud",
+    name: "Salade Chèvre Chaud",
+    description: "Salade, toasts de chèvre chaud, miel, noix, tomates",
+    price: 9.0,
+    category: "salades",
+  },
+];
+
 // ============= ALL MENU ITEMS =============
 export const menuItems: MenuItem[] = [
   ...pizzasTomate,
@@ -458,6 +483,7 @@ export const menuItems: MenuItem[] = [
   ...crepes,
   ...gaufres,
   ...boissons,
+  ...salades,
 ];
 
 // ============= OPTIONS =============
@@ -547,6 +573,7 @@ export const categoryLabels: Record<MenuCategory, string> = {
   crepes: "🥞 Crêpes",
   gaufres: "🧇 Gaufres",
   boissons: "🥤 Boissons",
+  salades: "🥗 Salade",
 };
 
 export const categoryOrder: MenuCategory[] = [
@@ -563,6 +590,7 @@ export const categoryOrder: MenuCategory[] = [
   "crepes",
   "gaufres",
   "boissons",
+  "salades",
 ];
 
 // ============= DELIVERY ZONES =============
