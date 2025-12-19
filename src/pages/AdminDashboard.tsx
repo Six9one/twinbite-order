@@ -49,11 +49,11 @@ const statusConfig = {
 // Notification sound function
 const playOrderSound = () => {
   try {
-    // Shop notification sound - loud and attention-grabbing
+    // Store/shop notification sounds - loud and clear
     const soundUrls = [
-      'https://cdn.pixabay.com/audio/2024/11/27/audio_7939388a16.mp3', // shop notification
-      'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3', // fallback ding
-      'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3', // fallback bell
+      'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3', // Store door chime
+      'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3', // Bell notification
+      'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3', // Alert ding
     ];
     let soundPlayed = false;
     const tryPlaySound = (urlIndex: number) => {
