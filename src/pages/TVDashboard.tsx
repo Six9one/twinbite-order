@@ -187,88 +187,121 @@ const printOrderTicket = (order: Order) => {
     footer: localStorage.getItem('ticketFooter') || 'Merci de votre visite!',
   };
 
-  const items = Array.isArray(order.items) ? order.items : [];
-  const itemsHtml = items.map((cartItem: any) => {
-    const productName = cartItem.item?.name || cartItem.name || 'Produit';
-    const customization = cartItem.customization;
-    let details: string[] = [];
-    if (customization?.size) details.push(customization.size.toUpperCase());
-    if (customization?.meats?.length) details.push(`Viandes: ${customization.meats.join(', ')}`);
-    if (customization?.sauces?.length) details.push(`Sauces: ${customization.sauces.join(', ')}`);
-    if (customization?.garnitures?.length) details.push(`Garnitures: ${customization.garnitures.join(', ')}`);
-    if (customization?.supplements?.length) details.push(`Supp: ${customization.supplements.join(', ')}`);
-    if (customization?.notes) details.push(`Note: ${customization.notes}`);
-
-    return `
-      <div style="margin-bottom:8px;border-bottom:1px dashed #ccc;padding-bottom:8px;">
-        <div style="font-weight:bold;">${cartItem.quantity}x ${productName} - ${cartItem.totalPrice?.toFixed(2) || '0.00'}€</div>
-        ${details.length > 0 ? `<div style="color:#555;">${details.join(' | ')}</div>` : ''}
-      </div>
-    `;
-  }).join('');
-
   const orderTypeLabels: Record<string, string> = {
-    livraison: 'LIVRAISON',
-    emporter: 'À EMPORTER',
-    surplace: 'SUR PLACE'
+    livraison: '🚗 LIVRAISON',
+    emporter: '🛍️ À EMPORTER',
+    surplace: '🍽️ SUR PLACE'
   };
 
   const paymentLabels: Record<string, string> = {
-    en_ligne: 'PAYÉE',
-    cb: 'CB',
-    especes: 'ESP'
+    en_ligne: '✅ PAYÉE EN LIGNE',
+    cb: '💳 CB - À PAYER',
+    especes: '💵 ESPÈCES'
   };
 
-  const fontFamily = localStorage.getItem('ticketFontFamily') || 'monospace';
-  const fontSize = localStorage.getItem('ticketFontSize') || '12';
-  const headerSize = localStorage.getItem('ticketHeaderSize') || '20';
+  // Build items text
+  const items = Array.isArray(order.items) ? order.items : [];
+  let itemsText = '';
+  items.forEach((cartItem: any) => {
+    const productName = cartItem.item?.name || cartItem.name || 'Produit';
+    const price = cartItem.totalPrice?.toFixed(2) || '0.00';
+    const customization = cartItem.customization;
+    let details: string[] = [];
+    if (customization?.size) details.push(customization.size.toUpperCase());
+    if (customization?.meats?.length) details.push(customization.meats.join(', '));
+    if (customization?.sauces?.length) details.push(customization.sauces.join(', '));
+    if (customization?.supplements?.length) details.push(customization.supplements.join(', '));
+    if (customization?.menuOption && customization.menuOption !== 'none') details.push(customization.menuOption);
+
+    itemsText += `${cartItem.quantity}x ${productName} - ${price}€\n`;
+    if (details.length > 0) {
+      itemsText += `   ${details.join(' | ')}\n`;
+    }
+  });
+
+  const dateStr = new Date(order.created_at || '').toLocaleString('fr-FR');
 
   const ticketHtml = `
     <!DOCTYPE html>
-    <html><head><title>Ticket ${order.order_number}</title>
-    <style>
-      @page { size: 80mm auto; margin: 0; }
-      @media print { body { width: 80mm; } }
-      body { font-family: ${fontFamily}; font-size: ${fontSize}px; padding: 5px; width: 76mm; margin: 0 auto; }
-      .center { text-align: center; }
-      .bold { font-weight: bold; }
-      .divider { border-top: 2px dashed #000; margin: 8px 0; }
-      h2 { font-size: ${headerSize}px; margin: 5px 0; }
-    </style></head><body>
-      <div class="center">
-        <h2>${ticketSettings.header}</h2>
-        <p style="margin:2px 0;">${ticketSettings.subheader}</p>
-        <p style="margin:2px 0;">${ticketSettings.phone}</p>
+    <html>
+    <head>
+      <title>Ticket ${order.order_number}</title>
+      <style>
+        @page { size: 80mm auto; margin: 2mm; }
+        @media print { 
+          body { width: 76mm; margin: 0; padding: 0; }
+          html { margin: 0; padding: 0; }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: 'Courier New', monospace; 
+          font-size: 12px; 
+          width: 76mm; 
+          padding: 3mm;
+          line-height: 1.3;
+        }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        .divider { border-top: 1px dashed #000; margin: 5px 0; }
+        .header { font-size: 18px; font-weight: bold; }
+        .order-type { background: #000; color: #fff; padding: 5px; margin: 5px 0; font-weight: bold; }
+        .total { font-size: 16px; font-weight: bold; }
+        .payment { padding: 5px; margin: 5px 0; }
+        .paid { background: #d4edda; }
+        .unpaid { background: #f8d7da; }
+        pre { font-family: 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; margin: 5px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="center header">${ticketSettings.header}</div>
+      <div class="center">${ticketSettings.subheader}</div>
+      <div class="center">📞 ${ticketSettings.phone}</div>
+      
+      <div class="divider"></div>
+      
+      <div class="center bold" style="font-size:16px;">N° ${order.order_number}</div>
+      <div class="center">${dateStr}</div>
+      
+      <div class="center order-type">${orderTypeLabels[order.order_type] || order.order_type.toUpperCase()}</div>
+      
+      <div class="divider"></div>
+      
+      <div><strong>Client:</strong> ${order.customer_name}</div>
+      <div><strong>Tél:</strong> ${order.customer_phone || '-'}</div>
+      ${order.customer_address ? `<div><strong>Adresse:</strong> ${order.customer_address}</div>` : ''}
+      ${order.customer_notes ? `<div style="background:#ffe;padding:3px;"><strong>Note:</strong> ${order.customer_notes}</div>` : ''}
+      
+      <div class="divider"></div>
+      
+      <pre>${itemsText}</pre>
+      
+      <div class="divider"></div>
+      
+      <div style="text-align:right;">Sous-total: ${order.subtotal?.toFixed(2) || '0.00'}€</div>
+      <div style="text-align:right;">TVA (10%): ${order.tva?.toFixed(2) || '0.00'}€</div>
+      <div style="text-align:right;" class="total">TOTAL: ${order.total?.toFixed(2) || '0.00'}€</div>
+      
+      <div class="center payment ${order.payment_method === 'en_ligne' ? 'paid' : 'unpaid'}">
+        ${paymentLabels[order.payment_method] || order.payment_method}
       </div>
+      
       <div class="divider"></div>
-      <div class="center bold" style="font-size:22px;">N° ${order.order_number}</div>
-      <div class="center" style="font-size:12px;margin:5px 0;">${new Date(order.created_at || '').toLocaleString('fr-FR')}</div>
-      <div class="center bold" style="background:#000;color:#fff;padding:6px;margin:8px 0;font-size:16px;">${orderTypeLabels[order.order_type] || order.order_type}</div>
-      <div class="divider"></div>
-      <div style="margin-bottom:5px;"><strong>Client:</strong> ${order.customer_name}</div>
-      <div style="margin-bottom:5px;"><strong>Tél:</strong> ${order.customer_phone || ''}</div>
-      ${order.customer_address ? `<div style="margin-bottom:5px;"><strong>Adresse:</strong> ${order.customer_address}</div>` : ''}
-      ${order.customer_notes ? `<div style="margin-bottom:5px;background:#ffe;padding:5px;"><strong>Note:</strong> ${order.customer_notes}</div>` : ''}
-      <div class="divider"></div>
-      ${itemsHtml}
-      <div class="divider"></div>
-      <div style="text-align:right;font-size:12px;">Sous-total: ${order.subtotal?.toFixed(2)}€</div>
-      <div style="text-align:right;font-size:12px;">TVA (10%): ${order.tva?.toFixed(2)}€</div>
-      <div style="text-align:right;font-size:18px;font-weight:bold;margin-top:5px;">TOTAL: ${order.total?.toFixed(2)}€</div>
-      <div class="center bold" style="margin-top:8px;padding:6px;font-size:14px;${order.payment_method === 'en_ligne' ? 'background:#d4edda;' : 'background:#f8d7da;'}">${paymentLabels[order.payment_method] || order.payment_method}</div>
-      <div class="divider"></div>
-      <div class="center" style="font-size:11px;">${ticketSettings.footer}</div>
-      <div style="height:20px;"></div>
-    </body></html>
+      
+      <div class="center">${ticketSettings.footer}</div>
+      <div class="center">🍕 ${ticketSettings.header} 🍕</div>
+      
+      <div style="height:15px;"></div>
+    </body>
+    </html>
   `;
 
-  // Create hidden iframe for printing (no popup blocker issues)
+  // Create hidden iframe for printing
   const existingFrame = document.getElementById('print-frame');
   if (existingFrame) existingFrame.remove();
 
   const iframe = document.createElement('iframe');
   iframe.id = 'print-frame';
-  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
   document.body.appendChild(iframe);
 
   const doc = iframe.contentWindow?.document;
@@ -281,20 +314,7 @@ const printOrderTicket = (order: Order) => {
   doc.write(ticketHtml);
   doc.close();
 
-  // Wait for content to load then print
-  iframe.onload = () => {
-    try {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-      console.log('✅ Print command sent successfully for order:', order.order_number);
-    } catch (printError) {
-      console.error('❌ Print failed:', printError);
-    }
-    // Remove iframe after printing
-    setTimeout(() => iframe.remove(), 1000);
-  };
-
-  // Trigger print immediately (for cases where onload doesn't fire)
+  // Wait for content to load, then print ONCE
   setTimeout(() => {
     try {
       iframe.contentWindow?.focus();
@@ -303,7 +323,9 @@ const printOrderTicket = (order: Order) => {
     } catch (e) {
       console.error('❌ Print error:', e);
     }
-  }, 100);
+    // Remove iframe after printing
+    setTimeout(() => iframe.remove(), 3000);
+  }, 500);
 };
 
 export default function TVDashboard() {
