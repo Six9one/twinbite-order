@@ -200,18 +200,18 @@ export function useOrders(dateFilter?: string) {
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (dateFilter) {
         const startOfDay = new Date(dateFilter);
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(dateFilter);
         endOfDay.setHours(23, 59, 59, 999);
-        
+
         query = query
           .gte('created_at', startOfDay.toISOString())
           .lte('created_at', endOfDay.toISOString());
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data as Order[];
@@ -222,7 +222,7 @@ export function useOrders(dateFilter?: string) {
 // Create Order
 export function useCreateOrder() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (order: Omit<Order, 'id' | 'created_at' | 'updated_at'>) => {
       const { error } = await supabase
@@ -240,7 +240,7 @@ export function useCreateOrder() {
 // Update Order Status
 export function useUpdateOrderStatus() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: Order['status'] }) => {
       const { data, error } = await supabase
@@ -258,16 +258,27 @@ export function useUpdateOrderStatus() {
   });
 }
 
-// Generate order number with customizable prefix
+// Generate order number with customizable prefix - simple sequential format
 export function generateOrderNumber(): string {
-  const now = new Date();
-  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const timeStr = now.getTime().toString().slice(-4);
-  
-  // Get custom prefix from localStorage, default to 'TW'
-  const prefix = typeof window !== 'undefined' 
-    ? (localStorage.getItem('orderPrefix') || 'TW')
-    : 'TW';
-  
-  return `${prefix}${dateStr}-${timeStr}`;
+  // Get or initialize order counter from localStorage
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const storedDate = typeof window !== 'undefined' ? localStorage.getItem('orderCounterDate') : null;
+  let counter = 1;
+
+  if (typeof window !== 'undefined') {
+    if (storedDate === today) {
+      // Same day, increment counter
+      counter = parseInt(localStorage.getItem('orderCounter') || '1', 10) + 1;
+    } else {
+      // New day, reset counter
+      counter = 1;
+      localStorage.setItem('orderCounterDate', today);
+    }
+    localStorage.setItem('orderCounter', counter.toString());
+  }
+
+  // Format as 3-digit number: 001, 002, etc.
+  const orderNum = counter.toString().padStart(3, '0');
+
+  return orderNum;
 }

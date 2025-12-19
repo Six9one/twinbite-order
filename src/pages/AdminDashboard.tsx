@@ -98,19 +98,19 @@ const autoPrintOrderTicket = (order: Order) => {
     const customization = cartItem.customization;
     let details: string[] = [];
     if (customization?.size) details.push(customization.size.toUpperCase());
-    if (customization?.meats?.length) details.push(`Viandes: ${customization.meats.join(', ')}`);
-    if (customization?.sauces?.length) details.push(`Sauces: ${customization.sauces.join(', ')}`);
-    if (customization?.garnitures?.length) details.push(`Garnitures: ${customization.garnitures.join(', ')}`);
-    if (customization?.supplements?.length) details.push(`Supp: ${customization.supplements.join(', ')}`);
-    if (customization?.notes) details.push(`Note: ${customization.notes}`);
-    if (customization?.menuOption && customization.menuOption !== 'none') details.push(`Menu: ${customization.menuOption}`);
+    if (customization?.meats?.length) details.push(customization.meats.join(', '));
+    if (customization?.sauces?.length) details.push(customization.sauces.join(', '));
+    if (customization?.garnitures?.length) details.push(customization.garnitures.join(', '));
+    if (customization?.supplements?.length) details.push(customization.supplements.join(', '));
+    if (customization?.notes) details.push(customization.notes);
+    if (customization?.menuOption && customization.menuOption !== 'none') details.push(customization.menuOption);
     return `
       <div style="margin-bottom:10px;border-bottom:1px dashed #000;padding-bottom:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <span style="font-weight:bold;font-size:${fontSize + 2}px;">${cartItem.quantity}x ${productName}</span>
-          <span style="font-size:${fontSize - 2}px;color:#666;">${cartItem.totalPrice?.toFixed(2) || '0.00'}€</span>
+          <span style="font-size:${fontSize - 4}px;color:#888;">${cartItem.totalPrice?.toFixed(2) || '0.00'}€</span>
         </div>
-        ${details.length > 0 ? `<div style="color:#333;font-size:${fontSize - 2}px;margin-top:4px;">${details.join(' | ')}</div>` : ''}
+        ${details.length > 0 ? `<div style="color:#666;font-size:${fontSize - 4}px;margin-top:2px;">${details.join(' | ')}</div>` : ''}
       </div>
     `;
   }).join('');
@@ -429,22 +429,25 @@ export default function AdminDashboard() {
     const note = cartItem.note || customization?.note;
 
     let details: string[] = [];
-    if (customization?.size) details.push('📏 ' + customization.size.toUpperCase());
-    if (customization?.base) details.push('🍕 ' + customization.base);
-    if (customization?.meats?.length) details.push('🥩 ' + customization.meats.join(', '));
-    if (customization?.meat) details.push('🥩 ' + customization.meat);
-    if (customization?.sauces?.length) details.push('🥫 ' + customization.sauces.join(', '));
-    if (customization?.garnitures?.length) details.push('🥬 ' + customization.garnitures.join(', '));
-    if (customization?.supplements?.length) details.push('➕ ' + customization.supplements.join(', '));
-    if (customization?.cheeseSupplements?.length) details.push('🧀 ' + customization.cheeseSupplements.join(', '));
-    if (customization?.menuOption && customization.menuOption !== 'none') details.push('🍟 ' + customization.menuOption);
+    // Size - show smaller, no emoji
+    if (customization?.size) details.push(customization.size.toUpperCase());
+    if (customization?.base) details.push(customization.base);
+    if (customization?.meats?.length) details.push(customization.meats.join(', '));
+    if (customization?.meat) details.push(customization.meat);
+    if (customization?.sauces?.length) details.push(customization.sauces.join(', '));
+    if (customization?.garnitures?.length) details.push(customization.garnitures.join(', '));
+    if (customization?.supplements?.length) details.push(customization.supplements.join(', '));
+    if (customization?.cheeseSupplements?.length) details.push(customization.cheeseSupplements.join(', '));
+    if (customization?.menuOption && customization.menuOption !== 'none') details.push(customization.menuOption);
 
-    let html = '<div class="item"><span>' + cartItem.quantity + 'x ' + escapeHtml(productName) + '</span><span>' + Number(price).toFixed(2) + '€</span></div>';
+    // Name bold, price small and gray on right
+    let html = '<div class="item"><span style="font-weight:bold;">' + cartItem.quantity + 'x ' + escapeHtml(productName) + '</span><span style="font-size:10px;color:#666;">' + Number(price).toFixed(2) + '€</span></div>';
     if (details.length > 0) {
-      html += '<div style="font-size: 10px; margin-left: 10px; color: #555;">' + details.join(' | ') + '</div>';
+      // Details very small (8px)
+      html += '<div style="font-size: 8px; margin-left: 10px; color: #888;">' + details.join(' | ') + '</div>';
     }
     if (note) {
-      html += '<div class="note">📝 ' + escapeHtml(note) + '</div>';
+      html += '<div class="note" style="font-size:9px;">📝 ' + escapeHtml(note) + '</div>';
     }
     return html;
   };
