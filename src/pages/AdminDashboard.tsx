@@ -165,7 +165,11 @@ ${footer}
         @media print { body { width: 80mm; margin: 0; } }
         body { 
           font-family: 'Courier New', Courier, monospace; 
-          font-size: 12px; 
+          font-size: 14px; 
+          font-weight: bold;
+          color: #000000 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
           width: 80mm; 
           margin: 0;
           padding: 2mm;
