@@ -87,6 +87,11 @@ const autoPrintOrderTicket = (order: Order) => {
     footer: localStorage.getItem('ticketFooter') || 'Merci de votre visite!',
   };
 
+  // Get font settings with BIGGER defaults
+  const fontFamily = localStorage.getItem('ticketFontFamily') || 'Arial, sans-serif';
+  const fontSize = parseInt(localStorage.getItem('ticketFontSize') || '16');
+  const headerSize = parseInt(localStorage.getItem('ticketHeaderSize') || '28');
+
   const items = Array.isArray(order.items) ? order.items : [];
   const itemsHtml = items.map((cartItem: any) => {
     const productName = cartItem.item?.name || cartItem.name || 'Produit';
@@ -100,9 +105,9 @@ const autoPrintOrderTicket = (order: Order) => {
     if (customization?.notes) details.push(`Note: ${customization.notes}`);
     if (customization?.menuOption && customization.menuOption !== 'none') details.push(`Menu: ${customization.menuOption}`);
     return `
-      <div style="margin-bottom:8px;border-bottom:1px dashed #ccc;padding-bottom:8px;">
-        <div style="font-weight:bold;">${cartItem.quantity}x ${productName} - ${cartItem.totalPrice?.toFixed(2) || '0.00'}€</div>
-        ${details.length > 0 ? `<div style="color:#555;font-size:11px;">${details.join(' | ')}</div>` : ''}
+      <div style="margin-bottom:10px;border-bottom:1px dashed #000;padding-bottom:10px;">
+        <div style="font-weight:bold;font-size:${fontSize + 2}px;">${cartItem.quantity}x ${productName} - ${cartItem.totalPrice?.toFixed(2) || '0.00'}€</div>
+        ${details.length > 0 ? `<div style="color:#333;font-size:${fontSize}px;margin-top:4px;">${details.join(' | ')}</div>` : ''}
       </div>
     `;
   }).join('');
@@ -119,10 +124,6 @@ const autoPrintOrderTicket = (order: Order) => {
     especes: 'ESPÈCES - À PAYER'
   };
 
-  const fontFamily = localStorage.getItem('ticketFontFamily') || 'monospace';
-  const fontSize = localStorage.getItem('ticketFontSize') || '12';
-  const headerSize = localStorage.getItem('ticketHeaderSize') || '20';
-
   const ticketHtml = `
     <!DOCTYPE html>
     <html><head><title>Ticket ${order.order_number}</title>
@@ -137,27 +138,27 @@ const autoPrintOrderTicket = (order: Order) => {
     </style></head><body>
       <div class="center">
         <h2>${ticketSettings.header}</h2>
-        <p style="margin:2px 0;">${ticketSettings.subheader}</p>
-        <p style="margin:2px 0;">${ticketSettings.phone}</p>
+        <p style="margin:4px 0;font-size:${fontSize}px;">${ticketSettings.subheader}</p>
+        <p style="margin:4px 0;font-size:${fontSize}px;">📞 ${ticketSettings.phone}</p>
       </div>
       <div class="divider"></div>
-      <div class="center bold" style="font-size:22px;">N° ${order.order_number}</div>
-      <div class="center" style="font-size:12px;margin:5px 0;">${new Date(order.created_at || '').toLocaleString('fr-FR')}</div>
-      <div class="center bold" style="background:#000;color:#fff;padding:6px;margin:8px 0;font-size:16px;">${orderTypeLabels[order.order_type] || order.order_type}</div>
+      <div class="center bold" style="font-size:${parseInt(fontSize) + 8}px;">N° ${order.order_number}</div>
+      <div class="center" style="font-size:${fontSize}px;margin:5px 0;">${new Date(order.created_at || '').toLocaleString('fr-FR')}</div>
+      <div class="center bold" style="background:#000;color:#fff;padding:8px;margin:8px 0;font-size:${parseInt(fontSize) + 2}px;">${orderTypeLabels[order.order_type] || order.order_type}</div>
       <div class="divider"></div>
-      <div style="margin-bottom:5px;"><strong>Client:</strong> ${order.customer_name}</div>
-      <div style="margin-bottom:5px;"><strong>Tél:</strong> ${order.customer_phone || ''}</div>
-      ${order.customer_address ? `<div style="margin-bottom:5px;"><strong>Adresse:</strong> ${order.customer_address}</div>` : ''}
-      ${order.customer_notes ? `<div style="margin-bottom:5px;background:#ffe;padding:5px;"><strong>Note:</strong> ${order.customer_notes}</div>` : ''}
+      <div style="margin-bottom:6px;font-size:${fontSize}px;"><strong>Client:</strong> ${order.customer_name}</div>
+      <div style="margin-bottom:6px;font-size:${fontSize}px;"><strong>Tél:</strong> ${order.customer_phone || ''}</div>
+      ${order.customer_address ? `<div style="margin-bottom:6px;font-size:${fontSize}px;"><strong>Adresse:</strong> ${order.customer_address}</div>` : ''}
+      ${order.customer_notes ? `<div style="margin-bottom:6px;background:#ffe;padding:6px;font-size:${fontSize}px;"><strong>Note:</strong> ${order.customer_notes}</div>` : ''}
       <div class="divider"></div>
       ${itemsHtml}
       <div class="divider"></div>
-      <div style="text-align:right;font-size:12px;">Sous-total: ${order.subtotal?.toFixed(2)}€</div>
-      <div style="text-align:right;font-size:12px;">TVA (10%): ${order.tva?.toFixed(2)}€</div>
-      <div style="text-align:right;font-size:18px;font-weight:bold;margin-top:5px;">TOTAL: ${order.total?.toFixed(2)}€</div>
-      <div class="center bold" style="margin-top:8px;padding:6px;font-size:14px;${order.payment_method === 'en_ligne' ? 'background:#d4edda;' : 'background:#f8d7da;'}">${paymentLabels[order.payment_method] || order.payment_method}</div>
+      <div style="text-align:right;font-size:${fontSize}px;">Sous-total: ${order.subtotal?.toFixed(2)}€</div>
+      <div style="text-align:right;font-size:${fontSize}px;">TVA (10%): ${order.tva?.toFixed(2)}€</div>
+      <div style="text-align:right;font-size:${parseInt(fontSize) + 8}px;font-weight:bold;margin-top:5px;">TOTAL: ${order.total?.toFixed(2)}€</div>
+      <div class="center bold" style="margin-top:8px;padding:8px;font-size:${fontSize}px;${order.payment_method === 'en_ligne' ? 'background:#d4edda;' : 'background:#f8d7da;'}">${paymentLabels[order.payment_method] || order.payment_method}</div>
       <div class="divider"></div>
-      <div class="center" style="font-size:11px;">${ticketSettings.footer}</div>
+      <div class="center" style="font-size:${fontSize}px;">${ticketSettings.footer}</div>
       <div style="height:20px;"></div>
     </body></html>
   `;
