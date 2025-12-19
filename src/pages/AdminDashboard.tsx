@@ -79,27 +79,25 @@ const playOrderSound = () => {
   }
 };
 
-// Auto-print ticket function
+// Auto-print ticket function - PLAIN TEXT format for thermal printers
 const autoPrintOrderTicket = (order: Order) => {
   console.log('🖨️ Auto-printing order:', order.order_number);
 
-  const ticketSettings = {
-    header: localStorage.getItem('ticketHeader') || 'TWIN PIZZA',
-    subheader: localStorage.getItem('ticketSubheader') || 'Grand-Couronne',
-    phone: localStorage.getItem('ticketPhone') || '02 32 11 26 13',
-    footer: localStorage.getItem('ticketFooter') || 'Merci de votre visite!',
-  };
+  const header = localStorage.getItem('ticketHeader') || 'TWIN PIZZA';
+  const subheader = localStorage.getItem('ticketSubheader') || 'Grand-Couronne';
+  const phone = localStorage.getItem('ticketPhone') || '02 32 11 26 13';
+  const footer = localStorage.getItem('ticketFooter') || 'Merci de votre visite!';
 
   const orderTypeLabels: Record<string, string> = {
     livraison: '🚗 LIVRAISON',
-    emporter: '🛍️ À EMPORTER',
+    emporter: '🛍️ A EMPORTER',
     surplace: '🍽️ SUR PLACE'
   };
 
   const paymentLabels: Record<string, string> = {
-    en_ligne: '✅ PAYÉE EN LIGNE',
-    cb: '💳 CB - À PAYER',
-    especes: '💵 ESPÈCES - À PAYER'
+    en_ligne: '✅ PAYEE EN LIGNE',
+    cb: '💳 CB - A PAYER',
+    especes: '💵 ESPECES - A PAYER'
   };
 
   // Build items text
@@ -123,6 +121,40 @@ const autoPrintOrderTicket = (order: Order) => {
   });
 
   const dateStr = new Date(order.created_at || '').toLocaleString('fr-FR');
+  const line = '================================';
+  const dash = '--------------------------------';
+
+  // Build plain text ticket
+  const ticketText = `
+${line}
+        ${header}
+      ${subheader}
+       ${phone}
+${line}
+N° ${order.order_number}
+${dateStr}
+${line}
+    ${orderTypeLabels[order.order_type] || order.order_type.toUpperCase()}
+${line}
+Client: ${order.customer_name}
+Tel: ${order.customer_phone || '-'}
+${order.customer_address ? `Adresse: ${order.customer_address}` : ''}
+${order.customer_notes ? `Note: ${order.customer_notes}` : ''}
+${dash}
+${itemsText}${dash}
+Sous-total: ${order.subtotal?.toFixed(2) || '0.00'}€
+TVA (10%): ${order.tva?.toFixed(2) || '0.00'}€
+TOTAL: ${order.total?.toFixed(2) || '0.00'}€
+${line}
+   ${paymentLabels[order.payment_method] || order.payment_method}
+${line}
+${footer}
+🍕 ${header} 🍕
+
+
+
+
+`;
 
   const ticketHtml = `
     <!DOCTYPE html>
@@ -130,85 +162,20 @@ const autoPrintOrderTicket = (order: Order) => {
     <head>
       <title>Ticket ${order.order_number}</title>
       <style>
-        @page { size: 80mm auto; margin: 2mm; }
-        @media print { 
-          body { width: 76mm; margin: 0; padding: 0; }
-          html { margin: 0; padding: 0; }
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @page { size: 80mm auto; margin: 0; }
+        @media print { body { width: 80mm; margin: 0; } }
         body { 
-          font-family: 'Courier New', monospace; 
+          font-family: 'Courier New', Courier, monospace; 
           font-size: 12px; 
-          width: 76mm; 
-          padding: 3mm;
-          line-height: 1.3;
-        }
-        .center { text-align: center; }
-        .bold { font-weight: bold; }
-        .divider { 
-          border-top: 1px dashed #000; 
-          margin: 5px 0; 
-        }
-        .header { font-size: 18px; font-weight: bold; }
-        .order-type { 
-          background: #000; 
-          color: #fff; 
-          padding: 5px; 
-          margin: 5px 0;
-          font-weight: bold;
-        }
-        .total { font-size: 16px; font-weight: bold; }
-        .payment { padding: 5px; margin: 5px 0; }
-        .paid { background: #d4edda; }
-        .unpaid { background: #f8d7da; }
-        pre { 
-          font-family: 'Courier New', monospace; 
-          font-size: 12px; 
-          white-space: pre-wrap; 
-          margin: 5px 0;
+          width: 80mm; 
+          margin: 0;
+          padding: 2mm;
+          white-space: pre-wrap;
+          line-height: 1.4;
         }
       </style>
     </head>
-    <body>
-      <div class="center header">${ticketSettings.header}</div>
-      <div class="center">${ticketSettings.subheader}</div>
-      <div class="center">📞 ${ticketSettings.phone}</div>
-      
-      <div class="divider"></div>
-      
-      <div class="center bold" style="font-size:16px;">N° ${order.order_number}</div>
-      <div class="center">${dateStr}</div>
-      
-      <div class="center order-type">${orderTypeLabels[order.order_type] || order.order_type.toUpperCase()}</div>
-      
-      <div class="divider"></div>
-      
-      <div><strong>Client:</strong> ${order.customer_name}</div>
-      <div><strong>Tél:</strong> ${order.customer_phone || '-'}</div>
-      ${order.customer_address ? `<div><strong>Adresse:</strong> ${order.customer_address}</div>` : ''}
-      ${order.customer_notes ? `<div style="background:#ffe;padding:3px;"><strong>Note:</strong> ${order.customer_notes}</div>` : ''}
-      
-      <div class="divider"></div>
-      
-      <pre>${itemsText}</pre>
-      
-      <div class="divider"></div>
-      
-      <div style="text-align:right;">Sous-total: ${order.subtotal?.toFixed(2) || '0.00'}€</div>
-      <div style="text-align:right;">TVA (10%): ${order.tva?.toFixed(2) || '0.00'}€</div>
-      <div style="text-align:right;" class="total">TOTAL: ${order.total?.toFixed(2) || '0.00'}€</div>
-      
-      <div class="center payment ${order.payment_method === 'en_ligne' ? 'paid' : 'unpaid'}">
-        ${paymentLabels[order.payment_method] || order.payment_method}
-      </div>
-      
-      <div class="divider"></div>
-      
-      <div class="center">${ticketSettings.footer}</div>
-      <div class="center">🍕 ${ticketSettings.header} 🍕</div>
-      
-      <div style="height:15px;"></div>
-    </body>
+    <body>${ticketText}</body>
     </html>
   `;
 
