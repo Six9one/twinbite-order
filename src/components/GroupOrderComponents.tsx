@@ -37,47 +37,152 @@ export function GroupOrderBanner() {
         isHost,
         leaveGroupOrder,
         getAllItems,
-        getGroupTotal
+        getGroupTotal,
+        getShareableLink
     } = useGroupOrder();
+    const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+    const [timeRemaining, setTimeRemaining] = useState('');
+
+    // Calculate time remaining
+    useEffect(() => {
+        if (!groupOrder) return;
+
+        const updateTime = () => {
+            const now = new Date();
+            const expires = new Date(groupOrder.expiresAt);
+            const diff = expires.getTime() - now.getTime();
+
+            if (diff <= 0) {
+                setTimeRemaining('Expiré');
+                return;
+            }
+
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+
+            if (minutes > 0) {
+                setTimeRemaining(`${minutes}min ${seconds}s`);
+            } else {
+                setTimeRemaining(`${seconds}s`);
+            }
+        };
+
+        updateTime();
+        const interval = setInterval(updateTime, 1000);
+        return () => clearInterval(interval);
+    }, [groupOrder]);
 
     if (!isGroupMode || !groupOrder) return null;
 
+    const handleLeave = () => {
+        leaveGroupOrder();
+        setShowLeaveConfirm(false);
+        toast({
+            title: isHost ? 'Commande terminée' : 'Vous avez quitté le groupe',
+        });
+    };
+
     return (
-        <Card className="p-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white mb-4 animate-fade-in">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                        <Users className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h3 className="font-bold">{t('group.title')}</h3>
-                            {isHost && (
-                                <Badge variant="secondary" className="bg-white/20 text-white text-xs">
-                                    <Crown className="w-3 h-3 mr-1" />
-                                    Hôte
-                                </Badge>
-                            )}
+        <>
+            <Card className="p-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white mb-4 animate-fade-in">
+                {/* Top row: Group info and close button */}
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                            <Users className="w-5 h-5" />
                         </div>
-                        <p className="text-sm text-white/90">
-                            {groupOrder.participants.length} participants • {getAllItems().length} articles • {getGroupTotal().toFixed(2)}€
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-bold">{t('group.title')}</h3>
+                                {isHost && (
+                                    <Badge variant="secondary" className="bg-yellow-400 text-yellow-900 text-xs">
+                                        <Crown className="w-3 h-3 mr-1" />
+                                        Hôte
+                                    </Badge>
+                                )}
+                            </div>
+                            <p className="text-sm text-white/90">
+                                {groupOrder.participants.length} participants • {getAllItems().length} articles
+                            </p>
+                        </div>
+                    </div>
+
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-white hover:bg-white/20 gap-1"
+                        onClick={() => setShowLeaveConfirm(true)}
+                    >
+                        <X className="w-4 h-4" />
+                        Quitter
+                    </Button>
+                </div>
+
+                {/* Code and timer */}
+                <div className="flex items-center justify-between bg-white/10 rounded-lg p-3">
+                    <div className="flex items-center gap-3">
+                        <div>
+                            <p className="text-xs text-white/70">Code</p>
+                            <p className="text-xl font-mono font-bold tracking-widest">{groupOrder.code}</p>
+                        </div>
+                        <GroupShareButton />
+                    </div>
+
+                    <div className="text-right">
+                        <p className="text-xs text-white/70 flex items-center gap-1 justify-end">
+                            <Clock className="w-3 h-3" />
+                            Temps restant
+                        </p>
+                        <p className={`text-lg font-bold ${timeRemaining === 'Expiré' ? 'text-red-300' : ''}`}>
+                            {timeRemaining}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <GroupShareButton />
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-white hover:bg-white/20"
-                        onClick={leaveGroupOrder}
-                    >
-                        <X className="w-5 h-5" />
-                    </Button>
+                {/* Total */}
+                <div className="mt-3 pt-3 border-t border-white/20 flex justify-between items-center">
+                    <span className="text-sm text-white/80">Total du groupe</span>
+                    <span className="text-xl font-bold">{getGroupTotal().toFixed(2)}€</span>
                 </div>
-            </div>
-        </Card>
+            </Card>
+
+            {/* Leave confirmation dialog */}
+            <Dialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Users className="w-5 h-5 text-destructive" />
+                            {isHost ? 'Terminer la commande?' : 'Quitter le groupe?'}
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <p className="text-muted-foreground">
+                        {isHost ? (
+                            'En tant qu\'hôte, quitter mettra fin à la commande pour tous les participants.'
+                        ) : (
+                            'Vos articles seront retirés de la commande de groupe.'
+                        )}
+                    </p>
+
+                    <div className="flex gap-3 mt-4">
+                        <Button
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => setShowLeaveConfirm(false)}
+                        >
+                            Annuler
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            className="flex-1"
+                            onClick={handleLeave}
+                        >
+                            {isHost ? 'Terminer' : 'Quitter'}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
 
@@ -264,7 +369,7 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
             `🍕 Rejoignez ma commande Twin Pizza!\n\n` +
             `📌 Code: ${createdCode}\n` +
             `🔗 Lien: ${link}\n\n` +
-            `⏰ Valide pendant 3 heures`
+            `⏰ Valide pendant 30 minutes`
         );
         window.open(`https://wa.me/?text=${message}`, '_blank');
     };
@@ -341,7 +446,7 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
                     <div className="flex items-center gap-3">
                         <Clock className="w-5 h-5 text-amber-600 flex-shrink-0" />
                         <p className="text-sm text-amber-800 dark:text-amber-200">
-                            <strong>Valide 3 heures</strong> — Vos amis peuvent rejoindre et ajouter leurs articles jusqu'à l'expiration
+                            <strong>Valide 30 minutes</strong> — Vos amis peuvent rejoindre et ajouter leurs articles jusqu'à l'expiration
                         </p>
                     </div>
                 </Card>
@@ -479,7 +584,7 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
                     <div className="flex items-start gap-2">
                         <Clock className="w-4 h-4 text-amber-600 mt-0.5" />
                         <p className="text-sm text-amber-800 dark:text-amber-200">
-                            Le code sera valide <strong>3 heures</strong>. L'hôte paie pour tout le monde.
+                            Le code sera valide <strong>30 minutes</strong>. L'hôte paie pour tout le monde.
                         </p>
                     </div>
                 </Card>

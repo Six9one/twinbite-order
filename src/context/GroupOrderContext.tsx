@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { CartItem, MenuItem, OrderType, ProductCustomization, SouffletOrder } from '@/types/order';
 import { supabase } from '@/integrations/supabase/client';
-import { v4 as uuidv4 } from 'react';
 
 interface GroupParticipant {
     id: string;
@@ -130,7 +129,7 @@ export function GroupOrderProvider({ children }: { children: ReactNode }) {
         const code = generateGroupCode();
         const hostId = generateId();
         const now = new Date();
-        const expiresAt = new Date(now.getTime() + 3 * 60 * 60 * 1000); // 3 hours
+        const expiresAt = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes
 
         const newGroupOrder: GroupOrder = {
             id: generateId(),
@@ -155,7 +154,8 @@ export function GroupOrderProvider({ children }: { children: ReactNode }) {
 
         // Store in Supabase for persistence
         try {
-            await supabase.from('group_orders').insert({
+            // Using 'as any' because group_orders table is created by migration
+            await (supabase.from as any)('group_orders').insert({
                 id: newGroupOrder.id,
                 code,
                 host_id: hostId,
@@ -197,8 +197,8 @@ export function GroupOrderProvider({ children }: { children: ReactNode }) {
 
         // Try fetching from Supabase
         try {
-            const { data, error } = await supabase
-                .from('group_orders')
+            // Using 'as any' because group_orders table is created by migration
+            const { data, error } = await (supabase.from as any)('group_orders')
                 .select('*')
                 .eq('code', code.toUpperCase())
                 .eq('status', 'open')
@@ -211,7 +211,7 @@ export function GroupOrderProvider({ children }: { children: ReactNode }) {
             }
 
             const participantId = generateId();
-            const existingOrder = data.data as GroupOrder;
+            const existingOrder = (data as any).data as GroupOrder;
 
             const updatedOrder: GroupOrder = {
                 ...existingOrder,
@@ -228,10 +228,9 @@ export function GroupOrderProvider({ children }: { children: ReactNode }) {
             };
 
             // Update in Supabase
-            await supabase
-                .from('group_orders')
+            await (supabase.from as any)('group_orders')
                 .update({ data: updatedOrder })
-                .eq('id', data.id);
+                .eq('id', (data as any).id);
 
             setGroupOrder(updatedOrder);
             setCurrentParticipantId(participantId);
@@ -320,8 +319,7 @@ export function GroupOrderProvider({ children }: { children: ReactNode }) {
         broadcastUpdate(updatedOrder);
 
         // Update in Supabase
-        supabase
-            .from('group_orders')
+        (supabase.from as any)('group_orders')
             .update({ status: 'closed', data: updatedOrder })
             .eq('id', groupOrder.id);
     };

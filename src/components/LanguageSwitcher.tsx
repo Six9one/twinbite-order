@@ -7,11 +7,10 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Globe } from 'lucide-react';
+import { Globe, Check } from 'lucide-react';
 
 const languages: { code: Language; label: string; flag: string }[] = [
     { code: 'fr', label: 'Français', flag: '🇫🇷' },
-    { code: 'ar', label: 'العربية', flag: '🇸🇦' },
     { code: 'en', label: 'English', flag: '🇬🇧' },
 ];
 
@@ -36,11 +35,9 @@ export function LanguageSwitcher() {
                         className={`gap-3 cursor-pointer ${language === lang.code ? 'bg-primary/10' : ''}`}
                     >
                         <span className="text-lg">{lang.flag}</span>
-                        <span className={lang.code === 'ar' ? 'font-arabic' : ''}>
-                            {lang.label}
-                        </span>
+                        <span>{lang.label}</span>
                         {language === lang.code && (
-                            <span className="ml-auto text-primary">✓</span>
+                            <Check className="w-4 h-4 ml-auto text-primary" />
                         )}
                     </DropdownMenuItem>
                 ))}

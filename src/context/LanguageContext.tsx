@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-export type Language = 'fr' | 'ar' | 'en';
+export type Language = 'fr' | 'en';
 
 interface Translations {
     [key: string]: string;
@@ -10,7 +10,6 @@ interface LanguageContextType {
     language: Language;
     setLanguage: (lang: Language) => void;
     t: (key: string, params?: Record<string, string | number>) => string;
-    dir: 'ltr' | 'rtl';
 }
 
 const translations: Record<Language, Translations> = {
@@ -95,6 +94,10 @@ const translations: Record<Language, Translations> = {
         'group.allItems': 'Tous les articles',
         'group.close': 'Fermer la commande',
         'group.submit': 'Valider la commande groupée',
+        'group.active': 'Commande de groupe active',
+        'group.leave': 'Quitter le groupe',
+        'group.validFor': 'Valide encore',
+        'group.minutes': 'minutes',
 
         // Common
         'common.loading': 'Chargement...',
@@ -112,106 +115,6 @@ const translations: Record<Language, Translations> = {
         'pwa.installDesc': 'Installez Twin Pizza pour un accès rapide!',
         'pwa.installBtn': 'Installer',
         'pwa.notNow': 'Plus tard',
-    },
-
-    ar: {
-        // Navigation & General
-        'app.name': 'توين بيتزا',
-        'app.tagline': 'بيتزا ووجبات سريعة',
-        'nav.menu': 'القائمة',
-        'nav.cart': 'السلة',
-        'nav.account': 'الحساب',
-        'nav.loyalty': 'نقاط الولاء',
-
-        // Order Types
-        'order.takeaway': 'للاستلام',
-        'order.delivery': 'توصيل',
-        'order.dineIn': 'في المطعم',
-        'order.selectType': 'كيف تريد الطلب؟',
-
-        // Categories
-        'category.pizzas': 'بيتزا',
-        'category.tacos': 'تاكوس',
-        'category.soufflets': 'سوفليه',
-        'category.makloub': 'مقلوب',
-        'category.mlawi': 'ملاوي',
-        'category.panini': 'بانيني',
-        'category.croques': 'كروك',
-        'category.texmex': 'تكس مكس',
-        'category.frites': 'بطاطا مقلية',
-        'category.boissons': 'مشروبات',
-        'category.milkshakes': 'ميلك شيك',
-        'category.crepes': 'كريب',
-        'category.gaufres': 'وافل',
-        'category.salades': 'سلطات',
-
-        // Cart
-        'cart.empty': 'سلتك فارغة',
-        'cart.total': 'المجموع',
-        'cart.subtotal': 'المجموع الفرعي',
-        'cart.tva': 'الضريبة (10%)',
-        'cart.checkout': 'اطلب',
-        'cart.continue': 'متابعة التسوق',
-        'cart.remove': 'حذف',
-        'cart.add': 'أضف إلى السلة',
-
-        // Checkout
-        'checkout.title': 'إتمام الطلب',
-        'checkout.info': 'معلوماتك',
-        'checkout.payment': 'الدفع',
-        'checkout.confirm': 'التأكيد',
-        'checkout.name': 'الاسم',
-        'checkout.phone': 'الهاتف',
-        'checkout.address': 'عنوان التوصيل',
-        'checkout.notes': 'ملاحظات (اختياري)',
-        'checkout.paymentMethod': 'طريقة الدفع',
-        'checkout.card': 'بطاقة بنكية',
-        'checkout.cash': 'نقدي',
-        'checkout.online': 'ادفع الآن',
-        'checkout.confirmOrder': 'تأكيد الطلب',
-        'checkout.success': 'تم تأكيد الطلب!',
-        'checkout.thankYou': 'شكراً لطلبك!',
-
-        // Loyalty
-        'loyalty.title': 'برنامج الولاء',
-        'loyalty.points': 'نقاط',
-        'loyalty.earn': 'اكسب نقطة واحدة لكل يورو',
-        'loyalty.redeem': 'استبدل نقاطك',
-        'loyalty.history': 'السجل',
-        'loyalty.rewards': 'المكافآت',
-        'loyalty.free_pizza': 'بيتزا مجانية',
-        'loyalty.free_drink': 'مشروب مجاني',
-        'loyalty.discount_5': 'خصم 5€',
-        'loyalty.discount_10': 'خصم 10€',
-
-        // Group Order
-        'group.title': 'طلب جماعي',
-        'group.create': 'إنشاء طلب جماعي',
-        'group.join': 'انضم لطلب',
-        'group.code': 'رمز المجموعة',
-        'group.share': 'شارك الرابط',
-        'group.participants': 'المشاركون',
-        'group.yourItems': 'طلباتك',
-        'group.allItems': 'كل الطلبات',
-        'group.close': 'إغلاق الطلب',
-        'group.submit': 'تأكيد الطلب الجماعي',
-
-        // Common
-        'common.loading': 'جاري التحميل...',
-        'common.error': 'خطأ',
-        'common.success': 'نجاح',
-        'common.cancel': 'إلغاء',
-        'common.save': 'حفظ',
-        'common.close': 'إغلاق',
-        'common.back': 'رجوع',
-        'common.next': 'التالي',
-        'common.search': 'بحث...',
-
-        // PWA
-        'pwa.install': 'تثبيت التطبيق',
-        'pwa.installDesc': 'ثبت توين بيتزا للوصول السريع!',
-        'pwa.installBtn': 'تثبيت',
-        'pwa.notNow': 'لاحقاً',
     },
 
     en: {
@@ -295,6 +198,10 @@ const translations: Record<Language, Translations> = {
         'group.allItems': 'All Items',
         'group.close': 'Close Order',
         'group.submit': 'Submit Group Order',
+        'group.active': 'Group order active',
+        'group.leave': 'Leave group',
+        'group.validFor': 'Valid for',
+        'group.minutes': 'minutes',
 
         // Common
         'common.loading': 'Loading...',
@@ -320,7 +227,8 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export function LanguageProvider({ children }: { children: ReactNode }) {
     const [language, setLanguageState] = useState<Language>(() => {
         if (typeof window !== 'undefined') {
-            return (localStorage.getItem('twinpizza-language') as Language) || 'fr';
+            const saved = localStorage.getItem('twinpizza-language') as Language;
+            if (saved === 'en' || saved === 'fr') return saved;
         }
         return 'fr';
     });
@@ -328,14 +236,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const setLanguage = (lang: Language) => {
         setLanguageState(lang);
         localStorage.setItem('twinpizza-language', lang);
-        // Update document direction for RTL languages
-        document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
         document.documentElement.lang = lang;
     };
 
     useEffect(() => {
-        // Set initial direction
-        document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
         document.documentElement.lang = language;
     }, [language]);
 
@@ -352,10 +256,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         return text;
     };
 
-    const dir = language === 'ar' ? 'rtl' : 'ltr';
-
     return (
-        <LanguageContext.Provider value={{ language, setLanguage, t, dir }}>
+        <LanguageContext.Provider value={{ language, setLanguage, t }}>
             {children}
         </LanguageContext.Provider>
     );
