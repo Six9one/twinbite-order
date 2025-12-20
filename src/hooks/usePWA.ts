@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BeforeInstallPromptEvent extends Event {
     readonly platforms: string[];
@@ -25,14 +26,18 @@ interface UsePWAReturn extends PWAState {
     isPushSubscribed: boolean;
 }
 
-// VAPID public key for push notifications (you'll need to generate this)
-const VAPID_PUBLIC_KEY = 'BAP2VN-pXaKSP3ZaFVzMKHZ8XP6UxU2pVKeSpqyHnfF0OPMQXK4AZPH5XRqXSMzCqE3WKPTF1NUyGBLYfFyVBRM';
+// VAPID public key for push notifications
+const VAPID_PUBLIC_KEY = 'BNXh6DW1hgLf3i4_Lt_vvFAn7L_dtYOWy0zGvTbtP48sa338IA5cuEdVF07hXas60c2OjmCv65aVBROTM4QPyFs';
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
     const rawData = window.atob(base64);
-    return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
 }
 
 export function usePWA(): UsePWAReturn {
@@ -181,8 +186,26 @@ export function usePWA(): UsePWAReturn {
             console.log('[PWA] Push subscribed:', subscription);
             setIsPushSubscribed(true);
 
-            // Send subscription to server
-            // TODO: Save to Supabase for sending notifications
+            // Save subscription to Supabase
+            const subscriptionJson = subscription.toJSON();
+            try {
+                // Using 'as any' because push_subscriptions table is created by migration
+                const { error } = await (supabase.from as any)('push_subscriptions').upsert({
+                    endpoint: subscription.endpoint,
+                    keys: subscriptionJson.keys,
+                    user_agent: navigator.userAgent,
+                }, {
+                    onConflict: 'endpoint'
+                });
+
+                if (error) {
+                    console.error('[PWA] Failed to save subscription:', error);
+                } else {
+                    console.log('[PWA] Subscription saved to database');
+                }
+            } catch (e) {
+                console.error('[PWA] Database error:', e);
+            }
 
             return subscription;
         } catch (err) {
