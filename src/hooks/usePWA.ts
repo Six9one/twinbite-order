@@ -1,0 +1,221 @@
+import { useState, useEffect, useCallback } from 'react';
+
+interface BeforeInstallPromptEvent extends Event {
+    readonly platforms: string[];
+    readonly userChoice: Promise<{
+        outcome: 'accepted' | 'dismissed';
+        platform: string;
+    }>;
+    prompt(): Promise<void>;
+}
+
+interface PWAState {
+    isInstallable: boolean;
+    isInstalled: boolean;
+    isOnline: boolean;
+    isUpdateAvailable: boolean;
+}
+
+interface UsePWAReturn extends PWAState {
+    installApp: () => Promise<boolean>;
+    updateApp: () => void;
+    subscribeToPush: () => Promise<PushSubscription | null>;
+    unsubscribeFromPush: () => Promise<boolean>;
+    isPushSupported: boolean;
+    isPushSubscribed: boolean;
+}
+
+// VAPID public key for push notifications (you'll need to generate this)
+const VAPID_PUBLIC_KEY = 'BAP2VN-pXaKSP3ZaFVzMKHZ8XP6UxU2pVKeSpqyHnfF0OPMQXK4AZPH5XRqXSMzCqE3WKPTF1NUyGBLYfFyVBRM';
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+}
+
+export function usePWA(): UsePWAReturn {
+    const [state, setState] = useState<PWAState>({
+        isInstallable: false,
+        isInstalled: false,
+        isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+        isUpdateAvailable: false
+    });
+
+    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const [isPushSubscribed, setIsPushSubscribed] = useState(false);
+    const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
+
+    const isPushSupported = 'PushManager' in window && 'serviceWorker' in navigator;
+
+    // Register service worker
+    useEffect(() => {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker
+                .register('/sw.js')
+                .then((reg) => {
+                    console.log('[PWA] Service Worker registered');
+                    setRegistration(reg);
+
+                    // Check for updates
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        if (newWorker) {
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    setState(prev => ({ ...prev, isUpdateAvailable: true }));
+                                }
+                            });
+                        }
+                    });
+
+                    // Check push subscription status
+                    if (reg.pushManager) {
+                        reg.pushManager.getSubscription().then((sub) => {
+                            setIsPushSubscribed(!!sub);
+                        });
+                    }
+                })
+                .catch((err) => {
+                    console.error('[PWA] Service Worker registration failed:', err);
+                });
+        }
+    }, []);
+
+    // Listen for install prompt
+    useEffect(() => {
+        const handleBeforeInstall = (e: Event) => {
+            e.preventDefault();
+            setDeferredPrompt(e as BeforeInstallPromptEvent);
+            setState(prev => ({ ...prev, isInstallable: true }));
+        };
+
+        const handleAppInstalled = () => {
+            setDeferredPrompt(null);
+            setState(prev => ({ ...prev, isInstallable: false, isInstalled: true }));
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+        window.addEventListener('appinstalled', handleAppInstalled);
+
+        // Check if already installed (iOS Safari or standalone mode)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+            (window.navigator as any).standalone === true;
+
+        if (isStandalone) {
+            setState(prev => ({ ...prev, isInstalled: true }));
+        }
+
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+            window.removeEventListener('appinstalled', handleAppInstalled);
+        };
+    }, []);
+
+    // Online/offline status
+    useEffect(() => {
+        const handleOnline = () => setState(prev => ({ ...prev, isOnline: true }));
+        const handleOffline = () => setState(prev => ({ ...prev, isOnline: false }));
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
+    const installApp = useCallback(async (): Promise<boolean> => {
+        if (!deferredPrompt) {
+            console.log('[PWA] No install prompt available');
+            return false;
+        }
+
+        try {
+            await deferredPrompt.prompt();
+            const result = await deferredPrompt.userChoice;
+
+            if (result.outcome === 'accepted') {
+                console.log('[PWA] App installed');
+                setDeferredPrompt(null);
+                setState(prev => ({ ...prev, isInstallable: false, isInstalled: true }));
+                return true;
+            }
+
+            return false;
+        } catch (err) {
+            console.error('[PWA] Install failed:', err);
+            return false;
+        }
+    }, [deferredPrompt]);
+
+    const updateApp = useCallback(() => {
+        if (registration?.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            window.location.reload();
+        }
+    }, [registration]);
+
+    const subscribeToPush = useCallback(async (): Promise<PushSubscription | null> => {
+        if (!registration || !isPushSupported) {
+            console.error('[PWA] Push not supported or no registration');
+            return null;
+        }
+
+        try {
+            // Request notification permission
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                console.log('[PWA] Notification permission denied');
+                return null;
+            }
+
+            // Subscribe to push
+            const subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            });
+
+            console.log('[PWA] Push subscribed:', subscription);
+            setIsPushSubscribed(true);
+
+            // Send subscription to server
+            // TODO: Save to Supabase for sending notifications
+
+            return subscription;
+        } catch (err) {
+            console.error('[PWA] Push subscription failed:', err);
+            return null;
+        }
+    }, [registration, isPushSupported]);
+
+    const unsubscribeFromPush = useCallback(async (): Promise<boolean> => {
+        if (!registration) return false;
+
+        try {
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription) {
+                await subscription.unsubscribe();
+                setIsPushSubscribed(false);
+                console.log('[PWA] Push unsubscribed');
+                return true;
+            }
+            return false;
+        } catch (err) {
+            console.error('[PWA] Unsubscribe failed:', err);
+            return false;
+        }
+    }, [registration]);
+
+    return {
+        ...state,
+        installApp,
+        updateApp,
+        subscribeToPush,
+        unsubscribeFromPush,
+        isPushSupported,
+        isPushSubscribed
+    };
+}

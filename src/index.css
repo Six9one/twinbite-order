@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -404,4 +405,99 @@
   50% {
     box-shadow: 0 0 0 15px rgba(245, 158, 11, 0);
   }
+}
+
+/* ========================================
+   RTL & MULTI-LANGUAGE SUPPORT
+   ======================================== */
+
+/* Arabic font */
+.font-arabic {
+  font-family: 'Noto Sans Arabic', 'Comfortaa', sans-serif;
+}
+
+/* RTL layout support */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] .flex {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .flex-row-not-reverse {
+  flex-direction: row !important;
+}
+
+[dir="rtl"] .text-left {
+  text-align: right;
+}
+
+[dir="rtl"] .text-right {
+  text-align: left;
+}
+
+[dir="rtl"] .mr-2 {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+[dir="rtl"] .ml-2 {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+[dir="rtl"] .pl-4 {
+  padding-left: 0;
+  padding-right: 1rem;
+}
+
+[dir="rtl"] .pr-4 {
+  padding-right: 0;
+  padding-left: 1rem;
+}
+
+/* Keep certain flex items in original order */
+[dir="rtl"] .flex-ltr {
+  flex-direction: row !important;
+}
+
+/* ========================================
+   PWA INSTALL PROMPT ANIMATION
+   ======================================== */
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-bottom {
+  animation: slideInFromBottom 0.4s ease-out;
+}
+
+/* ========================================
+   LOYALTY TIER BADGES
+   ======================================== */
+
+.tier-bronze {
+  background: linear-gradient(135deg, #cd7f32, #b87333);
+}
+
+.tier-silver {
+  background: linear-gradient(135deg, #c0c0c0, #a8a8a8);
+}
+
+.tier-gold {
+  background: linear-gradient(135deg, #ffd700, #ffb700);
+}
+
+.tier-platinum {
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
 }

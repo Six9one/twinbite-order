@@ -1,4 +1,4 @@
-import { ShoppingCart, Menu, X, ShoppingBag, Truck, UtensilsCrossed, ChevronDown, Pizza, CalendarClock } from 'lucide-react';
+import { ShoppingCart, Menu, X, ShoppingBag, Truck, UtensilsCrossed, ChevronDown, Pizza, CalendarClock, Users, Star } from 'lucide-react';
 import { useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,9 @@ import { useState } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import logoImage from '@/assets/logo.png';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { GroupOrderButton } from '@/components/GroupOrderComponents';
+import { useLoyalty } from '@/context/LoyaltyContext';
 
 interface HeaderProps {
   onCartClick: () => void;
@@ -117,6 +120,14 @@ export function Header({
       </nav>
 
       <div className="flex items-center gap-2">
+        {/* Language Switcher */}
+        <LanguageSwitcher />
+
+        {/* Group Order Button - Desktop */}
+        <div className="hidden md:block">
+          <GroupOrderButton />
+        </div>
+
         {/* Schedule Order Button - Desktop */}
         <Button
           onClick={onScheduleClick}

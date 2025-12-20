@@ -1,0 +1,32 @@
+{
+    "name": "Twin Pizza",
+    "short_name": "Twin Pizza",
+    "description": "Commandez vos pizzas, soufflets, tacos et plus en ligne",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#f97316",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/favicon.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/favicon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "food",
+        "shopping"
+    ],
+    "screenshots": [],
+    "prefer_related_applications": false,
+    "lang": "fr",
+    "dir": "ltr"
+}
