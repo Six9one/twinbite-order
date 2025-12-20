@@ -34,7 +34,7 @@ export function DeliveryMapSection() {
   const [mapFailed, setMapFailed] = useState(false);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [mapboxToken, setMapboxToken] = useState<string>('');
-  
+
   // Precompute zones with valid coordinates for map display
   const zonesWithCoords = zones.filter((z) => z.latitude && z.longitude);
   const hasValidToken = mapboxToken.length > 20;
@@ -50,7 +50,7 @@ export function DeliveryMapSection() {
           setMapboxToken(envToken);
           return;
         }
-        
+
         // Fallback: fetch from edge function
         const { data, error } = await supabase.functions.invoke('get-mapbox-token');
         if (data?.token && data.token.length > 20) {
@@ -78,13 +78,13 @@ export function DeliveryMapSection() {
           .from('delivery_zones')
           .select('*')
           .eq('is_active', true);
-        
+
         if (error) {
           console.error('Error fetching zones:', error);
           setZonesLoaded(true);
           return;
         }
-        
+
         if (data) {
           setZones(data);
         }
@@ -100,7 +100,7 @@ export function DeliveryMapSection() {
   useEffect(() => {
     async function initMap() {
       if (!mapContainer.current || !zonesLoaded) return;
-      
+
       // Check for valid token
       if (!hasValidToken) {
         console.log('No Mapbox token, showing fallback list');
@@ -111,7 +111,7 @@ export function DeliveryMapSection() {
 
       try {
         mapboxgl.accessToken = mapboxToken;
-        
+
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: 'mapbox://styles/mapbox/light-v11',
@@ -157,7 +157,7 @@ export function DeliveryMapSection() {
 
           // Filter zones with valid coordinates for map display
           const validZones = zones.filter(z => z.latitude && z.longitude);
-          
+
           // Add circle zones from database
           validZones.forEach((zone, index) => {
             if (!map.current || !zone.latitude || !zone.longitude) return;
@@ -243,11 +243,11 @@ export function DeliveryMapSection() {
         setLoading(false);
       }
     }
-    
+
     if (zonesLoaded && hasValidToken) {
       initMap();
     }
-    
+
     return () => {
       map.current?.remove();
     };
@@ -285,9 +285,9 @@ export function DeliveryMapSection() {
       {zones.map((zone) => (
         <Card key={zone.id} className="p-4 hover:shadow-lg transition-shadow">
           <div className="flex items-start gap-3">
-            <div 
-              className="w-4 h-4 rounded-full mt-1 flex-shrink-0" 
-              style={{ backgroundColor: zone.color || '#f59e0b' }} 
+            <div
+              className="w-4 h-4 rounded-full mt-1 flex-shrink-0"
+              style={{ backgroundColor: zone.color || '#f59e0b' }}
             />
             <div className="flex-1">
               <h3 className="font-semibold text-lg">{zone.name}</h3>
@@ -315,13 +315,13 @@ export function DeliveryMapSection() {
   );
 
   return (
-    <section className="py-16 bg-gradient-to-b from-muted/30 to-background">
+    <section className="py-10 sm:py-16 bg-gradient-to-b from-muted/30 to-background">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
+        <div className="text-center mb-6 sm:mb-10">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold mb-2 sm:mb-4">
             <span className="text-amber-500">Zones</span> de Livraison
           </h2>
-          <p className="max-w-2xl mx-auto text-secondary-foreground">
+          <p className="max-w-2xl mx-auto text-secondary-foreground text-sm sm:text-base px-4 sm:px-0">
             Nous livrons dans Grand-Couronne et les communes environnantes.
           </p>
         </div>
@@ -334,8 +334,8 @@ export function DeliveryMapSection() {
         ) : (
           /* Map Container */
           <div className="relative max-w-5xl mx-auto">
-            <div ref={mapContainer} className="w-full h-[400px] md:h-[500px] rounded-2xl shadow-xl overflow-hidden border border-border" />
-            
+            <div ref={mapContainer} className="w-full h-[300px] sm:h-[400px] md:h-[500px] rounded-xl sm:rounded-2xl shadow-xl overflow-hidden border border-border" />
+
             {/* Loading State */}
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center bg-muted/50 rounded-2xl">
@@ -345,7 +345,7 @@ export function DeliveryMapSection() {
                 </div>
               </div>
             )}
-            
+
             {/* Hovered Zone Indicator */}
             {hoveredZone && !loading && (
               <div className="absolute top-4 left-4 bg-background/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border border-amber-200">
@@ -363,9 +363,9 @@ export function DeliveryMapSection() {
                 <div className="space-y-1">
                   {zonesWithCoords.map((zone) => (
                     <div key={zone.id} className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full flex-shrink-0" 
-                        style={{ backgroundColor: zone.color || '#f59e0b' }} 
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: zone.color || '#f59e0b' }}
                       />
                       <span className="text-xs text-muted-foreground truncate">{zone.name}</span>
                     </div>

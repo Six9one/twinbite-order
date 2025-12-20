@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
 import { HeroOrderSelector } from '@/components/HeroOrderSelector';
@@ -14,14 +15,37 @@ import { AnnouncementBanner } from '@/components/AnnouncementBanner';
 import { ReviewSection } from '@/components/ReviewSection';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ShoppingBag, Phone } from 'lucide-react';
+import { ShoppingBag, Phone, Settings } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import heroPizza from '@/assets/hero-pizza.jpg';
 
 function MainApp() {
   const { orderType, setOrderType } = useOrder();
   const [view, setView] = useState<'home' | 'menu' | 'checkout'>('home');
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const orderSelectorRef = useRef<HTMLDivElement>(null);
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .eq('role', 'admin')
+            .maybeSingle();
+          setIsAdmin(!!roleData);
+        }
+      } catch (e) {
+        // Not admin
+      }
+    };
+    checkAdmin();
+  }, []);
 
   const handleOrderTypeSelect = () => {
     setView('menu');
@@ -66,6 +90,21 @@ function MainApp() {
   // Home view
   return (
     <div className="min-h-screen bg-background">
+      {/* Floating Admin Button */}
+      {isAdmin && (
+        <Link
+          to="/admin/dashboard"
+          className="fixed bottom-4 left-4 z-50"
+        >
+          <Button
+            size="sm"
+            className="gap-2 bg-purple-600 hover:bg-purple-700 text-white shadow-lg rounded-full px-4"
+          >
+            <Settings className="w-4 h-4" />
+            Admin
+          </Button>
+        </Link>
+      )}
       <AnnouncementBanner />
       <Header
         onCartClick={() => setIsCartOpen(true)}
@@ -77,7 +116,7 @@ function MainApp() {
       <PromoBanner />
 
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[80vh] sm:min-h-[90vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroPizza})` }} />
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-background" />
 
@@ -85,16 +124,16 @@ function MainApp() {
           <div className="text-center mb-10 animate-fade-in">
             <div className="mb-6">
               <a href="/" className="hover:opacity-80 transition-opacity">
-                <h1 className="text-6xl md:text-8xl font-medium tracking-wide whitespace-nowrap">
+                <h1 className="text-4xl sm:text-6xl md:text-8xl font-medium tracking-wide whitespace-nowrap">
                   <span className="text-amber-400">Twin</span>
-                  <span className="text-white ml-3">Pizza</span>
+                  <span className="text-white ml-2 sm:ml-3">Pizza</span>
                 </h1>
               </a>
             </div>
-            <p className="text-lg mb-2 font-sans font-extrabold md:text-xl text-secondary">
+            <p className="text-base sm:text-lg mb-1 sm:mb-2 font-sans font-extrabold md:text-xl text-secondary">
               Grand-Couronne
             </p>
-            <p className="text-base md:text-lg max-w-lg mx-auto text-orange-400">
+            <p className="text-sm sm:text-base md:text-lg max-w-lg mx-auto text-orange-400 px-4 sm:px-0">
               Pizzas • Soufflés • Makloub • Mlawi • Tacos • Sandwiches et plus encore...
             </p>
           </div>
@@ -145,7 +184,7 @@ function MainApp() {
       {/* Features Section */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-3 gap-8 text-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 text-center">
             <div className="group p-6 rounded-2xl bg-card hover:bg-primary/5 transition-all duration-300 hover:-translate-y-2">
               <span className="text-5xl block mb-4 group-hover:scale-110 transition-transform">🍕</span>
               <h3 className="text-xl font-display font-semibold mb-2">Pizzas Artisanales</h3>
@@ -175,7 +214,7 @@ function MainApp() {
           <h2 className="text-3xl md:text-4xl font-display font-bold mb-8">
             <span className="text-amber-500">Contact</span> & Horaires
           </h2>
-          <div className="grid md:grid-cols-3 gap-8 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-3xl mx-auto">
             <Card className="p-6">
               <span className="text-3xl mb-3 block">📍</span>
               <h3 className="font-semibold mb-2 text-lg">Adresse</h3>

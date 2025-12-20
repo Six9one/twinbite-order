@@ -78,11 +78,11 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   // Calculate totals with promotions - recalculate on every render to ensure accuracy
   const pizzaItems = cart.filter(item => item.item.category === 'pizzas');
   const otherItems = cart.filter(item => item.item.category !== 'pizzas');
-  
+
   const pizzaPromo = applyPizzaPromotions(pizzaItems, orderType);
-  const otherTotal = otherItems.reduce((sum, item) => 
+  const otherTotal = otherItems.reduce((sum, item) =>
     sum + (item.calculatedPrice || item.item.price) * item.quantity, 0);
-  
+
   const subtotal = pizzaPromo.discountedTotal + otherTotal;
   const { ht, tva, ttc } = calculateTVA(subtotal);
 
@@ -104,29 +104,29 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const validateInfo = () => {
     // Validate with zod schema
     const result = customerInfoSchema.safeParse(customerInfo);
-    
+
     if (!result.success) {
       const firstError = result.error.errors[0];
       toast({ title: 'Erreur', description: firstError.message, variant: 'destructive' });
       return false;
     }
-    
+
     // Additional check for delivery address
     if (orderType === 'livraison' && !customerInfo.address?.trim()) {
       toast({ title: 'Erreur', description: 'Veuillez entrer votre adresse de livraison', variant: 'destructive' });
       return false;
     }
-    
+
     return true;
   };
 
   const handleStripePayment = async () => {
     // Validate cart before proceeding
     if (!isCartValid) {
-      toast({ 
-        title: 'Erreur', 
-        description: 'Votre panier est vide ou invalide. Veuillez ajouter des articles.', 
-        variant: 'destructive' 
+      toast({
+        title: 'Erreur',
+        description: 'Votre panier est vide ou invalide. Veuillez ajouter des articles.',
+        variant: 'destructive'
       });
       return;
     }
@@ -135,7 +135,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       toast({ title: 'Erreur', description: 'Type de commande non sélectionné', variant: 'destructive' });
       return;
     }
-    
+
     // Prevent duplicate submissions
     if (orderSubmitted) {
       toast({ title: 'Commande en cours', description: 'Veuillez patienter...', variant: 'default' });
@@ -144,17 +144,17 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
     setIsProcessing(true);
     setOrderSubmitted(true);
-    
-    // Generate order number only once
+
+    // Generate order number only once (from server)
     if (!orderNumberRef.current) {
-      orderNumberRef.current = generateOrderNumber();
+      orderNumberRef.current = await generateOrderNumber();
     }
     const orderNumber = orderNumberRef.current;
-    
+
     try {
       // Recalculate totals server-side friendly format
       const finalTotal = Math.max(ttc, 0.01); // Ensure minimum price for Stripe
-      
+
       // Create Stripe checkout session with ALL order data
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
@@ -187,10 +187,10 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       console.error('Stripe checkout error:', error);
       setOrderSubmitted(false);
       orderNumberRef.current = null;
-      toast({ 
-        title: 'Erreur de paiement', 
-        description: 'Impossible de créer la session de paiement. Veuillez réessayer.', 
-        variant: 'destructive' 
+      toast({
+        title: 'Erreur de paiement',
+        description: 'Impossible de créer la session de paiement. Veuillez réessayer.',
+        variant: 'destructive'
       });
     } finally {
       setIsProcessing(false);
@@ -200,10 +200,10 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const handleConfirmOrder = async () => {
     // Validate cart before proceeding
     if (!isCartValid) {
-      toast({ 
-        title: 'Erreur', 
-        description: 'Votre panier est vide ou invalide. Veuillez ajouter des articles.', 
-        variant: 'destructive' 
+      toast({
+        title: 'Erreur',
+        description: 'Votre panier est vide ou invalide. Veuillez ajouter des articles.',
+        variant: 'destructive'
       });
       return;
     }
@@ -235,15 +235,15 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       await handleStripePayment();
       return;
     }
-    
+
     setIsProcessing(true);
     setOrderSubmitted(true);
-    
-    // Generate order number only once
+
+    // Generate order number only once (from server)
     if (!orderNumberRef.current) {
-      orderNumberRef.current = generateOrderNumber();
+      orderNumberRef.current = await generateOrderNumber();
     }
-    
+
     try {
       // Double check totals are valid
       const finalHt = Math.max(ht, 0);
@@ -312,14 +312,14 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         console.error('[CHECKOUT] Telegram notification failed:', telegramError);
         // Don't fail the order if Telegram fails
       }
-      
+
       clearCart();
       setStep('success');
     } catch (error) {
       console.error('[CHECKOUT] Failed to create order:', error);
       setOrderSubmitted(false);
       orderNumberRef.current = null;
-      
+
       const anyError = error as any;
       let errorMessage = 'Erreur inconnue';
       if (anyError?.message) {
@@ -330,10 +330,10 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         errorMessage = `Code ${anyError.code}`;
       }
 
-      toast({ 
-        title: 'Impossible de créer la commande', 
-        description: `${errorMessage}. Veuillez réessayer ou appeler le restaurant.`, 
-        variant: 'destructive' 
+      toast({
+        title: 'Impossible de créer la commande',
+        description: `${errorMessage}. Veuillez réessayer ou appeler le restaurant.`,
+        variant: 'destructive'
       });
     } finally {
       setIsProcessing(false);
@@ -376,9 +376,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => step === 'info' ? onBack() : setStep(step === 'confirm' ? 'payment' : 'info')}
               disabled={isProcessing}
             >
@@ -391,15 +391,14 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               </p>
             </div>
           </div>
-          
+
           {/* Progress */}
           <div className="flex gap-2 mt-4">
             {['info', 'payment', 'confirm'].map((s, i) => (
               <div
                 key={s}
-                className={`h-1 flex-1 rounded-full transition-colors ${
-                  ['info', 'payment', 'schedule-confirm', 'confirm'].indexOf(step) >= i ? 'bg-primary' : 'bg-muted'
-                }`}
+                className={`h-1 flex-1 rounded-full transition-colors ${['info', 'payment', 'schedule-confirm', 'confirm'].indexOf(step) >= i ? 'bg-primary' : 'bg-muted'
+                  }`}
               />
             ))}
           </div>
@@ -531,7 +530,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full gap-2 border-purple-300 text-purple-700">
                       <CalendarClock className="w-4 h-4" />
-                      {tempScheduleDate 
+                      {tempScheduleDate
                         ? format(tempScheduleDate, "EEE d MMM", { locale: fr }) + " à " + tempScheduleTime
                         : "Choisir date et heure"}
                     </Button>
@@ -554,13 +553,13 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                         <SelectValue placeholder="Heure" />
                       </SelectTrigger>
                       <SelectContent>
-                        {['11:00','11:30','12:00','12:30','13:00','13:30','14:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00','22:30','23:00'].map(t => (
+                        {['11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00'].map(t => (
                           <SelectItem key={t} value={t}>{t}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     {tempScheduleDate && (
-                      <Button 
+                      <Button
                         className="w-full mt-3"
                         onClick={() => {
                           const [h, m] = tempScheduleTime.split(':').map(Number);
@@ -641,7 +640,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   </div>
                 ))}
               </div>
-              
+
               {pizzaPromo.promoDescription && (
                 <>
                   <Separator className="my-3" />
@@ -651,7 +650,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   </div>
                 </>
               )}
-              
+
               <Separator className="my-3" />
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between text-muted-foreground">
@@ -676,8 +675,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
         <div className="container mx-auto">
           {step === 'info' && (
-            <Button 
-              className="w-full h-14 text-lg" 
+            <Button
+              className="w-full h-14 text-lg"
               onClick={() => validateInfo() && setStep('payment')}
               disabled={!isCartValid}
             >
@@ -685,8 +684,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             </Button>
           )}
           {step === 'payment' && (
-            <Button 
-              className="w-full h-14 text-lg" 
+            <Button
+              className="w-full h-14 text-lg"
               onClick={() => {
                 // If not already scheduled, go to schedule-confirm step first
                 if (!scheduledInfo.isScheduled && !scheduleAsked) {
@@ -702,9 +701,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           )}
           {step === 'schedule-confirm' && (
             <div className="flex gap-3">
-              <Button 
+              <Button
                 variant="outline"
-                className="flex-1 h-14 text-lg" 
+                className="flex-1 h-14 text-lg"
                 onClick={() => {
                   setScheduleAsked(true);
                   setStep('confirm');
@@ -712,8 +711,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               >
                 Commander maintenant
               </Button>
-              <Button 
-                className="flex-1 h-14 text-lg bg-purple-600 hover:bg-purple-700" 
+              <Button
+                className="flex-1 h-14 text-lg bg-purple-600 hover:bg-purple-700"
                 onClick={() => {
                   // User wants to schedule - they'll pick date in the step view
                   setScheduleAsked(true);
@@ -724,8 +723,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             </div>
           )}
           {step === 'confirm' && (
-            <Button 
-              className="w-full h-14 text-lg" 
+            <Button
+              className="w-full h-14 text-lg"
               onClick={handleConfirmOrder}
               disabled={isProcessing || orderSubmitted || !isCartValid}
             >
@@ -735,7 +734,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   {paymentMethod === 'en_ligne' ? 'Redirection...' : 'Envoi en cours...'}
                 </>
               ) : (
-                paymentMethod === 'en_ligne' 
+                paymentMethod === 'en_ligne'
                   ? `Payer maintenant - ${ttc.toFixed(2)}€`
                   : `Confirmer - ${ttc.toFixed(2)}€`
               )}

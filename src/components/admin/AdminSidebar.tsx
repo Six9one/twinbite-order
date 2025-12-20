@@ -28,7 +28,8 @@ import {
   Flame,
   Globe,
   CreditCard,
-  Power
+  Power,
+  Euro
 } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -48,6 +49,7 @@ import { FileText } from 'lucide-react';
 const navItems: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, value: 'dashboard' },
   { label: 'Commandes', icon: Package, value: 'orders' },
+  { label: '💰 Tous les Prix', icon: Euro, value: 'prices' },
   { label: 'TV Dashboard', icon: Tv, href: '/tv' },
   {
     label: 'Imprimante',

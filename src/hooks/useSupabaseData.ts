@@ -258,27 +258,16 @@ export function useUpdateOrderStatus() {
   });
 }
 
-// Generate order number with customizable prefix - simple sequential format
-export function generateOrderNumber(): string {
-  // Get or initialize order counter from localStorage
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const storedDate = typeof window !== 'undefined' ? localStorage.getItem('orderCounterDate') : null;
-  let counter = 1;
+// Generate order number using server-side database sequence (prevents duplicates)
+export async function generateOrderNumber(): Promise<string> {
+  const { data, error } = await supabase.rpc('get_next_order_number');
 
-  if (typeof window !== 'undefined') {
-    if (storedDate === today) {
-      // Same day, increment counter
-      counter = parseInt(localStorage.getItem('orderCounter') || '1', 10) + 1;
-    } else {
-      // New day, reset counter
-      counter = 1;
-      localStorage.setItem('orderCounterDate', today);
-    }
-    localStorage.setItem('orderCounter', counter.toString());
+  if (error) {
+    console.error('Failed to generate order number:', error);
+    // Fallback: generate a unique number based on timestamp if DB call fails
+    const timestamp = Date.now().toString().slice(-6);
+    return timestamp;
   }
 
-  // Format as 3-digit number: 001, 002, etc.
-  const orderNum = counter.toString().padStart(3, '0');
-
-  return orderNum;
+  return data as string;
 }

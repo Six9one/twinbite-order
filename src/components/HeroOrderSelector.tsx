@@ -65,7 +65,7 @@ export function HeroOrderSelector({
     setOrderType,
     setScheduledInfo
   } = useOrder();
-  
+
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [selectedOrderType, setSelectedOrderType] = useState<OrderType>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -83,10 +83,10 @@ export function HeroOrderSelector({
 
   const handleConfirmSchedule = () => {
     if (!selectedOrderType || !selectedDate || !selectedTime) return;
-    
+
     const [hours, minutes] = selectedTime.split(':').map(Number);
     const scheduledDateTime = setMinutes(setHours(selectedDate, hours), minutes);
-    
+
     setOrderType(selectedOrderType);
     setScheduledInfo({ isScheduled: true, scheduledFor: scheduledDateTime });
     setShowScheduleDialog(false);
@@ -106,25 +106,27 @@ export function HeroOrderSelector({
       <p className="text-center text-white/80 mb-6 text-lg">
         Comment souhaitez-vous commander ?
       </p>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         {orderOptions.map(option => {
           const Icon = option.icon;
           return (
-            <Card 
-              key={option.type} 
-              className="p-6 cursor-pointer transition-all duration-300 bg-background/90 hover:bg-primary/10 hover:scale-105 hover:ring-2 hover:ring-primary active:scale-100" 
+            <Card
+              key={option.type}
+              className="p-4 sm:p-6 cursor-pointer transition-all duration-300 bg-background/90 hover:bg-primary/10 hover:scale-105 hover:ring-2 hover:ring-primary active:scale-100 touch-target"
               onClick={() => handleSelect(option.type)}
             >
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 transition-colors bg-primary">
-                  <Icon className="w-8 h-8" />
+              <div className="flex sm:flex-col items-center sm:text-center gap-4 sm:gap-0">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 sm:mx-auto rounded-full flex items-center justify-center sm:mb-4 transition-colors bg-primary flex-shrink-0">
+                  <Icon className="w-6 h-6 sm:w-8 sm:h-8" />
                 </div>
-                <h3 className="font-display font-bold text-xl mb-1 truncate">{option.label}</h3>
-                <p className="text-sm text-muted-foreground mb-3 truncate">{option.description}</p>
-                <span className="inline-block text-xs font-medium px-3 py-1 rounded-full bg-primary/10 text-primary whitespace-nowrap">
-                  🍕 {option.promo}
-                </span>
+                <div className="flex-1 sm:flex-none">
+                  <h3 className="font-display font-bold text-lg sm:text-xl mb-0.5 sm:mb-1">{option.label}</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-3">{option.description}</p>
+                  <span className="inline-block text-xs font-medium px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-primary/10 text-primary whitespace-nowrap">
+                    🍕 {option.promo}
+                  </span>
+                </div>
               </div>
             </Card>
           );
@@ -145,7 +147,7 @@ export function HeroOrderSelector({
 
       {/* Schedule Dialog */}
       <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               <CalendarClock className="w-6 h-6 text-purple-500" />
@@ -168,8 +170,8 @@ export function HeroOrderSelector({
                       key={option.type}
                       className={cn(
                         "p-3 cursor-pointer transition-all text-center",
-                        selectedOrderType === option.type 
-                          ? "ring-2 ring-purple-500 bg-purple-50" 
+                        selectedOrderType === option.type
+                          ? "ring-2 ring-purple-500 bg-purple-50"
                           : "hover:bg-muted"
                       )}
                       onClick={() => setSelectedOrderType(option.type)}

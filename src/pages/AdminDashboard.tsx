@@ -25,6 +25,7 @@ import { ReviewsManager } from '@/components/admin/ReviewsManager';
 import { SiteContentManager } from '@/components/admin/SiteContentManager';
 import { StoreStatusManager } from '@/components/admin/StoreStatusManager';
 import { CategoryImagesManager } from '@/components/admin/CategoryImagesManager';
+import { PriceManager } from '@/components/admin/PriceManager';
 import {
   LogOut, Home, Search, RefreshCw, Download, Printer,
   Clock, CheckCircle, XCircle, ChefHat, Package,
@@ -34,7 +35,7 @@ import {
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'prices';
 
 
 
@@ -580,6 +581,11 @@ export default function AdminDashboard() {
                 {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
               </Button>
 
+              <Link to="/" target="_blank">
+                <Button variant="outline" size="sm" className="gap-2 bg-emerald-500 text-white hover:bg-emerald-600">
+                  🌐 Voir le Site
+                </Button>
+              </Link>
               <Link to="/tv" target="_blank">
                 <Button variant="outline" size="sm" className="gap-2 bg-amber-500 text-black hover:bg-amber-600">
                   <Tv className="w-4 h-4" />
@@ -752,6 +758,9 @@ export default function AdminDashboard() {
 
           {/* Category Images */}
           {activeTab === 'category-images' && <CategoryImagesManager />}
+
+          {/* Price Manager */}
+          {activeTab === 'prices' && <PriceManager />}
 
           {/* Settings */}
           {activeTab === 'settings' && <SettingsManager />}

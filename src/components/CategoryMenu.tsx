@@ -204,8 +204,29 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
     }
   };
 
+  // Floating cart button component - always visible
+  const FloatingCartButton = () => (
+    <Button
+      onClick={onOpenCart}
+      className="fixed top-4 right-4 z-50 btn-primary shadow-xl rounded-full h-12 px-4 flex items-center gap-2"
+    >
+      <ShoppingCart className="w-5 h-5" />
+      <span className="font-semibold">{getTotal().toFixed(2)}€</span>
+      {itemCount > 0 && (
+        <span className="absolute -top-2 -right-2 bg-accent text-accent-foreground w-6 h-6 rounded-full text-xs flex items-center justify-center font-bold">
+          {itemCount}
+        </span>
+      )}
+    </Button>
+  );
+
   if (selectedCategory) {
-    return renderWizard();
+    return (
+      <>
+        <FloatingCartButton />
+        {renderWizard()}
+      </>
+    );
   }
 
   return (
