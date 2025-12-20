@@ -18,10 +18,14 @@ import {
     UserPlus,
     Crown,
     ShoppingCart,
-    LogOut,
     Link2,
     Loader2,
-    X
+    X,
+    Clock,
+    MessageCircle,
+    Send,
+    QrCode,
+    ExternalLink
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -174,13 +178,17 @@ export function GroupOrderButton() {
 function GroupOrderTabs({ onClose }: { onClose: () => void }) {
     const { t } = useLanguage();
     const { orderType } = useOrder();
-    const { createGroupOrder, joinGroupOrder } = useGroupOrder();
+    const { createGroupOrder, joinGroupOrder, groupOrder, getShareableLink } = useGroupOrder();
 
     const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
     const [hostName, setHostName] = useState('');
     const [joinCode, setJoinCode] = useState('');
     const [participantName, setParticipantName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [createdCode, setCreatedCode] = useState('');
+    const [codeCopied, setCodeCopied] = useState(false);
+    const [linkCopied, setLinkCopied] = useState(false);
 
     // Check URL for group code
     useEffect(() => {
@@ -203,11 +211,8 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
         setIsLoading(true);
         try {
             const code = await createGroupOrder(hostName.trim(), orderType);
-            toast({
-                title: '🎉 Commande créée!',
-                description: `Partagez le code: ${code}`,
-            });
-            onClose();
+            setCreatedCode(code);
+            setShowSuccess(true);
         } catch (e) {
             toast({ title: 'Erreur', description: 'Impossible de créer la commande', variant: 'destructive' });
         }
@@ -238,6 +243,199 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
         setIsLoading(false);
     };
 
+    const handleCopyCode = async () => {
+        await navigator.clipboard.writeText(createdCode);
+        setCodeCopied(true);
+        toast({ title: '✅ Code copié!', description: createdCode });
+        setTimeout(() => setCodeCopied(false), 2000);
+    };
+
+    const handleCopyLink = async () => {
+        const link = getShareableLink();
+        await navigator.clipboard.writeText(link);
+        setLinkCopied(true);
+        toast({ title: '✅ Lien copié!' });
+        setTimeout(() => setLinkCopied(false), 2000);
+    };
+
+    const handleShareWhatsApp = () => {
+        const link = getShareableLink();
+        const message = encodeURIComponent(
+            `🍕 Rejoignez ma commande Twin Pizza!\n\n` +
+            `📌 Code: ${createdCode}\n` +
+            `🔗 Lien: ${link}\n\n` +
+            `⏰ Valide pendant 3 heures`
+        );
+        window.open(`https://wa.me/?text=${message}`, '_blank');
+    };
+
+    const handleShareSMS = () => {
+        const link = getShareableLink();
+        const message = encodeURIComponent(
+            `Rejoignez ma commande Twin Pizza! Code: ${createdCode} - Lien: ${link}`
+        );
+        window.open(`sms:?body=${message}`, '_blank');
+    };
+
+    const handleNativeShare = async () => {
+        const link = getShareableLink();
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Commande Groupe Twin Pizza',
+                    text: `Rejoignez ma commande! Code: ${createdCode}`,
+                    url: link
+                });
+            } catch (e) {
+                // User cancelled
+            }
+        }
+    };
+
+    // Success screen after creation
+    if (showSuccess) {
+        return (
+            <div className="space-y-6 py-4">
+                {/* Success Header */}
+                <div className="text-center">
+                    <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
+                        <Check className="w-8 h-8 text-green-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-green-600 mb-2">
+                        Commande créée! 🎉
+                    </h3>
+                    <p className="text-muted-foreground">
+                        Partagez le code avec vos amis pour qu'ils rejoignent
+                    </p>
+                </div>
+
+                {/* Big Code Display */}
+                <Card className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-2 border-primary/20">
+                    <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-2">CODE DE GROUPE</p>
+                        <div className="text-4xl font-mono font-bold tracking-[0.5em] text-primary mb-4">
+                            {createdCode}
+                        </div>
+                        <Button
+                            variant="outline"
+                            onClick={handleCopyCode}
+                            className="gap-2"
+                        >
+                            {codeCopied ? (
+                                <>
+                                    <Check className="w-4 h-4 text-green-600" />
+                                    Copié!
+                                </>
+                            ) : (
+                                <>
+                                    <Copy className="w-4 h-4" />
+                                    Copier le code
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </Card>
+
+                {/* Expiration Warning */}
+                <Card className="p-3 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center gap-3">
+                        <Clock className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                            <strong>Valide 3 heures</strong> — Vos amis peuvent rejoindre et ajouter leurs articles jusqu'à l'expiration
+                        </p>
+                    </div>
+                </Card>
+
+                {/* Share Options */}
+                <div className="space-y-3">
+                    <p className="text-sm font-medium text-muted-foreground">Partager via:</p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        {/* WhatsApp */}
+                        <Button
+                            onClick={handleShareWhatsApp}
+                            className="h-14 bg-[#25D366] hover:bg-[#20BD5A] text-white gap-2"
+                        >
+                            <MessageCircle className="w-5 h-5" />
+                            WhatsApp
+                        </Button>
+
+                        {/* SMS */}
+                        <Button
+                            onClick={handleShareSMS}
+                            variant="outline"
+                            className="h-14 gap-2"
+                        >
+                            <Send className="w-5 h-5" />
+                            SMS
+                        </Button>
+                    </div>
+
+                    {/* Copy Link */}
+                    <Button
+                        onClick={handleCopyLink}
+                        variant="outline"
+                        className="w-full h-12 gap-2"
+                    >
+                        {linkCopied ? (
+                            <>
+                                <Check className="w-4 h-4 text-green-600" />
+                                Lien copié!
+                            </>
+                        ) : (
+                            <>
+                                <Link2 className="w-4 h-4" />
+                                Copier le lien
+                            </>
+                        )}
+                    </Button>
+
+                    {/* Native Share (Mobile) */}
+                    {typeof navigator !== 'undefined' && 'share' in navigator && (
+                        <Button
+                            onClick={handleNativeShare}
+                            variant="secondary"
+                            className="w-full h-12 gap-2"
+                        >
+                            <ExternalLink className="w-4 h-4" />
+                            Plus d'options...
+                        </Button>
+                    )}
+                </div>
+
+                {/* How it works */}
+                <Card className="p-4 bg-muted/50">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <Users className="w-4 h-4" />
+                        Comment ça marche?
+                    </h4>
+                    <ol className="text-sm space-y-2 text-muted-foreground">
+                        <li className="flex gap-2">
+                            <span className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+                            <span>Partagez le code avec vos amis</span>
+                        </li>
+                        <li className="flex gap-2">
+                            <span className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+                            <span>Chacun ajoute ses articles au panier</span>
+                        </li>
+                        <li className="flex gap-2">
+                            <span className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+                            <span>Vous (l'hôte) payez pour tout le monde</span>
+                        </li>
+                    </ol>
+                </Card>
+
+                {/* Continue Button */}
+                <Button
+                    onClick={onClose}
+                    className="w-full h-14 text-lg"
+                >
+                    Continuer vers le menu
+                </Button>
+            </div>
+        );
+    }
+
     return (
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'create' | 'join')}>
             <TabsList className="grid w-full grid-cols-2">
@@ -252,6 +450,21 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
             </TabsList>
 
             <TabsContent value="create" className="space-y-4 pt-4">
+                {/* Explanation */}
+                <Card className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30">
+                    <div className="flex gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                            <Users className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                            <h4 className="font-semibold mb-1">Commande de Groupe</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Créez un groupe et partagez le code. Vos amis ajoutent leurs articles, vous payez en une fois!
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+
                 <div className="space-y-2">
                     <Label htmlFor="host-name">Votre nom</Label>
                     <Input
@@ -262,15 +475,17 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
                     />
                 </div>
 
-                <Card className="p-3 bg-muted">
-                    <p className="text-sm text-muted-foreground">
-                        💡 En tant qu'hôte, vous paierez la commande complète.
-                        Partagez le code avec vos amis pour qu'ils ajoutent leurs articles.
-                    </p>
+                <Card className="p-3 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+                    <div className="flex items-start gap-2">
+                        <Clock className="w-4 h-4 text-amber-600 mt-0.5" />
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                            Le code sera valide <strong>3 heures</strong>. L'hôte paie pour tout le monde.
+                        </p>
+                    </div>
                 </Card>
 
                 <Button
-                    className="w-full"
+                    className="w-full h-12"
                     onClick={handleCreate}
                     disabled={isLoading}
                 >
@@ -279,7 +494,7 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
                     ) : (
                         <UserPlus className="w-4 h-4 mr-2" />
                     )}
-                    {t('group.create')}
+                    Créer la commande de groupe
                 </Button>
             </TabsContent>
 
@@ -292,7 +507,7 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
                         value={joinCode}
                         onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                         maxLength={6}
-                        className="text-center text-2xl tracking-widest font-mono"
+                        className="text-center text-2xl tracking-widest font-mono h-14"
                     />
                 </div>
 
@@ -306,8 +521,14 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
                     />
                 </div>
 
+                <Card className="p-3 bg-muted">
+                    <p className="text-sm text-muted-foreground">
+                        💡 Demandez le code à la personne qui a créé la commande de groupe.
+                    </p>
+                </Card>
+
                 <Button
-                    className="w-full"
+                    className="w-full h-12"
                     onClick={handleJoin}
                     disabled={isLoading}
                 >
@@ -316,7 +537,7 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
                     ) : (
                         <Link2 className="w-4 h-4 mr-2" />
                     )}
-                    {t('group.join')}
+                    Rejoindre la commande
                 </Button>
             </TabsContent>
         </Tabs>
