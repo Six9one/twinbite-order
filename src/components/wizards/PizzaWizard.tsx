@@ -33,24 +33,24 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
   // Fetch pizzas from database
   const { data: dbPizzasTomate, isLoading: loadingTomate } = usePizzasByBase('tomate');
   const { data: dbPizzasCreme, isLoading: loadingCreme } = usePizzasByBase('creme');
-  
+
   // Use database pizzas if available, fallback to static data
   const displayPizzasTomate = dbPizzasTomate && dbPizzasTomate.length > 0 ? dbPizzasTomate : pizzasTomate;
   const displayPizzasCreme = dbPizzasCreme && dbPizzasCreme.length > 0 ? dbPizzasCreme : pizzasCreme;
 
   const showMenuMidi = isMenuMidiTime();
-  const promoText = orderType === 'livraison' 
-    ? '2 achetées = 1 offerte' 
+  const promoText = orderType === 'livraison'
+    ? '2 achetées = 1 offerte'
     : orderType ? '1 achetée = 1 offerte' : null;
 
   // Update countdown every second
   useEffect(() => {
     if (!showMenuMidi) return;
-    
+
     const updateCountdown = () => {
       setCountdown(getMenuMidiRemainingTime());
     };
-    
+
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
@@ -59,21 +59,21 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
   const handleSelectPizza = (pizza: MenuItem | Product) => {
     // Handle both static MenuItem and database Product
     const isProduct = 'base_price' in pizza;
-    const menuItem: MenuItem = isProduct 
+    const menuItem: MenuItem = isProduct
       ? {
-          id: pizza.id,
-          name: pizza.name,
-          description: pizza.description || '',
-          price: (pizza as Product).base_price,
-          category: 'pizzas' as const,
-          base: (pizza as Product).pizza_base as PizzaBase || 'tomate',
-          imageUrl: (pizza as Product).image_url || undefined,
-        }
+        id: pizza.id,
+        name: pizza.name,
+        description: pizza.description || '',
+        price: (pizza as Product).base_price,
+        category: 'pizzas' as const,
+        base: (pizza as Product).pizza_base as PizzaBase || 'tomate',
+        imageUrl: (pizza as Product).image_url || undefined,
+      }
       : pizza;
-    
+
     // Track product view
     trackProductView(pizza.id, pizza.name, 'pizzas');
-    
+
     setSelectedPizza(menuItem);
     setSelectedProduct(isProduct ? pizza as Product : null);
     setBase(menuItem.base || 'tomate');
@@ -95,13 +95,13 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
     } else {
       basePrice = size === 'senior' ? pizzaPrices.senior : pizzaPrices.mega;
     }
-    
+
     // Add supplements price
     const supplementsPrice = supplements.reduce((total, supId) => {
       const sup = cheeseSupplementOptions.find(s => s.id === supId);
       return total + (sup?.price || 0);
     }, 0);
-    
+
     return basePrice + supplementsPrice;
   };
 
@@ -123,15 +123,15 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
 
     const calculatedPrice = getPrice();
     addToCart(cartItem, 1, customization, calculatedPrice);
-    
+
     // Track add to cart
     trackAddToCart(selectedPizza.id.split('-')[0], selectedPizza.name, 'pizzas');
-    
+
     toast({
       title: 'Ajouté au panier',
       description: `${selectedPizza.name} ${size === 'mega' ? 'Mega' : 'Senior'}${isMenuMidi ? ' (Menu Midi)' : ''}`,
     });
-    
+
     // Reset and go back to pizza selection instead of closing
     setSelectedPizza(null);
     setSize('senior');
@@ -198,30 +198,34 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {(loadingTomate ? [] : displayPizzasTomate).map((pizza: any) => {
                   const imageUrl = pizza.image_url || pizza.imageUrl || pizza.image;
+                  const imageZoom = pizza.image_zoom || 1.0;
                   return (
                     <Card
                       key={pizza.id}
                       className="overflow-hidden cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30"
                       onClick={() => handleSelectPizza(pizza)}
                     >
-                      {/* Image */}
-                      {imageUrl ? (
-                        <div className="aspect-video relative">
-                          <img
-                            src={imageUrl}
-                            alt={pizza.name}
-                            className="w-full h-full object-cover"
-                          />
+                      {/* Circular Pizza Image */}
+                      <div className="p-4 bg-gradient-to-b from-slate-50 to-white flex justify-center">
+                        <div className="w-32 h-32 rounded-full overflow-hidden bg-white shadow-md border-4 border-orange-100">
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt={pizza.name}
+                              className="w-full h-full object-cover"
+                              style={{ transform: `scale(${imageZoom})` }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50">
+                              <Pizza className="w-12 h-12 text-primary/30" />
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <div className="aspect-video bg-muted flex items-center justify-center">
-                          <Pizza className="w-12 h-12 text-primary/30" />
-                        </div>
-                      )}
-                      <div className="p-4">
-                        <h3 className="font-display font-semibold text-lg">{pizza.name}</h3>
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{pizza.description}</p>
-                        <div className="mt-3 flex items-center gap-2">
+                      </div>
+                      <div className="p-4 pt-0">
+                        <h3 className="font-display font-semibold text-lg text-center">{pizza.name}</h3>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2 text-center">{pizza.description}</p>
+                        <div className="mt-3 flex items-center justify-center gap-2">
                           <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
                           <span className="text-sm text-muted-foreground">Senior</span>
                           <span className="text-muted-foreground">|</span>
@@ -244,30 +248,34 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {(loadingCreme ? [] : displayPizzasCreme).map((pizza: any) => {
                   const imageUrl = pizza.image_url || pizza.imageUrl || pizza.image;
+                  const imageZoom = pizza.image_zoom || 1.0;
                   return (
                     <Card
                       key={pizza.id}
                       className="overflow-hidden cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30"
                       onClick={() => handleSelectPizza(pizza)}
                     >
-                      {/* Image */}
-                      {imageUrl ? (
-                        <div className="aspect-video relative">
-                          <img
-                            src={imageUrl}
-                            alt={pizza.name}
-                            className="w-full h-full object-cover"
-                          />
+                      {/* Circular Pizza Image */}
+                      <div className="p-4 bg-gradient-to-b from-slate-50 to-white flex justify-center">
+                        <div className="w-32 h-32 rounded-full overflow-hidden bg-white shadow-md border-4 border-orange-100">
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt={pizza.name}
+                              className="w-full h-full object-cover"
+                              style={{ transform: `scale(${imageZoom})` }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50">
+                              <Pizza className="w-12 h-12 text-primary/30" />
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <div className="aspect-video bg-muted flex items-center justify-center">
-                          <Pizza className="w-12 h-12 text-primary/30" />
-                        </div>
-                      )}
-                      <div className="p-4">
-                        <h3 className="font-display font-semibold text-lg">{pizza.name}</h3>
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{pizza.description}</p>
-                        <div className="mt-3 flex items-center gap-2">
+                      </div>
+                      <div className="p-4 pt-0">
+                        <h3 className="font-display font-semibold text-lg text-center">{pizza.name}</h3>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2 text-center">{pizza.description}</p>
+                        <div className="mt-3 flex items-center justify-center gap-2">
                           <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
                           <span className="text-sm text-muted-foreground">Senior</span>
                           <span className="text-muted-foreground">|</span>
@@ -355,7 +363,7 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
                 </span>
               )}
             </h2>
-            
+
             <div className="grid grid-cols-1 gap-3">
               {/* Menu Midi Senior */}
               {size === 'senior' && (
@@ -377,7 +385,7 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
                   </div>
                 </Card>
               )}
-              
+
               {/* Menu Midi Mega */}
               {size === 'mega' && (
                 <Card
@@ -452,8 +460,8 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
       {/* Bottom Action */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
         <div className="container mx-auto">
-          <Button 
-            className="w-full h-14 text-lg" 
+          <Button
+            className="w-full h-14 text-lg"
             onClick={handleAddToCart}
           >
             Ajouter au panier - {getPrice().toFixed(2)}€

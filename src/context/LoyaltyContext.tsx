@@ -41,11 +41,14 @@ interface LoyaltyContextType {
     // Actions
     lookupCustomer: (phone: string) => Promise<LoyaltyCustomer | null>;
     registerCustomer: (phone: string, name: string) => Promise<LoyaltyCustomer | null>;
+    findOrCreateCustomer: (phone: string, name: string) => Promise<LoyaltyCustomer | null>;
     earnPoints: (orderId: string, amount: number, description?: string) => Promise<boolean>;
     redeemReward: (rewardId: string) => Promise<{ success: boolean; discount?: number }>;
     getRewards: () => LoyaltyReward[];
     getTier: (points: number) => 'bronze' | 'silver' | 'gold' | 'platinum';
+    getTierInfo: () => { name: string; multiplier: number } | null;
     getNextTier: (currentTier: string) => { name: string; pointsNeeded: number } | null;
+    calculatePointsToEarn: (amount: number) => number;
     logout: () => void;
 }
 
@@ -136,13 +139,13 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
         const fetchRewards = async () => {
             try {
                 const { data, error } = await supabase
-                    .from('loyalty_rewards')
+                    .from('loyalty_rewards' as any)
                     .select('*')
                     .eq('is_active', true)
                     .order('points_cost', { ascending: true });
 
-                if (!error && data && data.length > 0) {
-                    setRewards(data.map(r => ({
+                if (!error && data && (data as any[]).length > 0) {
+                    setRewards((data as any[]).map((r: any) => ({
                         id: r.id,
                         name: r.name,
                         description: r.description,
@@ -151,9 +154,13 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                         value: r.value,
                         isActive: r.is_active
                     })));
+                } else if (error) {
+                    // Table doesn't exist yet - use defaults (migration not applied)
+                    console.warn('Loyalty rewards table not found, using defaults:', error.message);
                 }
             } catch (e) {
-                console.error('Failed to fetch rewards:', e);
+                // Silently fail and use default rewards
+                console.warn('Failed to fetch rewards, using defaults:', e);
             }
         };
 
@@ -192,25 +199,33 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             const normalizedPhone = phone.replace(/\s+/g, '').replace(/^(\+33|0033)/, '0');
 
             const { data, error } = await supabase
-                .from('loyalty_customers')
+                .from('loyalty_customers' as any)
                 .select('*')
                 .eq('phone', normalizedPhone)
                 .single();
+
+            // Check if table doesn't exist (migration not applied)
+            if (error?.code === '42P01' || error?.message?.includes('does not exist')) {
+                console.warn('Loyalty tables not found. Please apply migration 20251220040000_loyalty_group_push.sql');
+                setIsLoading(false);
+                return null;
+            }
 
             if (error || !data) {
                 setIsLoading(false);
                 return null;
             }
 
+            const rec = data as any;
             const customerData: LoyaltyCustomer = {
-                id: data.id,
-                phone: data.phone,
-                name: data.name,
-                points: data.points,
-                totalSpent: data.total_spent,
-                totalOrders: data.total_orders,
-                tier: getTier(data.points),
-                joinedAt: new Date(data.created_at)
+                id: rec.id,
+                phone: rec.phone,
+                name: rec.name,
+                points: rec.points,
+                totalSpent: rec.total_spent,
+                totalOrders: rec.total_orders,
+                tier: getTier(rec.points),
+                joinedAt: new Date(rec.created_at)
             };
 
             setCustomer(customerData);
@@ -218,14 +233,14 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
 
             // Fetch transactions
             const { data: txData } = await supabase
-                .from('loyalty_transactions')
+                .from('loyalty_transactions' as any)
                 .select('*')
-                .eq('customer_id', data.id)
+                .eq('customer_id', rec.id)
                 .order('created_at', { ascending: false })
                 .limit(20);
 
             if (txData) {
-                setTransactions(txData.map(tx => ({
+                setTransactions((txData as any[]).map((tx: any) => ({
                     id: tx.id,
                     type: tx.type as 'earn' | 'redeem',
                     points: tx.points,
@@ -238,7 +253,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             setIsLoading(false);
             return customerData;
         } catch (e) {
-            console.error('Lookup failed:', e);
+            console.warn('Lookup failed (loyalty tables may not exist):', e);
             setIsLoading(false);
             return null;
         }
@@ -257,7 +272,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             }
 
             const { data, error } = await supabase
-                .from('loyalty_customers')
+                .from('loyalty_customers' as any)
                 .insert({
                     phone: normalizedPhone,
                     name,
@@ -268,29 +283,37 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 .select()
                 .single();
 
+            // Check if table doesn't exist (migration not applied)
+            if (error?.code === '42P01' || error?.message?.includes('does not exist')) {
+                console.warn('Loyalty tables not found. Please apply migration 20251220040000_loyalty_group_push.sql');
+                setIsLoading(false);
+                return null;
+            }
+
             if (error || !data) {
-                console.error('Registration failed:', error);
+                console.warn('Registration failed:', error?.message);
                 setIsLoading(false);
                 return null;
             }
 
             // Add welcome transaction
-            await supabase.from('loyalty_transactions').insert({
-                customer_id: data.id,
+            await supabase.from('loyalty_transactions' as any).insert({
+                customer_id: (data as any).id,
                 type: 'earn',
                 points: 10,
                 description: 'Bonus de bienvenue 🎉'
             });
 
+            const rec = data as any;
             const customerData: LoyaltyCustomer = {
-                id: data.id,
-                phone: data.phone,
-                name: data.name,
+                id: rec.id,
+                phone: rec.phone,
+                name: rec.name,
                 points: 10,
                 totalSpent: 0,
                 totalOrders: 0,
                 tier: 'bronze',
-                joinedAt: new Date(data.created_at)
+                joinedAt: new Date(rec.created_at)
             };
 
             setCustomer(customerData);
@@ -298,7 +321,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             setIsLoading(false);
             return customerData;
         } catch (e) {
-            console.error('Registration error:', e);
+            console.warn('Registration error (loyalty tables may not exist):', e);
             setIsLoading(false);
             return null;
         }
@@ -322,7 +345,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             const multiplier = tierMultiplier[customer.tier] || 1;
             const finalPoints = Math.floor(pointsEarned * multiplier);
 
-            const { error } = await supabase.rpc('add_loyalty_points', {
+            const { error } = await (supabase.rpc as any)('add_loyalty_points', {
                 p_customer_id: customer.id,
                 p_points: finalPoints,
                 p_order_id: orderId,
@@ -372,7 +395,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-            const { error } = await supabase.rpc('redeem_loyalty_reward', {
+            const { error } = await (supabase.rpc as any)('redeem_loyalty_reward', {
                 p_customer_id: customer.id,
                 p_reward_id: rewardId,
                 p_points: reward.pointsCost
@@ -421,6 +444,38 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('twinpizza-loyalty-phone');
     };
 
+    // Combined lookup/register function
+    const findOrCreateCustomer = async (phone: string, name: string): Promise<LoyaltyCustomer | null> => {
+        const existing = await lookupCustomer(phone);
+        if (existing) return existing;
+        return registerCustomer(phone, name);
+    };
+
+    // Get current tier info with multiplier
+    const getTierInfo = (): { name: string; multiplier: number } | null => {
+        if (!customer) return null;
+
+        const tierMultipliers: Record<string, number> = {
+            bronze: 1,
+            silver: 1.25,
+            gold: 1.5,
+            platinum: 2
+        };
+
+        return {
+            name: customer.tier.charAt(0).toUpperCase() + customer.tier.slice(1),
+            multiplier: tierMultipliers[customer.tier] || 1
+        };
+    };
+
+    // Calculate points that will be earned
+    const calculatePointsToEarn = (amount: number): number => {
+        const basePoints = Math.floor(amount);
+        const tierInfo = getTierInfo();
+        const multiplier = tierInfo?.multiplier || 1;
+        return Math.floor(basePoints * multiplier);
+    };
+
     return (
         <LoyaltyContext.Provider value={{
             customer,
@@ -429,11 +484,14 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             transactions,
             lookupCustomer,
             registerCustomer,
+            findOrCreateCustomer,
             earnPoints,
             redeemReward,
             getRewards,
             getTier,
+            getTierInfo,
             getNextTier,
+            calculatePointsToEarn,
             logout
         }}>
             {children}

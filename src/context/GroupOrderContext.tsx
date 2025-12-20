@@ -149,25 +149,36 @@ export function GroupOrderProvider({ children }: { children: ReactNode }) {
             expiresAt
         };
 
+        // Set local state first (works without database)
         setGroupOrder(newGroupOrder);
         setCurrentParticipantId(hostId);
 
-        // Store in Supabase for persistence
-        try {
-            // Using 'as any' because group_orders table is created by migration
-            await (supabase.from as any)('group_orders').insert({
-                id: newGroupOrder.id,
-                code,
-                host_id: hostId,
-                host_name: hostName,
-                order_type: orderType,
-                status: 'open',
-                data: newGroupOrder,
-                expires_at: expiresAt.toISOString()
-            });
-        } catch (e) {
-            console.error('Failed to persist group order:', e);
-        }
+        console.log('[GroupOrder] Created group:', code);
+
+        // Try to store in Supabase for cross-device persistence (optional)
+        // This is in a separate try/catch so it doesn't affect the return
+        (async () => {
+            try {
+                // Using 'as any' because group_orders table is created by migration
+                const { error } = await (supabase.from as any)('group_orders').insert({
+                    id: newGroupOrder.id,
+                    code,
+                    host_id: hostId,
+                    host_name: hostName,
+                    order_type: orderType,
+                    status: 'open',
+                    data: newGroupOrder,
+                    expires_at: expiresAt.toISOString()
+                });
+                if (error) {
+                    console.warn('[GroupOrder] Database save failed (table may not exist):', error.message);
+                } else {
+                    console.log('[GroupOrder] Saved to database');
+                }
+            } catch (e) {
+                console.warn('[GroupOrder] Database error (continuing without persistence):', e);
+            }
+        })();
 
         return code;
     };

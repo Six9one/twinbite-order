@@ -12,8 +12,9 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { usePizzasByBase, useUpdateProduct, useCreateProduct, useDeleteProduct, uploadProductImage, Product } from '@/hooks/useProducts';
 import { useProductPopularity } from '@/hooks/useProductAnalytics';
-import { Plus, Edit2, Trash2, Upload, X, Pizza, TrendingUp, Eye, ShoppingCart, Package, Star, Sparkles } from 'lucide-react';
+import { Plus, Edit2, Trash2, Upload, X, Pizza, TrendingUp, Eye, ShoppingCart, Package, Star, Sparkles, ZoomIn } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 
 export function PizzaManager() {
   const { data: pizzasTomate, isLoading: loadingTomate, refetch: refetchTomate } = usePizzasByBase('tomate');
@@ -37,7 +38,8 @@ export function PizzaManager() {
     base_price: 18,
     pizza_base: 'tomate' as 'tomate' | 'creme' | 'speciale',
     image_url: null as string | null,
-    is_top_picked: false
+    is_top_picked: false,
+    image_zoom: 1.0
   });
 
   const refetchAll = () => {
@@ -100,8 +102,10 @@ export function PizzaManager() {
       toast.success('Pizza mise à jour!');
       setEditingProduct(null);
       refetchAll();
-    } catch (error) {
-      toast.error('Erreur lors de la mise à jour');
+    } catch (error: any) {
+      console.error('Error updating pizza:', error);
+      const message = error?.message || error?.error?.message || 'Erreur inconnue';
+      toast.error(`Erreur lors de la mise à jour: ${message}`);
     }
   };
 
@@ -146,7 +150,8 @@ export function PizzaManager() {
         image_url: newPizza.image_url,
         display_order: 999,
         is_active: true,
-        is_top_picked: newPizza.is_top_picked
+        is_top_picked: newPizza.is_top_picked,
+        image_zoom: newPizza.image_zoom
       });
 
       toast.success('Pizza ajoutée!');
@@ -157,11 +162,14 @@ export function PizzaManager() {
         base_price: 18,
         pizza_base: 'tomate',
         image_url: null,
-        is_top_picked: false
+        is_top_picked: false,
+        image_zoom: 1.0
       });
       refetchAll();
-    } catch (error) {
-      toast.error('Erreur lors de l\'ajout');
+    } catch (error: any) {
+      console.error('Error adding pizza:', error);
+      const message = error?.message || error?.error?.message || 'Erreur inconnue';
+      toast.error(`Erreur lors de l'ajout: ${message}`);
     }
   };
 
@@ -197,56 +205,95 @@ export function PizzaManager() {
     return stats || { views: 0, carts: 0, orders: 0 };
   };
 
+  const handleZoomChange = async (productId: string, zoom: number) => {
+    try {
+      await updateProduct.mutateAsync({
+        id: productId,
+        updates: { image_zoom: zoom }
+      });
+    } catch (error) {
+      // Silent fail for zoom - it will update on next render
+    }
+  };
+
   const renderPizzaCard = (pizza: Product) => {
     const stats = getPopularityStats(pizza.name);
     const isTopPicked = (pizza as any).is_top_picked || false;
+    const imageZoom = pizza.image_zoom || 1.0;
 
     return (
       <Card key={pizza.id} className={`overflow-hidden ${isTopPicked ? 'ring-2 ring-amber-400' : ''}`}>
-        {/* Image Section */}
-        <div className="relative aspect-video bg-muted">
+        {/* Circular Image Section */}
+        <div className="relative p-4 bg-gradient-to-b from-slate-50 to-white">
           {isTopPicked && (
             <Badge className="absolute top-2 left-2 bg-amber-500 text-white z-10">
               <Star className="w-3 h-3 mr-1 fill-white" />
               Top Picked
             </Badge>
           )}
-          {pizza.image_url ? (
-            <>
-              <img src={pizza.image_url} alt={pizza.name} className="w-full h-full object-cover" />
+
+          {/* Circular Pizza Image */}
+          <div className="w-40 h-40 mx-auto rounded-full overflow-hidden bg-white shadow-lg border-4 border-orange-100">
+            {pizza.image_url ? (
+              <img
+                src={pizza.image_url}
+                alt={pizza.name}
+                className="w-full h-full object-cover"
+                style={{ transform: `scale(${imageZoom})` }}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-gradient-to-br from-orange-50 to-amber-50">
+                <Pizza className="w-12 h-12 opacity-30" />
+              </div>
+            )}
+          </div>
+
+          {/* Image Controls */}
+          <div className="flex justify-center gap-2 mt-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={uploading === pizza.id}
+              onClick={() => {
+                setEditingProduct(pizza);
+                fileInputRef.current?.click();
+              }}
+            >
+              {uploading === pizza.id ? 'Envoi...' : (
+                <>
+                  <Upload className="w-4 h-4 mr-1" />
+                  {pizza.image_url ? 'Changer' : 'Ajouter'}
+                </>
+              )}
+            </Button>
+            {pizza.image_url && (
               <Button
                 variant="destructive"
-                size="icon"
-                className="absolute top-2 right-2 h-8 w-8"
+                size="sm"
                 onClick={() => handleRemoveImage(pizza.id)}
               >
                 <X className="w-4 h-4" />
               </Button>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <Pizza className="w-12 h-12 mb-2 opacity-30" />
-              <span className="text-sm">Pas d'image</span>
+            )}
+          </div>
+
+          {/* Zoom Slider */}
+          {pizza.image_url && (
+            <div className="mt-3 px-4">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                <ZoomIn className="w-3 h-3" />
+                <span>Zoom: {(imageZoom * 100).toFixed(0)}%</span>
+              </div>
+              <Slider
+                value={[imageZoom]}
+                min={0.5}
+                max={2}
+                step={0.05}
+                onValueChange={(value) => handleZoomChange(pizza.id, value[0])}
+                className="w-full"
+              />
             </div>
           )}
-
-          <Button
-            variant="secondary"
-            size="sm"
-            className="absolute bottom-2 right-2"
-            disabled={uploading === pizza.id}
-            onClick={() => {
-              setEditingProduct(pizza);
-              fileInputRef.current?.click();
-            }}
-          >
-            {uploading === pizza.id ? 'Envoi...' : (
-              <>
-                <Upload className="w-4 h-4 mr-1" />
-                {pizza.image_url ? 'Changer' : 'Ajouter'}
-              </>
-            )}
-          </Button>
         </div>
 
         {/* Product Info */}
@@ -384,42 +431,72 @@ export function PizzaManager() {
               <DialogTitle>Nouvelle Pizza</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-4">
-              {/* Image Upload */}
-              <div className="space-y-2">
+              {/* Image Upload with Circular Preview */}
+              <div className="space-y-3">
                 <Label>Image</Label>
-                <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-                  {newPizza.image_url ? (
-                    <>
-                      <img src={newPizza.image_url} alt="Preview" className="w-full h-full object-cover" />
+                <div className="flex flex-col items-center p-4 bg-gradient-to-b from-slate-50 to-white rounded-lg">
+                  {/* Circular Preview */}
+                  <div className="w-40 h-40 rounded-full overflow-hidden bg-white shadow-lg border-4 border-orange-100">
+                    {newPizza.image_url ? (
+                      <img
+                        src={newPizza.image_url}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        style={{ transform: `scale(${newPizza.image_zoom})` }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-gradient-to-br from-orange-50 to-amber-50">
+                        <Pizza className="w-12 h-12 opacity-30" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Controls */}
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={uploading === 'new'}
+                      onClick={() => addFileInputRef.current?.click()}
+                    >
+                      {uploading === 'new' ? 'Envoi...' : (
+                        <>
+                          <Upload className="w-4 h-4 mr-1" />
+                          {newPizza.image_url ? 'Changer' : 'Ajouter'}
+                        </>
+                      )}
+                    </Button>
+                    {newPizza.image_url && (
                       <Button
                         variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2 h-8 w-8"
-                        onClick={() => setNewPizza(prev => ({ ...prev, image_url: null }))}
+                        size="sm"
+                        onClick={() => setNewPizza(prev => ({ ...prev, image_url: null, image_zoom: 1.0 }))}
                       >
                         <X className="w-4 h-4" />
                       </Button>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                      <Pizza className="w-12 h-12 mb-2 opacity-30" />
-                      <span className="text-sm">Pas d'image</span>
+                    )}
+                  </div>
+
+                  {/* Zoom Slider */}
+                  {newPizza.image_url && (
+                    <div className="w-full mt-4">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                        <ZoomIn className="w-3 h-3" />
+                        <span>Zoom: {(newPizza.image_zoom * 100).toFixed(0)}%</span>
+                      </div>
+                      <Slider
+                        value={[newPizza.image_zoom]}
+                        min={0.5}
+                        max={2}
+                        step={0.05}
+                        onValueChange={(value) => setNewPizza(prev => ({ ...prev, image_zoom: value[0] }))}
+                        className="w-full"
+                      />
+                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                        Ajustez le zoom pour que la pizza soit bien visible dans le cercle
+                      </p>
                     </div>
                   )}
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="absolute bottom-2 right-2"
-                    disabled={uploading === 'new'}
-                    onClick={() => addFileInputRef.current?.click()}
-                  >
-                    {uploading === 'new' ? 'Envoi...' : (
-                      <>
-                        <Upload className="w-4 h-4 mr-1" />
-                        {newPizza.image_url ? 'Changer' : 'Ajouter'}
-                      </>
-                    )}
-                  </Button>
                 </div>
               </div>
 
