@@ -355,8 +355,13 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
         setTimeout(() => setCodeCopied(false), 2000);
     };
 
+    const getCreatedLink = () => {
+        const baseUrl = window.location.origin;
+        return `${baseUrl}/?group=${createdCode}`;
+    };
+
     const handleCopyLink = async () => {
-        const link = getShareableLink();
+        const link = getCreatedLink();
         await navigator.clipboard.writeText(link);
         setLinkCopied(true);
         toast({ title: '✅ Lien copié!' });
@@ -364,7 +369,7 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
     };
 
     const handleShareWhatsApp = () => {
-        const link = getShareableLink();
+        const link = getCreatedLink();
         const message = encodeURIComponent(
             `🍕 Rejoignez ma commande Twin Pizza!\n\n` +
             `📌 Code: ${createdCode}\n` +
@@ -375,7 +380,7 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
     };
 
     const handleShareSMS = () => {
-        const link = getShareableLink();
+        const link = getCreatedLink();
         const message = encodeURIComponent(
             `Rejoignez ma commande Twin Pizza! Code: ${createdCode} - Lien: ${link}`
         );
@@ -383,7 +388,7 @@ function GroupOrderTabs({ onClose }: { onClose: () => void }) {
     };
 
     const handleNativeShare = async () => {
-        const link = getShareableLink();
+        const link = getCreatedLink();
         if (navigator.share) {
             try {
                 await navigator.share({
