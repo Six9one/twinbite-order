@@ -212,7 +212,7 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
                             <img
                               src={imageUrl}
                               alt={pizza.name}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                               style={{ transform: `scale(${imageZoom})` }}
                             />
                           ) : (
@@ -262,7 +262,7 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
                             <img
                               src={imageUrl}
                               alt={pizza.name}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                               style={{ transform: `scale(${imageZoom})` }}
                             />
                           ) : (

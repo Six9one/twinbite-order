@@ -238,7 +238,7 @@ export function PizzaManager() {
               <img
                 src={pizza.image_url}
                 alt={pizza.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 style={{ transform: `scale(${imageZoom})` }}
               />
             ) : (
