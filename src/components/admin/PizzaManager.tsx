@@ -12,9 +12,10 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { usePizzasByBase, useUpdateProduct, useCreateProduct, useDeleteProduct, uploadProductImage, Product } from '@/hooks/useProducts';
 import { useProductPopularity } from '@/hooks/useProductAnalytics';
-import { Plus, Edit2, Trash2, Upload, X, Pizza, TrendingUp, Eye, ShoppingCart, Package, Star, Sparkles, ZoomIn } from 'lucide-react';
+import { Plus, Edit2, Trash2, Upload, X, Pizza, TrendingUp, Eye, ShoppingCart, Package, Star, Sparkles, ZoomIn, GripVertical } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 export function PizzaManager() {
   const { data: pizzasTomate, isLoading: loadingTomate, refetch: refetchTomate } = usePizzasByBase('tomate');
@@ -216,13 +217,48 @@ export function PizzaManager() {
     }
   };
 
+  const handleDragEnd = async (result: DropResult, pizzas: Product[] | undefined) => {
+    if (!result.destination || !pizzas) return;
+
+    const sourceIndex = result.source.index;
+    const destIndex = result.destination.index;
+
+    if (sourceIndex === destIndex) return;
+
+    // Reorder the array
+    const reorderedPizzas = Array.from(pizzas);
+    const [removed] = reorderedPizzas.splice(sourceIndex, 1);
+    reorderedPizzas.splice(destIndex, 0, removed);
+
+    // Update display_order for all affected pizzas
+    try {
+      const updates = reorderedPizzas.map((pizza, index) => ({
+        id: pizza.id,
+        display_order: index + 1
+      }));
+
+      // Update each pizza's display_order
+      for (const update of updates) {
+        await supabase
+          .from('products')
+          .update({ display_order: update.display_order })
+          .eq('id', update.id);
+      }
+
+      toast.success('Ordre des pizzas mis à jour!');
+      refetchAll();
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour de l\'ordre');
+    }
+  };
+
   const renderPizzaCard = (pizza: Product) => {
     const stats = getPopularityStats(pizza.name);
     const isTopPicked = (pizza as any).is_top_picked || false;
     const imageZoom = pizza.image_zoom || 1.0;
 
     return (
-      <Card key={pizza.id} className={`overflow-hidden ${isTopPicked ? 'ring-2 ring-amber-400' : ''}`}>
+      <>
         {/* Circular Image Section */}
         <div className="relative p-4 bg-gradient-to-b from-slate-50 to-white">
           {isTopPicked && (
@@ -398,7 +434,7 @@ export function PizzaManager() {
             </div>
           </div>
         </div>
-      </Card>
+      </>
     );
   };
 
@@ -616,9 +652,46 @@ export function PizzaManager() {
           </TabsList>
 
           <TabsContent value="tomate">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {pizzasTomate?.map(renderPizzaCard)}
+            <div className="mb-2 text-sm text-muted-foreground flex items-center gap-2">
+              <GripVertical className="w-4 h-4" />
+              Glissez les pizzas pour les réorganiser
             </div>
+            <DragDropContext onDragEnd={(result) => handleDragEnd(result, pizzasTomate)}>
+              <Droppable droppableId="tomate-pizzas" direction="horizontal">
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  >
+                    {pizzasTomate?.map((pizza, index) => (
+                      <Draggable key={pizza.id} draggableId={pizza.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={snapshot.isDragging ? 'opacity-90 scale-105 z-50' : ''}
+                          >
+                            <Card className={`overflow-hidden ${(pizza as any).is_top_picked ? 'ring-2 ring-amber-400' : ''}`}>
+                              {/* Drag Handle */}
+                              <div
+                                {...provided.dragHandleProps}
+                                className="bg-muted/50 p-2 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-muted"
+                              >
+                                <GripVertical className="w-5 h-5 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground ml-1">#{index + 1}</span>
+                              </div>
+                              {renderPizzaCard(pizza)}
+                            </Card>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
             {(!pizzasTomate || pizzasTomate.length === 0) && (
               <div className="text-center py-12 text-muted-foreground">
                 Aucune pizza base tomate
@@ -627,9 +700,46 @@ export function PizzaManager() {
           </TabsContent>
 
           <TabsContent value="creme">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {pizzasCreme?.map(renderPizzaCard)}
+            <div className="mb-2 text-sm text-muted-foreground flex items-center gap-2">
+              <GripVertical className="w-4 h-4" />
+              Glissez les pizzas pour les réorganiser
             </div>
+            <DragDropContext onDragEnd={(result) => handleDragEnd(result, pizzasCreme)}>
+              <Droppable droppableId="creme-pizzas" direction="horizontal">
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  >
+                    {pizzasCreme?.map((pizza, index) => (
+                      <Draggable key={pizza.id} draggableId={pizza.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={snapshot.isDragging ? 'opacity-90 scale-105 z-50' : ''}
+                          >
+                            <Card className={`overflow-hidden ${(pizza as any).is_top_picked ? 'ring-2 ring-amber-400' : ''}`}>
+                              {/* Drag Handle */}
+                              <div
+                                {...provided.dragHandleProps}
+                                className="bg-muted/50 p-2 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-muted"
+                              >
+                                <GripVertical className="w-5 h-5 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground ml-1">#{index + 1}</span>
+                              </div>
+                              {renderPizzaCard(pizza)}
+                            </Card>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
             {(!pizzasCreme || pizzasCreme.length === 0) && (
               <div className="text-center py-12 text-muted-foreground">
                 Aucune pizza base crème
