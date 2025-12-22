@@ -83,21 +83,6 @@ const translations: Record<Language, Translations> = {
         'loyalty.discount_5': 'Réduction 5€',
         'loyalty.discount_10': 'Réduction 10€',
 
-        // Group Order
-        'group.title': 'Commande de Groupe',
-        'group.create': 'Créer une commande groupée',
-        'group.join': 'Rejoindre une commande',
-        'group.code': 'Code de groupe',
-        'group.share': 'Partager le lien',
-        'group.participants': 'Participants',
-        'group.yourItems': 'Vos articles',
-        'group.allItems': 'Tous les articles',
-        'group.close': 'Fermer la commande',
-        'group.submit': 'Valider la commande groupée',
-        'group.active': 'Commande de groupe active',
-        'group.leave': 'Quitter le groupe',
-        'group.validFor': 'Valide encore',
-        'group.minutes': 'minutes',
 
         // Common
         'common.loading': 'Chargement...',
@@ -187,21 +172,6 @@ const translations: Record<Language, Translations> = {
         'loyalty.discount_5': '5€ Discount',
         'loyalty.discount_10': '10€ Discount',
 
-        // Group Order
-        'group.title': 'Group Order',
-        'group.create': 'Create Group Order',
-        'group.join': 'Join Order',
-        'group.code': 'Group Code',
-        'group.share': 'Share Link',
-        'group.participants': 'Participants',
-        'group.yourItems': 'Your Items',
-        'group.allItems': 'All Items',
-        'group.close': 'Close Order',
-        'group.submit': 'Submit Group Order',
-        'group.active': 'Group order active',
-        'group.leave': 'Leave group',
-        'group.validFor': 'Valid for',
-        'group.minutes': 'minutes',
 
         // Common
         'common.loading': 'Loading...',

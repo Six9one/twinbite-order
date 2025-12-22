@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 // Contexts
 import { LanguageProvider } from "@/context/LanguageContext";
 import { LoyaltyProvider } from "@/context/LoyaltyContext";
-import { GroupOrderProvider } from "@/context/GroupOrderContext";
 
 // PWA Components
 import { PWAInstallPrompt, OfflineIndicator } from "@/components/PWAComponents";
@@ -27,26 +26,24 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <LanguageProvider>
       <LoyaltyProvider>
-        <GroupOrderProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <OfflineIndicator />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/admin" element={<AdminLogin />} />
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                <Route path="/tv" element={<TVDashboard />} />
-                <Route path="/payment-success" element={<PaymentSuccess />} />
-                <Route path="/payment-cancel" element={<PaymentCancel />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              <PWAInstallPrompt />
-            </BrowserRouter>
-          </TooltipProvider>
-        </GroupOrderProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <OfflineIndicator />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/admin" element={<AdminLogin />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/tv" element={<TVDashboard />} />
+              <Route path="/payment-success" element={<PaymentSuccess />} />
+              <Route path="/payment-cancel" element={<PaymentCancel />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <PWAInstallPrompt />
+          </BrowserRouter>
+        </TooltipProvider>
       </LoyaltyProvider>
     </LanguageProvider>
   </QueryClientProvider>

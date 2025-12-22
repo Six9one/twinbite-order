@@ -15,7 +15,7 @@ interface CheckoutProps {
 
 export function Checkout({ onBack }: CheckoutProps) {
   const { orderType, cart, getTotal, clearCart } = useOrder();
-  const { customer, isLoading: loyaltyLoading, findOrCreateCustomer, calculatePointsToEarn, getTierInfo } = useLoyalty();
+  const { customer, isLoading: loyaltyLoading, findOrCreateCustomer, calculatePointsToEarn, getTierInfo, earnPoints } = useLoyalty();
 
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -81,12 +81,29 @@ export function Checkout({ onBack }: CheckoutProps) {
 
     setIsProcessing(true);
 
-    // Simulate order processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Generate order ID
+      const orderId = `ORDER-${Date.now()}`;
 
-    setIsProcessing(false);
-    setOrderComplete(true);
-    clearCart();
+      // Simulate order processing
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Award loyalty points if customer is registered
+      if (customer && pointsToEarn > 0) {
+        const success = await earnPoints(orderId, total, `Commande ${orderId}`);
+        if (success) {
+          console.log(`Awarded ${pointsToEarn} loyalty points for order ${orderId}`);
+        }
+      }
+
+      setIsProcessing(false);
+      setOrderComplete(true);
+      clearCart();
+    } catch (error) {
+      console.error('Order processing error:', error);
+      setIsProcessing(false);
+      toast.error('Erreur lors du traitement de la commande');
+    }
   };
 
   const total = getTotal();
@@ -278,8 +295,8 @@ export function Checkout({ onBack }: CheckoutProps) {
               <button
                 onClick={() => setPaymentMethod('card')}
                 className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${paymentMethod === 'card'
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/50'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border hover:border-primary/50'
                   }`}
               >
                 <CreditCard className="w-8 h-8" />
@@ -288,8 +305,8 @@ export function Checkout({ onBack }: CheckoutProps) {
               <button
                 onClick={() => setPaymentMethod('cash')}
                 className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${paymentMethod === 'cash'
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/50'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border hover:border-primary/50'
                   }`}
               >
                 <Banknote className="w-8 h-8" />

@@ -45,18 +45,6 @@ INSERT INTO loyalty_rewards (id, name, description, points_cost, type, value, is
   ('percent-15', '-15% sur la commande', '15% de réduction sur toute la commande', 300, 'percentage', 15, true)
 ON CONFLICT (id) DO NOTHING;
 
--- Group Orders Table
-CREATE TABLE IF NOT EXISTS group_orders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code TEXT UNIQUE NOT NULL,
-  host_id TEXT NOT NULL,
-  host_name TEXT NOT NULL,
-  order_type TEXT,
-  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed', 'submitted')),
-  data JSONB NOT NULL DEFAULT '{}',
-  expires_at TIMESTAMPTZ NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
 
 -- Push Notification Subscriptions
 CREATE TABLE IF NOT EXISTS push_subscriptions (
@@ -125,7 +113,6 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ALTER TABLE loyalty_customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE loyalty_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE loyalty_rewards ENABLE ROW LEVEL SECURITY;
-ALTER TABLE group_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for loyalty_customers
@@ -163,12 +150,6 @@ CREATE POLICY "Allow authenticated insert loyalty_rewards"
   ON loyalty_rewards FOR INSERT TO authenticated
   WITH CHECK (true);
 
--- RLS Policies for group_orders
-CREATE POLICY "Allow public access group_orders"
-  ON group_orders FOR ALL TO anon, authenticated
-  USING (true)
-  WITH CHECK (true);
-
 -- RLS Policies for push_subscriptions
 CREATE POLICY "Allow public access push_subscriptions"
   ON push_subscriptions FOR ALL TO anon, authenticated
@@ -178,5 +159,3 @@ CREATE POLICY "Allow public access push_subscriptions"
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_loyalty_customers_phone ON loyalty_customers(phone);
 CREATE INDEX IF NOT EXISTS idx_loyalty_transactions_customer ON loyalty_transactions(customer_id);
-CREATE INDEX IF NOT EXISTS idx_group_orders_code ON group_orders(code);
-CREATE INDEX IF NOT EXISTS idx_group_orders_expires ON group_orders(expires_at);
