@@ -26,11 +26,11 @@ export const pizzaPrices = {
 // Set to null if you don't want to show an old price for that size
 // =============================================================================
 export const oldPrices = {
-    soufflet: { solo: 6, double: 8, triple: null as number | null },
-    makloub: { solo: 6, double: 8, triple: null as number | null },
-    mlawi: { solo: 6, double: 8, triple: null as number | null },
-    panini: { solo: 5, duo: 7 },
-    tacos: { solo: null as number | null, double: null as number | null, triple: null as number | null },
+    soufflet: { solo: 7.5, double: 9, triple: 10.5 },
+    makloub: { solo: 7.5, double: 9, triple: 10.5 },
+    mlawi: { solo: 7.5, double: 9, triple: 10.5 },
+    panini: { solo: null as number | null, duo: null as number | null },
+    tacos: { solo: 7.5, double: 9, triple: 10.5 },
 };
 
 // =============================================================================
@@ -46,8 +46,8 @@ export const souffletPrices = {
 // MAKLOUB PRICES (by size)
 // =============================================================================
 export const makloubPrices = {
-    solo: 7,     // 1 viande
-    double: 8.5,   // 2 viandes
+    solo: 7,    // 1 viande
+    double: 8.5, // 2 viandes
     triple: 10,  // 3 viandes
 };
 
@@ -64,8 +64,8 @@ export const mlawiPrices = {
 // PANINI PRICES (by size)
 // =============================================================================
 export const paniniPrices = {
-    solo: 7,     // 2 viandes max
-    duo: 8.5,      // 2 viandes max
+    solo: 5,    // 2 viandes max
+    duo: 6.5,  // 2 viandes max
 };
 
 // =============================================================================
@@ -73,7 +73,7 @@ export const paniniPrices = {
 // =============================================================================
 export const tacosPrices = {
     solo: 7,     // 1 viande
-    double: 8.5,   // 2 viandes
+    double: 8.5, // 2 viandes
     triple: 10,  // 3 viandes
 };
 
