@@ -539,35 +539,38 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 overflow-hidden`}>
-        <AdminSidebar activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab as AdminTab)} />
-      </div>
+      {/* Sidebar with mobile overlay support */}
+      <AdminSidebar
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab as AdminTab)}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen">
-        <header className="sticky top-0 z-50 bg-card border-b shadow-sm">
-          <div className="px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <header className="sticky top-0 z-30 bg-card border-b shadow-sm">
+          <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
                 <Menu className="w-5 h-5" />
               </Button>
-              <div className="text-xs text-muted-foreground flex items-center gap-1">
+              <div className="hidden sm:flex text-xs text-muted-foreground items-center gap-1">
                 <Clock className="w-3 h-3" />
                 <span>Mise à jour: {lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap justify-end">
               {/* Auto-Print Toggle */}
               <Button
                 variant={autoPrintEnabled ? "default" : "outline"}
                 size="sm"
                 onClick={() => setAutoPrintEnabled(!autoPrintEnabled)}
-                className={`gap-2 ${autoPrintEnabled ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+                className={`gap-1 sm:gap-2 px-2 sm:px-3 ${autoPrintEnabled ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
                 title={autoPrintEnabled ? 'Auto-impression activée' : 'Auto-impression désactivée'}
               >
                 <Printer className="w-4 h-4" />
-                {autoPrintEnabled ? 'Auto' : 'Manuel'}
+                <span className="hidden sm:inline">{autoPrintEnabled ? 'Auto' : 'Manuel'}</span>
               </Button>
 
               {/* Sound Toggle */}
@@ -575,29 +578,30 @@ export default function AdminDashboard() {
                 variant={soundEnabled ? "default" : "outline"}
                 size="sm"
                 onClick={() => setSoundEnabled(!soundEnabled)}
-                className={soundEnabled ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+                className={`px-2 sm:px-3 ${soundEnabled ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
                 title={soundEnabled ? 'Son activé' : 'Son désactivé'}
               >
                 {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
               </Button>
 
-              <Link to="/" target="_blank">
+              {/* Desktop only buttons */}
+              <Link to="/" target="_blank" className="hidden md:block">
                 <Button variant="outline" size="sm" className="gap-2 bg-emerald-500 text-white hover:bg-emerald-600">
                   🌐 Voir le Site
                 </Button>
               </Link>
-              <Link to="/tv" target="_blank">
+              <Link to="/tv" target="_blank" className="hidden md:block">
                 <Button variant="outline" size="sm" className="gap-2 bg-amber-500 text-black hover:bg-amber-600">
                   <Tv className="w-4 h-4" />
                   Mode TV
                 </Button>
               </Link>
-              <Button variant="outline" size="sm" onClick={() => { refetch(); setLastUpdate(new Date()); }}>
+              <Button variant="outline" size="sm" className="px-2 sm:px-3" onClick={() => { refetch(); setLastUpdate(new Date()); }}>
                 <RefreshCw className="w-4 h-4" />
               </Button>
-              <Button variant="destructive" size="sm" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Déconnexion
+              <Button variant="destructive" size="sm" className="px-2 sm:px-3" onClick={handleLogout}>
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline ml-2">Déconnexion</span>
               </Button>
             </div>
           </div>
