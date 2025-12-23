@@ -196,7 +196,10 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
       case 1:
         return (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Choisir la taille</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Choisir la taille</h2>
+              <Badge className="bg-green-500 text-white">✨ Nouveaux prix</Badge>
+            </div>
             <div className="grid grid-cols-3 gap-4">
               {(['solo', 'double', 'triple'] as TacosSize[]).map((s) => {
                 const item = tacosProducts.find(t => t.id === `tacos-${s}`) || tacos.find(t => t.id === `tacos-${s}`);
