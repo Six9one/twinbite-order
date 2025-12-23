@@ -629,19 +629,9 @@ export const deals = [
 ];
 
 // ============= PRICES CONFIG =============
-export const pizzaPrices = {
-  senior: 18,
-  mega: 25,
-  menuMidiSenior: 10,
-  menuMidiMega: 15,
-};
+// Re-exported from centralized pricing.ts for backward compatibility
+export { pizzaPrices, menuOptionPrices } from './pricing';
 
-export const menuOptionPrices = {
-  none: 0,
-  frites: 1.5,
-  boisson: 1.5,
-  menu: 2.5, // frites + boisson
-};
 
 // Legacy support
 export const souffletOptions = {

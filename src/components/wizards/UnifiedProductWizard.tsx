@@ -13,69 +13,54 @@ import { toast } from '@/hooks/use-toast';
 import {
   meatOptions as staticMeatOptions,
   sauceOptions as staticSauceOptions,
-  souffletGarnitureOptions,
-  makloubGarnitureOptions,
   cheeseSupplementOptions as staticSupplements,
-  menuOptionPrices
 } from '@/data/menu';
+import { wizardSizePrices, menuOptionPrices } from '@/data/pricing';
 
-export type ProductType = 'soufflet' | 'mlawi' | 'makloub';
 export type ProductType = 'soufflet' | 'mlawi' | 'makloub' | 'panini';
-type ProductSize = 'solo' | 'double' | 'triple' | 'duo';
+type ProductSize = string; // Dynamic from pricing config
+
 
 interface ProductConfig {
   title: string;
   categorySlug: string;
   garnitureType: 'soufflet' | 'makloub' | 'mlawi' | 'panini';
-  sizes: { id: ProductSize; label: string; maxMeats: number; price: number }[];
+  sizes: { id: string; label: string; maxMeats: number; price: number }[];
   showMenuOption: boolean;
 }
 
+// Use centralized pricing from pricing.ts
 const productConfigs: Record<ProductType, ProductConfig> = {
   soufflet: {
     title: 'Soufflet',
     categorySlug: 'soufflets',
     garnitureType: 'soufflet',
-    sizes: [
-      { id: 'solo', label: 'Solo', maxMeats: 1, price: 6 },
-      { id: 'double', label: 'Double', maxMeats: 2, price: 8 },
-      { id: 'triple', label: 'Triple', maxMeats: 3, price: 10 },
-    ],
+    sizes: wizardSizePrices.soufflet,
     showMenuOption: true,
   },
   mlawi: {
     title: 'Mlawi',
     categorySlug: 'mlawi',
     garnitureType: 'mlawi',
-    sizes: [
-      { id: 'solo', label: 'Solo', maxMeats: 1, price: 6 },
-      { id: 'double', label: 'Double', maxMeats: 2, price: 8 },
-      { id: 'triple', label: 'Triple', maxMeats: 3, price: 10 },
-    ],
+    sizes: wizardSizePrices.mlawi,
     showMenuOption: true,
   },
   makloub: {
     title: 'Makloub',
     categorySlug: 'makloub',
     garnitureType: 'makloub',
-    sizes: [
-      { id: 'solo', label: 'Solo', maxMeats: 1, price: 6 },
-      { id: 'double', label: 'Double', maxMeats: 2, price: 8 },
-      { id: 'triple', label: 'Triple', maxMeats: 3, price: 10 },
-    ],
+    sizes: wizardSizePrices.makloub,
     showMenuOption: true,
   },
   panini: {
     title: 'Panini',
     categorySlug: 'panini',
     garnitureType: 'panini',
-    sizes: [
-      { id: 'solo', label: 'Solo', maxMeats: 2, price: 5 },
-      { id: 'duo', label: 'Duo', maxMeats: 2, price: 7 },
-    ],
+    sizes: wizardSizePrices.panini,
     showMenuOption: true,
   },
 };
+
 
 // Allowed meats for Soufflet, Makloub, Mlawi, Tacos, Panini
 const allowedMeatNames = [

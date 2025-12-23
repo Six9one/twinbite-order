@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MenuItem, TacosCustomization } from '@/types/order';
-import { tacos, meatOptions as staticMeatOptions, sauceOptions as staticSauceOptions, menuOptionPrices, supplementOptions, cheeseSupplementOptions } from '@/data/menu';
+import { tacos, meatOptions as staticMeatOptions, sauceOptions as staticSauceOptions, supplementOptions, cheeseSupplementOptions } from '@/data/menu';
+import { tacosPrices, menuOptionPrices, wizardSizePrices } from '@/data/pricing';
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { useProductsByCategory, Product } from '@/hooks/useProducts';
