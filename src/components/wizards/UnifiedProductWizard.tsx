@@ -15,7 +15,7 @@ import {
   sauceOptions as staticSauceOptions,
   cheeseSupplementOptions as staticSupplements,
 } from '@/data/menu';
-import { wizardSizePrices, menuOptionPrices } from '@/data/pricing';
+import { wizardSizePrices, menuOptionPrices, oldPrices } from '@/data/pricing';
 
 export type ProductType = 'soufflet' | 'mlawi' | 'makloub' | 'panini';
 type ProductSize = string; // Dynamic from pricing config
@@ -314,22 +314,34 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
               <Badge className="bg-green-500 text-white">✨ Nouveaux prix</Badge>
             </div>
             <div className="grid grid-cols-3 gap-4">
-              {config.sizes.map((s) => (
-                <Card
-                  key={s.id}
-                  className={`p-4 cursor-pointer transition-all text-center ${size === s.id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                  onClick={() => {
-                    setSize(s.id);
-                    setSelectedMeats([]);
-                  }}
-                >
-                  <h3 className="font-semibold capitalize">{s.label}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {s.maxMeats} viande{s.maxMeats > 1 ? 's' : ''}
-                  </p>
-                  <p className="text-xl font-bold text-primary mt-2">{s.price}€</p>
-                </Card>
-              ))}
+              {config.sizes.map((s) => {
+                // Get old price for this size if it exists
+                const productOldPrices = oldPrices[productType as keyof typeof oldPrices];
+                const oldPrice = productOldPrices ? (productOldPrices as any)[s.id] : null;
+                const showOldPrice = oldPrice !== null && oldPrice !== s.price;
+
+                return (
+                  <Card
+                    key={s.id}
+                    className={`p-4 cursor-pointer transition-all text-center ${size === s.id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                    onClick={() => {
+                      setSize(s.id);
+                      setSelectedMeats([]);
+                    }}
+                  >
+                    <h3 className="font-semibold capitalize">{s.label}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {s.maxMeats} viande{s.maxMeats > 1 ? 's' : ''}
+                    </p>
+                    <div className="mt-2">
+                      {showOldPrice && (
+                        <p className="text-sm text-red-500 line-through">{oldPrice}€</p>
+                      )}
+                      <p className="text-xl font-bold text-primary">{s.price}€</p>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         );

@@ -22,11 +22,23 @@ export const pizzaPrices = {
 };
 
 // =============================================================================
+// OLD PRICES (strikethrough display) - Edit these to change what's crossed out
+// Set to null if you don't want to show an old price for that size
+// =============================================================================
+export const oldPrices = {
+    soufflet: { solo: 6, double: 8, triple: null as number | null },
+    makloub: { solo: 6, double: 8, triple: null as number | null },
+    mlawi: { solo: 6, double: 8, triple: null as number | null },
+    panini: { solo: 5, duo: 7 },
+    tacos: { solo: null as number | null, double: null as number | null, triple: null as number | null },
+};
+
+// =============================================================================
 // SOUFFLET PRICES (by size)
 // =============================================================================
 export const souffletPrices = {
-    solo: 6,     // 1 viande
-    double: 8,   // 2 viandes
+    solo: 7,     // 1 viande
+    double: 8.5,  // 2 viandes
     triple: 10,  // 3 viandes
 };
 
@@ -34,8 +46,8 @@ export const souffletPrices = {
 // MAKLOUB PRICES (by size)
 // =============================================================================
 export const makloubPrices = {
-    solo: 6,     // 1 viande
-    double: 8,   // 2 viandes
+    solo: 7,     // 1 viande
+    double: 8.5,   // 2 viandes
     triple: 10,  // 3 viandes
 };
 
@@ -43,8 +55,8 @@ export const makloubPrices = {
 // MLAWI PRICES (by size)
 // =============================================================================
 export const mlawiPrices = {
-    solo: 6,     // 1 viande
-    double: 8,   // 2 viandes
+    solo: 7,     // 1 viande
+    double: 8.5,   // 2 viandes
     triple: 10,  // 3 viandes
 };
 
@@ -52,8 +64,8 @@ export const mlawiPrices = {
 // PANINI PRICES (by size)
 // =============================================================================
 export const paniniPrices = {
-    solo: 5,     // 2 viandes max
-    duo: 7,      // 2 viandes max
+    solo: 7,     // 2 viandes max
+    duo: 8.5,      // 2 viandes max
 };
 
 // =============================================================================
@@ -61,8 +73,8 @@ export const paniniPrices = {
 // =============================================================================
 export const tacosPrices = {
     solo: 7,     // 1 viande
-    double: 9,   // 2 viandes
-    triple: 11,  // 3 viandes
+    double: 8.5,   // 2 viandes
+    triple: 10,  // 3 viandes
 };
 
 // =============================================================================
