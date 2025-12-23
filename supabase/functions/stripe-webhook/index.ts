@@ -46,7 +46,7 @@ serve(async (req) => {
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
-      
+
       console.log("[STRIPE-WEBHOOK] Payment completed!", {
         orderNumber: session.metadata?.orderNumber,
         amount: session.amount_total,
@@ -59,8 +59,27 @@ serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
       );
 
-      // Parse order data from metadata
-      const orderNumber = session.metadata?.orderNumber || "";
+      // Generate order number server-side to prevent duplicates
+      // The client's order number is just for display during checkout
+      let orderNumber = session.metadata?.orderNumber || "";
+
+      // Get a fresh server-side order number to avoid duplicates
+      try {
+        const { data: newOrderNum, error: numError } = await supabase.rpc('get_next_order_number');
+        if (!numError && newOrderNum) {
+          orderNumber = newOrderNum;
+          console.log("[STRIPE-WEBHOOK] Generated server-side order number:", orderNumber);
+        } else {
+          // Fallback: generate unique order number with timestamp
+          orderNumber = `${Date.now().toString().slice(-6)}`;
+          console.log("[STRIPE-WEBHOOK] Fallback order number:", orderNumber);
+        }
+      } catch (e) {
+        // Fallback: generate unique order number with timestamp
+        orderNumber = `${Date.now().toString().slice(-6)}`;
+        console.log("[STRIPE-WEBHOOK] Fallback order number (error):", orderNumber);
+      }
+
       const customerName = session.metadata?.customerName || "";
       const customerPhone = session.metadata?.customerPhone || "";
       const customerAddress = session.metadata?.customerAddress || null;
@@ -69,7 +88,7 @@ serve(async (req) => {
       const subtotal = parseFloat(session.metadata?.subtotal || "0");
       const tva = parseFloat(session.metadata?.tva || "0");
       const total = (session.amount_total || 0) / 100; // Convert from cents
-      
+
       // Parse items from metadata
       let items = [];
       try {
@@ -139,7 +158,7 @@ serve(async (req) => {
               }),
             }
           );
-          
+
           if (telegramResponse.ok) {
             console.log("[STRIPE-WEBHOOK] Telegram notification sent successfully");
           } else {
