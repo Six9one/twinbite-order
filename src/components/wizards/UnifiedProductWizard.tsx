@@ -335,7 +335,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
                     </p>
                     <div className="mt-2">
                       {showOldPrice && (
-                        <p className="text-sm text-red-500 line-through">{oldPrice}€</p>
+                        <p className="text-xs text-gray-400 line-through">{oldPrice}€</p>
                       )}
                       <p className="text-xl font-bold text-primary">{s.price}€</p>
                     </div>

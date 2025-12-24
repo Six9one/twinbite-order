@@ -308,7 +308,7 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
                         </div>
                         <div className="text-right">
                             {savings > 0 && (
-                                <span className="text-sm text-muted-foreground line-through mr-2">
+                                <span className="text-xs text-gray-400 line-through mr-2">
                                     {regularPrice.toFixed(2)}€
                                 </span>
                             )}
