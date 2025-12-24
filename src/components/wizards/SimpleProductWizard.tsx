@@ -38,17 +38,17 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
     };
 
     // Pass menu option as customization if applicable
-    const customization = showMenuOption && menuOption !== 'none' 
-      ? { menuOption } 
+    const customization = showMenuOption && menuOption !== 'none'
+      ? { menuOption }
       : undefined;
 
     addToCart(cartItem, quantity, customization as any);
-    
+
     toast({
       title: 'Ajouté au panier',
       description: `${quantity}x ${selectedItem.name}`,
     });
-    
+
     onClose();
   };
 
@@ -87,6 +87,8 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
                         <img
                           src={imageUrl}
                           alt={item.name}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -137,6 +139,8 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
             <img
               src={selectedImageUrl}
               alt={selectedItem.name}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover"
             />
           </div>
@@ -201,8 +205,8 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
       {/* Bottom Action */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4">
         <div className="container mx-auto">
-          <Button 
-            className="w-full h-14 text-lg" 
+          <Button
+            className="w-full h-14 text-lg"
             onClick={handleAddToCart}
           >
             Ajouter au panier - {calculatePrice().toFixed(2)}€

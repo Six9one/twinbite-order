@@ -1,39 +1,48 @@
 <!doctype html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Twin Pizza - Pizzeria & Fast Food</title>
-    <meta name="description" content="Twin Pizza - Commandez vos pizzas, soufflets, makloub, tacos et sandwiches. À emporter, livraison ou sur place." />
-    <meta name="author" content="Twin Pizza" />
 
-    <meta property="og:title" content="Twin Pizza - Pizzeria & Fast Food" />
-    <meta property="og:description" content="Commandez vos pizzas, soufflets, makloub, tacos et sandwiches. À emporter, livraison ou sur place." />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="/favicon.png" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Twin Pizza - Pizzeria & Fast Food</title>
+  <meta name="description"
+    content="Twin Pizza - Commandez vos pizzas, soufflets, makloub, tacos et sandwiches. À emporter, livraison ou sur place." />
+  <meta name="author" content="Twin Pizza" />
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <link rel="canonical" href="/" />
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
-    
-    <!-- PWA -->
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#f97316" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Twin Pizza" />
-    
-    <!-- Comfortaa Font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap" rel="stylesheet">
-  </head>
+  <meta property="og:title" content="Twin Pizza - Pizzeria & Fast Food" />
+  <meta property="og:description"
+    content="Commandez vos pizzas, soufflets, makloub, tacos et sandwiches. À emporter, livraison ou sur place." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/favicon.png" />
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="canonical" href="/" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/favicon.png" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#f97316" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Twin Pizza" />
+
+  <!-- Comfortaa Font - Optimized Loading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap" rel="stylesheet">
+
+  <!-- DNS Prefetch for Supabase -->
+  <link rel="dns-prefetch" href="https://qglwtqgtqfgbtvtxcxdn.supabase.co">
+  <link rel="preconnect" href="https://qglwtqgtqfgbtvtxcxdn.supabase.co" crossorigin>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

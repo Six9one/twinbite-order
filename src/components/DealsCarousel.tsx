@@ -43,33 +43,33 @@ export function DealsCarousel() {
     setCurrentIndex(prev => (prev - 1 + creativeDeals.length) % creativeDeals.length);
   };
   return <div className="relative w-full max-w-6xl mx-auto">
-      {/* Carousel Container - Made wider and larger */}
-      <div className="relative overflow-hidden rounded-2xl md:rounded-3xl aspect-[16/7] md:aspect-[21/9] shadow-2xl my-0">
-        {creativeDeals.map((deal, index) => {
+    {/* Carousel Container - Made wider and larger */}
+    <div className="relative overflow-hidden rounded-2xl md:rounded-3xl aspect-[16/7] md:aspect-[21/9] shadow-2xl my-0">
+      {creativeDeals.map((deal, index) => {
         const IconComponent = deal.icon;
         return <div key={deal.id} className={`absolute inset-0 transition-all duration-700 ease-out ${index === currentIndex ? 'opacity-100 translate-x-0 scale-100' : index < currentIndex ? 'opacity-0 -translate-x-full scale-95' : 'opacity-0 translate-x-full scale-95'}`}>
-              <img src={deal.image} alt={deal.title} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white">
-                
-                
-                
-              </div>
-            </div>;
+          <img src={deal.image} alt={deal.title} loading={index === 0 ? "eager" : "lazy"} decoding="async" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white">
+
+
+
+          </div>
+        </div>;
       })}
-      </div>
+    </div>
 
-      {/* Navigation Arrows - Made larger and more visible */}
-      <button onClick={goPrev} className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-all hover:scale-110 shadow-lg">
-        <ChevronLeft className="w-7 h-7 md:w-8 md:h-8" />
-      </button>
-      <button onClick={goNext} className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-all hover:scale-110 shadow-lg">
-        <ChevronRight className="w-7 h-7 md:w-8 md:h-8" />
-      </button>
+    {/* Navigation Arrows - Made larger and more visible */}
+    <button onClick={goPrev} className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-all hover:scale-110 shadow-lg">
+      <ChevronLeft className="w-7 h-7 md:w-8 md:h-8" />
+    </button>
+    <button onClick={goNext} className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-all hover:scale-110 shadow-lg">
+      <ChevronRight className="w-7 h-7 md:w-8 md:h-8" />
+    </button>
 
-      {/* Dots - Made larger */}
-      <div className="flex justify-center gap-3 mt-6">
-        {creativeDeals.map((_, index) => <button key={index} onClick={() => goTo(index)} className={`h-3 rounded-full transition-all duration-300 ${index === currentIndex ? 'bg-primary w-10' : 'bg-muted w-3 hover:bg-muted-foreground'}`} />)}
-      </div>
-    </div>;
+    {/* Dots - Made larger */}
+    <div className="flex justify-center gap-3 mt-6">
+      {creativeDeals.map((_, index) => <button key={index} onClick={() => goTo(index)} className={`h-3 rounded-full transition-all duration-300 ${index === currentIndex ? 'bg-primary w-10' : 'bg-muted w-3 hover:bg-muted-foreground'}`} />)}
+    </div>
+  </div>;
 }

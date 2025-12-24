@@ -305,6 +305,8 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
                     <img
                       src={imageData.value}
                       alt={displayName}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -342,6 +344,8 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
                     <img
                       src={imageData.value}
                       alt={displayName}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   ) : (

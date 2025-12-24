@@ -212,6 +212,8 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
                             <img
                               src={imageUrl}
                               alt={pizza.name}
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-contain"
                               style={{ transform: `scale(${imageZoom})` }}
                             />
@@ -262,6 +264,8 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
                             <img
                               src={imageUrl}
                               alt={pizza.name}
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-contain"
                               style={{ transform: `scale(${imageZoom})` }}
                             />

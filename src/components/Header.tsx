@@ -66,7 +66,7 @@ export function Header({
   return <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border safe-top">
     <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between bg-muted">
       <div className="flex items-center gap-2 sm:gap-3">
-        <img src={logoImage} alt="Twin Pizza" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover" />
+        <img src={logoImage} alt="Twin Pizza" loading="eager" decoding="async" fetchPriority="high" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover" />
         <div className="hidden sm:block">
           <h1 className="text-xl font-medium text-foreground leading-tight">Twin Pizza</h1>
         </div>
