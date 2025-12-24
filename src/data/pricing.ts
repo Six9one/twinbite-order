@@ -208,7 +208,7 @@ export const wizardSizePrices = {
         { id: 'triple', label: 'Triple', maxMeats: 3, price: makloubPrices.triple },
     ],
     panini: [
-        { id: 'solo', label: 'Solo', maxMeats: 2, price: paniniPrices.solo },
+        { id: 'solo', label: 'Solo', maxMeats: 1, price: paniniPrices.solo },
         { id: 'duo', label: 'Duo', maxMeats: 2, price: paniniPrices.duo },
     ],
     tacos: [
