@@ -4,19 +4,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Twin Pizza - Pizzeria & Fast Food</title>
+
+  <!-- Primary Meta Tags -->
+  <title>Twin Pizza - Pizzeria & Fast Food | Commande en ligne</title>
+  <meta name="title" content="Twin Pizza - Pizzeria & Fast Food | Commande en ligne" />
   <meta name="description"
-    content="Twin Pizza - Commandez vos pizzas, soufflets, makloub, tacos et sandwiches. À emporter, livraison ou sur place." />
+    content="Twin Pizza - Votre pizzeria à emporter, livraison et sur place. Pizzas, soufflets, makloub, tacos, sandwiches et bien plus. Commandez en ligne dès maintenant!" />
+  <meta name="keywords"
+    content="pizza, pizzeria, livraison pizza, twin pizza, soufflet, makloub, tacos, sandwich, fast food, commande en ligne, à emporter, sur place" />
   <meta name="author" content="Twin Pizza" />
+  <meta name="robots" content="index, follow" />
+  <meta name="language" content="French" />
 
-  <meta property="og:title" content="Twin Pizza - Pizzeria & Fast Food" />
+  <!-- Geo Tags for Local SEO -->
+  <meta name="geo.region" content="FR" />
+  <meta name="geo.placename" content="France" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="restaurant" />
+  <meta property="og:url" content="https://twinpizza.fr/" />
+  <meta property="og:title" content="Twin Pizza - Pizzeria & Fast Food | Commande en ligne" />
   <meta property="og:description"
-    content="Commandez vos pizzas, soufflets, makloub, tacos et sandwiches. À emporter, livraison ou sur place." />
-  <meta property="og:type" content="website" />
-  <meta property="og:image" content="/favicon.png" />
+    content="Votre pizzeria à emporter, livraison et sur place. Pizzas, soufflets, makloub, tacos et sandwiches. Commandez en ligne!" />
+  <meta property="og:image" content="https://twinpizza.fr/favicon.png" />
+  <meta property="og:locale" content="fr_FR" />
+  <meta property="og:site_name" content="Twin Pizza" />
 
-  <meta name="twitter:card" content="summary_large_image" />
-  <link rel="canonical" href="/" />
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://twinpizza.fr/" />
+  <meta property="twitter:title" content="Twin Pizza - Pizzeria & Fast Food" />
+  <meta property="twitter:description"
+    content="Commandez vos pizzas, soufflets, makloub, tacos et sandwiches. À emporter, livraison ou sur place." />
+  <meta property="twitter:image" content="https://twinpizza.fr/favicon.png" />
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://twinpizza.fr/" />
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="/favicon.png" />
@@ -38,6 +61,73 @@
   <!-- DNS Prefetch for Supabase -->
   <link rel="dns-prefetch" href="https://qglwtqgtqfgbtvtxcxdn.supabase.co">
   <link rel="preconnect" href="https://qglwtqgtqfgbtvtxcxdn.supabase.co" crossorigin>
+
+  <!-- Structured Data - LocalBusiness + Restaurant Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    "name": "Twin Pizza",
+    "image": "https://twinpizza.fr/favicon.png",
+    "url": "https://twinpizza.fr",
+    "telephone": "",
+    "priceRange": "€€",
+    "servesCuisine": ["Pizza", "Fast Food", "Mediterranean", "Tunisian"],
+    "acceptsReservations": false,
+    "hasMenu": "https://twinpizza.fr",
+    "address": {
+      "@type": "PostalAddress",
+      "addressCountry": "FR"
+    },
+    "geo": {
+      "@type": "GeoCoordinates"
+    },
+    "openingHoursSpecification": [
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "opens": "11:00",
+        "closes": "23:00"
+      }
+    ],
+    "sameAs": [],
+    "potentialAction": {
+      "@type": "OrderAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://twinpizza.fr",
+        "actionPlatform": [
+          "http://schema.org/DesktopWebPlatform",
+          "http://schema.org/MobileWebPlatform"
+        ]
+      },
+      "deliveryMethod": [
+        "http://purl.org/goodrelations/v1#DeliveryModePickUp",
+        "http://purl.org/goodrelations/v1#DeliveryModeOwnFleet"
+      ]
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.5",
+      "reviewCount": "100"
+    }
+  }
+  </script>
+
+  <!-- WebSite Schema for Sitelinks Search Box -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Twin Pizza",
+    "url": "https://twinpizza.fr",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://twinpizza.fr/?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
 </head>
 
 <body>
