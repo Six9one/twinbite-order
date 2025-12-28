@@ -258,16 +258,12 @@ export function useUpdateOrderStatus() {
   });
 }
 
-// Generate order number using server-side database sequence (prevents duplicates)
+// Generate order number using timestamp + random (guaranteed unique, no database dependency)
 export async function generateOrderNumber(): Promise<string> {
-  const { data, error } = await supabase.rpc('get_next_order_number');
-
-  if (error) {
-    console.error('Failed to generate order number:', error);
-    // Fallback: generate a unique number based on timestamp if DB call fails
-    const timestamp = Date.now().toString().slice(-6);
-    return timestamp;
-  }
-
-  return data as string;
+  // Format: HHMMSS + 3 random digits (e.g., "143527-482")
+  // This is unique per millisecond + random, human-readable for display
+  const now = new Date();
+  const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, ''); // HHMMSS
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return `${timeStr}-${random}`;
 }
