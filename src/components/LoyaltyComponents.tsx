@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useLoyalty } from '@/context/LoyaltyContext';
-import { useLanguage } from '@/context/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,48 +11,26 @@ import {
     Star,
     Gift,
     History,
-    Trophy,
     Loader2,
     Phone,
     User,
     ChevronRight,
     Sparkles,
-    Crown
+    Check
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-// Tier colors and icons
-const tierStyles = {
-    bronze: {
-        bg: 'bg-gradient-to-r from-amber-600 to-amber-700',
-        text: 'text-amber-600',
-        icon: '🥉'
-    },
-    silver: {
-        bg: 'bg-gradient-to-r from-gray-400 to-gray-500',
-        text: 'text-gray-500',
-        icon: '🥈'
-    },
-    gold: {
-        bg: 'bg-gradient-to-r from-yellow-400 to-yellow-500',
-        text: 'text-yellow-500',
-        icon: '🥇'
-    },
-    platinum: {
-        bg: 'bg-gradient-to-r from-purple-500 to-pink-500',
-        text: 'text-purple-500',
-        icon: '👑'
-    }
-};
+// ============================================
+// V1 SIMPLIFIED LOYALTY COMPONENTS
+// - Progress bar to next reward
+// - Clear reward selection UI
+// - No tier display (simplified)
+// ============================================
 
 export function LoyaltyCard() {
-    const { t } = useLanguage();
     const {
         customer,
-        isLoading,
-        getTier,
-        getNextTier,
-        logout
+        getNextReward
     } = useLoyalty();
 
     const [showLogin, setShowLogin] = useState(false);
@@ -68,8 +45,8 @@ export function LoyaltyCard() {
                                 <Star className="w-6 h-6" />
                             </div>
                             <div className="flex-1">
-                                <h3 className="font-bold">{t('loyalty.title')}</h3>
-                                <p className="text-sm text-white/90">{t('loyalty.earn')}</p>
+                                <h3 className="font-bold">Programme Fidélité</h3>
+                                <p className="text-sm text-white/90">Gagnez 1 point par euro dépensé!</p>
                             </div>
                             <ChevronRight className="w-5 h-5" />
                         </div>
@@ -82,48 +59,53 @@ export function LoyaltyCard() {
         );
     }
 
-    const tier = customer.tier;
-    const style = tierStyles[tier];
-    const nextTier = getNextTier(tier);
+    const nextReward = getNextReward();
+    const progressPercent = nextReward
+        ? Math.min(100, (customer.points / nextReward.reward.pointsCost) * 100)
+        : 100;
 
     return (
-        <Card className={`p-4 ${style.bg} text-white overflow-hidden relative`}>
+        <Card className="p-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white overflow-hidden relative">
             {/* Sparkles decoration */}
             <div className="absolute top-2 right-2 flex gap-1">
                 <Sparkles className="w-4 h-4 animate-pulse opacity-50" />
-                <Sparkles className="w-3 h-3 animate-pulse opacity-30" style={{ animationDelay: '0.5s' }} />
             </div>
 
             <div className="flex items-center gap-4 mb-4">
                 <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center text-2xl">
-                    {style.icon}
+                    ⭐
                 </div>
                 <div className="flex-1">
                     <p className="text-sm text-white/80">Bonjour</p>
                     <h3 className="font-bold text-lg">{customer.name}</h3>
-                    <p className="text-xs text-white/70 capitalize flex items-center gap-1">
-                        <Crown className="w-3 h-3" /> Membre {tier}
-                    </p>
                 </div>
                 <div className="text-right">
                     <p className="text-3xl font-bold">{customer.points}</p>
-                    <p className="text-sm text-white/80">{t('loyalty.points')}</p>
+                    <p className="text-sm text-white/80">points</p>
                 </div>
             </div>
 
-            {/* Progress to next tier */}
-            {nextTier && (
+            {/* Progress to next reward */}
+            {nextReward && (
                 <div className="mt-2">
                     <div className="flex justify-between text-xs text-white/80 mb-1">
-                        <span>{tier.charAt(0).toUpperCase() + tier.slice(1)}</span>
-                        <span>{nextTier.name}</span>
+                        <span>{customer.points} pts</span>
+                        <span>{nextReward.reward.pointsCost} pts</span>
                     </div>
                     <Progress
-                        value={100 - (nextTier.pointsNeeded / (nextTier.pointsNeeded + customer.points % 500) * 100)}
+                        value={progressPercent}
                         className="h-2 bg-white/20"
                     />
-                    <p className="text-xs text-white/70 mt-1 text-center">
-                        Plus que {nextTier.pointsNeeded} points pour {nextTier.name}!
+                    <p className="text-sm text-white/90 mt-2 text-center">
+                        Plus que <strong>{nextReward.pointsNeeded}</strong> points pour {nextReward.reward.name.toLowerCase()}! 🎁
+                    </p>
+                </div>
+            )}
+
+            {!nextReward && (
+                <div className="mt-2 text-center">
+                    <p className="text-sm text-white/90">
+                        🎉 Vous pouvez échanger vos points contre des récompenses!
                     </p>
                 </div>
             )}
@@ -132,7 +114,6 @@ export function LoyaltyCard() {
 }
 
 export function LoyaltyLogin({ onClose }: { onClose?: () => void }) {
-    const { t } = useLanguage();
     const { lookupCustomer, registerCustomer, isLoading } = useLoyalty();
     const [mode, setMode] = useState<'lookup' | 'register'>('lookup');
     const [phone, setPhone] = useState('');
@@ -173,7 +154,7 @@ export function LoyaltyLogin({ onClose }: { onClose?: () => void }) {
         if (customer) {
             toast({
                 title: `Bienvenue ${customer.name}! 🎉`,
-                description: 'Vous avez reçu 10 points de bienvenue!',
+                description: 'Passez votre première commande pour gagner 40 points bonus!',
             });
             onClose?.();
         } else {
@@ -186,11 +167,29 @@ export function LoyaltyLogin({ onClose }: { onClose?: () => void }) {
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                     <Star className="w-5 h-5 text-orange-500" />
-                    {t('loyalty.title')}
+                    Programme Fidélité
                 </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4 pt-4">
+                {/* Benefit summary */}
+                <Card className="p-3 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30 border-yellow-200">
+                    <ul className="text-sm space-y-1">
+                        <li className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-green-500" />
+                            1 point par euro dépensé
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-green-500" />
+                            +10 points par commande en ligne
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-green-500" />
+                            +30 points sur votre 1ère commande
+                        </li>
+                    </ul>
+                </Card>
+
                 {mode === 'lookup' ? (
                     <>
                         <div className="text-center mb-4">
@@ -243,7 +242,7 @@ export function LoyaltyLogin({ onClose }: { onClose?: () => void }) {
                     <>
                         <div className="text-center mb-4">
                             <p className="text-muted-foreground">
-                                Créez votre compte et recevez <strong>10 points</strong> de bienvenue! 🎁
+                                Inscrivez-vous et gagnez <strong>40 points</strong> sur votre 1ère commande! 🎁
                             </p>
                         </div>
 
@@ -290,7 +289,7 @@ export function LoyaltyLogin({ onClose }: { onClose?: () => void }) {
                             {isLoading ? (
                                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
                             ) : null}
-                            S'inscrire et gagner 10 points
+                            S'inscrire
                         </Button>
 
                         <p className="text-center text-sm text-muted-foreground">
@@ -310,17 +309,17 @@ export function LoyaltyLogin({ onClose }: { onClose?: () => void }) {
 }
 
 export function LoyaltyDashboard() {
-    const { t } = useLanguage();
     const {
         customer,
         rewards,
         transactions,
         redeemReward,
         isLoading,
-        logout
+        logout,
+        getNextReward
     } = useLoyalty();
 
-    const [selectedReward, setSelectedReward] = useState<string | null>(null);
+    const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
 
     const handleRedeem = async (rewardId: string) => {
         const result = await redeemReward(rewardId);
@@ -328,10 +327,12 @@ export function LoyaltyDashboard() {
             toast({
                 title: '🎁 Récompense obtenue!',
                 description: result.discount
-                    ? `${result.discount}€ de réduction appliqué`
+                    ? result.discountType === 'percentage'
+                        ? `${result.discount}% de réduction appliqué`
+                        : `${result.discount}€ de réduction appliqué`
                     : 'Votre récompense est prête',
             });
-            setSelectedReward(null);
+            setSelectedRewardId(null);
         } else {
             toast({
                 title: 'Erreur',
@@ -343,19 +344,47 @@ export function LoyaltyDashboard() {
 
     if (!customer) return null;
 
+    const nextReward = getNextReward();
+    const progressPercent = nextReward
+        ? Math.min(100, (customer.points / nextReward.reward.pointsCost) * 100)
+        : 100;
+
     return (
         <div className="space-y-6">
             <LoyaltyCard />
+
+            {/* Progress message */}
+            {nextReward && (
+                <Card className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30 border-yellow-200">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center flex-shrink-0">
+                            🎯
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-medium">
+                                Vous avez {customer.points} points
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                Plus que <strong>{nextReward.pointsNeeded}</strong> pour {nextReward.reward.name.toLowerCase()}! 🥤
+                            </p>
+                        </div>
+                    </div>
+                    <Progress
+                        value={progressPercent}
+                        className="h-2 mt-3"
+                    />
+                </Card>
+            )}
 
             <Tabs defaultValue="rewards" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="rewards" className="gap-2">
                         <Gift className="w-4 h-4" />
-                        {t('loyalty.rewards')}
+                        Récompenses
                     </TabsTrigger>
                     <TabsTrigger value="history" className="gap-2">
                         <History className="w-4 h-4" />
-                        {t('loyalty.history')}
+                        Historique
                     </TabsTrigger>
                 </TabsList>
 
@@ -367,17 +396,20 @@ export function LoyaltyDashboard() {
                             <Card
                                 key={reward.id}
                                 className={`p-4 transition-all ${canAfford
-                                        ? 'hover:border-primary cursor-pointer'
-                                        : 'opacity-60'
+                                    ? 'hover:border-primary cursor-pointer'
+                                    : 'opacity-60'
                                     }`}
-                                onClick={() => canAfford && setSelectedReward(reward.id)}
+                                onClick={() => canAfford && setSelectedRewardId(reward.id)}
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${canAfford
-                                            ? 'bg-primary/10 text-primary'
-                                            : 'bg-muted text-muted-foreground'
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl ${canAfford
+                                        ? 'bg-primary/10'
+                                        : 'bg-muted'
                                         }`}>
-                                        <Gift className="w-6 h-6" />
+                                        {reward.id === 'free-drink' && '🥤'}
+                                        {reward.id === 'discount-10-percent' && '💰'}
+                                        {reward.id === 'free-side' && '🍟'}
+                                        {reward.id === 'free-pizza' && '🍕'}
                                     </div>
                                     <div className="flex-1">
                                         <h4 className="font-semibold">{reward.name}</h4>
@@ -387,10 +419,14 @@ export function LoyaltyDashboard() {
                                         <p className={`font-bold ${canAfford ? 'text-primary' : ''}`}>
                                             {reward.pointsCost} pts
                                         </p>
-                                        {canAfford && (
+                                        {canAfford ? (
                                             <Button size="sm" variant="ghost" className="text-xs">
                                                 Échanger
                                             </Button>
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground">
+                                                -{reward.pointsCost - customer.points} pts
+                                            </p>
                                         )}
                                     </div>
                                 </div>
@@ -446,30 +482,30 @@ export function LoyaltyDashboard() {
             </Button>
 
             {/* Redeem confirmation dialog */}
-            <Dialog open={!!selectedReward} onOpenChange={() => setSelectedReward(null)}>
+            <Dialog open={!!selectedRewardId} onOpenChange={() => setSelectedRewardId(null)}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Confirmer l'échange</DialogTitle>
                     </DialogHeader>
-                    {selectedReward && (
+                    {selectedRewardId && (
                         <div className="space-y-4">
                             <p>
                                 Voulez-vous échanger{' '}
-                                <strong>{rewards.find(r => r.id === selectedReward)?.pointsCost} points</strong>{' '}
+                                <strong>{rewards.find(r => r.id === selectedRewardId)?.pointsCost} points</strong>{' '}
                                 pour obtenir{' '}
-                                <strong>{rewards.find(r => r.id === selectedReward)?.name}</strong>?
+                                <strong>{rewards.find(r => r.id === selectedRewardId)?.name}</strong>?
                             </p>
                             <div className="flex gap-3">
                                 <Button
                                     variant="outline"
                                     className="flex-1"
-                                    onClick={() => setSelectedReward(null)}
+                                    onClick={() => setSelectedRewardId(null)}
                                 >
                                     Annuler
                                 </Button>
                                 <Button
                                     className="flex-1"
-                                    onClick={() => handleRedeem(selectedReward)}
+                                    onClick={() => handleRedeem(selectedRewardId)}
                                     disabled={isLoading}
                                 >
                                     {isLoading ? (
@@ -484,5 +520,77 @@ export function LoyaltyDashboard() {
                 </DialogContent>
             </Dialog>
         </div>
+    );
+}
+
+// Compact loyalty section for checkout
+export function CheckoutLoyaltySection({
+    hasPromoCode = false,
+    onRewardSelect
+}: {
+    hasPromoCode?: boolean;
+    onRewardSelect?: (reward: { id: string; type: string; value: number } | null) => void;
+}) {
+    const { customer, rewards, selectedReward, selectReward, canUseReward, calculatePointsToEarn } = useLoyalty();
+    const [total] = useState(0); // This will be passed from parent
+
+    if (!customer) return null;
+
+    const pointsToEarn = calculatePointsToEarn(total);
+    const availableRewards = rewards.filter(r => canUseReward(r.id, hasPromoCode));
+
+    const handleSelectReward = (reward: typeof rewards[0] | null) => {
+        selectReward(reward);
+        onRewardSelect?.(reward ? { id: reward.id, type: reward.type, value: reward.value } : null);
+    };
+
+    return (
+        <Card className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+                <h3 className="font-semibold flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    Fidélité
+                </h3>
+                <span className="text-sm font-medium">{customer.points} points</span>
+            </div>
+
+            {/* Promo code warning */}
+            {hasPromoCode && (
+                <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
+                    ⚠️ Les récompenses ne sont pas cumulables avec les codes promo
+                </p>
+            )}
+
+            {/* Available rewards */}
+            {!hasPromoCode && availableRewards.length > 0 && (
+                <div className="space-y-2">
+                    <p className="text-sm font-medium">Utiliser une récompense:</p>
+                    {availableRewards.map((reward) => (
+                        <button
+                            key={reward.id}
+                            onClick={() => handleSelectReward(selectedReward?.id === reward.id ? null : reward)}
+                            className={`w-full p-3 rounded-lg border-2 flex items-center justify-between transition-all ${selectedReward?.id === reward.id
+                                    ? 'border-primary bg-primary/10'
+                                    : 'border-border hover:border-primary/50'
+                                }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Gift className="w-4 h-4" />
+                                <span className="font-medium">{reward.name}</span>
+                            </div>
+                            <span className="text-sm text-muted-foreground">{reward.pointsCost} pts</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Points to earn */}
+            {pointsToEarn.total > 0 && (
+                <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-950/30 p-2 rounded">
+                    <Sparkles className="w-4 h-4" />
+                    <span>Vous gagnerez <strong>+{pointsToEarn.total} points</strong> avec cette commande!</span>
+                </div>
+            )}
+        </Card>
     );
 }

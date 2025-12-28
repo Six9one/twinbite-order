@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, CreditCard, Banknote, Check, Star, Gift, Loader2 } from 'lucide-react';
+import { ArrowLeft, CreditCard, Banknote, Check, Star, Gift, Loader2, Sparkles } from 'lucide-react';
 import { useOrder } from '@/context/OrderContext';
 import { useLoyalty } from '@/context/LoyaltyContext';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+
+// ============================================
+// V1 CHECKOUT WITH LOYALTY INTEGRATION
+// - Shows points to earn breakdown
+// - Allows reward redemption before checkout
+// - Prevents combining rewards with promo codes
+// ============================================
 
 interface CheckoutProps {
   onBack: () => void;
@@ -15,7 +23,19 @@ interface CheckoutProps {
 
 export function Checkout({ onBack }: CheckoutProps) {
   const { orderType, cart, getTotal, clearCart } = useOrder();
-  const { customer, isLoading: loyaltyLoading, findOrCreateCustomer, calculatePointsToEarn, getTierInfo, earnPoints } = useLoyalty();
+  const {
+    customer,
+    isLoading: loyaltyLoading,
+    findOrCreateCustomer,
+    calculatePointsToEarn,
+    earnPoints,
+    rewards,
+    selectedReward,
+    selectReward,
+    canUseReward,
+    redeemReward,
+    getNextReward
+  } = useLoyalty();
 
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -27,6 +47,8 @@ export function Checkout({ onBack }: CheckoutProps) {
   });
   const [showLoyalty, setShowLoyalty] = useState(false);
   const [phoneChecked, setPhoneChecked] = useState(false);
+  const [hasPromoCode] = useState(false); // For future promo code integration
+  const [earnedPoints, setEarnedPoints] = useState(0);
 
   const orderTypeLabels = {
     emporter: 'À Emporter',
@@ -52,10 +74,11 @@ export function Checkout({ onBack }: CheckoutProps) {
       const foundCustomer = await findOrCreateCustomer(phoneDigits, customerInfo.name || 'Client');
       if (foundCustomer) {
         setShowLoyalty(true);
+        const points = calculatePointsToEarn(total);
         if (foundCustomer.points > 0) {
           toast.success(`Bienvenue ! Vous avez ${foundCustomer.points} points fidélité`);
-        } else {
-          toast.success('Compte fidélité créé ! Vous allez gagner des points sur cette commande');
+        } else if (!foundCustomer.firstOrderDone) {
+          toast.success(`Bienvenue ! Vous gagnerez ${points.total} points sur cette commande! 🎉`);
         }
       }
     } catch (e) {
@@ -85,14 +108,25 @@ export function Checkout({ onBack }: CheckoutProps) {
       // Generate order ID
       const orderId = `ORDER-${Date.now()}`;
 
+      // Redeem selected reward if any
+      if (selectedReward) {
+        const redeemResult = await redeemReward(selectedReward.id);
+        if (!redeemResult.success) {
+          toast.error('Erreur lors de l\'application de la récompense');
+          setIsProcessing(false);
+          return;
+        }
+      }
+
       // Simulate order processing
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Award loyalty points if customer is registered
-      if (customer && pointsToEarn > 0) {
-        const success = await earnPoints(orderId, total, `Commande ${orderId}`);
+      if (customer && pointsBreakdown.total > 0) {
+        const success = await earnPoints(orderId, finalTotal, `Commande ${orderId}`);
         if (success) {
-          console.log(`Awarded ${pointsToEarn} loyalty points for order ${orderId}`);
+          setEarnedPoints(pointsBreakdown.total);
+          console.log(`Awarded ${pointsBreakdown.total} loyalty points for order ${orderId}`);
         }
       }
 
@@ -107,8 +141,28 @@ export function Checkout({ onBack }: CheckoutProps) {
   };
 
   const total = getTotal();
-  const pointsToEarn = calculatePointsToEarn(total);
-  const tierInfo = getTierInfo();
+
+  // Calculate discount from selected reward
+  let discountAmount = 0;
+  let discountLabel = '';
+  if (selectedReward) {
+    if (selectedReward.type === 'percentage') {
+      discountAmount = (total * selectedReward.value) / 100;
+      discountLabel = `-${selectedReward.value}%`;
+    } else if (selectedReward.type === 'discount') {
+      discountAmount = selectedReward.value;
+      discountLabel = `-${selectedReward.value}€`;
+    } else if (selectedReward.type === 'free_item') {
+      discountLabel = selectedReward.name;
+    }
+  }
+
+  const finalTotal = Math.max(0, total - discountAmount);
+  const pointsBreakdown = calculatePointsToEarn(finalTotal);
+  const nextReward = getNextReward();
+
+  // Get available rewards for this customer
+  const availableRewards = rewards.filter(r => canUseReward(r.id, hasPromoCode));
 
   if (orderComplete) {
     return (
@@ -126,18 +180,50 @@ export function Checkout({ onBack }: CheckoutProps) {
           }
         </p>
 
-        {/* Points earned */}
-        {customer && pointsToEarn > 0 && (
+        {/* Points earned summary */}
+        {customer && earnedPoints > 0 && (
           <Card className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30 border-yellow-200 dark:border-yellow-800 mb-6 max-w-sm w-full">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-yellow-400 flex items-center justify-center">
                 <Star className="w-6 h-6 text-yellow-900" />
               </div>
               <div>
-                <p className="font-bold text-lg">+{pointsToEarn} points gagnés !</p>
+                <p className="font-bold text-lg">+{earnedPoints} points gagnés !</p>
                 <p className="text-sm text-muted-foreground">
-                  Total: {(customer.points + pointsToEarn)} points
+                  Total: {(customer.points)} points
                 </p>
+              </div>
+            </div>
+            {/* Breakdown */}
+            <div className="mt-3 pt-3 border-t border-yellow-200 dark:border-yellow-800 text-sm space-y-1">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Commande (1pt/€)</span>
+                <span>+{pointsBreakdown.base}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Bonus en ligne 🌐</span>
+                <span>+{pointsBreakdown.online}</span>
+              </div>
+              {pointsBreakdown.firstOrder > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>1ère commande 🎉</span>
+                  <span>+{pointsBreakdown.firstOrder}</span>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* Reward applied */}
+        {selectedReward && (
+          <Card className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border-green-200 mb-6 max-w-sm w-full">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-400 flex items-center justify-center">
+                <Gift className="w-5 h-5 text-green-900" />
+              </div>
+              <div>
+                <p className="font-bold">🎁 Récompense appliquée</p>
+                <p className="text-sm text-muted-foreground">{selectedReward.name}</p>
               </div>
             </div>
           </Card>
@@ -186,10 +272,25 @@ export function Checkout({ onBack }: CheckoutProps) {
                   </div>
                 );
               })}
+
+              {/* Reward discount line */}
+              {selectedReward && discountAmount > 0 && (
+                <>
+                  <Separator />
+                  <div className="flex justify-between text-sm text-green-600">
+                    <div className="flex items-center gap-1">
+                      <Gift className="w-4 h-4" />
+                      <span>{selectedReward.name}</span>
+                    </div>
+                    <span className="font-medium">-{discountAmount.toFixed(2)} €</span>
+                  </div>
+                </>
+              )}
+
               <Separator />
               <div className="flex justify-between font-semibold text-lg">
                 <span>Total</span>
-                <span className="text-primary">{total.toFixed(2)} €</span>
+                <span className="text-primary">{finalTotal.toFixed(2)} €</span>
               </div>
             </div>
             <div className="mt-4 px-3 py-2 bg-muted rounded-lg text-sm">
@@ -250,41 +351,80 @@ export function Checkout({ onBack }: CheckoutProps) {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-lg font-semibold flex items-center gap-2">
                   <Star className="w-5 h-5 text-yellow-500" />
-                  Programme Fidélité
+                  Fidélité
                 </h3>
                 <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
-                  {tierInfo?.name || 'Bronze'}
+                  {customer.points} pts
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="text-center p-3 bg-white/50 dark:bg-black/20 rounded-lg">
-                  <p className="text-2xl font-bold text-primary">{customer.points}</p>
-                  <p className="text-xs text-muted-foreground">Points actuels</p>
-                </div>
-                <div className="text-center p-3 bg-white/50 dark:bg-black/20 rounded-lg">
-                  <p className="text-2xl font-bold text-green-600">+{pointsToEarn}</p>
-                  <p className="text-xs text-muted-foreground">Points à gagner</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Gift className="w-4 h-4" />
-                <span>
-                  {tierInfo?.multiplier && tierInfo.multiplier > 1
-                    ? `Bonus x${tierInfo.multiplier} grâce à votre niveau ${tierInfo.name}!`
-                    : `Gagnez ${Math.floor((tierInfo?.multiplier || 1))} point par euro dépensé`
-                  }
-                </span>
-              </div>
-
-              {customer.points >= 50 && (
-                <div className="mt-4 p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <p className="text-sm text-green-800 dark:text-green-200 font-medium">
-                    🎁 Vous avez assez de points pour des récompenses !
+              {/* Progress to next reward */}
+              {nextReward && (
+                <div className="mb-4 p-3 bg-white/50 dark:bg-black/20 rounded-lg">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>{customer.points} pts</span>
+                    <span>{nextReward.reward.pointsCost} pts</span>
+                  </div>
+                  <Progress
+                    value={(customer.points / nextReward.reward.pointsCost) * 100}
+                    className="h-2"
+                  />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Plus que <strong>{nextReward.pointsNeeded}</strong> pts pour {nextReward.reward.name.toLowerCase()}! 🎁
                   </p>
                 </div>
               )}
+
+              {/* Available rewards to redeem */}
+              {!hasPromoCode && availableRewards.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  <p className="text-sm font-medium">Utiliser une récompense:</p>
+                  {availableRewards.map((reward) => (
+                    <button
+                      key={reward.id}
+                      onClick={() => selectReward(selectedReward?.id === reward.id ? null : reward)}
+                      className={`w-full p-3 rounded-lg border-2 flex items-center justify-between transition-all text-left ${selectedReward?.id === reward.id
+                          ? 'border-green-500 bg-green-50 dark:bg-green-950/30'
+                          : 'border-white/50 dark:border-white/10 hover:border-primary/50 bg-white/30 dark:bg-black/10'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {selectedReward?.id === reward.id ? (
+                          <Check className="w-5 h-5 text-green-500" />
+                        ) : (
+                          <Gift className="w-5 h-5" />
+                        )}
+                        <div>
+                          <span className="font-medium">{reward.name}</span>
+                          <p className="text-xs text-muted-foreground">{reward.description}</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium">{reward.pointsCost} pts</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Promo code warning */}
+              {hasPromoCode && (
+                <p className="text-sm text-muted-foreground mb-4 bg-white/50 dark:bg-black/20 p-2 rounded">
+                  ⚠️ Les récompenses ne sont pas cumulables avec les codes promo
+                </p>
+              )}
+
+              {/* Points to earn */}
+              <div className="flex items-center gap-2 text-sm bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
+                <Sparkles className="w-4 h-4 text-green-600" />
+                <div>
+                  <span className="font-medium text-green-700 dark:text-green-300">
+                    +{pointsBreakdown.total} points sur cette commande
+                  </span>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    {pointsBreakdown.base} (commande) + {pointsBreakdown.online} (en ligne)
+                    {pointsBreakdown.firstOrder > 0 && ` + ${pointsBreakdown.firstOrder} (1ère commande)`}
+                  </p>
+                </div>
+              </div>
             </Card>
           )}
 
@@ -315,14 +455,6 @@ export function Checkout({ onBack }: CheckoutProps) {
             </div>
           </Card>
 
-          {/* Points to earn reminder */}
-          {showLoyalty && customer && pointsToEarn > 0 && (
-            <div className="flex items-center justify-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg text-sm">
-              <Star className="w-4 h-4 text-yellow-600" />
-              <span>Vous allez gagner <strong>{pointsToEarn} points</strong> sur cette commande !</span>
-            </div>
-          )}
-
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
@@ -335,7 +467,10 @@ export function Checkout({ onBack }: CheckoutProps) {
                 Traitement en cours...
               </>
             ) : (
-              `Confirmer - ${total.toFixed(2)} €`
+              <>
+                Confirmer - {finalTotal.toFixed(2)} €
+                {selectedReward && <Gift className="w-4 h-4 ml-2" />}
+              </>
             )}
           </Button>
         </div>

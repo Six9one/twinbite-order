@@ -1,5 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+
+// ============================================
+// V1 SIMPLIFIED LOYALTY SYSTEM
+// - 1 point per €1 spent (no tier multipliers)
+// - +10 bonus per online order
+// - +30 bonus for first order only
+// - 4 rewards: 50 drink, 100 -10%, 150 sides, 200 pizza
+// ============================================
+
+// Bonus constants
+const ONLINE_ORDER_BONUS = 10;
+const FIRST_ORDER_BONUS = 30;
 
 interface LoyaltyReward {
     id: string;
@@ -7,7 +19,7 @@ interface LoyaltyReward {
     description: string;
     pointsCost: number;
     type: 'free_item' | 'discount' | 'percentage';
-    value: number; // discount amount or item ID
+    value: number;
     isActive: boolean;
 }
 
@@ -27,7 +39,7 @@ interface LoyaltyCustomer {
     points: number;
     totalSpent: number;
     totalOrders: number;
-    tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+    firstOrderDone: boolean;
     joinedAt: Date;
 }
 
@@ -37,30 +49,23 @@ interface LoyaltyContextType {
     isLoading: boolean;
     rewards: LoyaltyReward[];
     transactions: LoyaltyTransaction[];
+    selectedReward: LoyaltyReward | null;
 
     // Actions
     lookupCustomer: (phone: string) => Promise<LoyaltyCustomer | null>;
     registerCustomer: (phone: string, name: string) => Promise<LoyaltyCustomer | null>;
     findOrCreateCustomer: (phone: string, name: string) => Promise<LoyaltyCustomer | null>;
     earnPoints: (orderId: string, amount: number, description?: string) => Promise<boolean>;
-    redeemReward: (rewardId: string) => Promise<{ success: boolean; discount?: number }>;
+    redeemReward: (rewardId: string) => Promise<{ success: boolean; discount?: number; discountType?: 'amount' | 'percentage' }>;
+    selectReward: (reward: LoyaltyReward | null) => void;
     getRewards: () => LoyaltyReward[];
-    getTier: (points: number) => 'bronze' | 'silver' | 'gold' | 'platinum';
-    getTierInfo: () => { name: string; multiplier: number } | null;
-    getNextTier: (currentTier: string) => { name: string; pointsNeeded: number } | null;
-    calculatePointsToEarn: (amount: number) => number;
+    getNextReward: () => { reward: LoyaltyReward; pointsNeeded: number } | null;
+    calculatePointsToEarn: (amount: number) => { base: number; online: number; firstOrder: number; total: number };
+    canUseReward: (rewardId: string, hasPromoCode: boolean) => boolean;
     logout: () => void;
 }
 
-// Tier thresholds
-const TIERS = {
-    bronze: 0,
-    silver: 500,
-    gold: 1500,
-    platinum: 5000
-};
-
-// Default rewards
+// V1 Default rewards (matching database migration)
 const DEFAULT_REWARDS: LoyaltyReward[] = [
     {
         id: 'free-drink',
@@ -72,48 +77,30 @@ const DEFAULT_REWARDS: LoyaltyReward[] = [
         isActive: true
     },
     {
-        id: 'free-frites',
-        name: 'Frites Gratuites',
-        description: 'Une portion de frites offerte',
-        pointsCost: 75,
+        id: 'discount-10-percent',
+        name: '-10% sur la commande',
+        description: '10% de réduction (non cumulable)',
+        pointsCost: 100,
+        type: 'percentage',
+        value: 10,
+        isActive: true
+    },
+    {
+        id: 'free-side',
+        name: 'Accompagnement Gratuit',
+        description: 'Frites, pain à l\'ail ou wings',
+        pointsCost: 150,
         type: 'free_item',
         value: 0,
-        isActive: true
-    },
-    {
-        id: 'discount-5',
-        name: 'Réduction 5€',
-        description: '5€ de réduction sur votre commande',
-        pointsCost: 100,
-        type: 'discount',
-        value: 5,
-        isActive: true
-    },
-    {
-        id: 'discount-10',
-        name: 'Réduction 10€',
-        description: '10€ de réduction sur votre commande',
-        pointsCost: 180,
-        type: 'discount',
-        value: 10,
         isActive: true
     },
     {
         id: 'free-pizza',
         name: 'Pizza Gratuite',
-        description: 'Une pizza Senior gratuite',
-        pointsCost: 250,
+        description: 'Une pizza classique offerte',
+        pointsCost: 200,
         type: 'free_item',
         value: 0,
-        isActive: true
-    },
-    {
-        id: 'percent-15',
-        name: '-15% sur la commande',
-        description: '15% de réduction sur toute la commande',
-        pointsCost: 300,
-        type: 'percentage',
-        value: 15,
         isActive: true
     }
 ];
@@ -125,6 +112,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(false);
     const [transactions, setTransactions] = useState<LoyaltyTransaction[]>([]);
     const [rewards, setRewards] = useState<LoyaltyReward[]>(DEFAULT_REWARDS);
+    const [selectedReward, setSelectedReward] = useState<LoyaltyReward | null>(null);
 
     // Load saved customer from localStorage
     useEffect(() => {
@@ -155,42 +143,15 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                         isActive: r.is_active
                     })));
                 } else if (error) {
-                    // Table doesn't exist yet - use defaults (migration not applied)
                     console.warn('Loyalty rewards table not found, using defaults:', error.message);
                 }
             } catch (e) {
-                // Silently fail and use default rewards
                 console.warn('Failed to fetch rewards, using defaults:', e);
             }
         };
 
         fetchRewards();
     }, []);
-
-    const getTier = (points: number): 'bronze' | 'silver' | 'gold' | 'platinum' => {
-        if (points >= TIERS.platinum) return 'platinum';
-        if (points >= TIERS.gold) return 'gold';
-        if (points >= TIERS.silver) return 'silver';
-        return 'bronze';
-    };
-
-    const getNextTier = (currentTier: string): { name: string; pointsNeeded: number } | null => {
-        const tierOrder = ['bronze', 'silver', 'gold', 'platinum'];
-        const currentIndex = tierOrder.indexOf(currentTier);
-
-        if (currentIndex === -1 || currentIndex >= tierOrder.length - 1) {
-            return null; // Already at max tier
-        }
-
-        const nextTierName = tierOrder[currentIndex + 1];
-        const currentPoints = customer?.points || 0;
-        const pointsNeeded = TIERS[nextTierName as keyof typeof TIERS] - currentPoints;
-
-        return {
-            name: nextTierName.charAt(0).toUpperCase() + nextTierName.slice(1),
-            pointsNeeded: Math.max(0, pointsNeeded)
-        };
-    };
 
     const lookupCustomer = async (phone: string): Promise<LoyaltyCustomer | null> => {
         setIsLoading(true);
@@ -204,9 +165,9 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 .eq('phone', normalizedPhone)
                 .single();
 
-            // Check if table doesn't exist (migration not applied)
+            // Check if table doesn't exist
             if (error?.code === '42P01' || error?.message?.includes('does not exist')) {
-                console.warn('Loyalty tables not found. Please apply migration 20251220040000_loyalty_group_push.sql');
+                console.warn('Loyalty tables not found. Please apply migration.');
                 setIsLoading(false);
                 return null;
             }
@@ -224,7 +185,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 points: rec.points,
                 totalSpent: rec.total_spent,
                 totalOrders: rec.total_orders,
-                tier: getTier(rec.points),
+                firstOrderDone: rec.first_order_done || false,
                 joinedAt: new Date(rec.created_at)
             };
 
@@ -253,7 +214,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             setIsLoading(false);
             return customerData;
         } catch (e) {
-            console.warn('Lookup failed (loyalty tables may not exist):', e);
+            console.warn('Lookup failed:', e);
             setIsLoading(false);
             return null;
         }
@@ -276,16 +237,16 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 .insert({
                     phone: normalizedPhone,
                     name,
-                    points: 10, // Welcome bonus
+                    points: 0, // No welcome bonus - wait for first order
                     total_spent: 0,
-                    total_orders: 0
+                    total_orders: 0,
+                    first_order_done: false
                 })
                 .select()
                 .single();
 
-            // Check if table doesn't exist (migration not applied)
             if (error?.code === '42P01' || error?.message?.includes('does not exist')) {
-                console.warn('Loyalty tables not found. Please apply migration 20251220040000_loyalty_group_push.sql');
+                console.warn('Loyalty tables not found. Please apply migration.');
                 setIsLoading(false);
                 return null;
             }
@@ -296,23 +257,15 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 return null;
             }
 
-            // Add welcome transaction
-            await supabase.from('loyalty_transactions' as any).insert({
-                customer_id: (data as any).id,
-                type: 'earn',
-                points: 10,
-                description: 'Bonus de bienvenue 🎉'
-            });
-
             const rec = data as any;
             const customerData: LoyaltyCustomer = {
                 id: rec.id,
                 phone: rec.phone,
                 name: rec.name,
-                points: 10,
+                points: 0,
                 totalSpent: 0,
                 totalOrders: 0,
-                tier: 'bronze',
+                firstOrderDone: false,
                 joinedAt: new Date(rec.created_at)
             };
 
@@ -321,33 +274,35 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             setIsLoading(false);
             return customerData;
         } catch (e) {
-            console.warn('Registration error (loyalty tables may not exist):', e);
+            console.warn('Registration error:', e);
             setIsLoading(false);
             return null;
         }
+    };
+
+    // V1 Simplified: 1 point per euro, no tier multiplier
+    const calculatePointsToEarn = (amount: number): { base: number; online: number; firstOrder: number; total: number } => {
+        const base = Math.floor(amount); // 1pt per €1
+        const online = ONLINE_ORDER_BONUS;
+        const firstOrder = (customer && !customer.firstOrderDone) ? FIRST_ORDER_BONUS : 0;
+        return {
+            base,
+            online,
+            firstOrder,
+            total: base + online + firstOrder
+        };
     };
 
     const earnPoints = async (orderId: string, amount: number, description?: string): Promise<boolean> => {
         if (!customer) return false;
 
         try {
-            // 1 point per euro spent
-            const pointsEarned = Math.floor(amount);
+            const basePoints = Math.floor(amount);
 
-            // Tier bonus multiplier
-            const tierMultiplier = {
-                bronze: 1,
-                silver: 1.25,
-                gold: 1.5,
-                platinum: 2
-            };
-
-            const multiplier = tierMultiplier[customer.tier] || 1;
-            const finalPoints = Math.floor(pointsEarned * multiplier);
-
+            // Call RPC function which handles online bonus and first order bonus
             const { error } = await (supabase.rpc as any)('add_loyalty_points', {
                 p_customer_id: customer.id,
-                p_points: finalPoints,
+                p_points: basePoints,
                 p_order_id: orderId,
                 p_amount: amount,
                 p_description: description || `Commande #${orderId.slice(-6)}`
@@ -358,26 +313,50 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 return false;
             }
 
+            // Calculate what we expect to earn
+            const earned = calculatePointsToEarn(amount);
+
             // Update local state
             setCustomer({
                 ...customer,
-                points: customer.points + finalPoints,
+                points: customer.points + earned.total,
                 totalSpent: customer.totalSpent + amount,
                 totalOrders: customer.totalOrders + 1,
-                tier: getTier(customer.points + finalPoints)
+                firstOrderDone: true
             });
 
-            setTransactions([
+            // Add transactions to local state
+            const newTransactions: LoyaltyTransaction[] = [
                 {
-                    id: `tx-${Date.now()}`,
+                    id: `tx-${Date.now()}-base`,
                     type: 'earn',
-                    points: finalPoints,
-                    description: description || `Commande #${orderId.slice(-6)}`,
+                    points: earned.base,
+                    description: description || `Commande #${orderId.slice(-6)} (1pt/€)`,
                     createdAt: new Date(),
                     orderId
                 },
-                ...transactions
-            ]);
+                {
+                    id: `tx-${Date.now()}-online`,
+                    type: 'earn',
+                    points: ONLINE_ORDER_BONUS,
+                    description: 'Bonus commande en ligne 🌐',
+                    createdAt: new Date(),
+                    orderId
+                }
+            ];
+
+            if (!customer.firstOrderDone) {
+                newTransactions.push({
+                    id: `tx-${Date.now()}-first`,
+                    type: 'earn',
+                    points: FIRST_ORDER_BONUS,
+                    description: 'Bonus première commande 🎉',
+                    createdAt: new Date(),
+                    orderId
+                });
+            }
+
+            setTransactions([...newTransactions, ...transactions]);
 
             return true;
         } catch (e) {
@@ -386,7 +365,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const redeemReward = async (rewardId: string): Promise<{ success: boolean; discount?: number }> => {
+    const redeemReward = async (rewardId: string): Promise<{ success: boolean; discount?: number; discountType?: 'amount' | 'percentage' }> => {
         if (!customer) return { success: false };
 
         const reward = rewards.find(r => r.id === rewardId);
@@ -409,8 +388,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             // Update local state
             setCustomer({
                 ...customer,
-                points: customer.points - reward.pointsCost,
-                tier: getTier(customer.points - reward.pointsCost)
+                points: customer.points - reward.pointsCost
             });
 
             setTransactions([
@@ -424,9 +402,13 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 ...transactions
             ]);
 
+            // Clear selected reward
+            setSelectedReward(null);
+
             return {
                 success: true,
-                discount: reward.type === 'discount' ? reward.value : reward.type === 'percentage' ? reward.value : 0
+                discount: reward.value,
+                discountType: reward.type === 'percentage' ? 'percentage' : 'amount'
             };
         } catch (e) {
             console.error('Redeem error:', e);
@@ -434,46 +416,54 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const selectReward = (reward: LoyaltyReward | null) => {
+        setSelectedReward(reward);
+    };
+
+    const canUseReward = (rewardId: string, hasPromoCode: boolean): boolean => {
+        // Can't combine rewards with promo codes
+        if (hasPromoCode) return false;
+        if (!customer) return false;
+
+        const reward = rewards.find(r => r.id === rewardId);
+        if (!reward) return false;
+
+        return customer.points >= reward.pointsCost;
+    };
+
     const getRewards = (): LoyaltyReward[] => {
         return rewards.filter(r => r.isActive);
     };
 
-    const logout = () => {
-        setCustomer(null);
-        setTransactions([]);
-        localStorage.removeItem('twinpizza-loyalty-phone');
+    // Get the next reward the customer can earn
+    const getNextReward = (): { reward: LoyaltyReward; pointsNeeded: number } | null => {
+        if (!customer) return null;
+
+        const sortedRewards = [...rewards].filter(r => r.isActive).sort((a, b) => a.pointsCost - b.pointsCost);
+
+        for (const reward of sortedRewards) {
+            if (customer.points < reward.pointsCost) {
+                return {
+                    reward,
+                    pointsNeeded: reward.pointsCost - customer.points
+                };
+            }
+        }
+
+        return null; // Customer can afford all rewards
     };
 
-    // Combined lookup/register function
     const findOrCreateCustomer = async (phone: string, name: string): Promise<LoyaltyCustomer | null> => {
         const existing = await lookupCustomer(phone);
         if (existing) return existing;
         return registerCustomer(phone, name);
     };
 
-    // Get current tier info with multiplier
-    const getTierInfo = (): { name: string; multiplier: number } | null => {
-        if (!customer) return null;
-
-        const tierMultipliers: Record<string, number> = {
-            bronze: 1,
-            silver: 1.25,
-            gold: 1.5,
-            platinum: 2
-        };
-
-        return {
-            name: customer.tier.charAt(0).toUpperCase() + customer.tier.slice(1),
-            multiplier: tierMultipliers[customer.tier] || 1
-        };
-    };
-
-    // Calculate points that will be earned
-    const calculatePointsToEarn = (amount: number): number => {
-        const basePoints = Math.floor(amount);
-        const tierInfo = getTierInfo();
-        const multiplier = tierInfo?.multiplier || 1;
-        return Math.floor(basePoints * multiplier);
+    const logout = () => {
+        setCustomer(null);
+        setTransactions([]);
+        setSelectedReward(null);
+        localStorage.removeItem('twinpizza-loyalty-phone');
     };
 
     return (
@@ -482,16 +472,17 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             isLoading,
             rewards,
             transactions,
+            selectedReward,
             lookupCustomer,
             registerCustomer,
             findOrCreateCustomer,
             earnPoints,
             redeemReward,
+            selectReward,
             getRewards,
-            getTier,
-            getTierInfo,
-            getNextTier,
+            getNextReward,
             calculatePointsToEarn,
+            canUseReward,
             logout
         }}>
             {children}
