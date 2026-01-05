@@ -26,6 +26,7 @@ import { SiteContentManager } from '@/components/admin/SiteContentManager';
 import { StoreStatusManager } from '@/components/admin/StoreStatusManager';
 import { CategoryImagesManager } from '@/components/admin/CategoryImagesManager';
 import { PriceManager } from '@/components/admin/PriceManager';
+import { HACCPManager } from '@/components/admin/HACCPManager';
 import {
   LogOut, Home, Search, RefreshCw, Download, Printer,
   Clock, CheckCircle, XCircle, ChefHat, Package,
@@ -35,7 +36,7 @@ import {
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'prices';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'prices' | 'haccp';
 
 
 
@@ -765,6 +766,9 @@ export default function AdminDashboard() {
 
           {/* Price Manager */}
           {activeTab === 'prices' && <PriceManager />}
+
+          {/* HACCP Module */}
+          {activeTab === 'haccp' && <HACCPManager />}
 
           {/* Settings */}
           {activeTab === 'settings' && <SettingsManager />}

@@ -103,6 +103,7 @@ const navItems: NavItem[] = [
   { label: 'Fidélité', icon: Star, value: 'loyalty' },
   { label: 'Avis Clients', icon: MessageSquare, value: 'reviews' },
   { label: 'Contenu du Site', icon: Globe, value: 'content' },
+  { label: '🧾 HACCP', icon: Shield, value: 'haccp' },
   { label: '⚡ Statut & Horaires', icon: Power, value: 'store-status' },
   { label: 'Statistiques', icon: BarChart3, value: 'stats' },
   { label: 'Ventes', icon: BarChart3, value: 'ventes' },
