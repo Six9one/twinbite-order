@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import {
     Snowflake, Leaf, Printer, History,
     Clock, Thermometer, AlertTriangle, CheckCircle,
-    Calendar, Download, RefreshCw
+    Calendar, Download, RefreshCw, Settings, Sliders
 } from 'lucide-react';
 
 interface HACCPCategory {
@@ -52,6 +52,17 @@ export function HACCPManager() {
     const [activeCategory, setActiveCategory] = useState<string>('');
     const [historyDate, setHistoryDate] = useState(new Date().toISOString().slice(0, 10));
     const [printing, setPrinting] = useState<string | null>(null);
+    const [showSettings, setShowSettings] = useState(false);
+
+    // Ticket customization settings
+    const [ticketSettings, setTicketSettings] = useState({
+        paperWidth: 80, // mm
+        titleSize: 24,   // px
+        productSize: 26, // px
+        dlcSize: 24,     // px
+        infoSize: 14,    // px
+        footerSize: 12,  // px
+    });
 
     useEffect(() => {
         fetchData();
@@ -179,6 +190,7 @@ export function HACCPManager() {
     ) => {
         const actionLabel = category.slug === 'congele-decongele' ? 'Décongélation' : 'Ouverture';
         const dlcHours = product.dlc_hours_override || category.dlc_hours;
+        const s = ticketSettings; // shorthand
 
         const ticketHtml = `
       <!DOCTYPE html>
@@ -186,60 +198,60 @@ export function HACCPManager() {
       <head>
         <title>HACCP - ${product.name}</title>
         <style>
-          @page { size: 80mm auto; margin: 0; }
+          @page { size: ${s.paperWidth}mm auto; margin: 0; }
           @media print { 
-            body { width: 80mm; margin: 0; }
+            body { width: ${s.paperWidth}mm; margin: 0; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           }
           body { 
             font-family: 'Courier New', monospace; 
-            font-size: 14px;
-            width: 80mm; 
+            font-size: ${s.infoSize}px;
+            width: ${s.paperWidth}mm; 
             margin: 0;
             padding: 3mm;
             color: #000;
-            line-height: 1.3;
+            line-height: 1.4;
           }
           .header {
             text-align: center;
-            border-bottom: 2px solid #000;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
+            border-bottom: 3px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
           }
           .header h1 {
             margin: 0;
-            font-size: 20px;
+            font-size: ${s.titleSize}px;
             font-weight: bold;
           }
           .header .subtitle {
-            font-size: 12px;
-            margin-top: 2px;
+            font-size: ${s.footerSize}px;
+            margin-top: 4px;
           }
           .category-badge {
             display: block;
             text-align: center;
-            padding: 6px 10px;
+            padding: 8px 10px;
             font-weight: bold;
-            font-size: 14px;
-            margin: 8px 0;
+            font-size: ${s.infoSize}px;
+            margin: 10px 0;
             color: white;
             background-color: ${category.color};
           }
           .product-name {
-            font-size: 22px;
+            font-size: ${s.productSize}px;
             font-weight: bold;
             text-align: center;
-            margin: 12px 0;
-            padding: 8px;
-            border: 2px solid #000;
+            margin: 14px 0;
+            padding: 10px;
+            border: 3px solid #000;
           }
           .info-row {
             display: flex;
             justify-content: space-between;
-            margin: 8px 0;
-            font-size: 12px;
+            margin: 10px 0;
+            font-size: ${s.infoSize}px;
             border-bottom: 1px dotted #999;
-            padding-bottom: 4px;
+            padding-bottom: 6px;
           }
           .info-row .label {
             font-weight: bold;
@@ -247,43 +259,43 @@ export function HACCPManager() {
           .dlc-box {
             background: #000;
             color: #fff;
-            padding: 12px;
-            margin: 12px 0;
+            padding: 14px;
+            margin: 14px 0;
             text-align: center;
           }
           .dlc-box .title {
-            font-size: 12px;
+            font-size: ${s.infoSize}px;
             text-transform: uppercase;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
           }
           .dlc-box .date {
-            font-size: 20px;
+            font-size: ${s.dlcSize}px;
             font-weight: bold;
           }
           .dlc-box .hours {
-            font-size: 11px;
-            margin-top: 2px;
+            font-size: ${s.footerSize}px;
+            margin-top: 4px;
           }
           .info-box {
-            font-size: 11px;
-            padding: 6px;
-            margin: 8px 0;
-            border: 1px solid #000;
+            font-size: ${s.footerSize}px;
+            padding: 8px;
+            margin: 10px 0;
+            border: 2px solid #000;
           }
           .rules {
-            font-size: 12px;
+            font-size: ${s.infoSize}px;
             font-weight: bold;
-            padding: 8px;
-            margin: 8px 0;
-            border-left: 4px solid #000;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 6px solid #000;
             background: #f0f0f0;
           }
           .footer {
             text-align: center;
-            font-size: 10px;
-            margin-top: 12px;
-            padding-top: 8px;
-            border-top: 2px solid #000;
+            font-size: ${s.footerSize}px;
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 3px solid #000;
           }
         </style>
       </head>
@@ -502,11 +514,86 @@ export function HACCPManager() {
                     <AlertTriangle className="w-6 h-6 text-amber-500" />
                     Module HACCP
                 </h2>
-                <Button variant="outline" onClick={fetchData}>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Actualiser
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setShowSettings(!showSettings)}>
+                        <Sliders className="w-4 h-4 mr-2" />
+                        Réglages Ticket
+                    </Button>
+                    <Button variant="outline" onClick={fetchData}>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Actualiser
+                    </Button>
+                </div>
             </div>
+
+            {/* Settings Panel */}
+            {showSettings && (
+                <Card className="p-4 border-2 border-amber-500">
+                    <h3 className="font-bold mb-4 flex items-center gap-2">
+                        <Settings className="w-5 h-5" />
+                        Réglages Impression Ticket
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="text-sm font-medium">Largeur papier (mm)</label>
+                            <Input
+                                type="number"
+                                value={ticketSettings.paperWidth}
+                                onChange={(e) => setTicketSettings(s => ({ ...s, paperWidth: Number(e.target.value) }))}
+                                className="mt-1"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium">Titre (px)</label>
+                            <Input
+                                type="number"
+                                value={ticketSettings.titleSize}
+                                onChange={(e) => setTicketSettings(s => ({ ...s, titleSize: Number(e.target.value) }))}
+                                className="mt-1"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium">Produit (px)</label>
+                            <Input
+                                type="number"
+                                value={ticketSettings.productSize}
+                                onChange={(e) => setTicketSettings(s => ({ ...s, productSize: Number(e.target.value) }))}
+                                className="mt-1"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium">DLC (px)</label>
+                            <Input
+                                type="number"
+                                value={ticketSettings.dlcSize}
+                                onChange={(e) => setTicketSettings(s => ({ ...s, dlcSize: Number(e.target.value) }))}
+                                className="mt-1"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium">Infos (px)</label>
+                            <Input
+                                type="number"
+                                value={ticketSettings.infoSize}
+                                onChange={(e) => setTicketSettings(s => ({ ...s, infoSize: Number(e.target.value) }))}
+                                className="mt-1"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium">Footer (px)</label>
+                            <Input
+                                type="number"
+                                value={ticketSettings.footerSize}
+                                onChange={(e) => setTicketSettings(s => ({ ...s, footerSize: Number(e.target.value) }))}
+                                className="mt-1"
+                            />
+                        </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                        💡 Ajustez les tailles pour votre imprimante thermique. Standard: 80mm, Police: 20-26px
+                    </p>
+                </Card>
+            )}
 
             {/* Info Card */}
             <Card className="p-4 bg-amber-500/10 border-amber-500/30">
