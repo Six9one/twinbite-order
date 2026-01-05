@@ -186,126 +186,141 @@ export function HACCPManager() {
       <head>
         <title>HACCP - ${product.name}</title>
         <style>
-          @page { size: 58mm auto; margin: 0; }
-          @media print { body { width: 58mm; margin: 0; } }
+          @page { size: 80mm auto; margin: 0; }
+          @media print { 
+            body { width: 80mm; margin: 0; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          }
           body { 
             font-family: 'Courier New', monospace; 
-            font-size: 10px;
-            width: 58mm; 
+            font-size: 14px;
+            width: 80mm; 
             margin: 0;
-            padding: 2mm;
+            padding: 3mm;
             color: #000;
+            line-height: 1.3;
           }
           .header {
             text-align: center;
-            border-bottom: 1px dashed #000;
-            padding-bottom: 4px;
-            margin-bottom: 4px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
           }
           .header h1 {
             margin: 0;
+            font-size: 20px;
+            font-weight: bold;
+          }
+          .header .subtitle {
             font-size: 12px;
+            margin-top: 2px;
           }
           .category-badge {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 3px;
+            display: block;
+            text-align: center;
+            padding: 6px 10px;
             font-weight: bold;
-            font-size: 9px;
-            margin: 4px 0;
+            font-size: 14px;
+            margin: 8px 0;
             color: white;
             background-color: ${category.color};
           }
           .product-name {
-            font-size: 14px;
+            font-size: 22px;
             font-weight: bold;
             text-align: center;
-            margin: 6px 0;
-            padding: 4px;
-            background: #f0f0f0;
-            border-radius: 3px;
+            margin: 12px 0;
+            padding: 8px;
+            border: 2px solid #000;
           }
           .info-row {
             display: flex;
             justify-content: space-between;
-            margin: 3px 0;
-            font-size: 9px;
-          }
-          .dlc-box {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            padding: 6px;
-            margin: 6px 0;
-            text-align: center;
-            border-radius: 3px;
-          }
-          .dlc-box .title {
-            font-size: 8px;
-            text-transform: uppercase;
-          }
-          .dlc-box .date {
+            margin: 8px 0;
             font-size: 12px;
+            border-bottom: 1px dotted #999;
+            padding-bottom: 4px;
+          }
+          .info-row .label {
             font-weight: bold;
           }
-          .product-info {
-            font-size: 8px;
-            background: #e0f2fe;
-            padding: 4px;
-            margin: 4px 0;
-            border-left: 2px solid #0284c7;
+          .dlc-box {
+            background: #000;
+            color: #fff;
+            padding: 12px;
+            margin: 12px 0;
+            text-align: center;
+          }
+          .dlc-box .title {
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+          }
+          .dlc-box .date {
+            font-size: 20px;
+            font-weight: bold;
+          }
+          .dlc-box .hours {
+            font-size: 11px;
+            margin-top: 2px;
+          }
+          .info-box {
+            font-size: 11px;
+            padding: 6px;
+            margin: 8px 0;
+            border: 1px solid #000;
           }
           .rules {
-            font-size: 8px;
-            background: #f8f9fa;
-            padding: 4px;
-            margin: 4px 0;
-            border-left: 2px solid ${category.color};
+            font-size: 12px;
+            font-weight: bold;
+            padding: 8px;
+            margin: 8px 0;
+            border-left: 4px solid #000;
+            background: #f0f0f0;
           }
           .footer {
             text-align: center;
-            font-size: 8px;
-            margin-top: 6px;
-            padding-top: 4px;
-            border-top: 1px dashed #000;
+            font-size: 10px;
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 2px solid #000;
           }
         </style>
       </head>
       <body>
         <div class="header">
           <h1>🧾 HACCP</h1>
-          <div style="font-size: 9px;">TWIN PIZZA</div>
+          <div class="subtitle">TWIN PIZZA</div>
         </div>
         
-        <div style="text-align: center;">
-          <span class="category-badge">${category.name}</span>
-        </div>
+        <div class="category-badge">${category.name}</div>
         
         <div class="product-name">${product.name}</div>
         
         <div class="info-row">
-          <span>📅 ${actionLabel}:</span>
+          <span class="label">📅 ${actionLabel}:</span>
           <span>${actionDate.toLocaleDateString('fr-FR')} ${actionDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
         
         <div class="dlc-box">
-          <div class="title">⚠️ DLC</div>
+          <div class="title">⚠️ DATE LIMITE</div>
           <div class="date">${dlcDate.toLocaleDateString('fr-FR')} ${dlcDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
-          <div style="font-size: 8px;">(+${dlcHours}h)</div>
+          <div class="hours">(+${dlcHours} heures)</div>
         </div>
         
         <div class="info-row">
-          <span>🌡️ Temp:</span>
+          <span class="label">🌡️ Conservation:</span>
           <span>${storageTemp}</span>
         </div>
         
         ${product.description ? `
-        <div class="product-info">
-          ℹ️ ${product.description.substring(0, 80)}${product.description.length > 80 ? '...' : ''}
+        <div class="info-box">
+          ℹ️ ${product.description}
         </div>
         ` : ''}
         
         <div class="rules">
-          📋 ${category.slug === 'congele-decongele' ? 'Ne jamais recongeler. Frigo 0-3°C.' : 'Étiqueter. Frigo 0-3°C.'}
+          📋 ${category.slug === 'congele-decongele' ? 'NE JAMAIS RECONGELER • Frigo 0-3°C' : 'ÉTIQUETER • Frigo 0-3°C'}
         </div>
         
         <div class="footer">
