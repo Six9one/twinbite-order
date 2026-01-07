@@ -779,14 +779,46 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   <span>Total TTC</span>
                   <span className="text-primary">{ttc.toFixed(2)}€</span>
                 </div>
-                {pointsToEarn > 0 && (
-                  <div className="flex justify-between text-amber-600 text-xs pt-1">
-                    <span>Points gagnés avec cette commande</span>
-                    <span className="font-bold">+{pointsToEarn} pts</span>
-                  </div>
-                )}
               </div>
             </Card>
+
+            {/* Loyalty Points Summary Card */}
+            {(customer || pointsToEarn > 0) && (
+              <Card className="p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                  <span className="font-bold text-amber-700">Programme Fidélité</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  {customer && (
+                    <div className="flex justify-between">
+                      <span>Votre solde actuel:</span>
+                      <span className="font-bold text-amber-600">{customer.points} pts</span>
+                    </div>
+                  )}
+                  {pointsToEarn > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Points gagnés:</span>
+                      <span className="font-bold">+{pointsToEarn} pts</span>
+                    </div>
+                  )}
+                  {useLoyaltyDiscount && loyaltyDiscount > 0 && (
+                    <div className="flex justify-between text-red-500">
+                      <span>Points utilisés:</span>
+                      <span className="font-bold">-100 pts</span>
+                    </div>
+                  )}
+                  {customer && (
+                    <div className="flex justify-between pt-2 border-t border-amber-200 font-bold">
+                      <span>Nouveau solde après commande:</span>
+                      <span className="text-amber-600">
+                        {customer.points + pointsToEarn - (useLoyaltyDiscount ? 100 : 0)} pts
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
           </div>
         )}
       </div>
