@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useOrder } from '@/context/OrderContext';
+import { useLoyalty } from '@/context/LoyaltyContext';
 import { CustomerInfo, PaymentMethod, PizzaCustomization } from '@/types/order';
 import { applyPizzaPromotions, calculateTVA } from '@/utils/promotions';
 import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
@@ -14,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe, Loader2, CalendarClock } from 'lucide-react';
+import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe, Loader2, CalendarClock, Star, Gift } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { format, addMonths, isSunday } from 'date-fns';
@@ -50,6 +51,7 @@ interface NewCheckoutProps {
 
 export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const { cart, orderType, clearCart, scheduledInfo, setScheduledInfo } = useOrder();
+  const { customer, lookupCustomer, calculatePointsToEarn, findOrCreateCustomer, earnPoints, redeemReward, rewards } = useLoyalty();
   const createOrder = useCreateOrder();
   const { data: paymentSettings, isLoading: isLoadingPaymentSettings } = usePaymentSettings();
   const [step, setStep] = useState<'info' | 'payment' | 'schedule-confirm' | 'confirm' | 'success'>('info');
@@ -66,6 +68,19 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const [scheduleAsked, setScheduleAsked] = useState(false);
   const [tempScheduleDate, setTempScheduleDate] = useState<Date | undefined>(undefined);
   const [tempScheduleTime, setTempScheduleTime] = useState<string>('12:00');
+  const [useLoyaltyDiscount, setUseLoyaltyDiscount] = useState(false);
+  const [loyaltyLookedUp, setLoyaltyLookedUp] = useState(false);
+
+  // Lookup loyalty customer when phone changes (debounced)
+  useEffect(() => {
+    const phone = customerInfo.phone.replace(/\s+/g, '');
+    if (phone.length >= 10 && !loyaltyLookedUp) {
+      const timer = setTimeout(() => {
+        lookupCustomer(phone).then(() => setLoyaltyLookedUp(true));
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [customerInfo.phone, lookupCustomer, loyaltyLookedUp]);
 
   // Prevent duplicate submissions
   useEffect(() => {
@@ -84,7 +99,15 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     sum + (item.calculatedPrice || item.item.price) * item.quantity, 0);
 
   const subtotal = pizzaPromo.discountedTotal + otherTotal;
-  const { ht, tva, ttc } = calculateTVA(subtotal);
+
+  // Loyalty discount: 100 points = €10
+  const loyaltyDiscount = useLoyaltyDiscount && customer && customer.points >= 100 ? 10 : 0;
+  const subtotalAfterLoyalty = Math.max(0, subtotal - loyaltyDiscount);
+
+  const { ht, tva, ttc } = calculateTVA(subtotalAfterLoyalty);
+
+  // Points to earn from this order
+  const pointsToEarn = calculatePointsToEarn(ttc);
 
   // Validate cart has items and total is valid
   const isCartValid = cart.length > 0 && ttc > 0;
@@ -313,6 +336,27 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         // Don't fail the order if Telegram fails
       }
 
+      // Handle loyalty points
+      try {
+        // Find or create loyalty customer
+        const loyaltyCustomer = await findOrCreateCustomer(customerInfo.phone.trim(), customerInfo.name.trim());
+
+        if (loyaltyCustomer) {
+          // Award points for this order
+          await earnPoints(orderNumberRef.current!, ttc, `Commande #${orderNumberRef.current}`);
+          console.log('[CHECKOUT] Loyalty points awarded:', pointsToEarn);
+
+          // Redeem points if customer used discount
+          if (useLoyaltyDiscount && loyaltyDiscount > 0) {
+            await redeemReward('discount-10-euro');
+            console.log('[CHECKOUT] Loyalty discount redeemed: -10€ (100 pts)');
+          }
+        }
+      } catch (loyaltyError) {
+        console.error('[CHECKOUT] Loyalty processing failed:', loyaltyError);
+        // Don't fail the order if loyalty fails
+      }
+
       clearCart();
       setStep('success');
     } catch (error) {
@@ -460,6 +504,54 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 className="mt-1"
               />
             </div>
+
+            {/* Loyalty Points Card */}
+            {customer && (
+              <Card className="p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                  <span className="font-bold text-amber-700">Programme Fidélité</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Vos points:</span>
+                    <span className="font-bold text-amber-600">{customer.points} pts</span>
+                  </div>
+                  <div className="flex justify-between text-green-600">
+                    <span>Vous allez gagner:</span>
+                    <span className="font-bold">+{pointsToEarn} pts</span>
+                  </div>
+
+                  {customer.points >= 100 && (
+                    <div className="mt-3 pt-3 border-t border-amber-200">
+                      <Button
+                        variant={useLoyaltyDiscount ? "default" : "outline"}
+                        className={`w-full gap-2 ${useLoyaltyDiscount ? 'bg-green-600 hover:bg-green-700' : 'border-green-500 text-green-600 hover:bg-green-50'}`}
+                        onClick={() => setUseLoyaltyDiscount(!useLoyaltyDiscount)}
+                      >
+                        <Gift className="w-4 h-4" />
+                        {useLoyaltyDiscount ? '✓ -10€ appliqué (100 pts)' : 'Utiliser 100 pts = -10€'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {/* If not logged in but phone entered, show prompt */}
+            {!customer && customerInfo.phone.length >= 10 && (
+              <Card className="p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Star className="w-5 h-5 text-amber-500" />
+                  <span className="font-semibold text-amber-700">Programme Fidélité</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Gagnez <span className="font-bold text-amber-600">+{pointsToEarn} points</span> avec cette commande!
+                  <br />
+                  <span className="text-xs">100 points = 10€ de réduction</span>
+                </p>
+              </Card>
+            )}
           </div>
         )}
 
@@ -651,6 +743,19 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 </>
               )}
 
+              {loyaltyDiscount > 0 && (
+                <>
+                  <Separator className="my-3" />
+                  <div className="text-sm text-amber-600 flex justify-between items-center">
+                    <span className="flex items-center gap-1">
+                      <Star className="w-4 h-4 fill-amber-500" />
+                      Réduction fidélité (100 pts)
+                    </span>
+                    <span>-{loyaltyDiscount.toFixed(2)}€</span>
+                  </div>
+                </>
+              )}
+
               <Separator className="my-3" />
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between text-muted-foreground">
@@ -665,6 +770,12 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   <span>Total TTC</span>
                   <span className="text-primary">{ttc.toFixed(2)}€</span>
                 </div>
+                {pointsToEarn > 0 && (
+                  <div className="flex justify-between text-amber-600 text-xs pt-1">
+                    <span>Points gagnés avec cette commande</span>
+                    <span className="font-bold">+{pointsToEarn} pts</span>
+                  </div>
+                )}
               </div>
             </Card>
           </div>

@@ -2,16 +2,12 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '@/integrations/supabase/client';
 
 // ============================================
-// V1 SIMPLIFIED LOYALTY SYSTEM
-// - 1 point per €1 spent (no tier multipliers)
-// - +10 bonus per online order
-// - +30 bonus for first order only
-// - 4 rewards: 50 drink, 100 -10%, 150 sides, 200 pizza
+// SIMPLE LOYALTY SYSTEM
+// - 1 point per €1 spent
+// - 100 points = €10 discount
+// - Synced by phone number
 // ============================================
 
-// Bonus constants
-const ONLINE_ORDER_BONUS = 10;
-const FIRST_ORDER_BONUS = 30;
 
 interface LoyaltyReward {
     id: string;
@@ -60,47 +56,20 @@ interface LoyaltyContextType {
     selectReward: (reward: LoyaltyReward | null) => void;
     getRewards: () => LoyaltyReward[];
     getNextReward: () => { reward: LoyaltyReward; pointsNeeded: number } | null;
-    calculatePointsToEarn: (amount: number) => { base: number; online: number; firstOrder: number; total: number };
+    calculatePointsToEarn: (amount: number) => number;
     canUseReward: (rewardId: string, hasPromoCode: boolean) => boolean;
     logout: () => void;
 }
 
-// V1 Default rewards (matching database migration)
+// V1 Default rewards - SIMPLIFIED: 100 points = €10
 const DEFAULT_REWARDS: LoyaltyReward[] = [
     {
-        id: 'free-drink',
-        name: 'Boisson Gratuite',
-        description: 'Une boisson au choix offerte',
-        pointsCost: 50,
-        type: 'free_item',
-        value: 0,
-        isActive: true
-    },
-    {
-        id: 'discount-10-percent',
-        name: '-10% sur la commande',
-        description: '10% de réduction (non cumulable)',
+        id: 'discount-10-euro',
+        name: '10€ de réduction',
+        description: 'Échangez 100 points contre 10€ de réduction',
         pointsCost: 100,
-        type: 'percentage',
+        type: 'discount',
         value: 10,
-        isActive: true
-    },
-    {
-        id: 'free-side',
-        name: 'Accompagnement Gratuit',
-        description: 'Frites, pain à l\'ail ou wings',
-        pointsCost: 150,
-        type: 'free_item',
-        value: 0,
-        isActive: true
-    },
-    {
-        id: 'free-pizza',
-        name: 'Pizza Gratuite',
-        description: 'Une pizza classique offerte',
-        pointsCost: 200,
-        type: 'free_item',
-        value: 0,
         isActive: true
     }
 ];
@@ -280,17 +249,9 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    // V1 Simplified: 1 point per euro, no tier multiplier
-    const calculatePointsToEarn = (amount: number): { base: number; online: number; firstOrder: number; total: number } => {
-        const base = Math.floor(amount); // 1pt per €1
-        const online = ONLINE_ORDER_BONUS;
-        const firstOrder = (customer && !customer.firstOrderDone) ? FIRST_ORDER_BONUS : 0;
-        return {
-            base,
-            online,
-            firstOrder,
-            total: base + online + firstOrder
-        };
+    // SIMPLE: 1 point per €1 spent
+    const calculatePointsToEarn = (amount: number): number => {
+        return Math.floor(amount); // 1pt per €1
     };
 
     const earnPoints = async (orderId: string, amount: number, description?: string): Promise<boolean> => {
@@ -319,44 +280,23 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             // Update local state
             setCustomer({
                 ...customer,
-                points: customer.points + earned.total,
+                points: customer.points + earned,
                 totalSpent: customer.totalSpent + amount,
                 totalOrders: customer.totalOrders + 1,
                 firstOrderDone: true
             });
 
-            // Add transactions to local state
-            const newTransactions: LoyaltyTransaction[] = [
-                {
-                    id: `tx-${Date.now()}-base`,
-                    type: 'earn',
-                    points: earned.base,
-                    description: description || `Commande #${orderId.slice(-6)} (1pt/€)`,
-                    createdAt: new Date(),
-                    orderId
-                },
-                {
-                    id: `tx-${Date.now()}-online`,
-                    type: 'earn',
-                    points: ONLINE_ORDER_BONUS,
-                    description: 'Bonus commande en ligne 🌐',
-                    createdAt: new Date(),
-                    orderId
-                }
-            ];
+            // Add transaction to local state
+            const newTransaction: LoyaltyTransaction = {
+                id: `tx-${Date.now()}`,
+                type: 'earn',
+                points: earned,
+                description: description || `Commande #${orderId.slice(-6)} (+${earned} pts)`,
+                createdAt: new Date(),
+                orderId
+            };
 
-            if (!customer.firstOrderDone) {
-                newTransactions.push({
-                    id: `tx-${Date.now()}-first`,
-                    type: 'earn',
-                    points: FIRST_ORDER_BONUS,
-                    description: 'Bonus première commande 🎉',
-                    createdAt: new Date(),
-                    orderId
-                });
-            }
-
-            setTransactions([...newTransactions, ...transactions]);
+            setTransactions([newTransaction, ...transactions]);
 
             return true;
         } catch (e) {

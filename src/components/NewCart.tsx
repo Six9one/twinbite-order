@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useOrder } from '@/context/OrderContext';
+import { useLoyalty } from '@/context/LoyaltyContext';
 import { PizzaCustomization, TacosCustomization, SouffletCustomization, MakloubCustomization } from '@/types/order';
 import { meatOptions, sauceOptions, garnitureOptions, souffletGarnitureOptions, makloubGarnitureOptions, pizzaPrices, cheeseSupplementOptions } from '@/data/menu';
 import { applyPizzaPromotions } from '@/utils/promotions';
@@ -10,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Minus, Trash2, ShoppingBag, CalendarClock } from 'lucide-react';
+import { Plus, Minus, Trash2, ShoppingBag, CalendarClock, Star } from 'lucide-react';
 import { format, addMonths, isSunday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -22,6 +23,7 @@ interface NewCartProps {
 
 export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
   const { cart, orderType, scheduledInfo, setScheduledInfo, updateQuantity, removeFromCart, getTotal } = useOrder();
+  const { customer, calculatePointsToEarn } = useLoyalty();
   const [showSchedulePicker, setShowSchedulePicker] = useState(false);
   const [tempDate, setTempDate] = useState<Date | undefined>(undefined);
   const [tempTime, setTempTime] = useState<string>('12:00');
@@ -29,12 +31,15 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
   // Calculate with promotions
   const pizzaItems = cart.filter(item => item.item.category === 'pizzas');
   const otherItems = cart.filter(item => item.item.category !== 'pizzas');
-  
+
   const pizzaPromo = applyPizzaPromotions(pizzaItems, orderType);
-  const otherTotal = otherItems.reduce((sum, item) => 
+  const otherTotal = otherItems.reduce((sum, item) =>
     sum + (item.calculatedPrice || item.item.price) * item.quantity, 0);
-  
+
   const total = pizzaPromo.discountedTotal + otherTotal;
+
+  // Calculate loyalty points to earn from this order
+  const pointsToEarn = calculatePointsToEarn(total);
 
   // Time slots for scheduling
   const timeSlots = [
@@ -59,10 +64,10 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
 
   const getCustomizationText = (item: typeof cart[0]) => {
     if (!item.customization) return null;
-    
+
     const custom = item.customization;
     const parts: string[] = [];
-    
+
     // Check if it's a Pizza customization
     if ('base' in custom && 'size' in custom && !('meats' in custom)) {
       const pizzaCustom = custom as PizzaCustomization;
@@ -79,26 +84,26 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
       }
       return parts.join(' • ');
     }
-    
+
     // Check if it's a Tacos, Soufflet, or Makloub customization
     if ('meats' in custom && 'sauces' in custom) {
       // Size
       if ('size' in custom) {
         parts.push((custom as any).size.charAt(0).toUpperCase() + (custom as any).size.slice(1));
       }
-      
+
       // Meats
       if (custom.meats.length > 0) {
         const meatNames = custom.meats.map(id => meatOptions.find(m => m.id === id)?.name).filter(Boolean);
         parts.push('🥩 ' + meatNames.join(', '));
       }
-      
+
       // Sauces
       if (custom.sauces.length > 0) {
         const sauceNames = custom.sauces.map(id => sauceOptions.find(s => s.id === id)?.name).filter(Boolean);
         parts.push('🍯 ' + sauceNames.join(', '));
       }
-      
+
       // Garnitures - check for soufflet or makloub specific garnitures
       if ('garnitures' in custom) {
         const garnitures = (custom as SouffletCustomization | MakloubCustomization).garnitures;
@@ -113,7 +118,7 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
           if (garNames.length > 0) parts.push('🥗 ' + garNames.join(', '));
         }
       }
-      
+
       // Supplements (cheese)
       if ('supplements' in custom) {
         const supplements = (custom as SouffletCustomization | MakloubCustomization | TacosCustomization).supplements;
@@ -125,7 +130,7 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
           if (supNames.length > 0) parts.push('🧀 ' + supNames.join(', '));
         }
       }
-      
+
       // Menu option
       if ('menuOption' in custom) {
         const menuOpt = (custom as TacosCustomization | SouffletCustomization).menuOption;
@@ -138,15 +143,15 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
           parts.push(menuLabels[menuOpt] || '');
         }
       }
-      
+
       // Note
       if ('note' in custom && custom.note) {
         parts.push(`📝 "${custom.note}"`);
       }
-      
+
       return parts.join(' • ');
     }
-    
+
     return null;
   };
 
@@ -155,7 +160,7 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
     if (item.calculatedPrice !== undefined && item.calculatedPrice > 0) {
       return item.calculatedPrice;
     }
-    
+
     // Fallback for pizzas without calculatedPrice
     if (item.item.category === 'pizzas' && item.customization && 'size' in item.customization) {
       const pizzaCustom = item.customization as PizzaCustomization;
@@ -164,7 +169,7 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
       }
       return pizzaCustom.size === 'senior' ? pizzaPrices.senior : pizzaPrices.mega;
     }
-    
+
     return item.item.price;
   };
 
@@ -208,7 +213,7 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
-                  
+
                   <div className="flex items-center justify-between mt-3">
                     <div className="flex items-center gap-2">
                       <Button
@@ -248,9 +253,9 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
                         {format(scheduledInfo.scheduledFor, "EEE d MMM 'à' HH:mm", { locale: fr })}
                       </span>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="text-purple-600 h-7 px-2"
                       onClick={handleCancelSchedule}
                     >
@@ -261,8 +266,8 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
               ) : (
                 <Popover open={showSchedulePicker} onOpenChange={setShowSchedulePicker}>
                   <PopoverTrigger asChild>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full gap-2 text-purple-600 border-purple-200 hover:bg-purple-50"
                     >
                       <CalendarClock className="w-4 h-4" />
@@ -298,14 +303,14 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
                         </SelectContent>
                       </Select>
                       <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="flex-1"
                           onClick={() => setShowSchedulePicker(false)}
                         >
                           Annuler
                         </Button>
-                        <Button 
+                        <Button
                           className="flex-1"
                           onClick={handleConfirmSchedule}
                           disabled={!tempDate}
@@ -324,21 +329,52 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
                   <span>+{pizzaPromo.supplementsTotal.toFixed(2)}€</span>
                 </div>
               )}
-              
+
               {pizzaPromo.promoDescription && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>{pizzaPromo.promoDescription}</span>
                   <span>-{(pizzaPromo.originalTotal - pizzaPromo.discountedTotal).toFixed(2)}€</span>
                 </div>
               )}
-              
+
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
                 <span className="text-primary">{total.toFixed(2)}€</span>
               </div>
 
-              <Button 
-                className="w-full h-12" 
+              {/* Loyalty Points Section */}
+              {cart.length > 0 && (
+                <Card className="p-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                    <span className="font-semibold text-amber-700">Programme Fidélité</span>
+                  </div>
+                  {customer ? (
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Vos points actuels:</span>
+                        <span className="font-bold text-amber-600">{customer.points} pts</span>
+                      </div>
+                      <div className="flex justify-between text-green-600">
+                        <span>Points à gagner:</span>
+                        <span className="font-bold">+{pointsToEarn} pts</span>
+                      </div>
+                      {customer.points >= 100 && (
+                        <div className="mt-2 p-2 bg-green-100 rounded text-green-700 text-center text-xs">
+                          🎁 Vous avez assez de points pour 10€ de réduction!
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Entrez votre numéro de téléphone au checkout pour gagner <span className="font-bold text-amber-600">+{pointsToEarn} points</span>!
+                    </p>
+                  )}
+                </Card>
+              )}
+
+              <Button
+                className="w-full h-12"
                 onClick={onCheckout}
                 disabled={cart.length === 0}
               >
