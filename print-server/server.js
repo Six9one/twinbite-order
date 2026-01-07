@@ -32,6 +32,9 @@ const ESC = '\x1B';
 const GS = '\x1D';
 const ESCPOS = {
     INIT: ESC + '@',
+    // Set Code Page 1252 (Western European) for French characters
+    SET_CODEPAGE_1252: ESC + 't' + '\x10',  // Code page 1252
+    SET_CODEPAGE_858: ESC + 't' + '\x13',   // Code page 858 (Multilingual Latin I)
     CENTER: ESC + 'a' + '\x01',
     LEFT: ESC + 'a' + '\x00',
     RIGHT: ESC + 'a' + '\x02',
@@ -51,6 +54,43 @@ const ESCPOS = {
     DOUBLE_LINE_42: '='.repeat(42) + '\n',
     DOUBLE_LINE_32: '='.repeat(32) + '\n',
 };
+
+// Convert French accented characters to Code Page 1252 bytes
+function convertToCP1252(text) {
+    if (!text) return '';
+
+    // Map of UTF-8 characters to their CP1252 equivalents
+    const charMap = {
+        'é': '\xE9', 'è': '\xE8', 'ê': '\xEA', 'ë': '\xEB',
+        'à': '\xE0', 'â': '\xE2', 'ä': '\xE4',
+        'ù': '\xF9', 'û': '\xFB', 'ü': '\xFC',
+        'ô': '\xF4', 'ö': '\xF6',
+        'î': '\xEE', 'ï': '\xEF',
+        'ç': '\xE7',
+        'É': '\xC9', 'È': '\xC8', 'Ê': '\xCA', 'Ë': '\xCB',
+        'À': '\xC0', 'Â': '\xC2', 'Ä': '\xC4',
+        'Ù': '\xD9', 'Û': '\xDB', 'Ü': '\xDC',
+        'Ô': '\xD4', 'Ö': '\xD6',
+        'Î': '\xCE', 'Ï': '\xCF',
+        'Ç': '\xC7',
+        '€': '\x80',
+        '°': '\xB0',
+        '«': '\xAB', '»': '\xBB',
+        '–': '-', '—': '-',
+        '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"',
+        '\u2026': '...',
+        // Emoji replacements (thermal printers don't support emoji)
+        '🍕': '[PIZZA]', '🥩': '', '🍯': '', '🥗': '', '➕': '+',
+        '📝': '*', '📏': '', '⏰': '', '🖨️': '', '✅': '[OK]', '❌': '[X]',
+        '🔌': '', '📡': '', '📥': '', '📦': '', '👋': '', '👂': '',
+    };
+
+    let result = '';
+    for (const char of text) {
+        result += charMap[char] !== undefined ? charMap[char] : char;
+    }
+    return result;
+}
 
 // Default ticket settings (fallback if database unavailable)
 const defaultSettings = {
@@ -159,8 +199,9 @@ function formatOrderForPrint(order) {
     const LINE = getLine();
     let ticket = '';
 
-    // Initialize printer
+    // Initialize printer and set code page for French characters
     ticket += ESCPOS.INIT;
+    ticket += ESCPOS.SET_CODEPAGE_1252;
 
     // Header
     ticket += ESCPOS.CENTER;
@@ -384,7 +425,8 @@ function formatOrderForPrint(order) {
     ticket += ESCPOS.FEED;
     ticket += ESCPOS.PARTIAL_CUT;
 
-    return ticket;
+    // Convert all text to CP1252 encoding for proper French character display
+    return convertToCP1252(ticket);
 }
 
 // Send data to printer via TCP
