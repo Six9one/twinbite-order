@@ -1,0 +1,15 @@
+{
+    "name": "twinbite-print-server",
+    "version": "1.0.0",
+    "description": "Local print server for Twin Pizza orders",
+    "main": "server.js",
+    "type": "module",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node --watch server.js"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.57.2",
+        "dotenv": "^16.3.1"
+    }
+}
