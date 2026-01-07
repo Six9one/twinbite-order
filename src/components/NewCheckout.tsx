@@ -69,18 +69,27 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const [tempScheduleDate, setTempScheduleDate] = useState<Date | undefined>(undefined);
   const [tempScheduleTime, setTempScheduleTime] = useState<string>('12:00');
   const [useLoyaltyDiscount, setUseLoyaltyDiscount] = useState(false);
-  const [loyaltyLookedUp, setLoyaltyLookedUp] = useState(false);
+  const [lastLookedUpPhone, setLastLookedUpPhone] = useState<string>('');
 
   // Lookup loyalty customer when phone changes (debounced)
   useEffect(() => {
-    const phone = customerInfo.phone.replace(/\s+/g, '');
-    if (phone.length >= 10 && !loyaltyLookedUp) {
+    const phone = customerInfo.phone.replace(/\s+/g, '').replace(/^(\+33|0033)/, '0');
+    // Only lookup if phone is valid and different from last lookup
+    if (phone.length >= 10 && phone !== lastLookedUpPhone) {
       const timer = setTimeout(() => {
-        lookupCustomer(phone).then(() => setLoyaltyLookedUp(true));
-      }, 500);
+        console.log('[LOYALTY] Looking up customer:', phone);
+        lookupCustomer(phone).then((result) => {
+          setLastLookedUpPhone(phone);
+          if (result) {
+            console.log('[LOYALTY] Found customer:', result.name, 'with', result.points, 'points');
+          } else {
+            console.log('[LOYALTY] No customer found for phone:', phone);
+          }
+        });
+      }, 800);
       return () => clearTimeout(timer);
     }
-  }, [customerInfo.phone, lookupCustomer, loyaltyLookedUp]);
+  }, [customerInfo.phone, lookupCustomer, lastLookedUpPhone]);
 
   // Prevent duplicate submissions
   useEffect(() => {

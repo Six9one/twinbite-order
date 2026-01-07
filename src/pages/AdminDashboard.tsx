@@ -14,7 +14,7 @@ import { SettingsManager } from '@/components/admin/SettingsManager';
 import { ImageUploadTable } from '@/components/admin/ImageUploadTable';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { PromotionsManager } from '@/components/admin/PromotionsManager';
-import { EnhancedLoyaltyManager } from '@/components/admin/EnhancedLoyaltyManager';
+import { SimpleLoyaltyManager } from '@/components/admin/SimpleLoyaltyManager';
 import { OpeningHoursManager } from '@/components/admin/OpeningHoursManager';
 import { StatisticsSection } from '@/components/admin/StatisticsSection';
 import { PaymentSettingsManager } from '@/components/admin/PaymentSettingsManager';
@@ -749,7 +749,7 @@ export default function AdminDashboard() {
           {/* New Sections */}
           {activeTab === 'promotions' && <PromotionsManager />}
           {activeTab === 'carousel' && <CarouselManager />}
-          {activeTab === 'loyalty' && <EnhancedLoyaltyManager />}
+          {activeTab === 'loyalty' && <SimpleLoyaltyManager />}
           {activeTab === 'reviews' && <ReviewsManager />}
           {activeTab === 'hours' && <OpeningHoursManager />}
           {activeTab === 'store-status' && <StoreStatusManager />}
