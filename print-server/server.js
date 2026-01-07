@@ -217,12 +217,10 @@ function formatOrderForPrint(order) {
     ticket += ESCPOS.BOLD_OFF;
     ticket += LINE;
 
-    // Order number (large, centered)
+    // Order number (bold, centered)
     if (template.showOrderNumber) {
-        ticket += ESCPOS.DOUBLE_SIZE;
         ticket += ESCPOS.BOLD_ON;
-        ticket += `N° ${order.order_number}\n`;
-        ticket += ESCPOS.NORMAL_SIZE;
+        ticket += `N. ${order.order_number}\n`;
         ticket += ESCPOS.BOLD_OFF;
     }
 
