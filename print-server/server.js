@@ -115,18 +115,26 @@ async function fetchTicketSettings() {
             .single();
 
         if (error) {
-            console.log('⚠️ Using default ticket settings (database fetch failed)');
+            console.log('⚠️ Using default ticket settings (database fetch failed):', error.message);
             return;
         }
 
         if (data?.setting_value) {
+            const savedSettings = data.setting_value;
             ticketSettings = {
                 ...defaultSettings,
-                ...data.setting_value,
-                kitchenTemplate: { ...defaultSettings.kitchenTemplate, ...(data.setting_value.kitchenTemplate || {}) },
-                counterTemplate: { ...defaultSettings.counterTemplate, ...(data.setting_value.counterTemplate || {}) }
+                ...savedSettings,
+                kitchenTemplate: { ...defaultSettings.kitchenTemplate, ...(savedSettings.kitchenTemplate || {}) },
+                counterTemplate: { ...defaultSettings.counterTemplate, ...(savedSettings.counterTemplate || {}) }
             };
-            console.log('✅ Ticket settings loaded from database');
+            console.log('✅ Ticket settings loaded from database:');
+            console.log('   Header:', ticketSettings.counterTemplate.header);
+            console.log('   Subheader:', ticketSettings.counterTemplate.subheader);
+            console.log('   Footer:', ticketSettings.counterTemplate.footer);
+            console.log('   Paper width:', ticketSettings.paperWidth);
+            console.log('   Active template:', ticketSettings.activeTemplate);
+        } else {
+            console.log('⚠️ No ticket_templates found in database, using defaults');
         }
     } catch (err) {
         console.log('⚠️ Using default ticket settings:', err.message);
