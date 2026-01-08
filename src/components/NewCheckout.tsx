@@ -74,6 +74,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     orderNumber: string;
     items: typeof cart;
     total: number;
+    productsSubtotal: number;
+    deliveryFee: number;
     orderType: string;
     customerName: string;
     customerPhone: string;
@@ -391,6 +393,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         orderNumber: orderNumberRef.current!,
         items: [...cart],
         total: ttc,
+        productsSubtotal: productsSubtotal,
+        deliveryFee: deliveryFee,
         orderType: orderType,
         customerName: customerInfo.name,
         customerPhone: customerInfo.phone,
@@ -503,6 +507,20 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                     <span className="font-medium">{((item.calculatedPrice || item.item.price) * item.quantity).toFixed(2)}€</span>
                   </div>
                 ))}
+
+                {/* Delivery fee on ticket */}
+                {confirmedOrderData.deliveryFee > 0 && (
+                  <div className="flex justify-between text-orange-600 pt-2 border-t">
+                    <span>🚗 Frais de livraison</span>
+                    <span className="font-medium">+{confirmedOrderData.deliveryFee.toFixed(2)}€</span>
+                  </div>
+                )}
+                {confirmedOrderData.orderType === 'livraison' && confirmedOrderData.deliveryFee === 0 && (
+                  <div className="flex justify-between text-green-600 pt-2 border-t">
+                    <span>🚗 Livraison</span>
+                    <span className="font-medium">GRATUITE</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -728,6 +746,19 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 </div>
               </Card>
             </div>
+
+            {/* Delivery info for non-delivery orders */}
+            {orderType !== 'livraison' && (
+              <Card className="p-4 bg-blue-50 border-blue-200">
+                <h3 className="font-semibold text-blue-700 flex items-center gap-2 mb-2">
+                  🚗 Livraison aussi disponible!
+                </h3>
+                <div className="text-sm text-blue-600 space-y-1">
+                  <p>• <span className="font-semibold">Gratuite</span> pour les commandes ≥ 25€</p>
+                  <p>• +5€ de frais pour les commandes &lt; 25€</p>
+                </div>
+              </Card>
+            )}
           </div>
         )}
 
