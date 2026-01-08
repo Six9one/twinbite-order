@@ -3,6 +3,7 @@ import { Socket } from 'net';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 // Load environment variables
 const __filename = fileURLToPath(import.meta.url);
@@ -142,8 +143,37 @@ const defaultSettings = {
 // Current settings (loaded from database)
 let ticketSettings = { ...defaultSettings };
 
-// Track printed orders to avoid duplicates
-const printedOrders = new Set();
+// Track printed orders to avoid duplicates - persist to file
+const PRINTED_ORDERS_FILE = join(__dirname, 'printed_orders.json');
+
+// Load printed orders from file
+function loadPrintedOrders() {
+    try {
+        if (existsSync(PRINTED_ORDERS_FILE)) {
+            const data = JSON.parse(readFileSync(PRINTED_ORDERS_FILE, 'utf8'));
+            // Only keep orders from last 24 hours
+            const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+            const recentOrders = data.filter(entry => entry.timestamp > oneDayAgo);
+            console.log(`📋 Loaded ${recentOrders.length} printed orders from cache`);
+            return new Map(recentOrders.map(e => [e.id, e.timestamp]));
+        }
+    } catch (err) {
+        console.log('⚠️ Could not load printed orders cache:', err.message);
+    }
+    return new Map();
+}
+
+// Save printed orders to file
+function savePrintedOrders() {
+    try {
+        const data = Array.from(printedOrders.entries()).map(([id, timestamp]) => ({ id, timestamp }));
+        writeFileSync(PRINTED_ORDERS_FILE, JSON.stringify(data, null, 2));
+    } catch (err) {
+        console.error('⚠️ Could not save printed orders cache:', err.message);
+    }
+}
+
+const printedOrders = loadPrintedOrders();
 
 // Fetch ticket settings from Supabase
 async function fetchTicketSettings() {
@@ -499,7 +529,11 @@ async function handleNewOrder(order) {
     const success = await printWithRetry(ticketData, order.order_number);
 
     if (success) {
-        printedOrders.add(order.id);
+        // Use Map.set() with timestamp
+        printedOrders.set(order.id, Date.now());
+        // Save to file for persistence
+        savePrintedOrders();
+        console.log(`✅ Order ${order.order_number} saved to printed cache`);
     }
 }
 

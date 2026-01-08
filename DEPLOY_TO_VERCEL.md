@@ -4,7 +4,7 @@
 Make sure your latest changes are committed and pushed:
 ```bash
 git add .
-git commit -m "Prepare for Vercel deployment"
+git commit -m "Prepare for Vercel deployment" 
 git push
 ```
 

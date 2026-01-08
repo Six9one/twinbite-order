@@ -44,4 +44,4 @@ INSERT INTO public.site_settings (key, value, category) VALUES
 ('store_show_banner', 'false', 'store'),
 ('store_banner_message', '', 'store'),
 ('store_banner_type', 'info', 'store')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT (key) DO NOTHING; 
