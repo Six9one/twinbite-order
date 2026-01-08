@@ -109,7 +109,7 @@ const autoPrintOrderTicket = (order: Order) => {
     const price = cartItem.totalPrice?.toFixed(2) || '0.00';
     const customization = cartItem.customization;
     let details: string[] = [];
-    if (customization?.size) details.push(customization.size.toUpperCase());
+    // Size is NOT shown - it's already in product name
     if (customization?.meats?.length) details.push(customization.meats.join(', '));
     if (customization?.sauces?.length) details.push(customization.sauces.join(', '));
     if (customization?.supplements?.length) details.push(customization.supplements.join(', '));
@@ -452,8 +452,7 @@ export default function AdminDashboard() {
     const note = cartItem.note || customization?.note;
 
     let details: string[] = [];
-    // Size - show smaller, no emoji
-    if (customization?.size) details.push(customization.size.toUpperCase());
+    // Size is NOT shown - it's already in product name
     if (customization?.base) details.push(customization.base);
     if (customization?.meats?.length) details.push(customization.meats.join(', '));
     if (customization?.meat) details.push(customization.meat);
@@ -845,9 +844,7 @@ function OrderCard({
                   <span>{cartItem.quantity}x {productName}</span>
                   <span>{Number(price).toFixed(2)}€</span>
                 </div>
-                {customization?.size && (
-                  <p className="text-xs text-cyan-600 ml-4">📏 {customization.size.toUpperCase()}</p>
-                )}
+                {/* Size is NOT shown - it's already in product name */}
                 {customization?.base && (
                   <p className="text-xs text-pink-600 ml-4">🍕 {customization.base}</p>
                 )}

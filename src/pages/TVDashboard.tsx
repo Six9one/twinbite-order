@@ -204,7 +204,7 @@ const printOrderTicket = (order: Order) => {
     const price = cartItem.totalPrice?.toFixed(2) || '0.00';
     const customization = cartItem.customization;
     let details: string[] = [];
-    if (customization?.size) details.push(customization.size.toUpperCase());
+    // Size is NOT shown - it's already in product name
     if (customization?.meats?.length) details.push(customization.meats.join(', '));
     if (customization?.sauces?.length) details.push(customization.sauces.join(', '));
     if (customization?.supplements?.length) details.push(customization.supplements.join(', '));

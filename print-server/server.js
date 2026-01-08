@@ -348,9 +348,7 @@ function formatOrderForPrint(order) {
             if (customization) {
                 const details = [];
 
-                if (customization.size) {
-                    details.push(`📏 ${customization.size.toUpperCase()}`);
-                }
+                // Size is NOT shown - it's already in product name
                 if (customization.base) {
                     details.push(`Base ${customization.base}`);
                 }

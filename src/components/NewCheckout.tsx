@@ -509,9 +509,10 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                           {(() => {
                             const c = item.customization as any;
                             const parts = [];
-                            if (c.size) parts.push(c.size);
+                            // Don't show size - it's already in the product name
                             if (c.isMenuMidi) parts.push('Menu Midi');
                             if (c.meats?.length) parts.push(c.meats.join(', '));
+                            if (c.sauces?.length) parts.push(c.sauces.join(', '));
                             return parts.length > 0 ? `(${parts.join(' • ')})` : '';
                           })()}
                         </span>

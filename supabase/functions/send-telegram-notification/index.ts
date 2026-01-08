@@ -55,15 +55,8 @@ serve(async (req) => {
     const formatCustomization = (customization: any, productName: string): string => {
       if (!customization) return '';
       const parts: string[] = [];
-      const nameLower = productName.toLowerCase();
 
-      // Size (pizza/tacos) - only show if not already in product name
-      if (customization.size) {
-        const sizeLower = customization.size.toLowerCase();
-        if (!nameLower.includes(sizeLower)) {
-          parts.push(customization.size.toUpperCase());
-        }
-      }
+      // Size is NOT shown - it's already in the product name (e.g., "Soufflet Double")
 
       // Base (pizza)
       if (customization.base) {
