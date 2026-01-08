@@ -109,8 +109,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
   const subtotal = pizzaPromo.discountedTotal + otherTotal;
 
-  // Loyalty discount: 100 points = €10
-  const loyaltyDiscount = useLoyaltyDiscount && customer && customer.points >= 100 ? 10 : 0;
+  // Loyalty discount: 100 points = €5
+  const loyaltyDiscount = useLoyaltyDiscount && customer && customer.points >= 100 ? 5 : 0;
   const subtotalAfterLoyalty = Math.max(0, subtotal - loyaltyDiscount);
 
   const { ht, tva, ttc } = calculateTVA(subtotalAfterLoyalty);
@@ -357,8 +357,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
           // Redeem points if customer used discount
           if (useLoyaltyDiscount && loyaltyDiscount > 0) {
-            await redeemReward('discount-10-euro');
-            console.log('[CHECKOUT] Loyalty discount redeemed: -10€ (100 pts)');
+            await redeemReward('discount-5-euro');
+            console.log('[CHECKOUT] Loyalty discount redeemed: -5€ (100 pts)');
           }
         }
       } catch (loyaltyError) {
@@ -539,7 +539,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                         onClick={() => setUseLoyaltyDiscount(!useLoyaltyDiscount)}
                       >
                         <Gift className="w-4 h-4" />
-                        {useLoyaltyDiscount ? '✓ -10€ appliqué (100 pts)' : 'Utiliser 100 pts = -10€'}
+                        {useLoyaltyDiscount ? '✓ -5€ appliqué (100 pts)' : 'Utiliser 100 pts = -5€'}
                       </Button>
                     </div>
                   )}
@@ -557,7 +557,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 <p className="text-sm text-muted-foreground">
                   Gagnez <span className="font-bold text-amber-600">+{pointsToEarn} points</span> avec cette commande!
                   <br />
-                  <span className="text-xs">100 points = 10€ de réduction</span>
+                  <span className="text-xs">100 points = 5€ de réduction</span>
                 </p>
               </Card>
             )}

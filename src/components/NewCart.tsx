@@ -361,7 +361,7 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
                       </div>
                       {customer.points >= 100 && (
                         <div className="mt-2 p-2 bg-green-100 rounded text-green-700 text-center text-xs">
-                          🎁 Vous avez assez de points pour 10€ de réduction!
+                          🎁 Vous avez assez de points pour 5€ de réduction!
                         </div>
                       )}
                     </div>

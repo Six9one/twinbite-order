@@ -64,12 +64,12 @@ interface LoyaltyContextType {
 // V1 Default rewards - SIMPLIFIED: 100 points = €10
 const DEFAULT_REWARDS: LoyaltyReward[] = [
     {
-        id: 'discount-10-euro',
-        name: '10€ de réduction',
-        description: 'Échangez 100 points contre 10€ de réduction',
+        id: 'discount-5-euro',
+        name: '5€ de réduction',
+        description: 'Échangez 100 points contre 5€ de réduction',
         pointsCost: 100,
         type: 'discount',
-        value: 10,
+        value: 5,
         isActive: true
     }
 ];

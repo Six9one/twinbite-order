@@ -140,7 +140,7 @@ export function SimpleLoyaltyManager() {
 
             <div className="bg-amber-100 border border-amber-300 rounded-lg p-4 text-amber-800">
                 <p className="font-semibold">💡 Règle Simple:</p>
-                <p>1 point par €1 dépensé • 100 points = 10€ de réduction</p>
+                <p>1 point par €1 dépensé • 100 points = 5€ de réduction</p>
             </div>
 
             {/* Stats Cards */}
@@ -268,7 +268,7 @@ export function SimpleLoyaltyManager() {
                                 {customer.points < 100 && (
                                     <div className="mt-3">
                                         <div className="flex justify-between text-xs mb-1">
-                                            <span>Progression vers 10€ de réduction</span>
+                                            <span>Progression vers 5€ de réduction</span>
                                             <span>{customer.points}/100 pts</span>
                                         </div>
                                         <div className="h-2 bg-muted rounded-full overflow-hidden">
