@@ -50,7 +50,7 @@ interface NewCheckoutProps {
 }
 
 export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
-  const { cart, orderType, clearCart, scheduledInfo, setScheduledInfo } = useOrder();
+  const { cart, orderType, setOrderType, clearCart, scheduledInfo, setScheduledInfo } = useOrder();
   const { customer, lookupCustomer, calculatePointsToEarn, findOrCreateCustomer, earnPoints, redeemReward, rewards } = useLoyalty();
   const createOrder = useCreateOrder();
   const { data: paymentSettings, isLoading: isLoadingPaymentSettings } = usePaymentSettings();
@@ -747,9 +747,12 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               </Card>
             </div>
 
-            {/* Delivery info for non-delivery orders */}
+            {/* Delivery info for non-delivery orders - CLICKABLE */}
             {orderType !== 'livraison' && (
-              <Card className="p-4 bg-blue-50 border-blue-200">
+              <Card
+                className="p-4 bg-blue-50 border-blue-200 cursor-pointer hover:bg-blue-100 hover:border-blue-300 transition-all"
+                onClick={() => setOrderType('livraison')}
+              >
                 <h3 className="font-semibold text-blue-700 flex items-center gap-2 mb-2">
                   🚗 Livraison aussi disponible!
                 </h3>
@@ -757,6 +760,12 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   <p>• <span className="font-semibold">Gratuite</span> pour les commandes ≥ 25€</p>
                   <p>• +5€ de frais pour les commandes &lt; 25€</p>
                 </div>
+                <Button
+                  variant="outline"
+                  className="w-full mt-3 bg-blue-600 text-white hover:bg-blue-700 border-0"
+                >
+                  Passer en livraison →
+                </Button>
               </Card>
             )}
           </div>
