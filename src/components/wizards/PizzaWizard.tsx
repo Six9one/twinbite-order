@@ -322,97 +322,86 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
       </div>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Size Selection */}
+        {/* Size & Menu Selection - ALL OPTIONS */}
         <div>
-          <h2 className="text-lg font-semibold mb-3">Choisir la taille</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <Card
-              className={`p-4 cursor-pointer transition-all ${size === 'senior' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-              onClick={() => setSize('senior')}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold">Senior</h3>
-                  <p className="text-2xl font-bold text-primary">{pizzaPrices.senior}€</p>
-                  <p className="text-xs text-muted-foreground/70">31cm • 1-2 personnes</p>
-                </div>
-                {size === 'senior' && <Check className="w-6 h-6 text-primary" />}
-              </div>
-            </Card>
-            <Card
-              className={`p-4 cursor-pointer transition-all ${size === 'mega' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-              onClick={() => setSize('mega')}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold">Mega</h3>
-                  <p className="text-2xl font-bold text-primary">{pizzaPrices.mega}€</p>
-                  <p className="text-xs text-muted-foreground/70">40cm • 2-3 personnes</p>
-                </div>
-                {size === 'mega' && <Check className="w-6 h-6 text-primary" />}
-              </div>
-            </Card>
-          </div>
-        </div>
+          <h2 className="text-lg font-semibold mb-3">Choisir votre formule</h2>
 
-        {/* Menu Midi Options */}
-        {showMenuMidi && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Sun className="w-5 h-5 text-yellow-500" />
-              Menu Midi
-              {countdown && (
-                <span className="text-sm font-mono text-yellow-600">
-                  (Fin dans {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')})
-                </span>
-              )}
-            </h2>
-
-            <div className="grid grid-cols-1 gap-3">
-              {/* Menu Midi Senior */}
-              {size === 'senior' && (
-                <Card
-                  className={`p-4 cursor-pointer transition-all border-2 ${isMenuMidi ? 'border-yellow-500 bg-yellow-500/10' : 'border-transparent hover:bg-muted/50'}`}
-                  onClick={() => setIsMenuMidi(!isMenuMidi)}
-                >
-                  <div className="flex items-center gap-3">
-                    <Sun className="w-8 h-8 text-yellow-500" />
-                    <div className="flex-1">
-                      <h3 className="font-semibold">Menu Midi Senior</h3>
-                      <p className="text-sm text-muted-foreground">Pizza Senior + Boisson</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-yellow-600">{pizzaPrices.menuMidiSenior}€</p>
-                      <p className="text-xs text-green-600">Économie de {pizzaPrices.senior + 2 - pizzaPrices.menuMidiSenior}€</p>
-                    </div>
-                    {isMenuMidi && <Check className="w-6 h-6 text-yellow-500" />}
+          {/* Regular Pizzas */}
+          <div className="mb-4">
+            <p className="text-sm text-muted-foreground mb-2">🍕 Pizza seule (1 achetée = 1 offerte)</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Card
+                className={`p-4 cursor-pointer transition-all ${size === 'senior' && !isMenuMidi ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                onClick={() => { setSize('senior'); setIsMenuMidi(false); }}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold">Senior</h3>
+                    <p className="text-xs text-muted-foreground">31cm</p>
                   </div>
-                </Card>
-              )}
-
-              {/* Menu Midi Mega */}
-              {size === 'mega' && (
-                <Card
-                  className={`p-4 cursor-pointer transition-all border-2 ${isMenuMidi ? 'border-yellow-500 bg-yellow-500/10' : 'border-transparent hover:bg-muted/50'}`}
-                  onClick={() => setIsMenuMidi(!isMenuMidi)}
-                >
-                  <div className="flex items-center gap-3">
-                    <Sun className="w-8 h-8 text-yellow-500" />
-                    <div className="flex-1">
-                      <h3 className="font-semibold">Menu Midi Mega</h3>
-                      <p className="text-sm text-muted-foreground">Pizza Mega + Boisson</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-yellow-600">{pizzaPrices.menuMidiMega}€</p>
-                      <p className="text-xs text-green-600">Économie de {pizzaPrices.mega + 2 - pizzaPrices.menuMidiMega}€</p>
-                    </div>
-                    {isMenuMidi && <Check className="w-6 h-6 text-yellow-500" />}
+                  <p className="text-xl font-bold text-primary">{pizzaPrices.senior}€</p>
+                </div>
+                {size === 'senior' && !isMenuMidi && <Check className="w-5 h-5 text-primary mt-2" />}
+              </Card>
+              <Card
+                className={`p-4 cursor-pointer transition-all ${size === 'mega' && !isMenuMidi ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                onClick={() => { setSize('mega'); setIsMenuMidi(false); }}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold">Mega</h3>
+                    <p className="text-xs text-muted-foreground">40cm</p>
                   </div>
-                </Card>
-              )}
+                  <p className="text-xl font-bold text-primary">{pizzaPrices.mega}€</p>
+                </div>
+                {size === 'mega' && !isMenuMidi && <Check className="w-5 h-5 text-primary mt-2" />}
+              </Card>
             </div>
           </div>
-        )}
+
+          {/* Menu Midi Options */}
+          {showMenuMidi && (
+            <div>
+              <p className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+                <Sun className="w-4 h-4 text-yellow-500" />
+                Menu Midi (Pizza + Boisson)
+                {countdown && (
+                  <span className="text-xs text-yellow-600 font-mono">
+                    Fin dans {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')}
+                  </span>
+                )}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Card
+                  className={`p-4 cursor-pointer transition-all border-2 ${size === 'senior' && isMenuMidi ? 'border-yellow-500 bg-yellow-500/10' : 'border-transparent hover:bg-muted/50'}`}
+                  onClick={() => { setSize('senior'); setIsMenuMidi(true); }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-yellow-700">Senior</h3>
+                      <p className="text-xs text-green-600">+ Boisson offerte!</p>
+                    </div>
+                    <p className="text-xl font-bold text-yellow-600">{pizzaPrices.menuMidiSenior}€</p>
+                  </div>
+                  {size === 'senior' && isMenuMidi && <Check className="w-5 h-5 text-yellow-500 mt-2" />}
+                </Card>
+                <Card
+                  className={`p-4 cursor-pointer transition-all border-2 ${size === 'mega' && isMenuMidi ? 'border-yellow-500 bg-yellow-500/10' : 'border-transparent hover:bg-muted/50'}`}
+                  onClick={() => { setSize('mega'); setIsMenuMidi(true); }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-yellow-700">Mega</h3>
+                      <p className="text-xs text-green-600">+ Boisson offerte!</p>
+                    </div>
+                    <p className="text-xl font-bold text-yellow-600">{pizzaPrices.menuMidiMega}€</p>
+                  </div>
+                  {size === 'mega' && isMenuMidi && <Check className="w-5 h-5 text-yellow-500 mt-2" />}
+                </Card>
+              </div>
+            </div>
+          )}
+        </div>
 
         <Separator />
 
