@@ -504,6 +504,83 @@ async function handleNewOrder(order) {
 }
 
 // Start the print server
+let channel = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_DELAY = 5000;
+const HEARTBEAT_INTERVAL = 30000; // Check connection every 30 seconds
+
+async function setupRealtimeSubscription() {
+    // Remove existing channel if any
+    if (channel) {
+        await supabase.removeChannel(channel);
+    }
+
+    // Subscribe to new orders via real-time
+    channel = supabase
+        .channel('orders-print-' + Date.now()) //  Unique channel name to force new connection
+        .on(
+            'postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'orders'
+            },
+            (payload) => {
+                console.log('📥 Received new order event');
+                reconnectAttempts = 0; // Reset on successful event
+                handleNewOrder(payload.new);
+            }
+        )
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                console.log('✅ Connected to Supabase real-time!');
+                console.log('👂 Listening for new orders...\n');
+                reconnectAttempts = 0;
+            } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+                console.error(`❌ Channel status: ${status}`);
+                handleDisconnect();
+            } else if (status === 'TIMED_OUT') {
+                console.error('⏰ Connection timed out');
+                handleDisconnect();
+            }
+        });
+}
+
+async function handleDisconnect() {
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.error(`❌ Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Exiting...`);
+        process.exit(1);
+    }
+
+    reconnectAttempts++;
+    console.log(`🔄 Reconnecting... Attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
+
+    setTimeout(async () => {
+        await setupRealtimeSubscription();
+    }, RECONNECT_DELAY);
+}
+
+// Heartbeat to check connection
+function startHeartbeat() {
+    setInterval(async () => {
+        try {
+            // Simple query to test connection
+            const { error } = await supabase.from('orders').select('id').limit(1);
+            if (error) {
+                console.error('💔 Heartbeat failed:', error.message);
+                handleDisconnect();
+            } else {
+                const now = new Date().toLocaleTimeString('fr-FR');
+                console.log(`💚 Heartbeat OK - ${now}`);
+            }
+        } catch (err) {
+            console.error('💔 Heartbeat error:', err.message);
+            handleDisconnect();
+        }
+    }, HEARTBEAT_INTERVAL);
+}
+
 async function startServer() {
     console.log(`
 ╔════════════════════════════════════════════════════════╗
@@ -511,6 +588,8 @@ async function startServer() {
 ╠════════════════════════════════════════════════════════╣
 ║  Printer: ${PRINTER_IP.padEnd(15)} Port: ${PRINTER_PORT.toString().padEnd(6)}       ║
 ║  Loading settings from database...                     ║
+║  Auto-reconnect: ENABLED                               ║
+║  Heartbeat: Every ${HEARTBEAT_INTERVAL / 1000}s                                  ║
 ╚════════════════════════════════════════════════════════╝
 `);
 
@@ -525,34 +604,18 @@ async function startServer() {
         await fetchTicketSettings();
     }, SETTINGS_REFRESH_INTERVAL);
 
-    // Subscribe to new orders via real-time
-    const channel = supabase
-        .channel('orders-print')
-        .on(
-            'postgres_changes',
-            {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'orders'
-            },
-            (payload) => {
-                console.log('📥 Received new order event');
-                handleNewOrder(payload.new);
-            }
-        )
-        .subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-                console.log('✅ Connected to Supabase real-time!');
-                console.log('👂 Listening for new orders...\n');
-            } else if (status === 'CHANNEL_ERROR') {
-                console.error('❌ Failed to connect to Supabase real-time');
-            }
-        });
+    // Setup realtime subscription
+    await setupRealtimeSubscription();
+
+    // Start heartbeat monitoring
+    startHeartbeat();
 
     // Handle graceful shutdown
     process.on('SIGINT', async () => {
         console.log('\n👋 Shutting down print server...');
-        await supabase.removeChannel(channel);
+        if (channel) {
+            await supabase.removeChannel(channel);
+        }
         process.exit(0);
     });
 }
