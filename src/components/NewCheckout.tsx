@@ -118,7 +118,16 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const otherTotal = otherItems.reduce((sum, item) =>
     sum + (item.calculatedPrice || item.item.price) * item.quantity, 0);
 
-  const subtotal = pizzaPromo.discountedTotal + otherTotal;
+  const productsSubtotal = pizzaPromo.discountedTotal + otherTotal;
+
+  // Delivery fee logic: free if >= 25€, else 5€ fee
+  const FREE_DELIVERY_THRESHOLD = 25;
+  const DELIVERY_FEE = 5;
+  const isDelivery = orderType === 'livraison';
+  const qualifiesForFreeDelivery = productsSubtotal >= FREE_DELIVERY_THRESHOLD;
+  const deliveryFee = isDelivery && !qualifiesForFreeDelivery ? DELIVERY_FEE : 0;
+
+  const subtotal = productsSubtotal + deliveryFee;
 
   // Loyalty discount: 100 points = €5
   const loyaltyDiscount = useLoyaltyDiscount && customer && customer.points >= 100 ? 5 : 0;
@@ -865,6 +874,19 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                       Réduction fidélité (100 pts)
                     </span>
                     <span>-{loyaltyDiscount.toFixed(2)}€</span>
+                  </div>
+                </>
+              )}
+
+              {/* Delivery fee display */}
+              {isDelivery && (
+                <>
+                  <Separator className="my-3" />
+                  <div className={`text-sm flex justify-between ${qualifiesForFreeDelivery ? 'text-green-600' : 'text-orange-600'}`}>
+                    <span>🚗 Livraison</span>
+                    <span className="font-semibold">
+                      {qualifiesForFreeDelivery ? 'GRATUITE' : `+${DELIVERY_FEE.toFixed(2)}€`}
+                    </span>
                   </div>
                 </>
               )}

@@ -36,7 +36,25 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
   const otherTotal = otherItems.reduce((sum, item) =>
     sum + (item.calculatedPrice || item.item.price) * item.quantity, 0);
 
-  const total = pizzaPromo.discountedTotal + otherTotal;
+  const subtotal = pizzaPromo.discountedTotal + otherTotal;
+
+  // Delivery fee logic: free if >= 25€, else 5€ fee
+  const FREE_DELIVERY_THRESHOLD = 25;
+  const DELIVERY_FEE = 5;
+  const isDelivery = orderType === 'livraison';
+  const qualifiesForFreeDelivery = subtotal >= FREE_DELIVERY_THRESHOLD;
+  const deliveryFee = isDelivery && !qualifiesForFreeDelivery ? DELIVERY_FEE : 0;
+  const amountToFreeDelivery = FREE_DELIVERY_THRESHOLD - subtotal;
+
+  const total = subtotal + deliveryFee;
+
+  // Suggestions to reach free delivery
+  const suggestions = [
+    { name: 'Tarte au Daim', price: 4, emoji: '🍰' },
+    { name: 'Tiramisu', price: 4, emoji: '🍮' },
+    { name: 'Milkshake', price: 4, emoji: '🥤' },
+    { name: 'Supplément Frites', price: 3, emoji: '🍟' },
+  ];
 
   // Calculate loyalty points to earn from this order
   const pointsToEarn = calculatePointsToEarn(total);
@@ -336,6 +354,51 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
                   <span>-{(pizzaPromo.originalTotal - pizzaPromo.discountedTotal).toFixed(2)}€</span>
                 </div>
               )}
+
+              {/* Subtotal for delivery orders */}
+              {isDelivery && (
+                <div className="flex justify-between text-sm">
+                  <span>Sous-total</span>
+                  <span>{subtotal.toFixed(2)}€</span>
+                </div>
+              )}
+
+              {/* Delivery fee section */}
+              {isDelivery && (
+                <>
+                  {qualifiesForFreeDelivery ? (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>🚗 Livraison</span>
+                      <span className="font-semibold">GRATUITE</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between text-sm text-orange-600">
+                        <span>🚗 Frais de livraison</span>
+                        <span>+{DELIVERY_FEE.toFixed(2)}€</span>
+                      </div>
+
+                      {/* Suggestion to reach free delivery */}
+                      {amountToFreeDelivery > 0 && amountToFreeDelivery <= 10 && (
+                        <Card className="p-3 bg-blue-50 border-blue-200">
+                          <p className="text-xs text-blue-700 font-semibold mb-2">
+                            💡 Plus que {amountToFreeDelivery.toFixed(2)}€ pour la livraison gratuite!
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {suggestions.filter(s => s.price >= amountToFreeDelivery).slice(0, 3).map((s, i) => (
+                              <span key={i} className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                                {s.emoji} {s.name} +{s.price}€
+                              </span>
+                            ))}
+                          </div>
+                        </Card>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+
+              <Separator />
 
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
