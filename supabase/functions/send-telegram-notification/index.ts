@@ -24,6 +24,7 @@ interface OrderNotification {
   scheduledFor?: string;
   subtotal?: number;
   tva?: number;
+  deliveryFee?: number;
 }
 
 serve(async (req) => {
@@ -208,6 +209,12 @@ serve(async (req) => {
     }
     if (order.tva) {
       message += `\n📊 *TVA (10%):* ${order.tva.toFixed(2)}€`;
+    }
+    // Delivery fee
+    if (order.deliveryFee && order.deliveryFee > 0) {
+      message += `\n🚗 *Livraison:* +${order.deliveryFee.toFixed(2)}€`;
+    } else if (order.orderType === 'livraison') {
+      message += `\n🚗 *Livraison:* GRATUITE`;
     }
     message += `\n💰 *TOTAL TTC: ${order.total.toFixed(2)}€*\n`;
 

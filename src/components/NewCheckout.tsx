@@ -330,7 +330,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         subtotal: finalHt,
         tva: finalTva,
         total: finalTtc,
-        delivery_fee: 0,
+        delivery_fee: deliveryFee,
         status: 'pending',
         is_scheduled: scheduledInfo.isScheduled,
         scheduled_for: scheduledInfo.scheduledFor?.toISOString() || null,
@@ -352,6 +352,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             total: finalTtc,
             subtotal: finalHt,
             tva: finalTva,
+            deliveryFee: deliveryFee,
             items: cart.map(item => ({
               name: item.item.name,
               quantity: item.quantity,
