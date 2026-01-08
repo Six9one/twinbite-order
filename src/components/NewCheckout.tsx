@@ -70,6 +70,17 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const [tempScheduleTime, setTempScheduleTime] = useState<string>('12:00');
   const [useLoyaltyDiscount, setUseLoyaltyDiscount] = useState(false);
   const [lastLookedUpPhone, setLastLookedUpPhone] = useState<string>('');
+  const [confirmedOrderData, setConfirmedOrderData] = useState<{
+    orderNumber: string;
+    items: typeof cart;
+    total: number;
+    orderType: string;
+    customerName: string;
+    customerPhone: string;
+    paymentMethod: string;
+    createdAt: Date;
+    scheduledFor?: Date;
+  } | null>(null);
 
   // Lookup loyalty customer when phone changes (debounced)
   useEffect(() => {
@@ -366,6 +377,19 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         // Don't fail the order if loyalty fails
       }
 
+      // Save order data for the success screen BEFORE clearing cart
+      setConfirmedOrderData({
+        orderNumber: orderNumberRef.current!,
+        items: [...cart],
+        total: ttc,
+        orderType: orderType,
+        customerName: customerInfo.name,
+        customerPhone: customerInfo.phone,
+        paymentMethod: paymentMethod,
+        createdAt: new Date(),
+        scheduledFor: scheduledInfo.scheduledFor || undefined,
+      });
+
       clearCart();
       setStep('success');
     } catch (error) {
@@ -393,32 +417,112 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     }
   };
 
-  if (step === 'success') {
+  if (step === 'success' && confirmedOrderData) {
+    const orderTypeLabels: Record<string, string> = {
+      emporter: 'À emporter',
+      livraison: 'Livraison',
+      surplace: 'Sur place',
+    };
+
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full p-8 text-center animate-scale-in">
-          <PartyPopper className="w-16 h-16 mx-auto text-primary mb-4" />
-          <h1 className="text-2xl font-display font-bold mb-2">Commande Confirmée!</h1>
-          <p className="text-muted-foreground mb-4">
-            Merci {customerInfo.name}! Votre commande a été envoyée.
-            {paymentMethod === 'especes' && ' Paiement à la réception.'}
-            {paymentMethod === 'cb' && ' Paiement par carte à la réception.'}
-          </p>
-          {scheduledInfo.isScheduled && scheduledInfo.scheduledFor && (
-            <Card className="p-4 bg-purple-50 border-purple-200 mb-4">
-              <div className="flex items-center justify-center gap-2 text-purple-700">
-                <CalendarClock className="w-5 h-5" />
-                <span className="font-semibold">Commande programmée</span>
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-background p-4">
+        <div className="max-w-md mx-auto">
+          {/* Success header */}
+          <div className="text-center mb-4">
+            <PartyPopper className="w-16 h-16 mx-auto text-green-500 mb-2" />
+            <h1 className="text-2xl font-display font-bold text-green-600">Commande Confirmée!</h1>
+          </div>
+
+          {/* Digital Ticket - designed to be screenshot-friendly */}
+          <Card className="overflow-hidden border-2 border-primary/20 shadow-lg" id="order-ticket">
+            {/* Ticket Header */}
+            <div className="bg-primary text-white p-4 text-center">
+              <p className="text-sm opacity-80">TWIN PIZZA</p>
+              <p className="text-4xl font-bold font-mono mt-1">#{confirmedOrderData.orderNumber}</p>
+              <p className="text-xs opacity-70 mt-1">Présentez ce ticket à la caisse</p>
+            </div>
+
+            {/* Order info */}
+            <div className="p-4 bg-muted/30">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Date:</span>
+                <span className="font-medium">{format(confirmedOrderData.createdAt, "dd/MM/yyyy HH:mm", { locale: fr })}</span>
               </div>
-              <p className="text-sm text-purple-600 mt-1">
-                {format(new Date(scheduledInfo.scheduledFor), "EEEE d MMMM 'à' HH:mm", { locale: fr })}
-              </p>
-            </Card>
-          )}
-          <Button onClick={onComplete} className="w-full">
-            Retour à l'accueil
-          </Button>
-        </Card>
+              <div className="flex justify-between text-sm mt-1">
+                <span className="text-muted-foreground">Type:</span>
+                <span className="font-medium">{orderTypeLabels[confirmedOrderData.orderType] || confirmedOrderData.orderType}</span>
+              </div>
+              <div className="flex justify-between text-sm mt-1">
+                <span className="text-muted-foreground">Client:</span>
+                <span className="font-medium">{confirmedOrderData.customerName}</span>
+              </div>
+              <div className="flex justify-between text-sm mt-1">
+                <span className="text-muted-foreground">Paiement:</span>
+                <span className="font-medium">{confirmedOrderData.paymentMethod === 'cb' ? 'Carte Bancaire' : 'Espèces'}</span>
+              </div>
+              {confirmedOrderData.scheduledFor && (
+                <div className="flex justify-between text-sm mt-1 text-purple-600">
+                  <span>Programmé:</span>
+                  <span className="font-medium">{format(confirmedOrderData.scheduledFor, "EEE d MMM 'à' HH:mm", { locale: fr })}</span>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Order items */}
+            <div className="p-4">
+              <h3 className="font-semibold mb-2">Votre commande:</h3>
+              <div className="space-y-2 text-sm">
+                {confirmedOrderData.items.map((item, index) => (
+                  <div key={index} className="flex justify-between">
+                    <span>
+                      {item.quantity}x {item.item.name}
+                      {item.customization && (
+                        <span className="text-muted-foreground text-xs ml-1">
+                          {(() => {
+                            const c = item.customization as any;
+                            const parts = [];
+                            if (c.size) parts.push(c.size);
+                            if (c.isMenuMidi) parts.push('Menu Midi');
+                            if (c.meats?.length) parts.push(c.meats.join(', '));
+                            return parts.length > 0 ? `(${parts.join(' • ')})` : '';
+                          })()}
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-medium">{((item.calculatedPrice || item.item.price) * item.quantity).toFixed(2)}€</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Total */}
+            <div className="p-4 bg-primary/5">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-bold">TOTAL</span>
+                <span className="text-2xl font-bold text-primary">{confirmedOrderData.total.toFixed(2)}€</span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 bg-muted/50 text-center text-xs text-muted-foreground">
+              Merci de votre confiance! À bientôt chez Twin Pizza 🍕
+            </div>
+          </Card>
+
+          {/* Actions */}
+          <div className="mt-4 space-y-2">
+            <p className="text-center text-sm text-muted-foreground">
+              📸 Faites une capture d'écran de votre ticket!
+            </p>
+            <Button onClick={onComplete} className="w-full h-12 text-lg">
+              Retour à l'accueil
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
