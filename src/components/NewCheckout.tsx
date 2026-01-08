@@ -123,11 +123,14 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
   const productsSubtotal = pizzaPromo.discountedTotal + otherTotal;
 
-  // Delivery fee logic: free if >= 25€, else 5€ fee
+  // Delivery fee logic: 
+  // - If there's pizza in cart → NO delivery fee (pizza has its own 1+1 promo)
+  // - If no pizza → free if >= 25€, else 5€ fee
   const FREE_DELIVERY_THRESHOLD = 25;
   const DELIVERY_FEE = 5;
   const isDelivery = orderType === 'livraison';
-  const qualifiesForFreeDelivery = productsSubtotal >= FREE_DELIVERY_THRESHOLD;
+  const hasPizza = pizzaItems.length > 0;
+  const qualifiesForFreeDelivery = hasPizza || otherTotal >= FREE_DELIVERY_THRESHOLD;
   const deliveryFee = isDelivery && !qualifiesForFreeDelivery ? DELIVERY_FEE : 0;
 
   const subtotal = productsSubtotal + deliveryFee;
@@ -757,8 +760,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               </Card>
             </div>
 
-            {/* Delivery info for non-delivery orders - CLICKABLE */}
-            {orderType !== 'livraison' && (
+            {/* Delivery info for non-delivery orders WITHOUT pizza - CLICKABLE */}
+            {orderType !== 'livraison' && !hasPizza && (
               <Card
                 className="p-4 bg-blue-50 border-blue-200 cursor-pointer hover:bg-blue-100 hover:border-blue-300 transition-all"
                 onClick={() => {
@@ -779,6 +782,24 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 >
                   Passer en livraison →
                 </Button>
+              </Card>
+            )}
+
+            {/* For orders with pizza - just show simple livraison message */}
+            {orderType !== 'livraison' && hasPizza && (
+              <Card
+                className="p-4 bg-green-50 border-green-200 cursor-pointer hover:bg-green-100 transition-all"
+                onClick={() => {
+                  setOrderType('livraison');
+                  setStep('info');
+                }}
+              >
+                <h3 className="font-semibold text-green-700 flex items-center gap-2">
+                  🚗 Livraison gratuite avec vos pizzas!
+                </h3>
+                <p className="text-sm text-green-600 mt-1">
+                  Cliquez pour passer en mode livraison
+                </p>
               </Card>
             )}
           </div>
