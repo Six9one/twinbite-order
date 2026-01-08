@@ -79,6 +79,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     orderType: string;
     customerName: string;
     customerPhone: string;
+    customerAddress: string;
     paymentMethod: string;
     createdAt: Date;
     scheduledFor?: Date;
@@ -398,6 +399,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         orderType: orderType,
         customerName: customerInfo.name,
         customerPhone: customerInfo.phone,
+        customerAddress: customerInfo.address || '',
         paymentMethod: paymentMethod,
         createdAt: new Date(),
         scheduledFor: scheduledInfo.scheduledFor || undefined,
@@ -473,6 +475,13 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 <span className="text-muted-foreground">Paiement:</span>
                 <span className="font-medium">{confirmedOrderData.paymentMethod === 'cb' ? 'Carte Bancaire' : 'Espèces'}</span>
               </div>
+              {/* Delivery address */}
+              {confirmedOrderData.orderType === 'livraison' && confirmedOrderData.customerAddress && (
+                <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+                  <span className="text-blue-700 font-medium">📍 Adresse de livraison:</span>
+                  <p className="text-blue-600 mt-1">{confirmedOrderData.customerAddress}</p>
+                </div>
+              )}
               {confirmedOrderData.scheduledFor && (
                 <div className="flex justify-between text-sm mt-1 text-purple-600">
                   <span>Programmé:</span>
@@ -751,7 +760,10 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             {orderType !== 'livraison' && (
               <Card
                 className="p-4 bg-blue-50 border-blue-200 cursor-pointer hover:bg-blue-100 hover:border-blue-300 transition-all"
-                onClick={() => setOrderType('livraison')}
+                onClick={() => {
+                  setOrderType('livraison');
+                  setStep('info'); // Go back to info step to enter address
+                }}
               >
                 <h3 className="font-semibold text-blue-700 flex items-center gap-2 mb-2">
                   🚗 Livraison aussi disponible!
