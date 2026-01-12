@@ -415,11 +415,26 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
         if (!customer || stampCount <= 0) return false;
 
         try {
-            const newTotalStamps = customer.totalStamps + stampCount;
+            // IMPORTANT: Fetch fresh customer data from database to avoid stale state
+            const { data: freshData, error: fetchError } = await supabase
+                .from('loyalty_customers' as any)
+                .select('*')
+                .eq('id', customer.id)
+                .single();
+
+            if (fetchError || !freshData) {
+                console.error('Failed to fetch fresh customer data:', fetchError);
+                return false;
+            }
+
+            const currentTotalStamps = freshData.total_stamps || 0;
+            const currentFreeItems = freshData.free_items_available || 0;
+
+            const newTotalStamps = currentTotalStamps + stampCount;
             const STAMPS_FOR_FREE = 10;
 
             // Calculate new stamps (cycles after 10) and free items
-            const previousCycles = Math.floor(customer.totalStamps / STAMPS_FOR_FREE);
+            const previousCycles = Math.floor(currentTotalStamps / STAMPS_FOR_FREE);
             const newCycles = Math.floor(newTotalStamps / STAMPS_FOR_FREE);
             const newFreeItems = newCycles - previousCycles;
             const newStamps = newTotalStamps % STAMPS_FOR_FREE;
@@ -430,7 +445,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 .update({
                     stamps: newStamps,
                     total_stamps: newTotalStamps,
-                    free_items_available: customer.freeItemsAvailable + newFreeItems
+                    free_items_available: currentFreeItems + newFreeItems
                 })
                 .eq('id', customer.id);
 
@@ -450,21 +465,22 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                     order_id: orderId
                 });
 
-            // Update local state
+            // Update local state with fresh values
             setCustomer({
                 ...customer,
                 stamps: newStamps,
                 totalStamps: newTotalStamps,
-                freeItemsAvailable: customer.freeItemsAvailable + newFreeItems
+                freeItemsAvailable: currentFreeItems + newFreeItems
             });
 
-            console.log(`[STAMPS] Added ${stampCount} stamps. Total: ${newTotalStamps}, Free items: ${customer.freeItemsAvailable + newFreeItems}`);
+            console.log(`[STAMPS] Added ${stampCount} stamps. Previous: ${currentTotalStamps}, New Total: ${newTotalStamps}, Free items: ${currentFreeItems + newFreeItems}`);
             return true;
         } catch (e) {
             console.error('Add stamps error:', e);
             return false;
         }
     };
+
 
     // Redeem a free item (uses 1 free item credit)
     const redeemFreeItem = async (): Promise<boolean> => {

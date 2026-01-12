@@ -362,14 +362,16 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           // Count and award stamps for qualifying items
           stampsEarned = countQualifyingItems(cart);
           if (stampsEarned > 0) {
-            await addStamps(orderNumberRef.current!, stampsEarned, `+${stampsEarned} tampon${stampsEarned > 1 ? 's' : ''}`);
-            console.log('[CHECKOUT] Loyalty stamps awarded:', stampsEarned);
+            const stampSuccess = await addStamps(orderNumberRef.current!, stampsEarned, `+${stampsEarned} tampon${stampsEarned > 1 ? 's' : ''}`);
+            console.log('[CHECKOUT] Loyalty stamps awarded:', stampsEarned, 'Success:', stampSuccess);
 
-            // Calculate totals after adding stamps
+            // After addStamps, the customer context is updated with fresh DB values
+            // We need to calculate based on the customer's previous total + this order's stamps
             totalStampsAfter = loyaltyCustomer.totalStamps + stampsEarned;
             const STAMPS_FOR_FREE = 10;
             freeItemsAfter = Math.floor(totalStampsAfter / STAMPS_FOR_FREE);
           }
+
 
           // Redeem points if customer used discount
           if (useLoyaltyDiscount && loyaltyDiscount > 0) {
