@@ -295,9 +295,6 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
                 className="p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30 text-center overflow-hidden relative"
                 onClick={() => handleCategoryClick(category)}
               >
-                {category === 'sandwiches' && (
-                  <Badge className="absolute top-2 right-2 bg-green-500 text-white text-xs">Nouveau</Badge>
-                )}
 
                 {/* Image or Emoji */}
                 <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 rounded-full overflow-hidden border-4 border-amber-400/30 bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">

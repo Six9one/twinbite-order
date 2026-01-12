@@ -23,7 +23,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
   const { data: cruditeOptions } = useCruditeOptions();
   const { data: sauceOptions } = useSauceOptions();
   const { data: supplementOptions } = useSupplementOptions();
-  
+
   const [step, setStep] = useState<number>(1);
   const [selectedSandwich, setSelectedSandwich] = useState<SandwichType | null>(null);
   const [selectedSauces, setSelectedSauces] = useState<string[]>([]);
@@ -35,41 +35,41 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
   const totalSteps = 5;
 
   const toggleSauce = (sauce: string) => {
-    setSelectedSauces(prev => 
+    setSelectedSauces(prev =>
       prev.includes(sauce) ? prev.filter(s => s !== sauce) : [...prev, sauce]
     );
   };
 
   const toggleCrudite = (crudite: string) => {
-    setSelectedCrudites(prev => 
+    setSelectedCrudites(prev =>
       prev.includes(crudite) ? prev.filter(c => c !== crudite) : [...prev, crudite]
     );
   };
 
   const toggleSupplement = (supplement: string) => {
-    setSelectedSupplements(prev => 
+    setSelectedSupplements(prev =>
       prev.includes(supplement) ? prev.filter(s => s !== supplement) : [...prev, supplement]
     );
   };
 
   const calculatePrice = () => {
     if (!selectedSandwich) return 0;
-    
+
     let price = selectedSandwich.base_price;
-    
+
     // Add supplements
     selectedSupplements.forEach(supName => {
       const sup = supplementOptions?.find(s => s.name === supName);
       if (sup) price += sup.price;
     });
-    
+
     // Add menu option
     if (menuOption === 'frites' || menuOption === 'boisson') {
       price += menuOptionPrices.frites;
     } else if (menuOption === 'menu') {
       price += menuOptionPrices.menu;
     }
-    
+
     return price;
   };
 
@@ -106,14 +106,14 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
 
     const calculatedPrice = calculatePrice();
     addToCart(menuItem, 1, customization, calculatedPrice);
-    
+
     trackAddToCart(selectedSandwich.id, selectedSandwich.name, 'sandwiches');
-    
+
     toast({
       title: 'Ajouté au panier',
       description: `${selectedSandwich.name}${menuOption !== 'none' ? ` (${menuOption})` : ''}`,
     });
-    
+
     // Reset for another order
     setSelectedSandwich(null);
     setSelectedSauces([]);
@@ -137,11 +137,10 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
                 {sandwichTypes?.map(sandwich => (
                   <Card
                     key={sandwich.id}
-                    className={`overflow-hidden cursor-pointer transition-all ${
-                      selectedSandwich?.id === sandwich.id
+                    className={`overflow-hidden cursor-pointer transition-all ${selectedSandwich?.id === sandwich.id
                         ? 'ring-2 ring-primary bg-primary/5'
                         : 'hover:bg-muted/50'
-                    }`}
+                      }`}
                     onClick={() => {
                       setSelectedSandwich(sandwich);
                       trackProductView(sandwich.id, sandwich.name, 'sandwiches');
@@ -187,11 +186,10 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
               {sauceOptions?.map(sauce => (
                 <Card
                   key={sauce.id}
-                  className={`p-3 cursor-pointer transition-all ${
-                    selectedSauces.includes(sauce.name)
+                  className={`p-3 cursor-pointer transition-all ${selectedSauces.includes(sauce.name)
                       ? 'ring-2 ring-primary bg-primary/5'
                       : 'hover:bg-muted/50'
-                  }`}
+                    }`}
                   onClick={() => toggleSauce(sauce.name)}
                 >
                   <div className="flex items-center justify-between">
@@ -219,11 +217,10 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
               {cruditeOptions?.map(crudite => (
                 <Card
                   key={crudite.id}
-                  className={`p-3 cursor-pointer transition-all ${
-                    selectedCrudites.includes(crudite.name)
+                  className={`p-3 cursor-pointer transition-all ${selectedCrudites.includes(crudite.name)
                       ? 'ring-2 ring-primary bg-primary/5'
                       : 'hover:bg-muted/50'
-                  }`}
+                    }`}
                   onClick={() => toggleCrudite(crudite.name)}
                 >
                   <div className="flex items-center justify-between">
@@ -246,11 +243,10 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
               {supplementOptions?.map(sup => (
                 <Card
                   key={sup.id}
-                  className={`p-3 cursor-pointer transition-all ${
-                    selectedSupplements.includes(sup.name)
+                  className={`p-3 cursor-pointer transition-all ${selectedSupplements.includes(sup.name)
                       ? 'ring-2 ring-primary bg-primary/5'
                       : 'hover:bg-muted/50'
-                  }`}
+                    }`}
                   onClick={() => toggleSupplement(sup.name)}
                 >
                   <div className="flex items-center justify-between">
@@ -275,9 +271,8 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
               <h2 className="text-lg font-semibold mb-3">Options menu</h2>
               <div className="grid grid-cols-2 gap-3">
                 <Card
-                  className={`p-4 cursor-pointer transition-all ${
-                    menuOption === 'none' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
-                  }`}
+                  className={`p-4 cursor-pointer transition-all ${menuOption === 'none' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
+                    }`}
                   onClick={() => setMenuOption('none')}
                 >
                   <div className="flex items-center justify-between">
@@ -286,9 +281,8 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
                   </div>
                 </Card>
                 <Card
-                  className={`p-4 cursor-pointer transition-all ${
-                    menuOption === 'frites' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
-                  }`}
+                  className={`p-4 cursor-pointer transition-all ${menuOption === 'frites' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
+                    }`}
                   onClick={() => setMenuOption('frites')}
                 >
                   <div className="flex items-center justify-between">
@@ -300,9 +294,8 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
                   </div>
                 </Card>
                 <Card
-                  className={`p-4 cursor-pointer transition-all ${
-                    menuOption === 'boisson' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
-                  }`}
+                  className={`p-4 cursor-pointer transition-all ${menuOption === 'boisson' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
+                    }`}
                   onClick={() => setMenuOption('boisson')}
                 >
                   <div className="flex items-center justify-between">
@@ -314,9 +307,8 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
                   </div>
                 </Card>
                 <Card
-                  className={`p-4 cursor-pointer transition-all ${
-                    menuOption === 'menu' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
-                  }`}
+                  className={`p-4 cursor-pointer transition-all ${menuOption === 'menu' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
+                    }`}
                   onClick={() => setMenuOption('menu')}
                 >
                   <div className="flex items-center justify-between">
@@ -354,32 +346,30 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => step > 1 ? setStep(step - 1) : onClose()}
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div>
-              <h1 className="text-2xl font-display font-bold">
+                <h1 className="text-2xl font-display font-bold">
                   Sandwiches (pain maison)
-                  <Badge variant="secondary" className="ml-2 bg-green-500 text-white">Nouveau</Badge>
                 </h1>
                 <p className="text-sm text-muted-foreground">Étape {step}/{totalSteps}</p>
               </div>
             </div>
             <span className="text-xl font-bold text-primary">{calculatePrice().toFixed(2)}€</span>
           </div>
-          
+
           {/* Progress */}
           <div className="flex gap-1 mt-3">
             {Array.from({ length: totalSteps }).map((_, i) => (
               <div
                 key={i}
-                className={`h-1 flex-1 rounded-full ${
-                  i < step ? 'bg-primary' : 'bg-muted'
-                }`}
+                className={`h-1 flex-1 rounded-full ${i < step ? 'bg-primary' : 'bg-muted'
+                  }`}
               />
             ))}
           </div>

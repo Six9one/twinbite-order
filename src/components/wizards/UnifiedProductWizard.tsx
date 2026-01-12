@@ -311,7 +311,6 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Choisir la taille</h2>
-              <Badge className="bg-green-500 text-white">✨ Nouveaux prix</Badge>
             </div>
             <div className="grid grid-cols-3 gap-4">
               {config.sizes.map((s) => {
