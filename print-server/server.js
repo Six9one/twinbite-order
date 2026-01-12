@@ -443,6 +443,17 @@ function formatOrderForPrint(order) {
 
     ticket += LINE;
 
+    // Stamp Card Section (if loyalty info available from order)
+    // Note: This would need loyalty info to be passed with the order
+    // For now, we add a loyalty reminder
+    ticket += ESCPOS.CENTER;
+    ticket += ESCPOS.BOLD_ON;
+    ticket += 'CARTE FIDELITE\n';
+    ticket += ESCPOS.BOLD_OFF;
+    ticket += 'Achetez 9 produits\n';
+    ticket += '= 10ème GRATUIT (10€)!\n';
+    ticket += LINE;
+
     // Footer
     if (template.footer) {
         ticket += template.footer.replace(/\\n/g, '\n');
