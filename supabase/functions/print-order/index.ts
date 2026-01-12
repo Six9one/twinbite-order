@@ -35,7 +35,12 @@ interface OrderData {
     is_scheduled?: boolean;
     scheduled_for?: string;
     created_at: string;
+    // Stamp card info (optional, passed from checkout)
+    stamps_earned?: number;
+    total_stamps?: number;
+    free_items_available?: number;
 }
+
 
 // ESC/POS Commands for thermal printers
 const ESC = '\x1B';
@@ -249,7 +254,50 @@ function formatOrderForPrint(order: OrderData, ticketSettings: any): string {
 
     ticket += ESCPOS.LINE;
 
+    // Stamp Card Section (if stamp info available)
+    if (order.stamps_earned && order.stamps_earned > 0) {
+        const totalStamps = order.total_stamps || 0;
+        const displayStamps = totalStamps % 10;
+        const freeItems = order.free_items_available || 0;
+        const stampsNeeded = 10 - displayStamps;
+
+        ticket += ESCPOS.CENTER;
+        ticket += ESCPOS.BOLD_ON;
+        ticket += '🎁 CARTE FIDÉLITÉ\n';
+        ticket += ESCPOS.BOLD_OFF;
+        ticket += '\n';
+
+        // Visual stamp card: show 10 circles, X for stamped, O for empty
+        let stampLine = '';
+        for (let i = 0; i < 10; i++) {
+            if (i < displayStamps) {
+                stampLine += '[X]';
+            } else if (i === 9) {
+                stampLine += '[🎁]'; // Last one shows gift
+            } else {
+                stampLine += '[ ]';
+            }
+            if (i === 4) stampLine += '\n'; // 2 rows of 5
+        }
+        ticket += stampLine + '\n';
+        ticket += '\n';
+
+        ticket += `+${order.stamps_earned} tampon${order.stamps_earned > 1 ? 's' : ''} ajouté${order.stamps_earned > 1 ? 's' : ''}!\n`;
+        ticket += `Progression: ${displayStamps}/10\n`;
+
+        if (freeItems > 0) {
+            ticket += ESCPOS.BOLD_ON;
+            ticket += `🎉 ${freeItems} PRODUIT${freeItems > 1 ? 'S' : ''} OFFERT${freeItems > 1 ? 'S' : ''}!\n`;
+            ticket += ESCPOS.BOLD_OFF;
+        } else {
+            ticket += `Plus que ${stampsNeeded} pour 1 gratuit!\n`;
+        }
+
+        ticket += ESCPOS.LINE;
+    }
+
     // Footer
+    ticket += ESCPOS.CENTER;
     ticket += ticketSettings.footer || 'Merci de votre visite!';
     ticket += '\n\n';
     ticket += ESCPOS.FEED;
@@ -257,6 +305,7 @@ function formatOrderForPrint(order: OrderData, ticketSettings: any): string {
 
     return ticket;
 }
+
 
 // Send print command to network printer using raw TCP
 async function sendToPrinter(printerIp: string, printerPort: number, data: string): Promise<{ success: boolean; error?: string }> {

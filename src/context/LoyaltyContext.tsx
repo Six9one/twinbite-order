@@ -33,6 +33,9 @@ interface LoyaltyCustomer {
     phone: string;
     name: string;
     points: number;
+    stamps: number; // Stamp card count (resets every 10)
+    totalStamps: number; // Total stamps ever earned
+    freeItemsAvailable: number; // Number of free items to claim
     totalSpent: number;
     totalOrders: number;
     firstOrderDone: boolean;
@@ -52,6 +55,8 @@ interface LoyaltyContextType {
     registerCustomer: (phone: string, name: string) => Promise<LoyaltyCustomer | null>;
     findOrCreateCustomer: (phone: string, name: string) => Promise<LoyaltyCustomer | null>;
     earnPoints: (orderId: string, amount: number, description?: string) => Promise<boolean>;
+    addStamps: (orderId: string, stampCount: number, description?: string) => Promise<boolean>;
+    redeemFreeItem: () => Promise<boolean>;
     redeemReward: (rewardId: string) => Promise<{ success: boolean; discount?: number; discountType?: 'amount' | 'percentage' }>;
     selectReward: (reward: LoyaltyReward | null) => void;
     getRewards: () => LoyaltyReward[];
@@ -152,6 +157,9 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 phone: rec.phone,
                 name: rec.name,
                 points: rec.points,
+                stamps: rec.stamps || 0,
+                totalStamps: rec.total_stamps || 0,
+                freeItemsAvailable: rec.free_items_available || 0,
                 totalSpent: rec.total_spent,
                 totalOrders: rec.total_orders,
                 firstOrderDone: rec.first_order_done || false,
@@ -232,6 +240,9 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 phone: rec.phone,
                 name: rec.name,
                 points: 0,
+                stamps: 0,
+                totalStamps: 0,
+                freeItemsAvailable: 0,
                 totalSpent: 0,
                 totalOrders: 0,
                 firstOrderDone: false,
@@ -399,12 +410,110 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
         return registerCustomer(phone, name);
     };
 
+    // STAMP CARD SYSTEM: Add stamps for qualifying purchases
+    const addStamps = async (orderId: string, stampCount: number, description?: string): Promise<boolean> => {
+        if (!customer || stampCount <= 0) return false;
+
+        try {
+            const newTotalStamps = customer.totalStamps + stampCount;
+            const STAMPS_FOR_FREE = 10;
+
+            // Calculate new stamps (cycles after 10) and free items
+            const previousCycles = Math.floor(customer.totalStamps / STAMPS_FOR_FREE);
+            const newCycles = Math.floor(newTotalStamps / STAMPS_FOR_FREE);
+            const newFreeItems = newCycles - previousCycles;
+            const newStamps = newTotalStamps % STAMPS_FOR_FREE;
+
+            // Update in database
+            const { error } = await supabase
+                .from('loyalty_customers' as any)
+                .update({
+                    stamps: newStamps,
+                    total_stamps: newTotalStamps,
+                    free_items_available: customer.freeItemsAvailable + newFreeItems
+                })
+                .eq('id', customer.id);
+
+            if (error) {
+                console.error('Failed to add stamps:', error);
+                return false;
+            }
+
+            // Log transaction
+            await supabase
+                .from('loyalty_transactions' as any)
+                .insert({
+                    customer_id: customer.id,
+                    type: 'earn',
+                    points: stampCount, // Using points field for stamps
+                    description: description || `+${stampCount} tampon${stampCount > 1 ? 's' : ''} (Commande #${orderId.slice(-6)})`,
+                    order_id: orderId
+                });
+
+            // Update local state
+            setCustomer({
+                ...customer,
+                stamps: newStamps,
+                totalStamps: newTotalStamps,
+                freeItemsAvailable: customer.freeItemsAvailable + newFreeItems
+            });
+
+            console.log(`[STAMPS] Added ${stampCount} stamps. Total: ${newTotalStamps}, Free items: ${customer.freeItemsAvailable + newFreeItems}`);
+            return true;
+        } catch (e) {
+            console.error('Add stamps error:', e);
+            return false;
+        }
+    };
+
+    // Redeem a free item (uses 1 free item credit)
+    const redeemFreeItem = async (): Promise<boolean> => {
+        if (!customer || customer.freeItemsAvailable <= 0) return false;
+
+        try {
+            const { error } = await supabase
+                .from('loyalty_customers' as any)
+                .update({
+                    free_items_available: customer.freeItemsAvailable - 1
+                })
+                .eq('id', customer.id);
+
+            if (error) {
+                console.error('Failed to redeem free item:', error);
+                return false;
+            }
+
+            // Log transaction
+            await supabase
+                .from('loyalty_transactions' as any)
+                .insert({
+                    customer_id: customer.id,
+                    type: 'redeem',
+                    points: -10, // Represents 10 stamps used
+                    description: 'Produit offert réclamé (Carte de fidélité)'
+                });
+
+            // Update local state
+            setCustomer({
+                ...customer,
+                freeItemsAvailable: customer.freeItemsAvailable - 1
+            });
+
+            console.log('[STAMPS] Free item redeemed. Remaining:', customer.freeItemsAvailable - 1);
+            return true;
+        } catch (e) {
+            console.error('Redeem free item error:', e);
+            return false;
+        }
+    };
+
     const logout = () => {
         setCustomer(null);
         setTransactions([]);
         setSelectedReward(null);
         localStorage.removeItem('twinpizza-loyalty-phone');
     };
+
 
     return (
         <LoyaltyContext.Provider value={{
@@ -417,6 +526,8 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             registerCustomer,
             findOrCreateCustomer,
             earnPoints,
+            addStamps,
+            redeemFreeItem,
             redeemReward,
             selectReward,
             getRewards,
@@ -425,6 +536,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             canUseReward,
             logout
         }}>
+
             {children}
         </LoyaltyContext.Provider>
     );

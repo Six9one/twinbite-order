@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useOrder } from '@/context/OrderContext';
 import { useLoyalty } from '@/context/LoyaltyContext';
+import { LoyaltyStampCard, countQualifyingItems } from '@/components/LoyaltyStampCard';
+
 import { CustomerInfo, PaymentMethod, PizzaCustomization } from '@/types/order';
 import { applyPizzaPromotions, calculateTVA } from '@/utils/promotions';
 import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
@@ -51,7 +53,7 @@ interface NewCheckoutProps {
 
 export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const { cart, orderType, setOrderType, clearCart, scheduledInfo, setScheduledInfo } = useOrder();
-  const { customer, lookupCustomer, calculatePointsToEarn, findOrCreateCustomer, earnPoints, redeemReward, rewards } = useLoyalty();
+  const { customer, lookupCustomer, calculatePointsToEarn, findOrCreateCustomer, earnPoints, addStamps, redeemReward, rewards } = useLoyalty();
   const createOrder = useCreateOrder();
   const { data: paymentSettings, isLoading: isLoadingPaymentSettings } = usePaymentSettings();
   const [step, setStep] = useState<'info' | 'payment' | 'schedule-confirm' | 'confirm' | 'success'>('info');
@@ -83,7 +85,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     paymentMethod: string;
     createdAt: Date;
     scheduledFor?: Date;
+    newStampsEarned?: number; // Track stamps earned for animation
   } | null>(null);
+
 
   // Lookup loyalty customer when phone changes (debounced)
   useEffect(() => {
@@ -341,7 +345,43 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
       console.log('[CHECKOUT] Order created successfully:', result);
 
-      // Send Telegram notification for non-Stripe orders with FULL customization details
+      // Handle loyalty points AND stamps FIRST (before Telegram)
+      let stampsEarned = 0;
+      let totalStampsAfter = 0;
+      let freeItemsAfter = 0;
+      try {
+        // Find or create loyalty customer
+        const loyaltyCustomer = await findOrCreateCustomer(customerInfo.phone.trim(), customerInfo.name.trim());
+
+        if (loyaltyCustomer) {
+          // Award points for this order
+          await earnPoints(orderNumberRef.current!, ttc, `Commande #${orderNumberRef.current}`);
+          console.log('[CHECKOUT] Loyalty points awarded:', pointsToEarn);
+
+          // Count and award stamps for qualifying items
+          stampsEarned = countQualifyingItems(cart);
+          if (stampsEarned > 0) {
+            await addStamps(orderNumberRef.current!, stampsEarned, `+${stampsEarned} tampon${stampsEarned > 1 ? 's' : ''}`);
+            console.log('[CHECKOUT] Loyalty stamps awarded:', stampsEarned);
+
+            // Calculate totals after adding stamps
+            totalStampsAfter = loyaltyCustomer.totalStamps + stampsEarned;
+            const STAMPS_FOR_FREE = 10;
+            freeItemsAfter = Math.floor(totalStampsAfter / STAMPS_FOR_FREE);
+          }
+
+          // Redeem points if customer used discount
+          if (useLoyaltyDiscount && loyaltyDiscount > 0) {
+            await redeemReward('discount-5-euro');
+            console.log('[CHECKOUT] Loyalty discount redeemed: -5€ (100 pts)');
+          }
+        }
+      } catch (loyaltyError) {
+        console.error('[CHECKOUT] Loyalty processing failed:', loyaltyError);
+        // Don't fail the order if loyalty fails
+      }
+
+      // Send Telegram notification with stamp info included
       try {
         await supabase.functions.invoke('send-telegram-notification', {
           body: {
@@ -364,33 +404,16 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             })),
             isScheduled: scheduledInfo.isScheduled,
             scheduledFor: scheduledInfo.scheduledFor?.toISOString() || null,
+            // Stamp card info
+            stampsEarned: stampsEarned,
+            totalStamps: totalStampsAfter,
+            freeItemsAvailable: freeItemsAfter,
           },
         });
-        console.log('[CHECKOUT] Telegram notification sent');
+        console.log('[CHECKOUT] Telegram notification sent with stamp info');
       } catch (telegramError) {
         console.error('[CHECKOUT] Telegram notification failed:', telegramError);
         // Don't fail the order if Telegram fails
-      }
-
-      // Handle loyalty points
-      try {
-        // Find or create loyalty customer
-        const loyaltyCustomer = await findOrCreateCustomer(customerInfo.phone.trim(), customerInfo.name.trim());
-
-        if (loyaltyCustomer) {
-          // Award points for this order
-          await earnPoints(orderNumberRef.current!, ttc, `Commande #${orderNumberRef.current}`);
-          console.log('[CHECKOUT] Loyalty points awarded:', pointsToEarn);
-
-          // Redeem points if customer used discount
-          if (useLoyaltyDiscount && loyaltyDiscount > 0) {
-            await redeemReward('discount-5-euro');
-            console.log('[CHECKOUT] Loyalty discount redeemed: -5€ (100 pts)');
-          }
-        }
-      } catch (loyaltyError) {
-        console.error('[CHECKOUT] Loyalty processing failed:', loyaltyError);
-        // Don't fail the order if loyalty fails
       }
 
       // Save order data for the success screen BEFORE clearing cart
@@ -407,7 +430,10 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         paymentMethod: paymentMethod,
         createdAt: new Date(),
         scheduledFor: scheduledInfo.scheduledFor || undefined,
+        newStampsEarned: stampsEarned,
       });
+
+
 
       clearCart();
       setStep('success');
@@ -554,6 +580,21 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             </div>
           </Card>
 
+          {/* Loyalty Stamp Card - Show if customer has stamps or earned new ones */}
+          {customer && (confirmedOrderData.newStampsEarned || 0) > 0 && (
+            <div className="mt-6">
+              <h2 className="text-lg font-bold text-center mb-3 text-amber-700">
+                🎁 Votre Carte de Fidélité
+              </h2>
+              <LoyaltyStampCard
+                currentStamps={customer.stamps}
+                customerName={confirmedOrderData.customerName}
+                newStampsEarned={confirmedOrderData.newStampsEarned}
+                animated={true}
+              />
+            </div>
+          )}
+
           {/* Actions */}
           <div className="mt-4 space-y-2">
             <p className="text-center text-sm text-muted-foreground">
@@ -564,6 +605,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             </Button>
           </div>
         </div>
+
       </div>
     );
   }

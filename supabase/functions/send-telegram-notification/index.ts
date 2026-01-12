@@ -25,6 +25,10 @@ interface OrderNotification {
   subtotal?: number;
   tva?: number;
   deliveryFee?: number;
+  // Stamp card info
+  stampsEarned?: number;
+  totalStamps?: number;
+  freeItemsAvailable?: number;
 }
 
 serve(async (req) => {
@@ -213,6 +217,23 @@ serve(async (req) => {
 
     if (order.customerNotes) {
       message += `\n📝 *Notes:* ${order.customerNotes}`;
+    }
+
+    // Add stamp card info if available
+    if (order.stampsEarned && order.stampsEarned > 0) {
+      const currentStamps = order.totalStamps || 0;
+      const displayStamps = currentStamps % 10;
+      const stampsNeeded = 10 - displayStamps;
+      const freeItems = order.freeItemsAvailable || 0;
+      
+      message += `\n\n🎁 *FIDÉLITÉ:*`;
+      message += `\n• +${order.stampsEarned} tampon${order.stampsEarned > 1 ? 's' : ''} ajouté${order.stampsEarned > 1 ? 's' : ''}`;
+      message += `\n• Progression: ${displayStamps}/10`;
+      if (freeItems > 0) {
+        message += `\n• 🎉 ${freeItems} PRODUIT${freeItems > 1 ? 'S' : ''} OFFERT${freeItems > 1 ? 'S' : ''} À RÉCLAMER!`;
+      } else {
+        message += `\n• Plus que ${stampsNeeded} pour 1 produit offert!`;
+      }
     }
 
     console.log('Sending Telegram notification to chats:', chatIds);
