@@ -149,7 +149,7 @@ export function LoyaltyStampCard({
                 {freeItemsEarned > 0 && (
                     <div className="mt-3 bg-green-100 border border-green-300 rounded-lg p-3 text-center animate-pulse">
                         <p className="text-green-700 font-semibold">
-                            🎁 Vous avez {freeItemsEarned} produit{freeItemsEarned > 1 ? 's' : ''} offert{freeItemsEarned > 1 ? 's' : ''} à utiliser!
+                            🎁 Vous avez {freeItemsEarned} produit{freeItemsEarned > 1 ? 's' : ''} GRATUIT{freeItemsEarned > 1 ? 'S' : ''} (valeur 10€)!
                         </p>
                         <p className="text-xs text-green-600 mt-1">
                             Demandez-le lors de votre prochaine commande
@@ -170,7 +170,7 @@ export function LoyaltyStampCard({
             {/* Footer */}
             <div className="bg-muted/50 p-3 text-center text-xs text-muted-foreground">
                 <p>Achetez 9 produits (pizza, sandwich, soufflet, makloub, mlawi, tacos)</p>
-                <p className="font-semibold text-primary mt-1">= 10ème produit OFFERT! 🎁</p>
+                <p className="font-semibold text-primary mt-1">= 10ème produit GRATUIT (valeur 10€)! 🎁</p>
             </div>
         </Card>
     );

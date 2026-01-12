@@ -287,10 +287,10 @@ function formatOrderForPrint(order: OrderData, ticketSettings: any): string {
 
         if (freeItems > 0) {
             ticket += ESCPOS.BOLD_ON;
-            ticket += `🎉 ${freeItems} PRODUIT${freeItems > 1 ? 'S' : ''} OFFERT${freeItems > 1 ? 'S' : ''}!\n`;
+            ticket += `🎉 ${freeItems} PRODUIT${freeItems > 1 ? 'S' : ''} GRATUIT${freeItems > 1 ? 'S' : ''} (10€)!\n`;
             ticket += ESCPOS.BOLD_OFF;
         } else {
-            ticket += `Plus que ${stampsNeeded} pour 1 gratuit!\n`;
+            ticket += `Plus que ${stampsNeeded} pour 1 gratuit (10€)!\n`;
         }
 
         ticket += ESCPOS.LINE;

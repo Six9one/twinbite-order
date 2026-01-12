@@ -225,14 +225,14 @@ serve(async (req) => {
       const displayStamps = currentStamps % 10;
       const stampsNeeded = 10 - displayStamps;
       const freeItems = order.freeItemsAvailable || 0;
-      
+
       message += `\n\n🎁 *FIDÉLITÉ:*`;
       message += `\n• +${order.stampsEarned} tampon${order.stampsEarned > 1 ? 's' : ''} ajouté${order.stampsEarned > 1 ? 's' : ''}`;
       message += `\n• Progression: ${displayStamps}/10`;
       if (freeItems > 0) {
-        message += `\n• 🎉 ${freeItems} PRODUIT${freeItems > 1 ? 'S' : ''} OFFERT${freeItems > 1 ? 'S' : ''} À RÉCLAMER!`;
+        message += `\n• 🎉 ${freeItems} PRODUIT${freeItems > 1 ? 'S' : ''} GRATUIT${freeItems > 1 ? 'S' : ''} (10€) À RÉCLAMER!`;
       } else {
-        message += `\n• Plus que ${stampsNeeded} pour 1 produit offert!`;
+        message += `\n• Plus que ${stampsNeeded} pour 1 produit gratuit (10€)!`;
       }
     }
 
