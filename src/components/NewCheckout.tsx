@@ -86,6 +86,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     createdAt: Date;
     scheduledFor?: Date;
     newStampsEarned?: number; // Track stamps earned for animation
+    totalStampsAfterOrder?: number; // Total stamps AFTER this order
   } | null>(null);
 
 
@@ -431,6 +432,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         createdAt: new Date(),
         scheduledFor: scheduledInfo.scheduledFor || undefined,
         newStampsEarned: stampsEarned,
+        totalStampsAfterOrder: totalStampsAfter, // Store the AFTER value
       });
 
 
@@ -587,7 +589,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 🎁 Votre Carte de Fidélité
               </h2>
               <LoyaltyStampCard
-                currentStamps={customer.stamps}
+                currentStamps={confirmedOrderData.totalStampsAfterOrder || 0}
                 customerName={confirmedOrderData.customerName}
                 newStampsEarned={confirmedOrderData.newStampsEarned}
                 animated={true}
