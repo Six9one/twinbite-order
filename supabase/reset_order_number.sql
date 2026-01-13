@@ -1,12 +1,19 @@
--- Reset order number sequence to start from 1
+-- ============================================
+-- RESET ORDER COUNTER TO 0 (START FROM 001)
 -- Run this in Supabase SQL Editor
+-- ============================================
 
--- Reset the sequence to start from 1
-ALTER SEQUENCE IF EXISTS order_number_seq RESTART WITH 1;
+-- Delete all existing counter records
+-- This will make the next order start from 001
+DELETE FROM order_counters;
 
--- If the sequence doesn't exist, this will do nothing
--- The next order will be TW-2025-0001
+-- Optionally insert today with counter 0 so next call returns 001
+INSERT INTO order_counters (counter_date, last_number)
+VALUES (CURRENT_DATE, 0)
+ON CONFLICT (counter_date) DO UPDATE SET last_number = 0;
 
--- To verify, you can run:
--- SELECT nextval('order_number_seq');
--- But this will increment it, so only do this for testing
+-- Verify: This shows the current state
+SELECT * FROM order_counters;
+
+-- NOTE: The next order will now be "001"
+-- The format depends on your generateOrderNumber function in the code
