@@ -149,6 +149,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   // Points to earn from this order
   const pointsToEarn = calculatePointsToEarn(ttc);
 
+  // Stamps to earn from this order (count qualifying products)
+  const stampsToEarn = countQualifyingItems(cart);
+
   // Validate cart has items and total is valid
   const isCartValid = cart.length > 0 && ttc > 0;
 
@@ -705,50 +708,74 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               />
             </div>
 
-            {/* Loyalty Points Card */}
+            {/* Loyalty Stamp Card - New System */}
             {customer && (
               <Card className="p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-200">
                 <div className="flex items-center gap-2 mb-3">
                   <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-                  <span className="font-bold text-amber-700">Programme Fidélité</span>
+                  <span className="font-bold text-amber-700">Carte de Fidélité</span>
                 </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Vos points:</span>
-                    <span className="font-bold text-amber-600">{customer.points} pts</span>
-                  </div>
-                  <div className="flex justify-between text-green-600">
-                    <span>Vous allez gagner:</span>
-                    <span className="font-bold">+{pointsToEarn} pts</span>
+                <div className="space-y-3 text-sm">
+                  {/* Stamps display */}
+                  <div className="flex justify-between items-center">
+                    <span>Vos tampons:</span>
+                    <span className="font-bold text-amber-600">{customer.stamps || 0} / 10</span>
                   </div>
 
-                  {customer.points >= 100 && (
-                    <div className="mt-3 pt-3 border-t border-amber-200">
-                      <Button
-                        variant={useLoyaltyDiscount ? "default" : "outline"}
-                        className={`w-full gap-2 ${useLoyaltyDiscount ? 'bg-green-600 hover:bg-green-700' : 'border-green-500 text-green-600 hover:bg-green-50'}`}
-                        onClick={() => setUseLoyaltyDiscount(!useLoyaltyDiscount)}
-                      >
-                        <Gift className="w-4 h-4" />
-                        {useLoyaltyDiscount ? '✓ -5€ appliqué (100 pts)' : 'Utiliser 100 pts = -5€'}
-                      </Button>
+                  {/* Show stamps to earn from this order */}
+                  {stampsToEarn > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Tampons à gagner:</span>
+                      <span className="font-bold">+{stampsToEarn} 🍕</span>
                     </div>
+                  )}
+
+                  {/* FREE ITEM AVAILABLE - Show prominently! */}
+                  {(customer.freeItemsAvailable || 0) > 0 && (
+                    <div className="mt-2 bg-green-100 border-2 border-green-400 rounded-lg p-3 text-center animate-pulse">
+                      <p className="text-green-700 font-bold text-base">
+                        🎁 Vous avez {customer.freeItemsAvailable} produit{(customer.freeItemsAvailable || 0) > 1 ? 's' : ''} GRATUIT!
+                      </p>
+                      <p className="text-xs text-green-600 mt-1">
+                        Demandez-le à la caisse (valeur 10€)
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Almost there - 9 stamps! */}
+                  {(customer.stamps || 0) % 10 === 9 && (customer.freeItemsAvailable || 0) === 0 && (
+                    <div className="mt-2 bg-amber-100 border-2 border-amber-400 rounded-lg p-3 text-center">
+                      <p className="text-amber-700 font-bold">
+                        🎉 Plus qu'1 achat pour un produit OFFERT!
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Progress to next free item */}
+                  {(customer.stamps || 0) % 10 < 9 && (customer.freeItemsAvailable || 0) === 0 && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Encore {10 - ((customer.stamps || 0) % 10)} tampon(s) pour un produit gratuit!
+                    </p>
                   )}
                 </div>
               </Card>
             )}
 
-            {/* If not logged in but phone entered, show prompt */}
+            {/* If not logged in but phone entered, show stamps info */}
             {!customer && customerInfo.phone.length >= 10 && (
               <Card className="p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-200">
                 <div className="flex items-center gap-2 mb-2">
                   <Star className="w-5 h-5 text-amber-500" />
-                  <span className="font-semibold text-amber-700">Programme Fidélité</span>
+                  <span className="font-semibold text-amber-700">Carte de Fidélité</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Gagnez <span className="font-bold text-amber-600">+{pointsToEarn} points</span> avec cette commande!
+                  {stampsToEarn > 0 ? (
+                    <>Gagnez <span className="font-bold text-amber-600">+{stampsToEarn} tampon(s)</span> avec cette commande!</>
+                  ) : (
+                    <>Commandez des pizzas, tacos, soufflets... pour gagner des tampons!</>
+                  )}
                   <br />
-                  <span className="text-xs">100 points = 5€ de réduction</span>
+                  <span className="text-xs">10 tampons = 1 produit GRATUIT (valeur 10€) 🎁</span>
                 </p>
               </Card>
             )}

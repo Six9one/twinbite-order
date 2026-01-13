@@ -408,32 +408,35 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
                 <span className="text-primary">{total.toFixed(2)}€</span>
               </div>
 
-              {/* Loyalty Points Section */}
+              {/* Loyalty Stamps Section - New System */}
               {cart.length > 0 && (
                 <Card className="p-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-200">
                   <div className="flex items-center gap-2 mb-2">
                     <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                    <span className="font-semibold text-amber-700">Programme Fidélité</span>
+                    <span className="font-semibold text-amber-700">Carte de Fidélité</span>
                   </div>
                   {customer ? (
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
-                        <span>Vos points actuels:</span>
-                        <span className="font-bold text-amber-600">{customer.points} pts</span>
+                        <span>Vos tampons:</span>
+                        <span className="font-bold text-amber-600">{customer.stamps || 0} / 10</span>
                       </div>
-                      <div className="flex justify-between text-green-600">
-                        <span>Points à gagner:</span>
-                        <span className="font-bold">+{pointsToEarn} pts</span>
-                      </div>
-                      {customer.points >= 100 && (
-                        <div className="mt-2 p-2 bg-green-100 rounded text-green-700 text-center text-xs">
-                          🎁 Vous avez assez de points pour 5€ de réduction!
+                      {(customer.freeItemsAvailable || 0) > 0 && (
+                        <div className="mt-2 p-2 bg-green-100 rounded text-green-700 text-center text-xs font-bold animate-pulse">
+                          🎁 Vous avez {customer.freeItemsAvailable} produit(s) GRATUIT!
+                        </div>
+                      )}
+                      {(customer.stamps || 0) % 10 === 9 && (customer.freeItemsAvailable || 0) === 0 && (
+                        <div className="mt-2 p-2 bg-amber-100 rounded text-amber-700 text-center text-xs font-bold">
+                          🎉 Plus qu'1 achat pour un cadeau!
                         </div>
                       )}
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Entrez votre numéro de téléphone au checkout pour gagner <span className="font-bold text-amber-600">+{pointsToEarn} points</span>!
+                      Entrez votre numéro de téléphone au checkout pour accumuler des tampons!
+                      <br />
+                      <span className="font-medium text-amber-600">10 tampons = 1 produit GRATUIT 🎁</span>
                     </p>
                   )}
                 </Card>

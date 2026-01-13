@@ -26,38 +26,38 @@ export const pizzaPrices = {
 // Set to null if you don't want to show an old price for that size
 // =============================================================================
 export const oldPrices = {
-    soufflet: { solo: 7.5, double: 9, triple: 10.5 },
-    makloub: { solo: 7.5, double: 9, triple: 10.5 },
-    mlawi: { solo: 7.5, double: 9, triple: 10.5 },
+    soufflet: { solo: null, double: null, triple: null },
+    makloub: { solo: null, double: null, triple: null },
+    mlawi: { solo: null, double: null, triple: null },
     panini: { solo: null as number | null, duo: null as number | null },
-    tacos: { solo: 7.5, double: 9, triple: 10.5 },
+    tacos: { solo: null, double: null, triple: null },
 };
 
 // =============================================================================
 // SOUFFLET PRICES (by size)
 // =============================================================================
 export const souffletPrices = {
-    solo: 7,     // 1 viande
-    double: 8.5,  // 2 viandes
-    triple: 10,  // 3 viandes
+    solo: 7.5,     // 1 viande
+    double: 9,  // 2 viandes
+    triple: 10.5,  // 3 viandes
 };
 
 // =============================================================================
 // MAKLOUB PRICES (by size)
 // =============================================================================
 export const makloubPrices = {
-    solo: 7,    // 1 viande
-    double: 8.5, // 2 viandes
-    triple: 10,  // 3 viandes
+    solo: 7.5,    // 1 viande
+    double: 9, // 2 viandes
+    triple: 10.5,  // 3 viandes
 };
 
 // =============================================================================
 // MLAWI PRICES (by size)
 // =============================================================================
 export const mlawiPrices = {
-    solo: 7,     // 1 viande
-    double: 8.5,   // 2 viandes
-    triple: 10,  // 3 viandes
+    solo: 7.5,     // 1 viande
+    double: 9,   // 2 viandes
+    triple: 10.5,  // 3 viandes
 };
 
 // =============================================================================
@@ -72,9 +72,9 @@ export const paniniPrices = {
 // TACOS PRICES (by size)
 // =============================================================================
 export const tacosPrices = {
-    solo: 7,     // 1 viande
-    double: 8.5, // 2 viandes
-    triple: 10,  // 3 viandes
+    solo: 7.5,     // 1 viande
+    double: 9, // 2 viandes
+    triple: 10.5,  // 3 viandes
 };
 
 // =============================================================================

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles, Flame, Star } from 'lucide-react';
-import deal1 from '@/assets/deal-1.jpg';
+import deal1 from '@/assets/deal-1.png';
 import deal2 from '@/assets/deal-2.jpg';
 import deal3 from '@/assets/deal-3.jpg';
 const creativeDeals = [{
