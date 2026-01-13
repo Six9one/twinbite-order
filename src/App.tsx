@@ -10,6 +10,7 @@ import { LoyaltyProvider } from "@/context/LoyaltyContext";
 
 // PWA Components
 import { PWAInstallPrompt, OfflineIndicator } from "@/components/PWAComponents";
+import { UpdateChecker } from "@/components/UpdateChecker";
 
 // Pages
 import Index from "./pages/Index";
@@ -30,6 +31,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <OfflineIndicator />
+          <UpdateChecker />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
