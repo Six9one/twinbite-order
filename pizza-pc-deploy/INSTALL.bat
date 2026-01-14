@@ -39,25 +39,28 @@ if not exist "%INSTALL_DIR%\scripts" mkdir "%INSTALL_DIR%\scripts"
 REM Copy WhatsApp Bot
 echo [2/7] Copie du WhatsApp Bot...
 if not exist "%INSTALL_DIR%\whatsapp-bot" mkdir "%INSTALL_DIR%\whatsapp-bot"
-xcopy /E /I /Y "%SOURCE_DIR%..\whatsapp-bot-python\bot.py" "%INSTALL_DIR%\whatsapp-bot\" >nul
-xcopy /E /I /Y "%SOURCE_DIR%..\whatsapp-bot-python\config.py" "%INSTALL_DIR%\whatsapp-bot\" >nul
-xcopy /E /I /Y "%SOURCE_DIR%..\whatsapp-bot-python\requirements.txt" "%INSTALL_DIR%\whatsapp-bot\" >nul
+copy /Y "%SOURCE_DIR%..\whatsapp-bot-python\bot.py" "%INSTALL_DIR%\whatsapp-bot\" >nul 2>&1
+copy /Y "%SOURCE_DIR%..\whatsapp-bot-python\config.py" "%INSTALL_DIR%\whatsapp-bot\" >nul 2>&1
+copy /Y "%SOURCE_DIR%..\whatsapp-bot-python\requirements.txt" "%INSTALL_DIR%\whatsapp-bot\" >nul 2>&1
 if exist "%SOURCE_DIR%..\whatsapp-bot-python\venv" (
-    xcopy /E /I /Y "%SOURCE_DIR%..\whatsapp-bot-python\venv" "%INSTALL_DIR%\whatsapp-bot\venv\" >nul
+    echo     [*] Copie du venv Python...
+    xcopy /E /I /Y /Q "%SOURCE_DIR%..\whatsapp-bot-python\venv" "%INSTALL_DIR%\whatsapp-bot\venv\" >nul
 )
 if exist "%SOURCE_DIR%..\whatsapp-bot-python\whatsapp_session" (
-    xcopy /E /I /Y "%SOURCE_DIR%..\whatsapp-bot-python\whatsapp_session" "%INSTALL_DIR%\whatsapp-bot\whatsapp_session\" >nul
+    echo     [*] Copie de la session WhatsApp...
+    xcopy /E /I /Y /Q "%SOURCE_DIR%..\whatsapp-bot-python\whatsapp_session" "%INSTALL_DIR%\whatsapp-bot\whatsapp_session\" >nul
 )
 
 REM Copy Print Server
 echo [3/7] Copie du Print Server...
 if not exist "%INSTALL_DIR%\print-server" mkdir "%INSTALL_DIR%\print-server"
-xcopy /E /I /Y "%SOURCE_DIR%..\print-server\server.js" "%INSTALL_DIR%\print-server\" >nul
-xcopy /E /I /Y "%SOURCE_DIR%..\print-server\package.json" "%INSTALL_DIR%\print-server\" >nul
-xcopy /E /I /Y "%SOURCE_DIR%..\print-server\package-lock.json" "%INSTALL_DIR%\print-server\" >nul
-xcopy /E /I /Y "%SOURCE_DIR%..\print-server\.env" "%INSTALL_DIR%\print-server\" >nul 2>&1
+copy /Y "%SOURCE_DIR%..\print-server\server.js" "%INSTALL_DIR%\print-server\" >nul 2>&1
+copy /Y "%SOURCE_DIR%..\print-server\package.json" "%INSTALL_DIR%\print-server\" >nul 2>&1
+copy /Y "%SOURCE_DIR%..\print-server\package-lock.json" "%INSTALL_DIR%\print-server\" >nul 2>&1
+copy /Y "%SOURCE_DIR%..\print-server\.env" "%INSTALL_DIR%\print-server\" >nul 2>&1
 if exist "%SOURCE_DIR%..\print-server\node_modules" (
-    xcopy /E /I /Y "%SOURCE_DIR%..\print-server\node_modules" "%INSTALL_DIR%\print-server\node_modules\" >nul
+    echo     [*] Copie des node_modules...
+    xcopy /E /I /Y /Q "%SOURCE_DIR%..\print-server\node_modules" "%INSTALL_DIR%\print-server\node_modules\" >nul
 )
 
 REM Copy scripts
