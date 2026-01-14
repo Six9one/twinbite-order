@@ -2,6 +2,8 @@
 REM ============================================================
 REM  TWIN PIZZA - EASY INSTALL (Just run this!)
 REM ============================================================
+setlocal enabledelayedexpansion
+
 echo.
 echo ========================================
 echo   TWIN PIZZA - Installation Facile
@@ -31,27 +33,70 @@ REM Save repo path
 echo %~dp0>C:\TwinPizza\github_repo_path.txt
 
 REM Setup Python virtual environment
-echo [4/4] Configuration Python (peut prendre 1-2 minutes)...
+echo [4/4] Configuration Python...
 cd /d "C:\TwinPizza\whatsapp-bot"
 
-if not exist "venv" (
-    echo      - Creation environnement virtuel...
-    python -m venv venv
+if exist "venv\Scripts\python.exe" (
+    echo      [OK] venv existe deja
+    goto :done_python
 )
 
-echo      - Installation des packages...
-call venv\Scripts\pip.exe install -r requirements.txt -q
+REM Find Python - check explicit paths first
+set "PYTHON_PATH="
 
+for %%V in (313 312 311 310 39 38) do (
+    if exist "%LOCALAPPDATA%\Programs\Python\Python%%V\python.exe" (
+        set "PYTHON_PATH=%LOCALAPPDATA%\Programs\Python\Python%%V\python.exe"
+        goto :create_venv
+    )
+)
+
+for %%V in (313 312 311 310 39 38) do (
+    if exist "%ProgramFiles%\Python%%V\python.exe" (
+        set "PYTHON_PATH=%ProgramFiles%\Python%%V\python.exe"
+        goto :create_venv
+    )
+)
+
+for %%V in (313 312 311 310 39 38) do (
+    if exist "C:\Python%%V\python.exe" (
+        set "PYTHON_PATH=C:\Python%%V\python.exe"
+        goto :create_venv
+    )
+)
+
+REM Try py launcher
+where py >nul 2>&1
+if %errorlevel% equ 0 (
+    echo      [*] Utilisation de py launcher...
+    py -m venv venv
+    goto :install_packages
+)
+
+echo.
+echo [ERREUR] Python non trouve!
+echo Installez Python depuis python.org
+echo IMPORTANT: Cochez "Add Python to PATH"
+pause
+exit /b 1
+
+:create_venv
+echo      [OK] Python: %PYTHON_PATH%
+echo      [*] Creation venv...
+"%PYTHON_PATH%" -m venv venv
+
+:install_packages
+echo      [*] Installation packages (1-2 min)...
+call venv\Scripts\pip.exe install -r requirements.txt -q
+echo      [OK] Packages installes
+
+:done_python
 echo.
 echo ========================================
 echo   INSTALLATION TERMINEE!
 echo ========================================
 echo.
-echo Pour demarrer le bot WhatsApp:
-echo   C:\TwinPizza\scripts\START_WHATSAPP.bat
-echo.
-echo Pour les mises a jour futures:
-echo   C:\TwinPizza\UPDATE.bat
+echo Pour demarrer: C:\TwinPizza\scripts\START_WHATSAPP.bat
 echo.
 
 set /p START="Demarrer le bot maintenant? (O/N): "

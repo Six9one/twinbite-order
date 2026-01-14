@@ -1,6 +1,7 @@
 @echo off
 REM ============================================================
 REM  Twin Pizza - Start WhatsApp Bot
+REM  Auto-detects Python and creates venv if needed
 REM ============================================================
 title Twin Pizza - WhatsApp Bot
 setlocal enabledelayedexpansion
@@ -13,49 +14,65 @@ echo   Twin Pizza - WhatsApp Bot
 echo ========================================
 echo.
 
-REM Check if venv exists
+REM Check if venv already exists and works
 if exist "venv\Scripts\python.exe" (
     echo [*] Demarrage avec venv...
     call venv\Scripts\python.exe bot.py
     goto :end
 )
 
-REM Try to find Python and create venv
-echo [*] venv non trouve, creation...
+REM Find Python - check explicit paths first (Windows Store alias doesn't work)
+echo [*] venv non trouve, recherche de Python...
 
 set "PYTHON_PATH="
 
-REM Check common Python locations
-for %%P in (
-    "%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
-    "%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
-    "%LOCALAPPDATA%\Programs\Python\Python310\python.exe"
-    "%LOCALAPPDATA%\Programs\Python\Python39\python.exe"
-    "C:\Python312\python.exe"
-    "C:\Python311\python.exe"
-    "C:\Python310\python.exe"
-    "C:\Python39\python.exe"
-    "%ProgramFiles%\Python312\python.exe"
-    "%ProgramFiles%\Python311\python.exe"
-) do (
-    if exist "%%~P" (
-        set "PYTHON_PATH=%%~P"
+REM Check user AppData (most common location)
+for %%V in (313 312 311 310 39 38) do (
+    if exist "%LOCALAPPDATA%\Programs\Python\Python%%V\python.exe" (
+        set "PYTHON_PATH=%LOCALAPPDATA%\Programs\Python\Python%%V\python.exe"
         goto :found_python
     )
 )
 
-REM Try system PATH
-where python >nul 2>&1
+REM Check Program Files
+for %%V in (313 312 311 310 39 38) do (
+    if exist "%ProgramFiles%\Python%%V\python.exe" (
+        set "PYTHON_PATH=%ProgramFiles%\Python%%V\python.exe"
+        goto :found_python
+    )
+)
+
+REM Check C:\Python
+for %%V in (313 312 311 310 39 38) do (
+    if exist "C:\Python%%V\python.exe" (
+        set "PYTHON_PATH=C:\Python%%V\python.exe"
+        goto :found_python
+    )
+)
+
+REM Check py launcher (usually works even if python.exe doesn't)
+where py >nul 2>&1
 if %errorlevel% equ 0 (
-    set "PYTHON_PATH=python"
-    goto :found_python
+    echo [*] Utilisation de py launcher...
+    py -m venv venv
+    if exist "venv\Scripts\python.exe" (
+        goto :install_packages
+    )
 )
 
 echo.
-echo [ERREUR] Python non trouve!
+echo ============================================
+echo   [ERREUR] Python non trouve!
+echo ============================================
 echo.
-echo Installez Python depuis: https://www.python.org/downloads/
-echo IMPORTANT: Cochez "Add Python to PATH" pendant l'installation!
+echo Python n'est pas installe correctement.
+echo.
+echo SOLUTION:
+echo 1. Ouvrir Parametres Windows
+echo 2. Rechercher "Alias d'execution d'application"  
+echo 3. Desactiver "python.exe" et "python3.exe"
+echo 4. OU reinstaller Python depuis python.org
+echo    IMPORTANT: Cocher "Add Python to PATH"
 echo.
 pause
 exit /b 1
@@ -65,8 +82,15 @@ echo [OK] Python trouve: %PYTHON_PATH%
 echo [*] Creation de l'environnement virtuel...
 "%PYTHON_PATH%" -m venv venv
 
-echo [*] Installation des packages...
-call venv\Scripts\pip.exe install -r requirements.txt
+if not exist "venv\Scripts\python.exe" (
+    echo [ERREUR] Echec creation venv!
+    pause
+    exit /b 1
+)
+
+:install_packages
+echo [*] Installation des packages (1-2 minutes)...
+call venv\Scripts\pip.exe install -r requirements.txt -q
 
 echo [*] Demarrage du bot...
 call venv\Scripts\python.exe bot.py
