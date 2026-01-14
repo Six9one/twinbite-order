@@ -63,15 +63,44 @@ export function usePWA(): UsePWAReturn {
                     console.log('[PWA] Service Worker registered');
                     setRegistration(reg);
 
+                    // Check for updates immediately
+                    reg.update();
+
+                    // Check for updates periodically (every 5 minutes)
+                    const updateInterval = setInterval(() => {
+                        console.log('[PWA] Checking for service worker updates...');
+                        reg.update();
+                    }, 5 * 60 * 1000);
+
                     // Check for updates
                     reg.addEventListener('updatefound', () => {
                         const newWorker = reg.installing;
+                        console.log('[PWA] New service worker found, installing...');
+
                         if (newWorker) {
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('[PWA] New version ready! Prompting for update...');
                                     setState(prev => ({ ...prev, isUpdateAvailable: true }));
+
+                                    // Auto-reload after 3 seconds if user doesn't interact
+                                    setTimeout(() => {
+                                        if (newWorker.state === 'installed') {
+                                            console.log('[PWA] Auto-activating new version...');
+                                            newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        }
+                                    }, 3000);
                                 }
                             });
+                        }
+                    });
+
+                    // Listen for SW messages
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        if (event.data && event.data.type === 'SW_UPDATED') {
+                            console.log('[PWA] Service worker updated to version:', event.data.version);
+                            // Reload to get fresh content
+                            window.location.reload();
                         }
                     });
 
@@ -81,10 +110,19 @@ export function usePWA(): UsePWAReturn {
                             setIsPushSubscribed(!!sub);
                         });
                     }
+
+                    // Cleanup interval on unmount
+                    return () => clearInterval(updateInterval);
                 })
                 .catch((err) => {
                     console.error('[PWA] Service Worker registration failed:', err);
                 });
+
+            // Handle controller change (when new SW takes over)
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                console.log('[PWA] New service worker activated, reloading...');
+                window.location.reload();
+            });
         }
     }, []);
 
@@ -146,6 +184,22 @@ export function usePWA(): UsePWAReturn {
                 console.log('[PWA] App installed');
                 setDeferredPrompt(null);
                 setState(prev => ({ ...prev, isInstallable: false, isInstalled: true }));
+
+                // Track PWA install in Supabase
+                try {
+                    await (supabase.from as any)('pwa_installs').insert({
+                        user_agent: navigator.userAgent,
+                        platform: result.platform || 'unknown',
+                        screen_width: window.screen.width,
+                        screen_height: window.screen.height,
+                        language: navigator.language,
+                        installed_at: new Date().toISOString()
+                    });
+                    console.log('[PWA] Install tracked in database');
+                } catch (e) {
+                    console.error('[PWA] Failed to track install:', e);
+                }
+
                 return true;
             }
 

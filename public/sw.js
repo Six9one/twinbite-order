@@ -1,77 +1,165 @@
-// Twin Pizza Service Worker
-const CACHE_NAME = 'twin-pizza-v1';
-const urlsToCache = [
-    '/',
+// Twin Pizza Service Worker - Auto-Updating Version
+// This version automatically checks for updates and refreshes cached content
+
+// VERSION: Change this when deploying updates - triggers cache refresh
+const CACHE_VERSION = 'v2';
+const CACHE_NAME = `twin-pizza-${CACHE_VERSION}`;
+
+// Files to cache for offline support (minimal - only essentials)
+const STATIC_CACHE = [
     '/favicon.png',
     '/manifest.json'
 ];
 
-// Install event - cache essential files
+// Files that should NEVER be cached (always fetch fresh)
+const NEVER_CACHE = [
+    '/api/',
+    'supabase',
+    'stripe',
+    '.hot-update.',
+    'sockjs-node'
+];
+
+// Install event - cache essential files and skip waiting
 self.addEventListener('install', (event) => {
+    console.log('[SW] Installing new version:', CACHE_VERSION);
+
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
-                console.log('[SW] Caching app shell');
-                return cache.addAll(urlsToCache);
+                console.log('[SW] Caching static assets');
+                return cache.addAll(STATIC_CACHE);
             })
-            .then(() => self.skipWaiting())
+            .then(() => {
+                // Force immediate activation
+                console.log('[SW] Skip waiting - activating immediately');
+                return self.skipWaiting();
+            })
     );
 });
 
-// Activate event - clean old caches
+// Activate event - clean ALL old caches and take control
 self.addEventListener('activate', (event) => {
+    console.log('[SW] Activating new version:', CACHE_VERSION);
+
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
+                    // Delete ALL caches that don't match current version
                     if (cacheName !== CACHE_NAME) {
                         console.log('[SW] Deleting old cache:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
             );
-        }).then(() => self.clients.claim())
+        }).then(() => {
+            console.log('[SW] Taking control of all clients');
+            return self.clients.claim();
+        }).then(() => {
+            // Notify all clients about the update
+            return self.clients.matchAll().then(clients => {
+                clients.forEach(client => {
+                    client.postMessage({
+                        type: 'SW_UPDATED',
+                        version: CACHE_VERSION
+                    });
+                });
+            });
+        })
     );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - NETWORK FIRST for everything except static assets
 self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
 
-    // Skip API calls and Supabase requests
-    if (event.request.url.includes('/api/') ||
-        event.request.url.includes('supabase') ||
-        event.request.url.includes('stripe')) {
+    // Skip requests that should never be cached
+    if (NEVER_CACHE.some(pattern => event.request.url.includes(pattern))) {
         return;
     }
 
-    event.respondWith(
-        caches.match(event.request)
-            .then((response) => {
-                // Return cached version or fetch from network
-                return response || fetch(event.request).then((fetchResponse) => {
-                    // Don't cache non-successful responses
-                    if (!fetchResponse || fetchResponse.status !== 200) {
-                        return fetchResponse;
+    // For navigation requests (HTML pages) - ALWAYS network first
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .then(response => {
+                    // Clone and cache successful responses
+                    if (response.ok) {
+                        const responseClone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => {
+                            cache.put(event.request, responseClone);
+                        });
                     }
-
-                    // Clone and cache the response
-                    const responseToCache = fetchResponse.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseToCache);
+                    return response;
+                })
+                .catch(() => {
+                    // Only use cache if network fails (offline)
+                    return caches.match(event.request).then(cached => {
+                        return cached || caches.match('/');
                     });
+                })
+        );
+        return;
+    }
 
-                    return fetchResponse;
+    // For JS/CSS with hash - cache these (they're versioned by build)
+    if (url.pathname.match(/\.(js|css)$/) && url.pathname.includes('.')) {
+        event.respondWith(
+            caches.match(event.request).then(cached => {
+                if (cached) return cached;
+
+                return fetch(event.request).then(response => {
+                    if (response.ok) {
+                        const responseClone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => {
+                            cache.put(event.request, responseClone);
+                        });
+                    }
+                    return response;
                 });
             })
-            .catch(() => {
-                // Return offline fallback for navigation requests
-                if (event.request.mode === 'navigate') {
-                    return caches.match('/');
+        );
+        return;
+    }
+
+    // For other assets (images, fonts) - network first, fallback to cache
+    event.respondWith(
+        fetch(event.request)
+            .then(response => {
+                if (response.ok) {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, responseClone);
+                    });
                 }
+                return response;
+            })
+            .catch(() => {
+                return caches.match(event.request);
             })
     );
+});
+
+// Listen for skip waiting message from client
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        console.log('[SW] Received skip waiting request');
+        self.skipWaiting();
+    }
+
+    // Force refresh all caches
+    if (event.data && event.data.type === 'FORCE_REFRESH') {
+        console.log('[SW] Force refreshing all caches');
+        caches.keys().then(names => {
+            names.forEach(name => caches.delete(name));
+        }).then(() => {
+            event.source.postMessage({ type: 'CACHE_CLEARED' });
+        });
+    }
 });
 
 // Push notification event
