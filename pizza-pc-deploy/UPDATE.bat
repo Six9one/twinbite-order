@@ -3,6 +3,7 @@ REM ============================================================
 REM  Twin Pizza - Manual Update
 REM  Pulls latest code from GitHub and updates installation
 REM ============================================================
+setlocal enabledelayedexpansion
 
 echo.
 echo ========================================
@@ -11,16 +12,64 @@ echo ========================================
 echo.
 
 set "INSTALL_DIR=C:\TwinPizza"
+set "REPO_PATH="
 
-REM Read GitHub repo path
-if not exist "%INSTALL_DIR%\github_repo_path.txt" (
-    echo [ERROR] Fichier github_repo_path.txt non trouve!
-    echo         Reinstallez avec INSTALL.bat
+REM Try to read from saved path first
+if exist "%INSTALL_DIR%\github_repo_path.txt" (
+    set /p REPO_PATH=<"%INSTALL_DIR%\github_repo_path.txt"
+)
+
+REM Check if saved path is valid
+if defined REPO_PATH (
+    if exist "!REPO_PATH!\whatsapp-bot-python\bot.py" (
+        echo [OK] Repo trouve: !REPO_PATH!
+        goto :found_repo
+    ) else (
+        echo [WARN] Chemin sauvegarde invalide: !REPO_PATH!
+        set "REPO_PATH="
+    )
+)
+
+REM Search for repo in common locations
+echo [*] Recherche du repo GitHub...
+
+for %%D in (
+    "%USERPROFILE%\Documents\GitHub\twinbite-order"
+    "%USERPROFILE%\Desktop\twinbite-order"
+    "C:\twinbite-order"
+    "C:\GitHub\twinbite-order"
+    "C:\Users\%USERNAME%\twinbite-order"
+    "D:\twinbite-order"
+    "D:\GitHub\twinbite-order"
+) do (
+    if exist "%%~D\whatsapp-bot-python\bot.py" (
+        set "REPO_PATH=%%~D"
+        echo [OK] Repo trouve: !REPO_PATH!
+        REM Save for future
+        echo !REPO_PATH!>"%INSTALL_DIR%\github_repo_path.txt"
+        goto :found_repo
+    )
+)
+
+REM Still not found - ask user
+echo.
+echo [ERROR] Repo twinbite-order introuvable!
+echo.
+echo Ou se trouve le dossier twinbite-order?
+echo (Exemple: C:\Users\Admin\Desktop\twinbite-order)
+echo.
+set /p REPO_PATH="Chemin: "
+
+if not exist "!REPO_PATH!\whatsapp-bot-python\bot.py" (
+    echo [ERROR] bot.py introuvable dans !REPO_PATH!
     pause
     exit /b 1
 )
 
-set /p REPO_PATH=<"%INSTALL_DIR%\github_repo_path.txt"
+REM Save for future
+echo !REPO_PATH!>"%INSTALL_DIR%\github_repo_path.txt"
+
+:found_repo
 
 echo [*] Arret des services...
 call "%INSTALL_DIR%\scripts\STOP_ALL.bat" >nul 2>&1
