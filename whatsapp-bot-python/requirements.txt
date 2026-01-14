@@ -1,0 +1,8 @@
+# WhatsApp Bot Dependencies
+pyautogui==0.9.54
+selenium==4.18.1
+webdriver-manager==4.0.1
+httpx==0.25.2
+python-dotenv==1.0.1
+qrcode==7.4.2
+pillow==10.2.0
