@@ -295,9 +295,22 @@ def send_whatsapp_message(phone: str, message: str) -> bool:
                 pass
             return False
         
-        # Click on input box to focus
-        input_box.click()
-        time.sleep(0.5)
+        # Click on input box to focus - with retry
+        for attempt in range(3):
+            try:
+                # Scroll element into view
+                driver.execute_script("arguments[0].scrollIntoView(true);", input_box)
+                time.sleep(0.5)
+                
+                # Wait for element to be interactable
+                WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'div[contenteditable="true"]')))
+                
+                input_box.click()
+                time.sleep(1)
+                break
+            except Exception as click_error:
+                safe_print(f"[WARN] Click attempt {attempt+1} failed, retrying...")
+                time.sleep(2)
         
         # Type the message - handle line breaks
         lines = message.split('\n')
@@ -306,7 +319,7 @@ def send_whatsapp_message(phone: str, message: str) -> bool:
             if i < len(lines) - 1:
                 input_box.send_keys(Keys.SHIFT + Keys.ENTER)
         
-        time.sleep(0.5)
+        time.sleep(1)
         
         # Multiple selectors for send button
         send_selectors = [
