@@ -620,21 +620,21 @@ A bientot chez Twin Pizza!"""
     except Exception as e:
         safe_print(f"[WARN] Could not re-fetch order for loyalty card: {e}")
     
-    # Send loyalty card image if available
+    # Send loyalty card image link if available (more reliable than image attachment)
     if loyalty_card_image_url:
-        safe_print(f"[*] Sending loyalty card image...")
+        safe_print(f"[*] Loyalty card image URL found: {loyalty_card_image_url[:50]}...")
         
-        # Download the image
-        image_path = download_image(loyalty_card_image_url)
-        if image_path:
-            send_whatsapp_image(phone, image_path, "Votre Carte de Fidelite")
-            # Clean up temp file
-            try:
-                os.remove(image_path)
-            except:
-                pass
-        else:
-            safe_print("[WARN] Could not download loyalty card image")
+        # Send the image URL as a clickable link (more reliable than attachment)
+        link_message = f"""🎁 *Votre Ticket + Carte de Fidélité:*
+
+👉 {loyalty_card_image_url}
+
+_(Cliquez pour voir votre ticket complet et votre carte de fidélité)_"""
+        
+        safe_print("[*] Sending loyalty card link message...")
+        time.sleep(2)  # Small delay between messages
+        send_whatsapp_message(phone, link_message)
+        safe_print("[OK] Loyalty card link sent!")
     else:
         safe_print("[*] No loyalty card image URL in order")
 
