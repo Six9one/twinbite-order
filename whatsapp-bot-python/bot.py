@@ -625,11 +625,11 @@ A bientot chez Twin Pizza!"""
         safe_print(f"[*] Loyalty card image URL found: {loyalty_card_image_url[:50]}...")
         
         # Send the image URL as a clickable link (more reliable than attachment)
-        link_message = f"""🎁 *Votre Ticket + Carte de Fidélité:*
+        link_message = f"""*Votre Ticket + Carte de Fidelite:*
 
-👉 {loyalty_card_image_url}
+{loyalty_card_image_url}
 
-_(Cliquez pour voir votre ticket complet et votre carte de fidélité)_"""
+_(Cliquez pour voir votre ticket complet)_"""
         
         safe_print("[*] Sending loyalty card link message...")
         time.sleep(2)  # Small delay between messages
