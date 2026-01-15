@@ -395,6 +395,20 @@ def download_image(url: str) -> str:
         safe_print(f"[WARN] Could not download image: {e}")
     return ""
 
+def shorten_url(long_url: str) -> str:
+    """Shorten a URL using TinyURL API"""
+    try:
+        # TinyURL API (free, no API key needed)
+        api_url = f"http://tinyurl.com/api-create.php?url={long_url}"
+        response = httpx.get(api_url, timeout=10.0)
+        if response.status_code == 200:
+            short_url = response.text.strip()
+            safe_print(f"[*] URL shortened: {short_url}")
+            return short_url
+    except Exception as e:
+        safe_print(f"[WARN] Could not shorten URL: {e}")
+    return long_url  # Return original if shortening fails
+
 def send_whatsapp_image(phone: str, image_path: str, caption: str = "") -> bool:
     """Send an image via WhatsApp Web"""
     global driver
@@ -585,10 +599,11 @@ Merci et a bientot!"""
     
     # Send loyalty card link if available (simple message)
     if loyalty_card_image_url:
+        # Shorten the URL for cleaner message
+        short_url = shorten_url(loyalty_card_image_url)
+        
         # Simple clean link message
-        link_message = f"""Votre ticket complet:
-
-{loyalty_card_image_url}"""
+        link_message = f"""Voir votre ticket: {short_url}"""
         
         safe_print("[*] Sending loyalty card link message...")
         time.sleep(2)  # Small delay between messages
