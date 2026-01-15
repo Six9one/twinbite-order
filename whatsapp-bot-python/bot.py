@@ -529,66 +529,29 @@ def send_order_confirmation(order: dict):
     payment_method = order.get('payment_method', '')
     loyalty_card_image_url = order.get('loyalty_card_image_url', '')
     
-    # Format items list with details (synced with ticket format)
+    # Format items list - SIMPLE (just names, no prices)
     items_lines = []
     for item in items:
         qty = item.get('quantity', 1)
         name = item.get('name', 'Article')
-        price = item.get('price', 0)
-        # Include customization if available
-        customization = item.get('customization', {})
-        details = []
-        if customization:
-            if customization.get('meats'):
-                details.append(', '.join(customization.get('meats', [])))
-            if customization.get('sauces'):
-                details.append(', '.join(customization.get('sauces', [])))
-        detail_str = f" ({', '.join(details)})" if details else ""
-        items_lines.append(f"  {qty}x {name}{detail_str} - {price:.2f} EUR")
-    items_text = "\n".join(items_lines) if items_lines else "  Votre commande"
+        items_lines.append(f"   {qty}x {name}")
+    items_text = "\n".join(items_lines) if items_lines else "   Votre commande"
     
-    # Payment method text
-    payment_text = "Carte Bancaire" if payment_method == 'cb' else "Especes" if payment_method == 'especes' else payment_method
-    
-    # Build full message (SYNCED with ticket format - matching NewCheckout.tsx)
-    message = f"""*==============================*
-*        TWIN PIZZA*
-*   Commande Confirmee!*
-*==============================*
+    # Build CLEAN, SIMPLE message
+    message = f"""*TWIN PIZZA*
 
-*#{order_number}*
-Presentez ce ticket a la caisse
+Commande *#{order_number}*
 
------------------------------------
-*Client:* {customer_name}
-*Type:* {get_order_type_text(order_type)}
-*Paiement:* {payment_text}
+Bonjour {customer_name}!
+Votre commande est confirmee.
 
-*Pret dans: 10-20 min*
------------------------------------
-
-*VOTRE COMMANDE:*
 {items_text}
-"""
-    
-    # Add delivery fee if applicable
-    if delivery_fee > 0:
-        message += f"\n  Frais de livraison: +{delivery_fee:.2f} EUR"
-    elif order_type == 'livraison':
-        message += f"\n  Livraison: GRATUITE"
-    
-    # Add delivery address if delivery
-    if order_type == 'livraison' and customer_address:
-        message += f"\n\n*Adresse:* {customer_address}"
-    
-    message += f"""
 
------------------------------------
-*TOTAL: {total:.2f} EUR*
------------------------------------
+*Total: {total:.2f} EUR*
 
-Merci de votre confiance!
-A bientot chez Twin Pizza!"""
+Pret dans *10-20 min*
+
+Merci et a bientot!"""
     
     # Send text message first
     send_whatsapp_message(phone, message)
@@ -620,16 +583,12 @@ A bientot chez Twin Pizza!"""
     except Exception as e:
         safe_print(f"[WARN] Could not re-fetch order for loyalty card: {e}")
     
-    # Send loyalty card image link if available (more reliable than image attachment)
+    # Send loyalty card link if available (simple message)
     if loyalty_card_image_url:
-        safe_print(f"[*] Loyalty card image URL found: {loyalty_card_image_url[:50]}...")
-        
-        # Send the image URL as a clickable link (more reliable than attachment)
-        link_message = f"""*Votre Ticket + Carte de Fidelite:*
+        # Simple clean link message
+        link_message = f"""Votre ticket complet:
 
-{loyalty_card_image_url}
-
-_(Cliquez pour voir votre ticket complet)_"""
+{loyalty_card_image_url}"""
         
         safe_print("[*] Sending loyalty card link message...")
         time.sleep(2)  # Small delay between messages
