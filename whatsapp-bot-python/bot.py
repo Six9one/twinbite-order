@@ -538,10 +538,15 @@ def send_order_confirmation(order: dict):
     total = order.get('total', 0)
     loyalty_card_image_url = order.get('loyalty_card_image_url', '')
     
-    # Build SUPER SHORT message (2-3 lines only)
-    message = f"""Merci {customer_name}!
+    # Build PROFESSIONAL SHORT message
+    message = f"""*TWIN PIZZA*
+
+Bonjour {customer_name},
+
 Votre commande *#{order_number}* est confirmee.
-Total: *{total:.2f} EUR*"""
+Total: *{total:.2f} EUR*
+
+Merci pour votre confiance!"""
     
     # Send text message first
     send_whatsapp_message(phone, message)
