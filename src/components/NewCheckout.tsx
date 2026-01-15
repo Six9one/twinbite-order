@@ -150,8 +150,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         const response = await fetch(dataUrl);
         const blob = await response.blob();
 
-        // Generate a unique filename
-        const filename = `loyalty-cards/${confirmedOrderData.orderNumber}-${Date.now()}.png`;
+        // Generate a unique filename (just the filename, not the bucket path)
+        const filename = `${confirmedOrderData.orderNumber}-${Date.now()}.png`;
 
         console.log('[LOYALTY] Uploading to Supabase Storage:', filename);
 
