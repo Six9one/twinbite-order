@@ -535,37 +535,13 @@ def send_order_confirmation(order: dict):
     
     customer_name = order.get('customer_name', 'Client')
     order_number = order.get('order_number', 'N/A')
-    items = order.get('items', [])
     total = order.get('total', 0)
-    order_type = order.get('order_type', '')
-    delivery_fee = order.get('delivery_fee', 0)
-    customer_address = order.get('customer_address', '')
-    payment_method = order.get('payment_method', '')
     loyalty_card_image_url = order.get('loyalty_card_image_url', '')
     
-    # Format items list - SIMPLE (just names, no prices)
-    items_lines = []
-    for item in items:
-        qty = item.get('quantity', 1)
-        name = item.get('name', 'Article')
-        items_lines.append(f"   {qty}x {name}")
-    items_text = "\n".join(items_lines) if items_lines else "   Votre commande"
-    
-    # Build CLEAN, SIMPLE message
-    message = f"""*TWIN PIZZA*
-
-Commande *#{order_number}*
-
-Bonjour {customer_name}!
-Votre commande est confirmee.
-
-{items_text}
-
-*Total: {total:.2f} EUR*
-
-Pret dans *10-20 min*
-
-Merci et a bientot!"""
+    # Build SUPER SHORT message (2-3 lines only)
+    message = f"""Merci {customer_name}!
+Votre commande *#{order_number}* est confirmee.
+Total: *{total:.2f} EUR*"""
     
     # Send text message first
     send_whatsapp_message(phone, message)
