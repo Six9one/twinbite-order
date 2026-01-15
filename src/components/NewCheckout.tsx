@@ -560,134 +560,137 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-green-50 to-background p-4">
         <div className="max-w-md mx-auto">
-          {/* Success header */}
-          <div className="text-center mb-4">
-            <PartyPopper className="w-16 h-16 mx-auto text-green-500 mb-2" />
-            <h1 className="text-2xl font-display font-bold text-green-600">Commande Confirmée!</h1>
+          {/* Full success screen for WhatsApp capture */}
+          <div ref={loyaltyCardRef} className="bg-gradient-to-b from-green-50 to-white rounded-xl p-2">
+            {/* Success header */}
+            <div className="text-center mb-4">
+              <PartyPopper className="w-16 h-16 mx-auto text-green-500 mb-2" />
+              <h1 className="text-2xl font-display font-bold text-green-600">Commande Confirmée!</h1>
+            </div>
+
+            {/* Digital Ticket - designed to be screenshot-friendly */}
+            <Card className="overflow-hidden border-2 border-primary/20 shadow-lg" id="order-ticket">
+              {/* Ticket Header */}
+              <div className="bg-primary text-white p-4 text-center">
+                <p className="text-sm opacity-80">TWIN PIZZA</p>
+                <p className="text-4xl font-bold font-mono mt-1">#{confirmedOrderData.orderNumber}</p>
+                <p className="text-xs opacity-70 mt-1">Présentez ce ticket à la caisse</p>
+              </div>
+
+              {/* Order info */}
+              <div className="p-4 bg-muted/30">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Date:</span>
+                  <span className="font-medium">{format(confirmedOrderData.createdAt, "dd/MM/yyyy HH:mm", { locale: fr })}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Type:</span>
+                  <span className="font-medium">{orderTypeLabels[confirmedOrderData.orderType] || confirmedOrderData.orderType}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Client:</span>
+                  <span className="font-medium">{confirmedOrderData.customerName}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Paiement:</span>
+                  <span className="font-medium">{confirmedOrderData.paymentMethod === 'cb' ? 'Carte Bancaire' : 'Espèces'}</span>
+                </div>
+                {/* Wait time display */}
+                <div className="flex justify-between text-sm mt-2 bg-amber-50 p-2 rounded border border-amber-200">
+                  <span className="text-amber-700">⏰ Prêt dans:</span>
+                  <span className="font-bold text-amber-800">10-20 min</span>
+                </div>
+                {/* Delivery address */}
+                {confirmedOrderData.orderType === 'livraison' && confirmedOrderData.customerAddress && (
+                  <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+                    <span className="text-blue-700 font-medium">📍 Adresse de livraison:</span>
+                    <p className="text-blue-600 mt-1">{confirmedOrderData.customerAddress}</p>
+                  </div>
+                )}
+                {confirmedOrderData.scheduledFor && (
+                  <div className="flex justify-between text-sm mt-1 text-purple-600">
+                    <span>Programmé:</span>
+                    <span className="font-medium">{format(confirmedOrderData.scheduledFor, "EEE d MMM 'à' HH:mm", { locale: fr })}</span>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Order items */}
+              <div className="p-4">
+                <h3 className="font-semibold mb-2">Votre commande:</h3>
+                <div className="space-y-2 text-sm">
+                  {confirmedOrderData.items.map((item, index) => (
+                    <div key={index} className="flex justify-between">
+                      <span>
+                        {item.quantity}x {item.item.name}
+                        {item.customization && (
+                          <span className="text-muted-foreground text-xs ml-1">
+                            {(() => {
+                              const c = item.customization as any;
+                              const parts = [];
+                              // Don't show size - it's already in the product name
+                              if (c.isMenuMidi) parts.push('Menu Midi');
+                              if (c.meats?.length) parts.push(c.meats.join(', '));
+                              if (c.sauces?.length) parts.push(c.sauces.join(', '));
+                              return parts.length > 0 ? `(${parts.join(' • ')})` : '';
+                            })()}
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-medium">{((item.calculatedPrice || item.item.price) * item.quantity).toFixed(2)}€</span>
+                    </div>
+                  ))}
+
+                  {/* Delivery fee on ticket */}
+                  {confirmedOrderData.deliveryFee > 0 && (
+                    <div className="flex justify-between text-orange-600 pt-2 border-t">
+                      <span>🚗 Frais de livraison</span>
+                      <span className="font-medium">+{confirmedOrderData.deliveryFee.toFixed(2)}€</span>
+                    </div>
+                  )}
+                  {confirmedOrderData.orderType === 'livraison' && confirmedOrderData.deliveryFee === 0 && (
+                    <div className="flex justify-between text-green-600 pt-2 border-t">
+                      <span>🚗 Livraison</span>
+                      <span className="font-medium">GRATUITE</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Total */}
+              <div className="p-4 bg-primary/5">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold">TOTAL</span>
+                  <span className="text-2xl font-bold text-primary">{confirmedOrderData.total.toFixed(2)}€</span>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-3 bg-muted/50 text-center text-xs text-muted-foreground">
+                Merci de votre confiance! À bientôt chez Twin Pizza 🍕
+              </div>
+            </Card>
+
+            {/* Loyalty Stamp Card - Show if customer has stamps or earned new ones */}
+            {customer && (confirmedOrderData.newStampsEarned || 0) > 0 && (
+              <div className="mt-6">
+                <h2 className="text-lg font-bold text-center mb-3 text-amber-700">
+                  🎁 Votre Carte de Fidélité
+                </h2>
+                <LoyaltyStampCard
+                  currentStamps={confirmedOrderData.totalStampsAfterOrder || 0}
+                  customerName={confirmedOrderData.customerName}
+                  customerPhone={confirmedOrderData.customerPhone}
+                  newStampsEarned={confirmedOrderData.newStampsEarned}
+                  animated={true}
+                />
+              </div>
+            )}
           </div>
-
-          {/* Digital Ticket - designed to be screenshot-friendly */}
-          <Card className="overflow-hidden border-2 border-primary/20 shadow-lg" id="order-ticket">
-            {/* Ticket Header */}
-            <div className="bg-primary text-white p-4 text-center">
-              <p className="text-sm opacity-80">TWIN PIZZA</p>
-              <p className="text-4xl font-bold font-mono mt-1">#{confirmedOrderData.orderNumber}</p>
-              <p className="text-xs opacity-70 mt-1">Présentez ce ticket à la caisse</p>
-            </div>
-
-            {/* Order info */}
-            <div className="p-4 bg-muted/30">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Date:</span>
-                <span className="font-medium">{format(confirmedOrderData.createdAt, "dd/MM/yyyy HH:mm", { locale: fr })}</span>
-              </div>
-              <div className="flex justify-between text-sm mt-1">
-                <span className="text-muted-foreground">Type:</span>
-                <span className="font-medium">{orderTypeLabels[confirmedOrderData.orderType] || confirmedOrderData.orderType}</span>
-              </div>
-              <div className="flex justify-between text-sm mt-1">
-                <span className="text-muted-foreground">Client:</span>
-                <span className="font-medium">{confirmedOrderData.customerName}</span>
-              </div>
-              <div className="flex justify-between text-sm mt-1">
-                <span className="text-muted-foreground">Paiement:</span>
-                <span className="font-medium">{confirmedOrderData.paymentMethod === 'cb' ? 'Carte Bancaire' : 'Espèces'}</span>
-              </div>
-              {/* Wait time display */}
-              <div className="flex justify-between text-sm mt-2 bg-amber-50 p-2 rounded border border-amber-200">
-                <span className="text-amber-700">⏰ Prêt dans:</span>
-                <span className="font-bold text-amber-800">10-20 min</span>
-              </div>
-              {/* Delivery address */}
-              {confirmedOrderData.orderType === 'livraison' && confirmedOrderData.customerAddress && (
-                <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
-                  <span className="text-blue-700 font-medium">📍 Adresse de livraison:</span>
-                  <p className="text-blue-600 mt-1">{confirmedOrderData.customerAddress}</p>
-                </div>
-              )}
-              {confirmedOrderData.scheduledFor && (
-                <div className="flex justify-between text-sm mt-1 text-purple-600">
-                  <span>Programmé:</span>
-                  <span className="font-medium">{format(confirmedOrderData.scheduledFor, "EEE d MMM 'à' HH:mm", { locale: fr })}</span>
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Order items */}
-            <div className="p-4">
-              <h3 className="font-semibold mb-2">Votre commande:</h3>
-              <div className="space-y-2 text-sm">
-                {confirmedOrderData.items.map((item, index) => (
-                  <div key={index} className="flex justify-between">
-                    <span>
-                      {item.quantity}x {item.item.name}
-                      {item.customization && (
-                        <span className="text-muted-foreground text-xs ml-1">
-                          {(() => {
-                            const c = item.customization as any;
-                            const parts = [];
-                            // Don't show size - it's already in the product name
-                            if (c.isMenuMidi) parts.push('Menu Midi');
-                            if (c.meats?.length) parts.push(c.meats.join(', '));
-                            if (c.sauces?.length) parts.push(c.sauces.join(', '));
-                            return parts.length > 0 ? `(${parts.join(' • ')})` : '';
-                          })()}
-                        </span>
-                      )}
-                    </span>
-                    <span className="font-medium">{((item.calculatedPrice || item.item.price) * item.quantity).toFixed(2)}€</span>
-                  </div>
-                ))}
-
-                {/* Delivery fee on ticket */}
-                {confirmedOrderData.deliveryFee > 0 && (
-                  <div className="flex justify-between text-orange-600 pt-2 border-t">
-                    <span>🚗 Frais de livraison</span>
-                    <span className="font-medium">+{confirmedOrderData.deliveryFee.toFixed(2)}€</span>
-                  </div>
-                )}
-                {confirmedOrderData.orderType === 'livraison' && confirmedOrderData.deliveryFee === 0 && (
-                  <div className="flex justify-between text-green-600 pt-2 border-t">
-                    <span>🚗 Livraison</span>
-                    <span className="font-medium">GRATUITE</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Total */}
-            <div className="p-4 bg-primary/5">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-bold">TOTAL</span>
-                <span className="text-2xl font-bold text-primary">{confirmedOrderData.total.toFixed(2)}€</span>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-3 bg-muted/50 text-center text-xs text-muted-foreground">
-              Merci de votre confiance! À bientôt chez Twin Pizza 🍕
-            </div>
-          </Card>
-
-          {/* Loyalty Stamp Card - Show if customer has stamps or earned new ones */}
-          {customer && (confirmedOrderData.newStampsEarned || 0) > 0 && (
-            <div className="mt-6" ref={loyaltyCardRef}>
-              <h2 className="text-lg font-bold text-center mb-3 text-amber-700">
-                🎁 Votre Carte de Fidélité
-              </h2>
-              <LoyaltyStampCard
-                currentStamps={confirmedOrderData.totalStampsAfterOrder || 0}
-                customerName={confirmedOrderData.customerName}
-                customerPhone={confirmedOrderData.customerPhone}
-                newStampsEarned={confirmedOrderData.newStampsEarned}
-                animated={true}
-              />
-            </div>
-          )}
 
           {/* Actions */}
           <div className="mt-4 space-y-2">
