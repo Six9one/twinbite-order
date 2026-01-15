@@ -123,8 +123,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   // Capture and upload loyalty card image when order is confirmed
   useEffect(() => {
     const captureAndUploadLoyaltyCard = async () => {
-      // Only capture if we have confirmed order data with stamps earned
-      if (!confirmedOrderData || !confirmedOrderData.newStampsEarned || confirmedOrderData.newStampsEarned <= 0) {
+      // Capture for ALL confirmed orders (not just stamps earned)
+      if (!confirmedOrderData) {
         return;
       }
 
@@ -132,8 +132,13 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       if (!loyaltyCardRef.current) {
-        console.log('[LOYALTY] No loyalty card ref found for capture');
-        return;
+        console.log('[LOYALTY] No ref found for capture - will retry...');
+        // Retry after a bit more time
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (!loyaltyCardRef.current) {
+          console.log('[LOYALTY] Still no ref found, skipping capture');
+          return;
+        }
       }
 
       try {
