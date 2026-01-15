@@ -593,11 +593,36 @@ A bientot chez Twin Pizza!"""
     # Send text message first
     send_whatsapp_message(phone, message)
     
+    # The loyalty card image is uploaded by the frontend AFTER order creation
+    # We need to wait a bit and then re-fetch the order to get the image URL
+    safe_print("[*] Waiting 5 seconds for loyalty card image to be uploaded...")
+    time.sleep(5)
+    
+    # Re-fetch the order to get the loyalty_card_image_url
+    try:
+        headers = {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+            "Content-Type": "application/json"
+        }
+        response = httpx.get(
+            f"{SUPABASE_URL}/rest/v1/orders",
+            headers=headers,
+            params={"select": "loyalty_card_image_url", "order_number": f"eq.{order_number}"},
+            timeout=10.0
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if data and len(data) > 0:
+                loyalty_card_image_url = data[0].get('loyalty_card_image_url', '')
+                if loyalty_card_image_url:
+                    safe_print(f"[*] Loyalty card image URL found: {loyalty_card_image_url[:50]}...")
+    except Exception as e:
+        safe_print(f"[WARN] Could not re-fetch order for loyalty card: {e}")
+    
     # Send loyalty card image if available
     if loyalty_card_image_url:
-        safe_print(f"[*] Loyalty card image URL found: {loyalty_card_image_url[:50]}...")
-        # Wait a bit before sending image
-        time.sleep(3)
+        safe_print(f"[*] Sending loyalty card image...")
         
         # Download the image
         image_path = download_image(loyalty_card_image_url)
