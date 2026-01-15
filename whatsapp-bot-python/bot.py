@@ -380,8 +380,139 @@ def get_loyalty_info(phone: str, headers: dict) -> dict:
         safe_print(f"[WARN] Could not fetch loyalty info: {e}")
     return {}
 
+def download_image(url: str) -> str:
+    """Download image from URL and save to temp file, return file path"""
+    try:
+        response = httpx.get(url, timeout=30.0, follow_redirects=True)
+        if response.status_code == 200:
+            import tempfile
+            # Create temp file with .png extension
+            temp_file = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+            temp_file.write(response.content)
+            temp_file.close()
+            return temp_file.name
+    except Exception as e:
+        safe_print(f"[WARN] Could not download image: {e}")
+    return ""
+
+def send_whatsapp_image(phone: str, image_path: str, caption: str = "") -> bool:
+    """Send an image via WhatsApp Web"""
+    global driver
+    
+    if not driver or not is_ready:
+        safe_print("[ERROR] WhatsApp non connecte")
+        return False
+    
+    try:
+        # Format phone number
+        formatted_phone = format_phone(phone)
+        if len(formatted_phone) < 10:
+            safe_print(f"[WARN] Numero invalide: {phone}")
+            return False
+        
+        safe_print(f"[*] Envoi image a {formatted_phone}...")
+        
+        # Open chat with phone number
+        url = f"https://web.whatsapp.com/send?phone={formatted_phone}"
+        driver.get(url)
+        time.sleep(5)
+        
+        # Find the attachment button
+        attach_selectors = [
+            'div[data-testid="conversation-clip"]',
+            'span[data-testid="clip"]',
+            'div[title="Attach"]',
+            'div[title="Joindre"]',
+            'button[aria-label="Joindre"]',
+            'button[aria-label="Attach"]',
+        ]
+        
+        attach_button = None
+        for selector in attach_selectors:
+            try:
+                wait = WebDriverWait(driver, 10)
+                attach_button = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+                if attach_button:
+                    safe_print(f"[*] Attach button found: {selector}")
+                    break
+            except:
+                continue
+        
+        if not attach_button:
+            safe_print("[WARN] Could not find attach button")
+            return False
+        
+        attach_button.click()
+        time.sleep(1)
+        
+        # Find the image/photo input
+        image_input_selectors = [
+            'input[accept="image/*,video/mp4,video/3gpp,video/quicktime"]',
+            'input[type="file"][accept*="image"]',
+        ]
+        
+        image_input = None
+        for selector in image_input_selectors:
+            try:
+                image_input = driver.find_element(By.CSS_SELECTOR, selector)
+                if image_input:
+                    break
+            except:
+                continue
+        
+        if not image_input:
+            safe_print("[WARN] Could not find image input")
+            return False
+        
+        # Send the image path to the input
+        image_input.send_keys(image_path)
+        time.sleep(3)
+        
+        # If caption provided, type it
+        if caption:
+            caption_selectors = [
+                'div[data-testid="media-caption-input-container"] div[contenteditable="true"]',
+                'div.caption div[contenteditable="true"]',
+            ]
+            for selector in caption_selectors:
+                try:
+                    caption_input = driver.find_element(By.CSS_SELECTOR, selector)
+                    if caption_input:
+                        caption_input.send_keys(caption)
+                        break
+                except:
+                    continue
+        
+        time.sleep(1)
+        
+        # Click send button
+        send_selectors = [
+            'span[data-testid="send"]',
+            'div[data-testid="send"]',
+            'button[aria-label="Envoyer"]',
+            'button[aria-label="Send"]',
+        ]
+        
+        for selector in send_selectors:
+            try:
+                send_btn = driver.find_element(By.CSS_SELECTOR, selector)
+                if send_btn:
+                    send_btn.click()
+                    safe_print(f"[OK] Image envoyee a {formatted_phone}")
+                    time.sleep(2)
+                    return True
+            except:
+                continue
+        
+        safe_print("[WARN] Could not find send button for image")
+        return False
+        
+    except Exception as e:
+        safe_print(f"[ERROR] Erreur envoi image a {phone}: {e}")
+        return False
+
 def send_order_confirmation(order: dict):
-    """Send order confirmation message with loyalty card info"""
+    """Send order confirmation message with loyalty card image"""
     
     phone = order.get('customer_phone', '')
     if not phone:
@@ -393,73 +524,94 @@ def send_order_confirmation(order: dict):
     items = order.get('items', [])
     total = order.get('total', 0)
     order_type = order.get('order_type', '')
+    delivery_fee = order.get('delivery_fee', 0)
+    customer_address = order.get('customer_address', '')
+    payment_method = order.get('payment_method', '')
+    loyalty_card_image_url = order.get('loyalty_card_image_url', '')
     
-    # Format items list with details
+    # Format items list with details (synced with ticket format)
     items_lines = []
     for item in items:
         qty = item.get('quantity', 1)
         name = item.get('name', 'Article')
         price = item.get('price', 0)
-        items_lines.append(f"- {qty}x {name} ({price:.2f} EUR)")
-    items_text = "\n".join(items_lines) if items_lines else "- Votre commande"
+        # Include customization if available
+        customization = item.get('customization', {})
+        details = []
+        if customization:
+            if customization.get('meats'):
+                details.append(', '.join(customization.get('meats', [])))
+            if customization.get('sauces'):
+                details.append(', '.join(customization.get('sauces', [])))
+        detail_str = f" ({', '.join(details)})" if details else ""
+        items_lines.append(f"  {qty}x {name}{detail_str} - {price:.2f} EUR")
+    items_text = "\n".join(items_lines) if items_lines else "  Votre commande"
     
-    # Get loyalty info
-    headers = {
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
-        "Content-Type": "application/json"
-    }
-    loyalty = get_loyalty_info(phone, headers)
+    # Payment method text
+    payment_text = "Carte Bancaire" if payment_method == 'cb' else "Especes" if payment_method == 'especes' else payment_method
     
-    # Build loyalty card text
-    loyalty_text = ""
-    if loyalty:
-        soufflet_count = loyalty.get('soufflet_count', 0) % 10
-        pizza_count = loyalty.get('pizza_count', 0) % 10
-        total_purchases = loyalty.get('total_purchases', 0)
-        
-        # Create visual stamps (using characters instead of emojis)
-        def make_stamps(count, max_stamps=10):
-            filled = "[X]" * count
-            empty = "[ ]" * (max_stamps - count)
-            return filled + empty
-        
-        loyalty_text = f"""
------------------------------------
-*CARTE DE FIDELITE*
-
-Soufflets: {make_stamps(soufflet_count)}
-({soufflet_count}/10 - Prochain gratuit dans {10-soufflet_count})
-
-Pizzas: {make_stamps(pizza_count)}
-({pizza_count}/10 - Prochaine gratuite dans {10-pizza_count})
-
-Total commandes: {total_purchases}
------------------------------------"""
-    
-    # Build full message (like ticket format)
+    # Build full message (SYNCED with ticket format - matching NewCheckout.tsx)
     message = f"""*==============================*
-*      TWIN PIZZA*
-*      Commande Confirmee*
+*        TWIN PIZZA*
+*   Commande Confirmee!*
 *==============================*
 
-*N{order_number}*
-
-Bonjour {customer_name} !
+*#{order_number}*
+Presentez ce ticket a la caisse
 
 -----------------------------------
+*Client:* {customer_name}
+*Type:* {get_order_type_text(order_type)}
+*Paiement:* {payment_text}
+
+*Pret dans: 10-20 min*
+-----------------------------------
+
 *VOTRE COMMANDE:*
 {items_text}
+"""
+    
+    # Add delivery fee if applicable
+    if delivery_fee > 0:
+        message += f"\n  Frais de livraison: +{delivery_fee:.2f} EUR"
+    elif order_type == 'livraison':
+        message += f"\n  Livraison: GRATUITE"
+    
+    # Add delivery address if delivery
+    if order_type == 'livraison' and customer_address:
+        message += f"\n\n*Adresse:* {customer_address}"
+    
+    message += f"""
+
+-----------------------------------
+*TOTAL: {total:.2f} EUR*
 -----------------------------------
 
-*TOTAL: {total:.2f} EUR*
-*Type: {get_order_type_text(order_type)}*
-{loyalty_text}
-
-Merci de votre confiance !
-A bientot chez Twin Pizza !"""
+Merci de votre confiance!
+A bientot chez Twin Pizza!"""
     
+    # Send text message first
     send_whatsapp_message(phone, message)
+    
+    # Send loyalty card image if available
+    if loyalty_card_image_url:
+        safe_print(f"[*] Loyalty card image URL found: {loyalty_card_image_url[:50]}...")
+        # Wait a bit before sending image
+        time.sleep(3)
+        
+        # Download the image
+        image_path = download_image(loyalty_card_image_url)
+        if image_path:
+            send_whatsapp_image(phone, image_path, "Votre Carte de Fidelite")
+            # Clean up temp file
+            try:
+                os.remove(image_path)
+            except:
+                pass
+        else:
+            safe_print("[WARN] Could not download loyalty card image")
+    else:
+        safe_print("[*] No loyalty card image URL in order")
 
 def send_ready_notification(order: dict):
     """Send order ready notification"""

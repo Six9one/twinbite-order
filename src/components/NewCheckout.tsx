@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useOrder } from '@/context/OrderContext';
 import { useLoyalty } from '@/context/LoyaltyContext';
 import { LoyaltyStampCard, countQualifyingItems } from '@/components/LoyaltyStampCard';
+import { toPng } from 'html-to-image';
 
 import { CustomerInfo, PaymentMethod, PizzaCustomization } from '@/types/order';
 import { applyPizzaPromotions, calculateTVA } from '@/utils/promotions';
@@ -67,6 +68,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const orderNumberRef = useRef<string | null>(null);
+  const loyaltyCardRef = useRef<HTMLDivElement | null>(null);
   const [scheduleAsked, setScheduleAsked] = useState(false);
   const [tempScheduleDate, setTempScheduleDate] = useState<Date | undefined>(undefined);
   const [tempScheduleTime, setTempScheduleTime] = useState<string>('12:00');
@@ -117,6 +119,85 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       orderNumberRef.current = null;
     };
   }, []);
+
+  // Capture and upload loyalty card image when order is confirmed
+  useEffect(() => {
+    const captureAndUploadLoyaltyCard = async () => {
+      // Only capture if we have confirmed order data with stamps earned
+      if (!confirmedOrderData || !confirmedOrderData.newStampsEarned || confirmedOrderData.newStampsEarned <= 0) {
+        return;
+      }
+
+      // Wait a bit for the card to render and animations to settle
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      if (!loyaltyCardRef.current) {
+        console.log('[LOYALTY] No loyalty card ref found for capture');
+        return;
+      }
+
+      try {
+        console.log('[LOYALTY] Capturing loyalty card image...');
+
+        // Capture the loyalty card as PNG
+        const dataUrl = await toPng(loyaltyCardRef.current, {
+          backgroundColor: '#ffffff',
+          quality: 0.95,
+          pixelRatio: 2, // Higher quality for mobile
+        });
+
+        // Convert data URL to blob
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
+
+        // Generate a unique filename
+        const filename = `loyalty-cards/${confirmedOrderData.orderNumber}-${Date.now()}.png`;
+
+        console.log('[LOYALTY] Uploading to Supabase Storage:', filename);
+
+        // Upload to Supabase Storage (loyalty-cards bucket)
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('loyalty-cards')
+          .upload(filename, blob, {
+            contentType: 'image/png',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          console.error('[LOYALTY] Upload error:', uploadError);
+          // Try to create bucket if it doesn't exist - this might fail silently
+          return;
+        }
+
+        console.log('[LOYALTY] Upload successful:', uploadData);
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('loyalty-cards')
+          .getPublicUrl(filename);
+
+        const loyaltyCardImageUrl = urlData.publicUrl;
+        console.log('[LOYALTY] Public URL:', loyaltyCardImageUrl);
+
+        // Update order with loyalty card image URL
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({ loyalty_card_image_url: loyaltyCardImageUrl } as any)
+          .eq('order_number', confirmedOrderData.orderNumber);
+
+        if (updateError) {
+          console.error('[LOYALTY] Failed to update order with image URL:', updateError);
+        } else {
+          console.log('[LOYALTY] Order updated with loyalty card image URL');
+        }
+
+      } catch (error) {
+        console.error('[LOYALTY] Failed to capture loyalty card:', error);
+      }
+    };
+
+    captureAndUploadLoyaltyCard();
+  }, [confirmedOrderData]);
 
   // Calculate totals with promotions - recalculate on every render to ensure accuracy
   const pizzaItems = cart.filter(item => item.item.category === 'pizzas');
@@ -512,6 +593,11 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 <span className="text-muted-foreground">Paiement:</span>
                 <span className="font-medium">{confirmedOrderData.paymentMethod === 'cb' ? 'Carte Bancaire' : 'Espèces'}</span>
               </div>
+              {/* Wait time display */}
+              <div className="flex justify-between text-sm mt-2 bg-amber-50 p-2 rounded border border-amber-200">
+                <span className="text-amber-700">⏰ Prêt dans:</span>
+                <span className="font-bold text-amber-800">10-20 min</span>
+              </div>
               {/* Delivery address */}
               {confirmedOrderData.orderType === 'livraison' && confirmedOrderData.customerAddress && (
                 <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
@@ -589,7 +675,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
           {/* Loyalty Stamp Card - Show if customer has stamps or earned new ones */}
           {customer && (confirmedOrderData.newStampsEarned || 0) > 0 && (
-            <div className="mt-6">
+            <div className="mt-6" ref={loyaltyCardRef}>
               <h2 className="text-lg font-bold text-center mb-3 text-amber-700">
                 🎁 Votre Carte de Fidélité
               </h2>

@@ -1,0 +1,23 @@
+2026/01/14-14:47:54.482 45bc Reusing MANIFEST C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/14-14:47:54.483 45bc Recovering log #203
+2026/01/14-14:47:54.491 45bc Reusing old log C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000203.log 
+2026/01/14-14:47:56.836 22d4 Level-0 table #208: started
+2026/01/14-14:47:56.844 22d4 Level-0 table #208: 127595 bytes OK
+2026/01/14-14:47:56.847 22d4 Delete type=0 #203
+2026/01/14-14:47:56.848 45bc Manual compaction at level-0 from '\x00O\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00P\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/14-14:47:56.927 4be4 Compacting 1@1 + 1@2 files
+2026/01/14-14:47:56.996 4be4 Generated table #209@1: 35189 keys, 1271888 bytes
+2026/01/14-14:47:56.996 4be4 Compacted 1@1 + 1@2 files => 1271888 bytes
+2026/01/14-14:47:56.998 4be4 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/01/14-14:47:56.998 4be4 Delete type=2 #205
+2026/01/14-14:47:56.998 4be4 Delete type=2 #208
+2026/01/14-14:53:00.121 22d4 Level-0 table #211: started
+2026/01/14-14:53:00.130 22d4 Level-0 table #211: 192518 bytes OK
+2026/01/14-14:53:00.132 22d4 Delete type=0 #207
+2026/01/14-14:53:00.133 45bc Manual compaction at level-0 from '\x00P\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00Q\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/14-14:53:00.248 4be4 Compacting 1@1 + 1@2 files
+2026/01/14-14:53:00.301 4be4 Generated table #212@1: 35974 keys, 1289949 bytes
+2026/01/14-14:53:00.301 4be4 Compacted 1@1 + 1@2 files => 1289949 bytes
+2026/01/14-14:53:00.302 4be4 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/01/14-14:53:00.303 4be4 Delete type=2 #209
+2026/01/14-14:53:00.303 4be4 Delete type=2 #211
