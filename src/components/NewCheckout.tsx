@@ -682,6 +682,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               <LoyaltyStampCard
                 currentStamps={confirmedOrderData.totalStampsAfterOrder || 0}
                 customerName={confirmedOrderData.customerName}
+                customerPhone={confirmedOrderData.customerPhone}
                 newStampsEarned={confirmedOrderData.newStampsEarned}
                 animated={true}
               />

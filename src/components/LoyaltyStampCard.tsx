@@ -18,6 +18,7 @@ const STAMPS_FOR_FREE = 10;
 interface LoyaltyStampCardProps {
     currentStamps: number;
     customerName?: string;
+    customerPhone?: string; // Phone for fraud prevention
     newStampsEarned?: number; // Number of stamps earned from current order
     animated?: boolean;
 }
@@ -25,6 +26,7 @@ interface LoyaltyStampCardProps {
 export function LoyaltyStampCard({
     currentStamps,
     customerName,
+    customerPhone,
     newStampsEarned = 0,
     animated = true
 }: LoyaltyStampCardProps) {
@@ -61,7 +63,10 @@ export function LoyaltyStampCard({
                 <p className="text-sm font-medium opacity-90">CARTE DE FIDÉLITÉ</p>
                 <p className="text-2xl font-bold font-display mt-1">Twin Pizza</p>
                 {customerName && (
-                    <p className="text-xs opacity-75 mt-1">{customerName}</p>
+                    <p className="text-sm font-semibold mt-1">{customerName}</p>
+                )}
+                {customerPhone && (
+                    <p className="text-xs opacity-90 font-mono mt-1">📱 {customerPhone}</p>
                 )}
             </div>
 
