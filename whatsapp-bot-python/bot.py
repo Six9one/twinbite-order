@@ -597,20 +597,17 @@ Merci et a bientot!"""
     except Exception as e:
         safe_print(f"[WARN] Could not re-fetch order for loyalty card: {e}")
     
-    # Send loyalty card link if available (simple message)
-    if loyalty_card_image_url:
-        # Shorten the URL for cleaner message
-        short_url = shorten_url(loyalty_card_image_url)
-        
-        # Simple clean link message
-        link_message = f"""Voir votre ticket: {short_url}"""
-        
-        safe_print("[*] Sending loyalty card link message...")
-        time.sleep(2)  # Small delay between messages
-        send_whatsapp_message(phone, link_message)
-        safe_print("[OK] Loyalty card link sent!")
-    else:
-        safe_print("[*] No loyalty card image URL in order")
+    # Send portal link message (always, with or without image URL)
+    # Build portal URL with phone number
+    portal_url = f"https://twinpizza.fr/ticket?phone={phone.replace('+', '')}"
+    
+    # Simple clean link message
+    link_message = f"""Vos commandes et carte de fidelite: {portal_url}"""
+    
+    safe_print("[*] Sending portal link message...")
+    time.sleep(2)  # Small delay between messages
+    send_whatsapp_message(phone, link_message)
+    safe_print("[OK] Portal link sent!")
 
 def send_ready_notification(order: dict):
     """Send order ready notification"""
