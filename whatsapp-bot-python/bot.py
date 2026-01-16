@@ -606,31 +606,33 @@ def send_order_confirmation(order: dict):
         for item in items:
             items_count += item.get('quantity', 1)
     
-    # Order type in French
+    # Order type in French (no emojis - causes ChromeDriver issues)
     order_type_text = {
-        'livraison': 'Livraison 🚗',
-        'emporter': 'A emporter 🛍️',
-        'surplace': 'Sur place 🍽️'
+        'livraison': 'Livraison',
+        'emporter': 'A emporter',
+        'surplace': 'Sur place'
     }.get(order_type, order_type)
     
     # Build portal URL with phone number
     portal_url = f"https://twinpizza.fr/ticket?phone={phone.replace('+', '')}"
     
-    # Build message with user's template
-    message = f"""🍕 Merci {customer_name} !
+    # Build message WITHOUT emojis (ChromeDriver doesn't support them well)
+    message = f"""TWIN PIZZA
 
-Votre commande *#{order_number}* est confirmee ✅
+Merci {customer_name} !
 
-🧾 Details :
-• Articles : {items_count}
-• Total : *{total:.2f} EUR*
-• Mode : *{order_type_text}*
-• ⏰ Temps d'attente : *10 a 20 min*
+Votre commande *#{order_number}* est confirmee.
 
-🎫 Ticket + 🎁 Carte de fidelite :
-👉 {portal_url}
+Details :
+- Articles : {items_count}
+- Total : *{total:.2f} EUR*
+- Mode : *{order_type_text}*
+- Temps d'attente : *10 a 20 min*
 
-Merci pour votre confiance 💚"""
+Ticket + Carte de fidelite :
+{portal_url}
+
+Merci pour votre confiance!"""
     
     # Send ONE message with everything
     send_whatsapp_message(phone, message)
