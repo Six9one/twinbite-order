@@ -526,7 +526,7 @@ def send_whatsapp_image(phone: str, image_path: str, caption: str = "") -> bool:
         return False
 
 def send_order_confirmation(order: dict):
-    """Send order confirmation message with loyalty card image"""
+    """Send order confirmation message with portal link - ALL IN ONE MESSAGE"""
     
     phone = order.get('customer_phone', '')
     if not phone:
@@ -536,9 +536,11 @@ def send_order_confirmation(order: dict):
     customer_name = order.get('customer_name', 'Client')
     order_number = order.get('order_number', 'N/A')
     total = order.get('total', 0)
-    loyalty_card_image_url = order.get('loyalty_card_image_url', '')
     
-    # Build PROFESSIONAL SHORT message
+    # Build portal URL with phone number
+    portal_url = f"https://twinpizza.fr/ticket?phone={phone.replace('+', '')}"
+    
+    # Build SINGLE message with everything
     message = f"""*TWIN PIZZA*
 
 Bonjour {customer_name},
@@ -546,49 +548,14 @@ Bonjour {customer_name},
 Votre commande *#{order_number}* est confirmee.
 Total: *{total:.2f} EUR*
 
+Vos commandes et carte de fidelite:
+{portal_url}
+
 Merci pour votre confiance!"""
     
-    # Send text message first
+    # Send ONE message with everything
     send_whatsapp_message(phone, message)
-    
-    # The loyalty card image is uploaded by the frontend AFTER order creation
-    # We need to wait a bit and then re-fetch the order to get the image URL
-    safe_print("[*] Waiting 5 seconds for loyalty card image to be uploaded...")
-    time.sleep(5)
-    
-    # Re-fetch the order to get the loyalty_card_image_url
-    try:
-        headers = {
-            "apikey": SUPABASE_ANON_KEY,
-            "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
-            "Content-Type": "application/json"
-        }
-        response = httpx.get(
-            f"{SUPABASE_URL}/rest/v1/orders",
-            headers=headers,
-            params={"select": "loyalty_card_image_url", "order_number": f"eq.{order_number}"},
-            timeout=10.0
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data and len(data) > 0:
-                loyalty_card_image_url = data[0].get('loyalty_card_image_url', '')
-                if loyalty_card_image_url:
-                    safe_print(f"[*] Loyalty card image URL found: {loyalty_card_image_url[:50]}...")
-    except Exception as e:
-        safe_print(f"[WARN] Could not re-fetch order for loyalty card: {e}")
-    
-    # Send portal link message (always, with or without image URL)
-    # Build portal URL with phone number
-    portal_url = f"https://twinpizza.fr/ticket?phone={phone.replace('+', '')}"
-    
-    # Simple clean link message
-    link_message = f"""Vos commandes et carte de fidelite: {portal_url}"""
-    
-    safe_print("[*] Sending portal link message...")
-    time.sleep(2)  # Small delay between messages
-    send_whatsapp_message(phone, link_message)
-    safe_print("[OK] Portal link sent!")
+    safe_print("[OK] Message + portal link sent!")
 
 def send_ready_notification(order: dict):
     """Send order ready notification"""
