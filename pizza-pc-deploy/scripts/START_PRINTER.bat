@@ -4,7 +4,7 @@ REM  Twin Pizza - Start Print Server
 REM ============================================================
 title Twin Pizza - Print Server
 
-set "INSTALL_DIR=C:\TwinPizza"
+set "INSTALL_DIR=C:\twinbite-order"
 cd /d "%INSTALL_DIR%\print-server"
 
 echo ========================================

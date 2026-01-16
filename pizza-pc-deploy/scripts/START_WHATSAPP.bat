@@ -1,13 +1,13 @@
 @echo off
 REM ============================================================
 REM  Twin Pizza - Start WhatsApp Bot
-REM  Auto-detects Python and creates venv if needed
+REM  Uses the git repo directly - easy updates with git pull
 REM ============================================================
 title Twin Pizza - WhatsApp Bot
 setlocal enabledelayedexpansion
 
-set "INSTALL_DIR=C:\TwinPizza"
-cd /d "%INSTALL_DIR%\whatsapp-bot"
+set "INSTALL_DIR=C:\twinbite-order"
+cd /d "%INSTALL_DIR%\whatsapp-bot-python"
 
 echo ========================================
 echo   Twin Pizza - WhatsApp Bot
