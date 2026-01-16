@@ -9,8 +9,14 @@ Set fso = CreateObject("Scripting.FileSystemObject")
 ' Get the directory where this script is located
 scriptPath = fso.GetParentFolderName(WScript.ScriptFullName)
 
+' Create logs folder if it doesn't exist
+logsFolder = scriptPath & "\logs"
+If Not fso.FolderExists(logsFolder) Then
+    fso.CreateFolder(logsFolder)
+End If
+
 ' Log file
-logFile = scriptPath & "\logs\startup.log"
+logFile = logsFolder & "\startup.log"
 
 ' Create log entry
 Set logStream = fso.OpenTextFile(logFile, 8, True)
