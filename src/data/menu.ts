@@ -622,7 +622,7 @@ export const deals = [
   {
     id: "deal-3",
     title: "Menu Midi",
-    description: "Pizza Senior + Boisson 10€ (11h-22h)",
+    description: "Pizza Senior + Boisson 10€ (11h-minuit)",
     image: "deal-3",
     orderTypes: ["surplace", "emporter", "livraison"] as const,
   },

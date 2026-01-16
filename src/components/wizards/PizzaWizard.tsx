@@ -176,7 +176,7 @@ export function PizzaWizard({ onClose }: PizzaWizardProps) {
             {!showMenuMidi && (
               <div className="mt-3 p-3 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground text-center">
-                  Menu midi disponible de 11:00 à 22:00
+                  Menu midi disponible de 11:00 à minuit
                 </p>
               </div>
             )}

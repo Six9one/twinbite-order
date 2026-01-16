@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-const promos = ["🍕 MENU MIDI - Pizza + Boisson à seulement 10€ ! (11h-22h)", "🎉 1 ACHETÉE = 1 OFFERTE sur place & à emporter !", "🚗 LIVRAISON GRATUITE dès 15€ à Grand-Couronne !"];
+const promos = ["🍕 MENU MIDI - Pizza + Boisson à seulement 10€ ! (11h-minuit)", "🎉 1 ACHETÉE = 1 OFFERTE sur place & à emporter !", "🚗 LIVRAISON GRATUITE dès 15€ à Grand-Couronne !"];
 export function PromoBanner() {
   const [currentPromo, setCurrentPromo] = useState(0);
   const [isVisible, setIsVisible] = useState(true);

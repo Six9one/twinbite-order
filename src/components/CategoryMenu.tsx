@@ -273,7 +273,7 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
               )}
               {showMenuMidi && (
                 <Badge className="bg-yellow-500/10 text-yellow-600 whitespace-nowrap">
-                  ☀️ Menu Midi disponible (11h-22h)
+                  ☀️ Menu Midi disponible (11h-minuit)
                 </Badge>
               )}
             </div>
