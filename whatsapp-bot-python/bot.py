@@ -536,22 +536,40 @@ def send_order_confirmation(order: dict):
     customer_name = order.get('customer_name', 'Client')
     order_number = order.get('order_number', 'N/A')
     total = order.get('total', 0)
+    order_type = order.get('order_type', '')
+    items = order.get('items', [])
+    
+    # Count items
+    items_count = 0
+    if isinstance(items, list):
+        for item in items:
+            items_count += item.get('quantity', 1)
+    
+    # Order type in French
+    order_type_text = {
+        'livraison': 'Livraison 🚗',
+        'emporter': 'A emporter 🛍️',
+        'surplace': 'Sur place 🍽️'
+    }.get(order_type, order_type)
     
     # Build portal URL with phone number
     portal_url = f"https://twinpizza.fr/ticket?phone={phone.replace('+', '')}"
     
-    # Build SINGLE message with everything
-    message = f"""*TWIN PIZZA*
+    # Build message with user's template
+    message = f"""🍕 Merci {customer_name} !
 
-Bonjour {customer_name},
+Votre commande *#{order_number}* est confirmee ✅
 
-Votre commande *#{order_number}* est confirmee.
-Total: *{total:.2f} EUR*
+🧾 Details :
+• Articles : {items_count}
+• Total : *{total:.2f} EUR*
+• Mode : *{order_type_text}*
+• ⏰ Temps d'attente : *10 a 20 min*
 
-Vos commandes et carte de fidelite:
-{portal_url}
+🎫 Ticket + 🎁 Carte de fidelite :
+👉 {portal_url}
 
-Merci pour votre confiance!"""
+Merci pour votre confiance 💚"""
     
     # Send ONE message with everything
     send_whatsapp_message(phone, message)
