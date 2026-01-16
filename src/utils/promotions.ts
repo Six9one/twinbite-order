@@ -1,11 +1,11 @@
 import { OrderType, CartItem, PizzaCustomization } from '@/types/order';
 import { pizzaPrices, cheeseSupplementOptions } from '@/data/menu';
 
-// Menu midi is available between 11:00 and 15:00
+// Menu midi is available all day from 11:00 to 22:00 (closing)
 export function isMenuMidiTime(): boolean {
   const now = new Date();
   const hour = now.getHours();
-  return hour >= 11 && hour < 15;
+  return hour >= 11 && hour < 22;
 }
 
 // Get remaining time for menu midi
@@ -14,7 +14,7 @@ export function getMenuMidiRemainingTime(): { hours: number; minutes: number; se
 
   const now = new Date();
   const endTime = new Date();
-  endTime.setHours(15, 0, 0, 0);
+  endTime.setHours(22, 0, 0, 0);
 
   const diff = endTime.getTime() - now.getTime();
   if (diff <= 0) return null;

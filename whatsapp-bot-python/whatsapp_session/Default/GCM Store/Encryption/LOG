@@ -1,0 +1,4 @@
+2026/01/16-21:50:40.959 3a28 Reusing MANIFEST C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\GCM Store\Encryption/MANIFEST-000001
+2026/01/16-21:50:40.962 3a28 Recovering log #3
+2026/01/16-21:50:40.962 3a28 (ignoring error) C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\GCM Store\Encryption/000003.log: dropping 1658 bytes; Corruption: checksum mismatch
+2026/01/16-21:50:40.963 3a28 Reusing old log C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\GCM Store\Encryption/000003.log 
