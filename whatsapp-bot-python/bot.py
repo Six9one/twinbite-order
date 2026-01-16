@@ -9,6 +9,7 @@ import sys
 import time
 import re
 import json
+import subprocess
 from datetime import datetime
 
 # Fix Windows console encoding for emoji support
@@ -47,6 +48,59 @@ from config import SUPABASE_URL, SUPABASE_ANON_KEY, DATA_FOLDER
 # ===========================================
 driver = None
 is_ready = False
+
+# ===========================================
+# WINDOWS NOTIFICATIONS
+# ===========================================
+
+def show_notification(title: str, message: str, is_error: bool = False):
+    """Show Windows notification using PowerShell"""
+    try:
+        icon = "Warning" if is_error else "Information"
+        ps_script = f'''
+        [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null
+        $template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
+        $textNodes = $template.GetElementsByTagName("text")
+        $textNodes.Item(0).AppendChild($template.CreateTextNode("{title}")) > $null
+        $textNodes.Item(1).AppendChild($template.CreateTextNode("{message}")) > $null
+        $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
+        $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Twin Pizza")
+        $notifier.Show($toast)
+        '''
+        subprocess.run(["powershell", "-Command", ps_script], capture_output=True, timeout=5)
+    except Exception as e:
+        # Fallback to simple message box if toast fails
+        try:
+            msg_type = 48 if is_error else 64  # 48=Warning, 64=Info
+            subprocess.run([
+                "powershell", "-Command",
+                f'[System.Windows.Forms.MessageBox]::Show("{message}", "{title}", "OK", "{icon}")'
+            ], capture_output=True, timeout=5)
+        except:
+            safe_print(f"[NOTIF] {title}: {message}")
+
+def is_browser_already_running():
+    """Check if WhatsApp session is already running"""
+    try:
+        # Check if there's a Chrome process using our data folder
+        result = subprocess.run(
+            ["powershell", "-Command", 
+             "Get-Process chrome -ErrorAction SilentlyContinue | Select-Object -ExpandProperty CommandLine"],
+            capture_output=True, text=True, timeout=5
+        )
+        if "whatsapp_session" in result.stdout.lower():
+            return True
+        
+        # Also check if port 9222 is in use (Chrome remote debugging)
+        result = subprocess.run(
+            ["powershell", "-Command", "netstat -an | Select-String '9222'"],
+            capture_output=True, text=True, timeout=5
+        )
+        if "LISTENING" in result.stdout:
+            return True
+    except:
+        pass
+    return False
 
 # ===========================================
 # HELPER FUNCTIONS
@@ -112,6 +166,13 @@ def find_chrome_path():
 def init_whatsapp():
     """Initialize WhatsApp Web browser session"""
     global driver, is_ready
+    
+    # Check if browser is already running
+    if is_browser_already_running():
+        safe_print("[!] WhatsApp session deja ouverte!")
+        safe_print("[*] Utilisez la fenetre existante ou fermez-la d'abord.")
+        show_notification("WhatsApp Bot", "Session deja ouverte! Fermez l'ancienne fenetre.", is_error=True)
+        return False
     
     safe_print("[*] Initialisation de WhatsApp Web...")
     
@@ -670,6 +731,9 @@ def listen_for_orders():
         safe_print("\n[OK] Bot pret ! En attente de nouvelles commandes...\n")
         safe_print("-" * 50)
         
+        # Show Windows notification that bot is ready
+        show_notification("WhatsApp Bot ✅", "Bot connecte et pret! En attente de commandes...")
+        
         poll_count = 0
         while True:
             try:
@@ -742,6 +806,7 @@ def main():
         # Initialize WhatsApp
         if not init_whatsapp():
             safe_print("[ERROR] Impossible d'initialiser WhatsApp. Arret.")
+            show_notification("WhatsApp Bot ❌", "Erreur: Impossible d'initialiser WhatsApp!", is_error=True)
             return
         
         # Start listening for orders
