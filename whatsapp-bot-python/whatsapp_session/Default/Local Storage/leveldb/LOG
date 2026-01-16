@@ -1,5 +1,3 @@
-2026/01/16-21:50:26.440 58f4 Reusing MANIFEST C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\Local Storage\leveldb/MANIFEST-000001
-2026/01/16-21:50:26.492 58f4 Recovering log #21
-2026/01/16-21:50:26.505 58f4 Reusing old log C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\Local Storage\leveldb/000021.log 
-2026/01/16-21:51:46.014 58f4 Level-0 table #25: started
-2026/01/16-21:51:46.025 58f4 Level-0 table #25: 20138 bytes OK
+2026/01/16-22:08:15.952 2978 Reusing MANIFEST C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\Local Storage\leveldb/MANIFEST-000001
+2026/01/16-22:08:15.975 2978 Recovering log #24
+2026/01/16-22:08:15.984 2978 Reusing old log C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\Local Storage\leveldb/000024.log 

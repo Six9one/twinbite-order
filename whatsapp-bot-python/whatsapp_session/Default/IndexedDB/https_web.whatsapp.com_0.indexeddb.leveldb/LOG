@@ -1,36 +1,37 @@
-2026/01/16-21:50:28.220 5d94 Reusing MANIFEST C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/01/16-21:50:28.222 5d94 Recovering log #537
-2026/01/16-21:50:28.224 5d94 Reusing old log C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000537.log 
-2026/01/16-21:50:28.225 5d94 Delete type=2 #536
-2026/01/16-21:50:29.782 6300 Level-0 table #542: started
-2026/01/16-21:50:29.787 6300 Level-0 table #542: 27659 bytes OK
-2026/01/16-21:50:29.790 6300 Delete type=0 #537
-2026/01/16-21:50:29.790 6300 Manual compaction at level-0 from '\x00\xbb\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xbc\x00\x00\x00' @ 0 : 0; will stop at '\x00\xbb\x00\x00\x05' @ 539148 : 1
-2026/01/16-21:50:29.791 6300 Compacting 1@0 + 1@1 files
-2026/01/16-21:50:29.859 6300 Generated table #543@0: 50807 keys, 916777 bytes
-2026/01/16-21:50:29.859 6300 Compacted 1@0 + 1@1 files => 916777 bytes
-2026/01/16-21:50:29.861 6300 compacted to: files[ 0 1 1 0 0 0 0 ]
-2026/01/16-21:50:29.862 6300 Delete type=2 #542
-2026/01/16-21:50:29.863 6300 Manual compaction at level-0 from '\x00\xbb\x00\x00\x05' @ 539148 : 1 .. '\x00\xbc\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/01/16-21:50:33.623 6300 Level-0 table #545: started
-2026/01/16-21:50:33.630 6300 Level-0 table #545: 95464 bytes OK
-2026/01/16-21:50:33.632 6300 Delete type=2 #539
-2026/01/16-21:50:33.632 6300 Delete type=0 #541
-2026/01/16-21:50:33.634 6300 Manual compaction at level-0 from '\x00\xbc\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xbd\x00\x00\x00' @ 0 : 0; will stop at '\x00\xbc\x00\x00\x05' @ 544111 : 1
-2026/01/16-21:50:33.634 6300 Compacting 1@0 + 1@1 files
-2026/01/16-21:50:33.707 6300 Generated table #546@0: 53250 keys, 963702 bytes
-2026/01/16-21:50:33.707 6300 Compacted 1@0 + 1@1 files => 963702 bytes
-2026/01/16-21:50:33.708 6300 compacted to: files[ 0 1 1 0 0 0 0 ]
-2026/01/16-21:50:33.709 6300 Delete type=2 #545
-2026/01/16-21:50:33.710 6300 Manual compaction at level-0 from '\x00\xbc\x00\x00\x05' @ 544111 : 1 .. '\x00\xbd\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/01/16-21:51:14.750 6300 Level-0 table #548: started
-2026/01/16-21:51:14.758 6300 Level-0 table #548: 153235 bytes OK
-2026/01/16-21:51:14.760 6300 Delete type=2 #543
-2026/01/16-21:51:14.760 6300 Delete type=0 #544
-2026/01/16-21:51:14.762 6300 Manual compaction at level-0 from '\x00\xbd\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xbe\x00\x00\x00' @ 0 : 0; will stop at '\x00\xbd\x00\x00\x05' @ 550948 : 1
-2026/01/16-21:51:14.762 6300 Compacting 1@0 + 1@1 files
-2026/01/16-21:51:14.838 6300 Generated table #549@0: 56327 keys, 1026381 bytes
-2026/01/16-21:51:14.838 6300 Compacted 1@0 + 1@1 files => 1026381 bytes
-2026/01/16-21:51:14.839 6300 compacted to: files[ 0 1 1 0 0 0 0 ]
-2026/01/16-21:51:14.840 6300 Delete type=2 #548
-2026/01/16-21:51:14.841 6300 Manual compaction at level-0 from '\x00\xbd\x00\x00\x05' @ 550948 : 1 .. '\x00\xbe\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/16-22:08:18.031 51b8 Reusing MANIFEST C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/16-22:08:18.032 51b8 Recovering log #551
+2026/01/16-22:08:18.042 51b8 Reusing old log C:\Users\Slicydicy\Documents\GitHub\twinbite-order\whatsapp-bot-python\whatsapp_session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000551.log 
+2026/01/16-22:08:18.044 51b8 Delete type=2 #549
+2026/01/16-22:08:18.044 51b8 Delete type=2 #552
+2026/01/16-22:08:19.668 51b8 Level-0 table #556: started
+2026/01/16-22:08:19.674 51b8 Level-0 table #556: 127468 bytes OK
+2026/01/16-22:08:19.676 51b8 Delete type=0 #551
+2026/01/16-22:08:19.677 51b8 Manual compaction at level-0 from '\x00\xbf\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xc0\x00\x00\x00' @ 0 : 0; will stop at '\x00\xbf\x00\x00\x05' @ 563900 : 1
+2026/01/16-22:08:19.677 51b8 Compacting 1@0 + 1@1 files
+2026/01/16-22:08:19.744 51b8 Generated table #557@0: 62660 keys, 1154665 bytes
+2026/01/16-22:08:19.744 51b8 Compacted 1@0 + 1@1 files => 1154665 bytes
+2026/01/16-22:08:19.745 51b8 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/01/16-22:08:19.746 51b8 Manual compaction at level-0 from '\x00\xbf\x00\x00\x05' @ 563900 : 1 .. '\x00\xc0\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/16-22:08:24.124 51b8 Level-0 table #559: started
+2026/01/16-22:08:24.133 51b8 Level-0 table #559: 92747 bytes OK
+2026/01/16-22:08:24.135 51b8 Delete type=2 #553
+2026/01/16-22:08:24.135 51b8 Delete type=0 #555
+2026/01/16-22:08:24.135 51b8 Delete type=2 #556
+2026/01/16-22:08:24.138 51b8 Manual compaction at level-0 from '\x00\xc0\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xc1\x00\x00\x00' @ 0 : 0; will stop at '\x00\xc0\x00\x00\x05' @ 568547 : 1
+2026/01/16-22:08:24.138 51b8 Compacting 1@0 + 1@1 files
+2026/01/16-22:08:24.223 51b8 Generated table #560@0: 65019 keys, 1203442 bytes
+2026/01/16-22:08:24.223 51b8 Compacted 1@0 + 1@1 files => 1203442 bytes
+2026/01/16-22:08:24.224 51b8 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/01/16-22:08:24.225 51b8 Delete type=2 #559
+2026/01/16-22:08:24.226 51b8 Manual compaction at level-0 from '\x00\xc0\x00\x00\x05' @ 568547 : 1 .. '\x00\xc1\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/16-22:09:05.149 61c4 Level-0 table #562: started
+2026/01/16-22:09:05.158 61c4 Level-0 table #562: 149839 bytes OK
+2026/01/16-22:09:05.160 61c4 Delete type=2 #557
+2026/01/16-22:09:05.160 61c4 Delete type=0 #558
+2026/01/16-22:09:05.162 51b8 Manual compaction at level-0 from '\x00\xc1\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xc2\x00\x00\x00' @ 0 : 0; will stop at '\x00\xc1\x00\x00\x05' @ 574759 : 1
+2026/01/16-22:09:05.162 51b8 Compacting 1@0 + 1@1 files
+2026/01/16-22:09:05.247 51b8 Generated table #563@0: 68040 keys, 1264115 bytes
+2026/01/16-22:09:05.247 51b8 Compacted 1@0 + 1@1 files => 1264115 bytes
+2026/01/16-22:09:05.248 51b8 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/01/16-22:09:05.249 51b8 Delete type=2 #562
+2026/01/16-22:09:05.250 51b8 Manual compaction at level-0 from '\x00\xc1\x00\x00\x05' @ 574759 : 1 .. '\x00\xc2\x00\x00\x00' @ 0 : 0; will stop at (end)

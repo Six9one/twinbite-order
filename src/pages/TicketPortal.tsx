@@ -95,14 +95,19 @@ export default function TicketPortal() {
 
             // Fetch loyalty info using RPC or direct query
             try {
+                // Normalize phone to match how it's stored in loyalty_customers (same as LoyaltyContext)
+                const normalizedPhone = phone.replace(/\s+/g, '').replace(/^(\+33|0033)/, '0');
+
                 const { data: loyaltyData, error: loyaltyError } = await (supabase as any)
                     .from('loyalty_customers')
                     .select('stamps, total_stamps, free_items_available')
-                    .eq('phone', phone)
+                    .eq('phone', normalizedPhone)
                     .single();
 
                 if (!loyaltyError && loyaltyData) {
                     setLoyaltyInfo(loyaltyData as LoyaltyInfo);
+                } else {
+                    console.log('No loyalty data found for phone:', normalizedPhone);
                 }
             } catch (e) {
                 console.log('Loyalty info not available');
