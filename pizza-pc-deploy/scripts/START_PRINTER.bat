@@ -11,6 +11,14 @@ echo ========================================
 echo   Twin Pizza - Print Server
 echo ========================================
 echo.
+
+REM Check if node_modules exists, if not install dependencies
+if not exist "node_modules" (
+    echo [*] Installation des dependances...
+    call npm install
+    echo.
+)
+
 echo [*] Demarrage...
 echo.
 
