@@ -62,18 +62,17 @@ export default function TicketPortal() {
         setSearched(true);
 
         try {
-            // Fetch orders for this phone number
+            // Fetch ALL orders for this phone number (to calculate stamps)
             const { data: ordersData, error: ordersError } = await supabase
                 .from('orders')
                 .select('*')
                 .eq('customer_phone', phone)
-                .order('created_at', { ascending: false })
-                .limit(20);
+                .order('created_at', { ascending: false });
 
             if (ordersError) {
                 console.error('Error fetching orders:', ordersError);
             } else if (ordersData) {
-                // Cast to our Order type
+                // Cast to our Order type (show only last 20 in UI)
                 const mappedOrders: Order[] = ordersData.map((o: any) => ({
                     id: o.id,
                     order_number: o.order_number,
@@ -87,30 +86,38 @@ export default function TicketPortal() {
                     status: o.status,
                     loyalty_card_image_url: o.loyalty_card_image_url,
                 }));
-                setOrders(mappedOrders);
+                setOrders(mappedOrders.slice(0, 20)); // Show last 20 in UI
                 if (mappedOrders.length > 0) {
                     setCustomerName(mappedOrders[0].customer_name || '');
                 }
-            }
 
-            // Fetch loyalty info using RPC or direct query
-            try {
-                // Normalize phone to match how it's stored in loyalty_customers (same as LoyaltyContext)
-                const normalizedPhone = phone.replace(/\s+/g, '').replace(/^(\+33|0033)/, '0');
+                // CALCULATE STAMPS FROM ALL ORDERS (live calculation!)
+                const qualifyingCategories = ['pizzas', 'sandwiches', 'soufflet', 'makloub', 'mlawi', 'tacos'];
+                let totalStamps = 0;
 
-                const { data: loyaltyData, error: loyaltyError } = await (supabase as any)
-                    .from('loyalty_customers')
-                    .select('stamps, total_stamps, free_items_available')
-                    .eq('phone', normalizedPhone)
-                    .single();
+                mappedOrders.forEach(order => {
+                    if (Array.isArray(order.items)) {
+                        order.items.forEach((item: any) => {
+                            const category = (item.item?.category || item.category || '').toLowerCase();
+                            const quantity = item.quantity || 1;
+                            if (qualifyingCategories.some(cat => category.includes(cat))) {
+                                totalStamps += quantity;
+                            }
+                        });
+                    }
+                });
 
-                if (!loyaltyError && loyaltyData) {
-                    setLoyaltyInfo(loyaltyData as LoyaltyInfo);
-                } else {
-                    console.log('No loyalty data found for phone:', normalizedPhone);
-                }
-            } catch (e) {
-                console.log('Loyalty info not available');
+                const STAMPS_FOR_FREE = 10;
+                const currentStamps = totalStamps % STAMPS_FOR_FREE;
+                const freeItems = Math.floor(totalStamps / STAMPS_FOR_FREE);
+
+                console.log(`[LOYALTY] Calculated from orders: ${totalStamps} total stamps, ${currentStamps} current, ${freeItems} free items`);
+
+                setLoyaltyInfo({
+                    stamps: currentStamps,
+                    total_stamps: totalStamps,
+                    free_items_available: freeItems
+                });
             }
         } catch (error) {
             console.error('Error:', error);
