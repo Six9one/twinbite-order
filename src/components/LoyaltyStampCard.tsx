@@ -3,18 +3,13 @@ import { Gift } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 // Qualifying categories for stamps: buying items from these categories gives a stamp
-const QUALIFYING_CATEGORIES = [
-    'pizzas',
-    'sandwiches',
-    'soufflet',
+'pizzas',
+    'soufflets',
     'makloub',
-    'mlawi',
     'tacos',
     'panini',
-    'croques',
-    'texmex',
     'salades',
-    'menus-midi',
+    'sandwiches',
 ];
 
 // Total stamps needed for a free item
@@ -179,7 +174,7 @@ export function LoyaltyStampCard({
 
             {/* Footer */}
             <div className="bg-muted/50 p-3 text-center text-xs text-muted-foreground">
-                <p>Achetez 9 plats (Pizzas, Sandwichs, Tacos, Salades...)</p>
+                <p>Achetez 9 produits (pizzas, sandwichs, soufflés, makloubs, tacos, paninis, salades)</p>
                 <p className="font-semibold text-primary mt-1">= 10ème produit GRATUIT (valeur 10€)! 🎁</p>
             </div>
         </Card >

@@ -99,7 +99,7 @@ export default function TicketPortal() {
                 .single();
 
             // CALCULATE STAMPS FROM ALL ORDERS (live calculation!)
-            const qualifyingCategories = ['pizzas', 'sandwiches', 'soufflet', 'makloub', 'mlawi', 'tacos', 'panini'];
+            const qualifyingCategories = ['pizzas', 'soufflets', 'makloub', 'tacos', 'panini', 'salades', 'sandwiches'];
             let totalStamps = 0;
             const STAMPS_FOR_FREE = 9; // Updated to 9
             // UI expects split between current progress and free items available, 
