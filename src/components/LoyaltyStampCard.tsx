@@ -3,7 +3,8 @@ import { Gift } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 // Qualifying categories for stamps: buying items from these categories gives a stamp
-'pizzas',
+const QUALIFYING_CATEGORIES = [
+    'pizzas',
     'soufflets',
     'makloub',
     'tacos',
