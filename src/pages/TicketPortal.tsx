@@ -62,7 +62,7 @@ export default function TicketPortal() {
         setSearched(true);
 
         try {
-            // Fetch ALL orders for this phone number (to calculate stamps)
+            // Fetch orders
             const { data: ordersData, error: ordersError } = await supabase
                 .from('orders')
                 .select('*')
@@ -72,7 +72,6 @@ export default function TicketPortal() {
             if (ordersError) {
                 console.error('Error fetching orders:', ordersError);
             } else if (ordersData) {
-                // Cast to our Order type (show only last 20 in UI)
                 const mappedOrders: Order[] = ordersData.map((o: any) => ({
                     id: o.id,
                     order_number: o.order_number,
@@ -86,45 +85,81 @@ export default function TicketPortal() {
                     status: o.status,
                     loyalty_card_image_url: o.loyalty_card_image_url,
                 }));
-                setOrders(mappedOrders.slice(0, 20)); // Show last 20 in UI
+                setOrders(mappedOrders.slice(0, 20));
                 if (mappedOrders.length > 0) {
                     setCustomerName(mappedOrders[0].customer_name || '');
                 }
+            }
 
-                // CALCULATE STAMPS FROM ALL ORDERS (live calculation!)
-                const qualifyingCategories = ['pizzas', 'sandwiches', 'soufflet', 'makloub', 'mlawi', 'tacos'];
-                let totalStamps = 0;
+            // Fetch Loyalty Points from loyalty_customers table (Single Source of Truth)
+            const { data: loyaltyData, error: loyaltyError } = await supabase
+                .from('loyalty_customers')
+                .select('points')
+                .eq('phone', phone)
+                .single();
 
-                mappedOrders.forEach(order => {
-                    if (Array.isArray(order.items)) {
-                        order.items.forEach((item: any) => {
-                            const category = (item.item?.category || item.category || '').toLowerCase();
-                            const quantity = item.quantity || 1;
-                            if (qualifyingCategories.some(cat => category.includes(cat))) {
-                                totalStamps += quantity;
-                            }
-                        });
-                    }
-                });
+            if (loyaltyData) {
+                const totalPoints = loyaltyData.points;
+                const STAMPS_FOR_FREE = 9; // Updated to 9
+                // UI expects split between current progress and free items available, 
+                // but our new logic is "9 = Free". 
+                // Let's adapt: if we have 9 points, we show 9/9 and "Product Offered".
 
-                const STAMPS_FOR_FREE = 10;
-                const currentStamps = totalStamps % STAMPS_FOR_FREE;
-                const freeItems = Math.floor(totalStamps / STAMPS_FOR_FREE);
-
-                console.log(`[LOYALTY] Calculated from orders: ${totalStamps} total stamps, ${currentStamps} current, ${freeItems} free items`);
+                // For the new UI logic:
+                // We show strictly X/9.
+                // If points > 9, it means they have some free items stored? 
+                // The new admin logic seems to reset points when "offering".
+                // So points should go 0 -> 9. At 9 it's ready to redeem.
 
                 setLoyaltyInfo({
-                    stamps: currentStamps,
-                    total_stamps: totalStamps,
-                    free_items_available: freeItems
+                    stamps: totalPoints,
+                    total_stamps: totalPoints,
+                    free_items_available: totalPoints >= 9 ? 1 : 0
                 });
+            } else {
+                // If no loyalty record yet, perform initial calc or 0
+                setLoyaltyInfo({ stamps: 0, total_stamps: 0, free_items_available: 0 });
             }
+
         } catch (error) {
             console.error('Error:', error);
         } finally {
             setLoading(false);
         }
     };
+
+    // Real-time subscription for loyalty points
+    useEffect(() => {
+        if (!searched || phone.length < 10) return;
+
+        const channel = supabase
+            .channel('loyalty-updates-' + phone)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'loyalty_customers',
+                    filter: `phone=eq.${phone}`
+                },
+                (payload) => {
+                    console.log('🔔 Loyalty update received:', payload);
+                    if (payload.new && 'points' in payload.new) {
+                        const newPoints = (payload.new as any).points;
+                        setLoyaltyInfo({
+                            stamps: newPoints,
+                            total_stamps: newPoints,
+                            free_items_available: newPoints >= 9 ? 1 : 0
+                        });
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [searched, phone]);
 
     // Auto-search if phone is in URL
     useEffect(() => {
