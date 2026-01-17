@@ -11,6 +11,10 @@ const QUALIFYING_CATEGORIES = [
     'mlawi',
     'tacos',
     'panini',
+    'croques',
+    'texmex',
+    'salades',
+    'menus-midi',
 ];
 
 // Total stamps needed for a free item
@@ -175,7 +179,7 @@ export function LoyaltyStampCard({
 
             {/* Footer */}
             <div className="bg-muted/50 p-3 text-center text-xs text-muted-foreground">
-                <p>Achetez 9 produits (pizza, sandwich, soufflet, makloub, mlawi, tacos, panini)</p>
+                <p>Achetez 9 plats (Pizzas, Sandwichs, Tacos, Salades...)</p>
                 <p className="font-semibold text-primary mt-1">= 10ème produit GRATUIT (valeur 10€)! 🎁</p>
             </div>
         </Card >
