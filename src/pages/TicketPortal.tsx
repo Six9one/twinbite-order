@@ -69,6 +69,8 @@ export default function TicketPortal() {
                 .eq('customer_phone', phone)
                 .order('created_at', { ascending: false });
 
+            let totalStampsFromOrders = 0;
+
             if (ordersError) {
                 console.error('Error fetching orders:', ordersError);
             } else if (ordersData) {
@@ -89,12 +91,27 @@ export default function TicketPortal() {
                 if (mappedOrders.length > 0) {
                     setCustomerName(mappedOrders[0].customer_name || '');
                 }
+
+                // HARD FIX: Calculate stamps directly from ALL orders
+                // Qualifying categories for stamps
+                const qualifyingCategories = ['pizzas', 'soufflets', 'makloub', 'tacos', 'panini', 'salades', 'sandwiches', 'menus-midi'];
+
+                for (const order of ordersData) {
+                    const items = Array.isArray(order.items) ? order.items : [];
+                    for (const item of items) {
+                        // Handle both old format (item.item.category) and new format (item.category)
+                        const category = (item.item?.category || item.category || '').toLowerCase();
+                        const quantity = item.quantity || 1;
+
+                        if (qualifyingCategories.some(cat => category.includes(cat))) {
+                            totalStampsFromOrders += quantity;
+                        }
+                    }
+                }
+                console.log('[LOYALTY] Calculated stamps from orders:', totalStampsFromOrders);
             }
 
             // Fetch Loyalty from loyalty_customers table
-            // Note: SimpleLoyaltyManager uses 'points' field for tampons
-            // But LoyaltyContext addStamps uses 'stamps' field
-            // We check both and use whichever has data
             const { data: loyaltyData, error: loyaltyError } = await supabase
                 .from('loyalty_customers')
                 .select('points, stamps, total_stamps, free_items_available')
@@ -103,22 +120,27 @@ export default function TicketPortal() {
 
             const STAMPS_FOR_FREE = 9;
 
-            if (loyaltyData) {
-                // Priority: 'points' field (managed by SimpleLoyaltyManager admin panel)
-                // Fallback: 'stamps' field (managed by checkout addStamps)
-                const stampsValue = loyaltyData.points || loyaltyData.stamps || 0;
-                const totalStampsValue = loyaltyData.points || loyaltyData.total_stamps || 0;
-                const freeItems = loyaltyData.free_items_available || (stampsValue >= STAMPS_FOR_FREE ? 1 : 0);
+            // Use the MAXIMUM between database value and calculated value from orders
+            // This ensures we never show less than what's actually earned
+            let stampsFromDB = 0;
+            let freeItemsFromDB = 0;
 
-                setLoyaltyInfo({
-                    stamps: stampsValue,
-                    total_stamps: totalStampsValue,
-                    free_items_available: freeItems
-                });
-            } else {
-                // No loyalty record yet
-                setLoyaltyInfo({ stamps: 0, total_stamps: 0, free_items_available: 0 });
+            if (loyaltyData) {
+                stampsFromDB = loyaltyData.points || loyaltyData.stamps || loyaltyData.total_stamps || 0;
+                freeItemsFromDB = loyaltyData.free_items_available || 0;
             }
+
+            // Use calculated stamps if database shows 0 or less than calculated
+            const finalStamps = Math.max(stampsFromDB, totalStampsFromOrders);
+            const freeItems = freeItemsFromDB || Math.floor(finalStamps / STAMPS_FOR_FREE);
+
+            console.log('[LOYALTY] Final stamps:', finalStamps, '(DB:', stampsFromDB, ', Calculated:', totalStampsFromOrders, ')');
+
+            setLoyaltyInfo({
+                stamps: finalStamps,
+                total_stamps: finalStamps,
+                free_items_available: freeItems
+            });
 
         } catch (error) {
             console.error('Error:', error);
