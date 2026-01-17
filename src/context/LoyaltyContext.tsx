@@ -440,12 +440,14 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             const newStamps = newTotalStamps % STAMPS_FOR_FREE;
 
             // Update in database
+            // NOTE: Also update 'points' field because SimpleLoyaltyManager uses 'points' to display/manage "tampons"
             const { error } = await supabase
                 .from('loyalty_customers' as any)
                 .update({
                     stamps: newStamps,
                     total_stamps: newTotalStamps,
-                    free_items_available: currentFreeItems + newFreeItems
+                    free_items_available: currentFreeItems + newFreeItems,
+                    points: newTotalStamps // Sync points with total stamps for SimpleLoyaltyManager compatibility
                 })
                 .eq('id', customer.id);
 
