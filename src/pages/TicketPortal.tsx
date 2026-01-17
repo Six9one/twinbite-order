@@ -98,14 +98,22 @@ export default function TicketPortal() {
                 .eq('phone', phone)
                 .single();
 
+            // CALCULATE STAMPS FROM ALL ORDERS (live calculation!)
+            const qualifyingCategories = ['pizzas', 'sandwiches', 'soufflet', 'makloub', 'mlawi', 'tacos', 'panini'];
+            let totalStamps = 0;
+            const STAMPS_FOR_FREE = 9; // Updated to 9
+            // UI expects split between current progress and free items available, 
+            // but our new logic is "9 = Free". 
+            // Let's adapt: if we have 9 points, we show 9/9 and "Product Offered".
+
+            // For the new UI logic:
+            // We show strictly X/9.
+            // If points > 9, it means they have some free items stored? 
+            // The new admin logic seems to reset points when "offering".
+            // So points should go 0 -> 9. At 9 it's ready to redeem.
+
             if (loyaltyData) {
                 const totalPoints = loyaltyData.points;
-                const STAMPS_FOR_FREE = 9; // Updated to 9
-                // UI expects split between current progress and free items available, 
-                // but our new logic is "9 = Free". 
-                // Let's adapt: if we have 9 points, we show 9/9 and "Product Offered".
-
-                // For the new UI logic:
                 // We show strictly X/9.
                 // If points > 9, it means they have some free items stored? 
                 // The new admin logic seems to reset points when "offering".
