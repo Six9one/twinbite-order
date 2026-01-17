@@ -91,41 +91,32 @@ export default function TicketPortal() {
                 }
             }
 
-            // Fetch Loyalty Points from loyalty_customers table (Single Source of Truth)
+            // Fetch Loyalty from loyalty_customers table
+            // Note: SimpleLoyaltyManager uses 'points' field for tampons
+            // But LoyaltyContext addStamps uses 'stamps' field
+            // We check both and use whichever has data
             const { data: loyaltyData, error: loyaltyError } = await supabase
                 .from('loyalty_customers')
-                .select('points')
+                .select('points, stamps, total_stamps, free_items_available')
                 .eq('phone', phone)
                 .single();
 
-            // CALCULATE STAMPS FROM ALL ORDERS (live calculation!)
-            const qualifyingCategories = ['pizzas', 'soufflets', 'makloub', 'tacos', 'panini', 'salades', 'sandwiches', 'menus-midi'];
-            let totalStamps = 0;
-            const STAMPS_FOR_FREE = 9; // Updated to 9
-            // UI expects split between current progress and free items available, 
-            // but our new logic is "9 = Free". 
-            // Let's adapt: if we have 9 points, we show 9/9 and "Product Offered".
-
-            // For the new UI logic:
-            // We show strictly X/9.
-            // If points > 9, it means they have some free items stored? 
-            // The new admin logic seems to reset points when "offering".
-            // So points should go 0 -> 9. At 9 it's ready to redeem.
+            const STAMPS_FOR_FREE = 9;
 
             if (loyaltyData) {
-                const totalPoints = loyaltyData.points;
-                // We show strictly X/9.
-                // If points > 9, it means they have some free items stored? 
-                // The new admin logic seems to reset points when "offering".
-                // So points should go 0 -> 9. At 9 it's ready to redeem.
+                // Priority: 'points' field (managed by SimpleLoyaltyManager admin panel)
+                // Fallback: 'stamps' field (managed by checkout addStamps)
+                const stampsValue = loyaltyData.points || loyaltyData.stamps || 0;
+                const totalStampsValue = loyaltyData.points || loyaltyData.total_stamps || 0;
+                const freeItems = loyaltyData.free_items_available || (stampsValue >= STAMPS_FOR_FREE ? 1 : 0);
 
                 setLoyaltyInfo({
-                    stamps: totalPoints,
-                    total_stamps: totalPoints,
-                    free_items_available: totalPoints >= 9 ? 1 : 0
+                    stamps: stampsValue,
+                    total_stamps: totalStampsValue,
+                    free_items_available: freeItems
                 });
             } else {
-                // If no loyalty record yet, perform initial calc or 0
+                // No loyalty record yet
                 setLoyaltyInfo({ stamps: 0, total_stamps: 0, free_items_available: 0 });
             }
 
@@ -152,12 +143,15 @@ export default function TicketPortal() {
                 },
                 (payload) => {
                     console.log('🔔 Loyalty update received:', payload);
-                    if (payload.new && 'points' in payload.new) {
-                        const newPoints = (payload.new as any).points;
+                    if (payload.new) {
+                        const newData = payload.new as any;
+                        // Check both points and stamps fields
+                        const stampsValue = newData.points || newData.stamps || 0;
+                        const freeItems = newData.free_items_available || (stampsValue >= 9 ? 1 : 0);
                         setLoyaltyInfo({
-                            stamps: newPoints,
-                            total_stamps: newPoints,
-                            free_items_available: newPoints >= 9 ? 1 : 0
+                            stamps: stampsValue,
+                            total_stamps: stampsValue,
+                            free_items_available: freeItems
                         });
                     }
                 }
