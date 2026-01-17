@@ -141,41 +141,42 @@ export function LoyaltyStampCard({
                             <span className="font-bold">🎉 Plus qu'1 achat pour votre cadeau!</span>
                         </div>
                     ) : (
+                        <p className="text-sm text-muted-foreground">
                             <span className="font-semibold text-primary">{displayStamps}</span>
                             <span> / 9 tampons</span>
                             <span className="mx-2">•</span>
                             <span className="font-medium">Plus que {9 - displayStamps} pour la 10ème OFFERTE!</span>
                         </p>
                     )}
+                </div>
+
+                {/* Free items info */}
+                {freeItemsEarned > 0 && (
+                    <div className="mt-3 bg-green-100 border border-green-300 rounded-lg p-3 text-center animate-pulse">
+                        <p className="text-green-700 font-semibold">
+                            🎁 Vous avez {freeItemsEarned} produit{freeItemsEarned > 1 ? 's' : ''} GRATUIT{freeItemsEarned > 1 ? 'S' : ''} (valeur 10€)!
+                        </p>
+                        <p className="text-xs text-green-600 mt-1">
+                            Demandez-le lors de votre prochaine commande
+                        </p>
+                    </div>
+                )}
+
+                {/* New stamps earned celebration */}
+                {newStampsEarned > 0 && (
+                    <div className="mt-3 bg-amber-100 border border-amber-300 rounded-lg p-2 text-center">
+                        <p className="text-amber-700 font-medium">
+                            +{newStampsEarned} nouveau{newStampsEarned > 1 ? 'x' : ''} tampon{newStampsEarned > 1 ? 's' : ''} ajouté{newStampsEarned > 1 ? 's' : ''}! 🎊
+                        </p>
+                    </div>
+                )}
             </div>
 
-            {/* Free items info */}
-            {freeItemsEarned > 0 && (
-                <div className="mt-3 bg-green-100 border border-green-300 rounded-lg p-3 text-center animate-pulse">
-                    <p className="text-green-700 font-semibold">
-                        🎁 Vous avez {freeItemsEarned} produit{freeItemsEarned > 1 ? 's' : ''} GRATUIT{freeItemsEarned > 1 ? 'S' : ''} (valeur 10€)!
-                    </p>
-                    <p className="text-xs text-green-600 mt-1">
-                        Demandez-le lors de votre prochaine commande
-                    </p>
-                </div>
-            )}
-
-            {/* New stamps earned celebration */}
-            {newStampsEarned > 0 && (
-                <div className="mt-3 bg-amber-100 border border-amber-300 rounded-lg p-2 text-center">
-                    <p className="text-amber-700 font-medium">
-                        +{newStampsEarned} nouveau{newStampsEarned > 1 ? 'x' : ''} tampon{newStampsEarned > 1 ? 's' : ''} ajouté{newStampsEarned > 1 ? 's' : ''}! 🎊
-                    </p>
-                </div>
-            )}
-        </div>
-
-            {/* Footer */ }
-    <div className="bg-muted/50 p-3 text-center text-xs text-muted-foreground">
-        <p>Achetez 9 produits (pizza, sandwich, soufflet, makloub, mlawi, tacos)</p>
-        <p className="font-semibold text-primary mt-1">= 10ème produit GRATUIT (valeur 10€)! 🎁</p>
-    </div>
+            {/* Footer */}
+            <div className="bg-muted/50 p-3 text-center text-xs text-muted-foreground">
+                <p>Achetez 9 produits (pizza, sandwich, soufflet, makloub, mlawi, tacos)</p>
+                <p className="font-semibold text-primary mt-1">= 10ème produit GRATUIT (valeur 10€)! 🎁</p>
+            </div>
         </Card >
     );
 }
