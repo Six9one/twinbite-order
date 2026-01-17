@@ -533,8 +533,59 @@ async function handleNewOrder(order) {
     console.log(`   Total: ${order.total}€`);
     console.log(`${'='.repeat(50)}\n`);
 
+    console.log(`${'='.repeat(50)}\n`);
+
+    // Fetch loyalty info
+    let loyaltyText = '';
+    try {
+        if (order.customer_phone) {
+            const { data: customer } = await supabase
+                .from('loyalty_customers')
+                .select('points')
+                .eq('phone', order.customer_phone)
+                .single();
+
+            if (customer) {
+                const points = customer.points;
+                const pointsNeeded = 9;
+
+                if (points >= pointsNeeded) {
+                    loyaltyText = '\n' + ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT +
+                        '*** 10eme OFFERTE ! ***\n(Valeur 10 EUR)\n' +
+                        ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF +
+                        `Solde: ${points} Tampons\n`;
+                } else {
+                    loyaltyText = '\n' + ESCPOS.CENTER + ESCPOS.BOLD_ON +
+                        `FIDELITE: ${points}/${pointsNeeded}\n` +
+                        ESCPOS.BOLD_OFF +
+                        `Plus que ${pointsNeeded - points} pour la gratuite!\n`;
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Error fetching loyalty for ticket:', err.message);
+    }
+
     // Format and print
-    const ticketData = formatOrderForPrint(order);
+    let ticketData = formatOrderForPrint(order);
+
+    // Inject loyalty text before the cut/footer if we have it
+    // We append it before the final cut command
+    if (loyaltyText) {
+        // Remove the final cut command from original ticket
+        // This is a bit hacky but avoids rewriting the whole format function immediately
+        // Better approach: Modify formatOrderForPrint to accept an optional footer text
+        // For now, let's just append it before the very end
+        const cutIndex = ticketData.lastIndexOf(ESCPOS.PARTIAL_CUT);
+        if (cutIndex !== -1) {
+            ticketData = ticketData.substring(0, cutIndex) +
+                ESCPOS.CENTER + '--------------------------------\n' +
+                loyaltyText +
+                '\n\n' +
+                ESCPOS.PARTIAL_CUT;
+        }
+    }
+
     const success = await printWithRetry(ticketData, order.order_number);
 
     if (success) {
