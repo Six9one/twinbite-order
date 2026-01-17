@@ -155,7 +155,7 @@ export function SimpleLoyaltyManager() {
                 <Gift className="w-5 h-5 text-amber-600 mt-0.5" />
                 <div>
                     <p className="font-bold">Gestion des Tampons</p>
-                    <p className="text-sm">Gérez les tampons clients. <br />10 Tampons = 1 Pizza/Offre (au choix). <br />Utilisez <CheckCircle className="w-3 h-3 inline text-green-600" /> pour valider une carte pleine.</p>
+                    <p className="text-sm">Gérez les tampons clients. <br />9 Tampons = 10ème Pizza/Offre Offerte (Valeur 10€). <br />Au 9ème tampon, le bouton <CheckCircle className="w-3 h-3 inline text-green-600" /> apparaîtra pour valider le cadeau.</p>
                 </div>
             </div>
 
