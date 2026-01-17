@@ -10,10 +10,11 @@ import { useState, useEffect } from 'react';
     'panini',
     'salades',
     'sandwiches',
+    'menus-midi',
 ];
 
 // Total stamps needed for a free item
-const STAMPS_FOR_FREE = 10;
+const STAMPS_FOR_FREE = 9;
 
 interface LoyaltyStampCardProps {
     currentStamps: number;
@@ -174,7 +175,7 @@ export function LoyaltyStampCard({
 
             {/* Footer */}
             <div className="bg-muted/50 p-3 text-center text-xs text-muted-foreground">
-                <p>Achetez 9 produits (pizzas, sandwichs, soufflés, makloubs, tacos, paninis, salades)</p>
+                <p>Achetez 9 produits (pizzas, sandwichs, soufflés, makloubs, tacos, paninis, salades, menus midi)</p>
                 <p className="font-semibold text-primary mt-1">= 10ème produit GRATUIT (valeur 10€)! 🎁</p>
             </div>
         </Card >
