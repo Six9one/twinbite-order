@@ -206,6 +206,9 @@ def init_whatsapp():
     # Don't run headless - we need to see QR code
     # chrome_options.add_argument("--headless")
     
+    # Suppress logging
+    chrome_options.add_argument("--log-level=3")
+    
     try:
         safe_print("[*] Telechargement du ChromeDriver...")
         # Initialize Chrome driver with explicit driver type for Windows

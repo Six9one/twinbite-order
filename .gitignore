@@ -27,3 +27,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python
+whatsapp-bot-python/venv/
+whatsapp-bot-python/__pycache__/
+whatsapp-bot-python/whatsapp_session/
+
+# Node
+print-server/node_modules/
+
