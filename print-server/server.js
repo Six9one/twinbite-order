@@ -612,9 +612,9 @@ async function setupRealtimeSubscription() {
         await supabase.removeChannel(channel);
     }
 
-    // Subscribe to new orders via real-time
+    // Subscribe to new orders AND HACCP print queue via real-time
     channel = supabase
-        .channel('orders-print-' + Date.now()) //  Unique channel name to force new connection
+        .channel('print-server-' + Date.now()) //  Unique channel name to force new connection
         .on(
             'postgres_changes',
             {
@@ -628,10 +628,23 @@ async function setupRealtimeSubscription() {
                 handleNewOrder(payload.new);
             }
         )
+        .on(
+            'postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'haccp_print_queue'
+            },
+            (payload) => {
+                console.log('🧾 Received HACCP print job');
+                reconnectAttempts = 0;
+                handleHACCPPrint(payload.new);
+            }
+        )
         .subscribe((status) => {
             if (status === 'SUBSCRIBED') {
                 console.log('✅ Connected to Supabase real-time!');
-                console.log('👂 Listening for new orders...\n');
+                console.log('👂 Listening for orders + HACCP prints...\n');
                 reconnectAttempts = 0;
             } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
                 console.error(`❌ Channel status: ${status}`);
@@ -641,6 +654,38 @@ async function setupRealtimeSubscription() {
                 handleDisconnect();
             }
         });
+}
+
+// Handle HACCP print job from queue
+async function handleHACCPPrint(job) {
+    console.log(`\n${'='.repeat(50)}`);
+    console.log(`🧾 HACCP PRINT: ${job.product_name}`);
+    console.log(`   Category: ${job.category_name}`);
+    console.log(`   DLC: ${job.dlc_date}`);
+    console.log(`${'='.repeat(50)}\n`);
+
+    const ticketData = formatHACCPTicket({
+        productName: job.product_name,
+        categoryName: job.category_name,
+        categoryColor: job.category_color,
+        actionDate: job.action_date,
+        dlcDate: job.dlc_date,
+        storageTemp: job.storage_temp,
+        operator: job.operator,
+        dlcHours: job.dlc_hours,
+        actionLabel: job.action_label,
+    });
+
+    const success = await printWithRetry(ticketData, `HACCP-${job.product_name}`);
+
+    // Mark as printed
+    if (success) {
+        await supabase
+            .from('haccp_print_queue')
+            .update({ printed: true })
+            .eq('id', job.id);
+        console.log('✅ HACCP ticket printed successfully');
+    }
 }
 
 async function handleDisconnect() {

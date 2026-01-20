@@ -1,15 +1,10 @@
 // Print Server Configuration
-// Used for direct thermal printing from admin panels
+// Used for direct thermal printing from admin panels via Supabase realtime
 
-// Get the print server URL based on environment
-// When on the same PC as print-server: localhost
-// When on phone/other device: use the PC's network IP
-export const PRINT_SERVER_URL =
-    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:3001'
-        : 'http://192.168.1.100:3001'; // Update this to your Pizza PC's local IP
+import { supabase } from '@/integrations/supabase/client';
 
-// Print HACCP ticket directly to thermal printer
+// Print HACCP ticket by adding to print queue
+// The print server listens for new entries via Supabase realtime
 export async function printHACCPDirect(data: {
     productName: string;
     categoryName: string;
@@ -22,21 +17,28 @@ export async function printHACCPDirect(data: {
     actionLabel: string;
 }): Promise<boolean> {
     try {
-        const response = await fetch(`${PRINT_SERVER_URL}/print-haccp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        });
+        const { error } = await supabase
+            .from('haccp_print_queue' as any)
+            .insert({
+                product_name: data.productName,
+                category_name: data.categoryName,
+                category_color: data.categoryColor,
+                action_date: data.actionDate,
+                dlc_date: data.dlcDate,
+                storage_temp: data.storageTemp,
+                operator: data.operator,
+                dlc_hours: data.dlcHours,
+                action_label: data.actionLabel,
+            } as any);
 
-        if (!response.ok) {
-            const error = await response.json();
-            console.error('Print error:', error);
+        if (error) {
+            console.error('Failed to queue HACCP print:', error);
             return false;
         }
 
         return true;
     } catch (error) {
-        console.error('Failed to connect to print server:', error);
+        console.error('Failed to queue HACCP print:', error);
         return false;
     }
 }
