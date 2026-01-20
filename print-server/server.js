@@ -4,6 +4,8 @@ import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
+import express from 'express';
+import cors from 'cors';
 
 // Load environment variables
 const __filename = fileURLToPath(import.meta.url);
@@ -675,6 +677,133 @@ function startHeartbeat() {
     }, HEARTBEAT_INTERVAL);
 }
 
+// ============================================
+// HTTP SERVER FOR HACCP DIRECT PRINTING
+// ============================================
+const HTTP_PORT = process.env.HTTP_PORT || 3001;
+
+// Format HACCP ticket for ESC/POS printing
+function formatHACCPTicket(data) {
+    const { productName, categoryName, categoryColor, actionDate, dlcDate, storageTemp, operator, dlcHours, actionLabel } = data;
+
+    let ticket = '';
+
+    // Initialize printer and set code page for French characters
+    ticket += ESCPOS.INIT;
+    ticket += ESCPOS.SET_CODEPAGE_1252;
+
+    // Header
+    ticket += ESCPOS.CENTER;
+    ticket += ESCPOS.DOUBLE_SIZE;
+    ticket += ESCPOS.BOLD_ON;
+    ticket += 'HACCP\n';
+    ticket += ESCPOS.NORMAL_SIZE;
+    ticket += 'TWIN PIZZA\n';
+    ticket += ESCPOS.BOLD_OFF;
+    ticket += ESCPOS.LINE_42;
+
+    // Category
+    ticket += ESCPOS.BOLD_ON;
+    ticket += categoryName + '\n';
+    ticket += ESCPOS.BOLD_OFF;
+    ticket += '\n';
+
+    // Product name (large)
+    ticket += ESCPOS.DOUBLE_SIZE;
+    ticket += ESCPOS.BOLD_ON;
+    ticket += productName + '\n';
+    ticket += ESCPOS.NORMAL_SIZE;
+    ticket += ESCPOS.BOLD_OFF;
+    ticket += '\n';
+
+    // Action date
+    ticket += ESCPOS.LEFT;
+    ticket += ESCPOS.LINE_42;
+    ticket += actionLabel + ': ' + actionDate + '\n';
+    ticket += '\n';
+
+    // DLC (highlighted)
+    ticket += ESCPOS.CENTER;
+    ticket += ESCPOS.BOLD_ON;
+    ticket += ESCPOS.DOUBLE_HEIGHT;
+    ticket += '*** DATE LIMITE ***\n';
+    ticket += dlcDate + '\n';
+    ticket += ESCPOS.NORMAL_SIZE;
+    ticket += '(+' + dlcHours + ' heures)\n';
+    ticket += ESCPOS.BOLD_OFF;
+    ticket += '\n';
+
+    // Storage temp
+    ticket += ESCPOS.LEFT;
+    ticket += 'Conservation: ' + storageTemp + '\n';
+    ticket += '\n';
+
+    // Rules
+    ticket += ESCPOS.BOLD_ON;
+    ticket += 'ETIQUETER - Frigo 0-3C\n';
+    ticket += ESCPOS.BOLD_OFF;
+    ticket += ESCPOS.LINE_42;
+
+    // Footer
+    ticket += ESCPOS.CENTER;
+    ticket += new Date().toLocaleString('fr-FR') + '\n';
+    ticket += 'Operateur: ' + operator + '\n';
+    ticket += '\n';
+
+    // Cut
+    ticket += ESCPOS.FEED;
+    ticket += ESCPOS.PARTIAL_CUT;
+
+    return convertToCP1252(ticket);
+}
+
+// Setup Express HTTP server
+function setupHttpServer() {
+    const app = express();
+    app.use(cors());
+    app.use(express.json());
+
+    // Health check endpoint
+    app.get('/health', (req, res) => {
+        res.json({ status: 'ok', printer: PRINTER_IP });
+    });
+
+    // HACCP print endpoint
+    app.post('/print-haccp', async (req, res) => {
+        console.log('\n📥 HACCP print request received');
+
+        try {
+            const data = req.body;
+
+            if (!data.productName || !data.categoryName) {
+                return res.status(400).json({ error: 'Missing required fields' });
+            }
+
+            console.log(`   Product: ${data.productName}`);
+            console.log(`   Category: ${data.categoryName}`);
+
+            const ticketData = formatHACCPTicket(data);
+            const success = await printWithRetry(ticketData, `HACCP-${data.productName}`);
+
+            if (success) {
+                console.log('✅ HACCP ticket printed successfully');
+                res.json({ success: true, message: 'Ticket printed' });
+            } else {
+                console.error('❌ Failed to print HACCP ticket');
+                res.status(500).json({ error: 'Print failed after retries' });
+            }
+        } catch (error) {
+            console.error('❌ HACCP print error:', error.message);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    app.listen(HTTP_PORT, '0.0.0.0', () => {
+        console.log(`🌐 HTTP server listening on port ${HTTP_PORT}`);
+        console.log(`   HACCP endpoint: http://localhost:${HTTP_PORT}/print-haccp`);
+    });
+}
+
 async function startServer() {
     console.log(`
 ╔════════════════════════════════════════════════════════╗
@@ -704,6 +833,9 @@ async function startServer() {
     // Start heartbeat monitoring
     startHeartbeat();
 
+    // Start HTTP server for HACCP printing
+    setupHttpServer();
+
     // Handle graceful shutdown
     process.on('SIGINT', async () => {
         console.log('\n👋 Shutting down print server...');
@@ -716,3 +848,4 @@ async function startServer() {
 
 // Run the server
 startServer().catch(console.error);
+

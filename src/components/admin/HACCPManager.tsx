@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { printHACCPDirect } from '@/config/printConfig';
 import {
     Snowflake, Leaf, Printer, History,
     Clock, Thermometer, AlertTriangle, CheckCircle,
@@ -163,15 +164,30 @@ export function HACCPManager() {
 
             console.log('✅ HACCP: Inserted successfully', insertedData);
 
-            // Print ticket
-            printHACCPTicket(product, category, now, dlcDate, storageTemp, userName);
+            // Print ticket directly to thermal printer
+            const actionLabel = category.slug === 'congele-decongele' ? 'Décongélation' : 'Ouverture';
+            const printSuccess = await printHACCPDirect({
+                productName: product.name,
+                categoryName: category.name,
+                categoryColor: category.color,
+                actionDate: now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                dlcDate: dlcDate.toLocaleDateString('fr-FR') + ' ' + dlcDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                storageTemp,
+                operator: userName,
+                dlcHours,
+                actionLabel,
+            });
 
-            // Refresh history with await
+            // Refresh history
             console.log('🔄 HACCP: Refreshing history...');
             await fetchHistory();
             console.log('✅ HACCP: History refreshed, count:', history.length);
 
-            toast.success(`✅ Ticket HACCP imprimé pour ${product.name}`);
+            if (printSuccess) {
+                toast.success(`✅ Ticket HACCP imprimé pour ${product.name}`);
+            } else {
+                toast.warning(`⚠️ Enregistré mais impression échouée - vérifiez le serveur d'impression`);
+            }
         } catch (error) {
             console.error('❌ HACCP error:', error);
             toast.error('Erreur lors de l\'enregistrement HACCP');
