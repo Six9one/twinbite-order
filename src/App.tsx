@@ -20,6 +20,7 @@ import TVDashboard from "./pages/TVDashboard";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 import TicketPortal from "./pages/TicketPortal";
+import CrewDashboard from "./pages/CrewDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,12 +34,13 @@ const App = () => (
           <Sonner />
           <OfflineIndicator />
           <UpdateChecker />
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/admin" element={<AdminLogin />} />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/tv" element={<TVDashboard />} />
+              <Route path="/crew" element={<CrewDashboard />} />
               <Route path="/payment-success" element={<PaymentSuccess />} />
               <Route path="/payment-cancel" element={<PaymentCancel />} />
               <Route path="/ticket" element={<TicketPortal />} />
