@@ -25,7 +25,7 @@ class TwinPizzaApp(QMainWindow):
         self.resize(1400, 800)
         
         # Auto-start dev server if not running
-        if not is_port_open(5173):
+        if not is_port_open(8080):
             print("[*] Starting npm run dev...")
             subprocess.Popen(
                 'start "Ordering UI Server" cmd /k "npm run dev"',
@@ -84,7 +84,7 @@ class TwinPizzaApp(QMainWindow):
         QTimer.singleShot(3000, self.reload_order_view)
         
     def reload_order_view(self):
-        self.order_view.load(QUrl("http://localhost:5173"))
+        self.order_view.load(QUrl("http://localhost:8080"))
         self.status_label.setText("Services: Ready")
     
     def start_dev_server(self):
