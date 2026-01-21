@@ -20,7 +20,7 @@ timeout /t 5 /nobreak >nul
 echo [*] Opening Twin Pizza in your browser...
 
 REM Open in default browser
-start http://localhost:5173
+start http://localhost:8080
 
 echo.
 echo [*] Done! The ordering UI should now be open in your browser.
