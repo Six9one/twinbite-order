@@ -314,7 +314,7 @@ export default function TicketPortal() {
                                         >
                                             <div className="flex justify-between items-start">
                                                 <div>
-                                                    <p className="font-bold text-lg">#{order.order_number}</p>
+                                                    <p className="font-bold text-lg">{order.order_number}</p>
                                                     <p className="text-sm text-muted-foreground">
                                                         {format(new Date(order.created_at), "d MMM yyyy 'à' HH:mm", { locale: fr })}
                                                     </p>

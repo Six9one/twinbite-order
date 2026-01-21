@@ -20,7 +20,7 @@ export default function PaymentCancel() {
         </p>
         {orderNumber && (
           <p className="text-sm text-muted-foreground mb-6">
-            Commande #{orderNumber}
+            Commande {orderNumber}
           </p>
         )}
         <div className="space-y-3">

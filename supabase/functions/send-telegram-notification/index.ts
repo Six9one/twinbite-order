@@ -60,12 +60,19 @@ serve(async (req) => {
       if (!customization) return '';
       const parts: string[] = [];
 
-      // Size is NOT shown - it's already in the product name (e.g., "Soufflet Double")
+      // Check if this is a pizza (by product name)
+      const isPizza = productName.toLowerCase().includes('pizza');
 
-      // Base (pizza)
-      if (customization.base) {
-        parts.push(customization.base === 'creme' ? 'Base crème' : 'Base tomate');
+      // Show pizza SIZE prominently (MEGA in bold) - ONLY FOR PIZZAS
+      if (isPizza && customization.size) {
+        const sizeText = customization.size.toUpperCase() === 'MEGA'
+          ? '*MEGA*'
+          : customization.size.toUpperCase();
+        parts.push(`📏 ${sizeText}`);
       }
+
+      // Remove base sauce from display - not needed
+      // Was: if (customization.base) { parts.push(customization.base === 'creme' ? 'Base crème' : 'Base tomate'); }
 
       // Menu Midi
       if (customization.isMenuMidi) {

@@ -39,15 +39,14 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
   const subtotal = pizzaPromo.discountedTotal + otherTotal;
 
   // Delivery fee logic: 
-  // - If there's pizza in cart → NO delivery fee (pizza has its own 1+1 promo)
-  // - If no pizza → free if >= 25€, else 5€ fee
+  // - Orders < 25€ → 5€ delivery fee
+  // - Orders >= 25€ → FREE delivery
   const FREE_DELIVERY_THRESHOLD = 25;
   const DELIVERY_FEE = 5;
   const isDelivery = orderType === 'livraison';
-  const hasPizza = pizzaItems.length > 0;
-  const qualifiesForFreeDelivery = hasPizza || otherTotal >= FREE_DELIVERY_THRESHOLD;
+  const qualifiesForFreeDelivery = subtotal >= FREE_DELIVERY_THRESHOLD;
   const deliveryFee = isDelivery && !qualifiesForFreeDelivery ? DELIVERY_FEE : 0;
-  const amountToFreeDelivery = FREE_DELIVERY_THRESHOLD - otherTotal;
+  const amountToFreeDelivery = FREE_DELIVERY_THRESHOLD - subtotal;
 
   const total = subtotal + deliveryFee;
 
