@@ -17,13 +17,13 @@ REM Wait for server to start
 echo [*] Waiting for server to start (5s)...
 timeout /t 5 /nobreak >nul
 
-echo [*] Opening Twin Pizza in Edge App Mode...
+echo [*] Opening Twin Pizza in your browser...
 
-REM Open Edge in app mode (no address bar, looks like an app)
-start "" msedge --app=http://localhost:5173 --start-maximized
+REM Open in default browser
+start http://localhost:5173
 
 echo.
-echo [*] Done! The ordering UI should now be open.
-echo [*] You can close this window.
+echo [*] Done! The ordering UI should now be open in your browser.
+echo [*] Keep this CMD window open (it runs the server).
 echo.
 pause
