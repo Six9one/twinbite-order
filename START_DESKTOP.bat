@@ -22,11 +22,15 @@ if %errorlevel% neq 0 (
 
 REM Launch the app using the python venv
 echo [*] Launching Desktop Dashboard...
+echo.
 whatsapp-bot-python\venv\Scripts\python.exe desktop_app.py
 
+echo.
+echo [*] App closed.
 if %errorlevel% neq 0 (
     echo.
-    echo [!] Error: Could not launch the app.
-    echo [!] Make sure you are running this from the project folder.
-    pause
+    echo [!] Error code: %errorlevel%
+    echo [!] There was an error running the app.
 )
+echo.
+pause
