@@ -3,8 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Sun, Moon, Thermometer, CheckCircle, AlertTriangle, Clock, RefreshCw, ChevronRight } from 'lucide-react';
+import { Sun, Moon, Thermometer, CheckCircle, AlertTriangle, Clock, RefreshCw, ChevronRight, Plus, X, Snowflake, Settings } from 'lucide-react';
 
 interface Equipment {
     id: string;
@@ -16,7 +18,6 @@ interface Equipment {
     display_order: number;
     image_url: string | null;
 }
-
 
 interface Shift {
     id: string;
@@ -47,6 +48,8 @@ export function TemperatureRoundsTab() {
     const [loading, setLoading] = useState(true);
     const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
     const [showKeypad, setShowKeypad] = useState(false);
+    const [showAddEquipment, setShowAddEquipment] = useState(false);
+    const [showManage, setShowManage] = useState(false);
     const today = new Date().toISOString().split('T')[0];
 
     useEffect(() => { fetchData(); }, []);
@@ -124,14 +127,25 @@ export function TemperatureRoundsTab() {
 
     const getCompletedCount = () => currentShift ? tempLogs.filter(l => l.shift_id === currentShift.id).length : 0;
 
+    const deleteEquipment = async (id: string) => {
+        await supabase.from('kitchen_equipment' as any).update({ is_active: false } as any).eq('id', id);
+        setEquipment(prev => prev.filter(e => e.id !== id));
+        toast.success('Équipement supprimé');
+    };
+
     if (loading) return <div className="flex items-center justify-center py-12"><RefreshCw className="w-8 h-8 text-orange-500 animate-spin" /></div>;
 
     if (!currentShift) {
         return (
             <div className="space-y-6">
-                <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-white mb-2">Relevés Température</h2>
-                    <p className="text-slate-400">Sélectionnez le relevé à effectuer</p>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="text-center flex-1">
+                        <h2 className="text-2xl font-bold text-white mb-2">Relevés Température</h2>
+                        <p className="text-slate-400">Sélectionnez le relevé à effectuer</p>
+                    </div>
+                    <Button variant="outline" size="icon" onClick={() => setShowManage(true)} className="border-slate-600 text-slate-400 hover:text-white">
+                        <Settings className="h-5 w-5" />
+                    </Button>
                 </div>
                 <div className="grid gap-4">
                     <Button onClick={() => startShift('Morning')} disabled={getShiftStatus('Morning') === 'completed'}
@@ -164,6 +178,40 @@ export function TemperatureRoundsTab() {
                         <Badge variant={getShiftStatus('Night') === 'completed' ? 'default' : 'secondary'} className={getShiftStatus('Night') === 'completed' ? 'bg-green-600' : ''}><Moon className="w-3 h-3 mr-1" />Soir: {getShiftStatus('Night') === 'completed' ? 'OK' : 'En attente'}</Badge>
                     </div>
                 </Card>
+
+                {/* Equipment Management Modal */}
+                {showManage && (
+                    <div className="fixed inset-0 bg-black/95 z-50 flex flex-col">
+                        <div className="flex items-center justify-between p-4 bg-slate-900/80">
+                            <span className="text-xl font-bold text-white flex items-center gap-2"><Settings className="h-6 w-6" />Gérer les équipements</span>
+                            <Button variant="ghost" size="icon" onClick={() => setShowManage(false)} className="text-white hover:bg-slate-800"><X className="h-6 w-6" /></Button>
+                        </div>
+                        <div className="flex-1 p-4 overflow-auto space-y-3">
+                            {equipment.map(e => (
+                                <Card key={e.id} className="p-4 bg-slate-800 border-slate-700 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-lg ${e.type === 'freezer' ? 'bg-blue-500/20' : 'bg-orange-500/20'}`}>
+                                            {e.type === 'freezer' ? <Snowflake className="h-6 w-6 text-blue-400" /> : <Thermometer className="h-6 w-6 text-orange-400" />}
+                                        </div>
+                                        <div>
+                                            <span className="text-white font-medium block">{e.name}</span>
+                                            <span className="text-slate-400 text-sm">{e.location || (e.type === 'freezer' ? 'Congélateur' : 'Frigo')} • Max {e.max_temp}°C</span>
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="icon" onClick={() => deleteEquipment(e.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/20"><X className="h-5 w-5" /></Button>
+                                </Card>
+                            ))}
+                        </div>
+                        <div className="p-4 bg-slate-900/80">
+                            <Button onClick={() => { setShowManage(false); setShowAddEquipment(true); }} className="w-full h-14 bg-green-600 hover:bg-green-700">
+                                <Plus className="mr-2 h-5 w-5" />Ajouter un équipement
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Add Equipment Modal */}
+                {showAddEquipment && <AddEquipmentModal onClose={() => setShowAddEquipment(false)} onSave={() => { setShowAddEquipment(false); fetchData(); }} />}
             </div>
         );
     }
@@ -195,7 +243,7 @@ export function TemperatureRoundsTab() {
                                     <img src={equip.image_url} alt={equip.name} className="w-16 h-16 object-cover rounded-lg border-2 border-slate-600" />
                                 ) : (
                                     <div className={`p-3 rounded-lg ${isFreezer ? 'bg-blue-500/20' : 'bg-orange-500/20'}`}>
-                                        <Thermometer className={`h-8 w-8 ${isFreezer ? 'text-blue-400' : 'text-orange-400'}`} />
+                                        {isFreezer ? <Snowflake className="h-8 w-8 text-blue-400" /> : <Thermometer className="h-8 w-8 text-orange-400" />}
                                     </div>
                                 )}
                                 <div className="text-left">
@@ -212,8 +260,76 @@ export function TemperatureRoundsTab() {
                     );
                 })}
             </div>
-
             {showKeypad && selectedEquipment && <TemperatureKeypadWithCorrectiveAction equipment={selectedEquipment} onSave={handleSaveTemperature} onClose={() => { setShowKeypad(false); setSelectedEquipment(null); }} />}
+        </div>
+    );
+}
+
+// Add Equipment Modal Component
+function AddEquipmentModal({ onClose, onSave }: { onClose: () => void; onSave: () => void }) {
+    const [name, setName] = useState('');
+    const [type, setType] = useState<'fridge' | 'freezer'>('fridge');
+    const [location, setLocation] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+        if (!name.trim()) { toast.error('Nom requis'); return; }
+        setSaving(true);
+        const maxTemp = type === 'fridge' ? 4 : -18;
+        const minTemp = type === 'fridge' ? 0 : -25;
+        const { error } = await supabase.from('kitchen_equipment' as any).insert({
+            name: name.trim(),
+            type,
+            location: location.trim() || null,
+            min_temp: minTemp,
+            max_temp: maxTemp,
+            display_order: 99,
+            is_active: true
+        } as any);
+        if (error) { toast.error('Erreur'); setSaving(false); return; }
+        toast.success(`✅ ${name} ajouté!`);
+        onSave();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/95 z-50 flex flex-col">
+            <div className="flex items-center justify-between p-4 bg-slate-900/80">
+                <span className="text-xl font-bold text-white flex items-center gap-2"><Plus className="h-6 w-6 text-green-500" />Ajouter un équipement</span>
+                <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-slate-800"><X className="h-6 w-6" /></Button>
+            </div>
+            <div className="flex-1 p-4 space-y-6">
+                <div className="space-y-2">
+                    <Label className="text-slate-300">Type *</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <Button onClick={() => setType('fridge')} className={`h-20 flex flex-col gap-2 ${type === 'fridge' ? 'bg-orange-600 border-2 border-orange-400' : 'bg-slate-800 border-2 border-slate-600'}`}>
+                            <Thermometer className="h-8 w-8" />
+                            <span>🧊 Frigo</span>
+                        </Button>
+                        <Button onClick={() => setType('freezer')} className={`h-20 flex flex-col gap-2 ${type === 'freezer' ? 'bg-blue-600 border-2 border-blue-400' : 'bg-slate-800 border-2 border-slate-600'}`}>
+                            <Snowflake className="h-8 w-8" />
+                            <span>❄️ Congélateur</span>
+                        </Button>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-slate-300">Nom *</Label>
+                    <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Frigo Préparation, Congélo Arrière..." className="bg-slate-900 border-slate-600 text-white h-14 text-lg" />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-slate-300">Emplacement</Label>
+                    <Input value={location} onChange={e => setLocation(e.target.value)} placeholder="Ex: Cuisine, Réserve, Arrière..." className="bg-slate-900 border-slate-600 text-white h-14 text-lg" />
+                </div>
+                <Card className="p-4 bg-slate-800/50 border-slate-700">
+                    <p className="text-slate-400 text-sm">Températures par défaut:</p>
+                    <p className="text-white font-medium">{type === 'fridge' ? '🧊 Frigo: 0°C à +4°C' : '❄️ Congélateur: -25°C à -18°C'}</p>
+                </Card>
+            </div>
+            <div className="p-4 bg-slate-900/80 flex gap-3">
+                <Button variant="outline" onClick={onClose} disabled={saving} className="flex-1 h-14 border-slate-600 text-slate-300">Annuler</Button>
+                <Button onClick={handleSave} disabled={saving || !name.trim()} className="flex-1 h-14 bg-green-600 hover:bg-green-700">
+                    {saving ? <RefreshCw className="mr-2 h-5 w-5 animate-spin" /> : <Plus className="mr-2 h-5 w-5" />}Ajouter
+                </Button>
+            </div>
         </div>
     );
 }
@@ -258,7 +374,7 @@ function TemperatureKeypadWithCorrectiveAction({ equipment, onSave, onClose }: {
 
     return (
         <div className="fixed inset-0 bg-black/95 z-50 flex flex-col">
-            <div className="flex items-center justify-between p-4 bg-slate-900/80"><div className="flex items-center gap-3"><Thermometer className="h-6 w-6 text-orange-500" /><span className="text-xl font-bold text-white truncate">{equipment.name}</span></div><Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-slate-800">✕</Button></div>
+            <div className="flex items-center justify-between p-4 bg-slate-900/80"><div className="flex items-center gap-3">{equipment.type === 'freezer' ? <Snowflake className="h-6 w-6 text-blue-400" /> : <Thermometer className="h-6 w-6 text-orange-500" />}<span className="text-xl font-bold text-white truncate">{equipment.name}</span></div><Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-slate-800">✕</Button></div>
             <div className="flex-1 flex flex-col items-center justify-center p-4">
                 <div className="text-center mb-8"><div className="text-7xl font-bold text-white mb-2">{currentTemp}<span className="text-4xl text-slate-400">°C</span></div><p className="text-slate-400">{equipment.type === 'fridge' ? '🧊 Réfrigérateur' : '❄️ Congélateur'} (max {equipment.max_temp}°C)</p></div>
                 <div className="w-full max-w-sm">
