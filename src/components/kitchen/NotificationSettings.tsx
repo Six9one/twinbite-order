@@ -145,16 +145,18 @@ export function NotificationSettings() {
                                 toast.success('🧪 Test: Matin dans 30s, Soir dans 60s!');
                                 setTimeout(() => {
                                     showNotification('☀️ Relevé Matin (TEST)', {
-                                        body: 'Il est temps de faire le relevé température du matin!',
+                                        body: 'Cliquez pour ouvrir le relevé matin!',
                                         tag: 'test-morning',
                                         requireInteraction: true,
+                                        data: { url: '/kitchen?tab=temp-rounds&shift=Morning' },
                                     });
                                 }, 30000);
                                 setTimeout(() => {
                                     showNotification('🌙 Relevé Soir (TEST)', {
-                                        body: 'Il est temps de faire le relevé température du soir!',
+                                        body: 'Cliquez pour ouvrir le relevé soir!',
                                         tag: 'test-night',
                                         requireInteraction: true,
+                                        data: { url: '/kitchen?tab=temp-rounds&shift=Night' },
                                     });
                                 }, 60000);
                             }}

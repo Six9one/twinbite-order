@@ -39,9 +39,11 @@ export function getNotificationPermission(): NotificationPermission {
     return Notification.permission;
 }
 
-// Show a notification immediately
-export function showNotification(title: string, options?: NotificationOptions): void {
+// Show a notification immediately with click redirect
+export function showNotification(title: string, options?: NotificationOptions & { data?: { url?: string } }): void {
     if (getNotificationPermission() !== 'granted') return;
+
+    const redirectUrl = options?.data?.url;
 
     const notification = new Notification(title, {
         icon: '/pizza-icon.png',
@@ -49,12 +51,17 @@ export function showNotification(title: string, options?: NotificationOptions): 
         ...options,
     });
 
-    notification.onclick = () => {
-        window.focus();
-        if (options?.data?.url) {
-            window.location.href = options.data.url;
-        }
+    notification.onclick = (event) => {
+        event.preventDefault();
         notification.close();
+
+        // Focus the window
+        window.focus();
+
+        // Redirect if URL provided
+        if (redirectUrl) {
+            window.location.href = redirectUrl;
+        }
     };
 }
 
