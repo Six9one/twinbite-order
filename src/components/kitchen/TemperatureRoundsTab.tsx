@@ -10,10 +10,13 @@ interface Equipment {
     id: string;
     name: string;
     type: 'fridge' | 'freezer';
+    location: string;
     min_temp: number;
     max_temp: number;
     display_order: number;
+    image_url: string | null;
 }
+
 
 interface Shift {
     id: string;
@@ -186,25 +189,30 @@ export function TemperatureRoundsTab() {
                     const isFreezer = equip.type === 'freezer';
                     return (
                         <Button key={equip.id} onClick={() => handleEquipmentClick(equip)} disabled={status !== 'pending'}
-                            className={`h-20 justify-between px-4 rounded-xl ${status === 'ok' ? 'bg-green-600/20 border-2 border-green-500/50 text-green-400' : status === 'warning' ? 'bg-red-600/20 border-2 border-red-500/50 text-red-400' : 'bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 text-white'}`}>
+                            className={`h-24 justify-between px-4 rounded-xl ${status === 'ok' ? 'bg-green-600/20 border-2 border-green-500/50 text-green-400' : status === 'warning' ? 'bg-red-600/20 border-2 border-red-500/50 text-red-400' : 'bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 text-white'}`}>
                             <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${isFreezer ? 'bg-blue-500/20' : 'bg-orange-500/20'}`}>
-                                    <Thermometer className={`h-6 w-6 ${isFreezer ? 'text-blue-400' : 'text-orange-400'}`} />
-                                </div>
+                                {equip.image_url ? (
+                                    <img src={equip.image_url} alt={equip.name} className="w-16 h-16 object-cover rounded-lg border-2 border-slate-600" />
+                                ) : (
+                                    <div className={`p-3 rounded-lg ${isFreezer ? 'bg-blue-500/20' : 'bg-orange-500/20'}`}>
+                                        <Thermometer className={`h-8 w-8 ${isFreezer ? 'text-blue-400' : 'text-orange-400'}`} />
+                                    </div>
+                                )}
                                 <div className="text-left">
-                                    <span className="font-bold block">{equip.name}</span>
-                                    <span className="text-xs opacity-60">{isFreezer ? '❄️ Congélateur' : '🧊 Frigo'} • Max {equip.max_temp}°C</span>
+                                    <span className="font-bold block text-lg">{equip.name}</span>
+                                    <span className="text-xs opacity-60">{equip.location || (isFreezer ? '❄️ Congélateur' : '🧊 Frigo')} • Max {equip.max_temp}°C</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
-                                {status === 'ok' && <><span className="text-lg font-bold">{temp}°C</span><CheckCircle className="h-6 w-6" /></>}
-                                {status === 'warning' && <><span className="text-lg font-bold">{temp}°C</span><AlertTriangle className="h-6 w-6" /></>}
-                                {status === 'pending' && <ChevronRight className="h-6 w-6 text-slate-500" />}
+                                {status === 'ok' && <><span className="text-xl font-bold">{temp}°C</span><CheckCircle className="h-7 w-7" /></>}
+                                {status === 'warning' && <><span className="text-xl font-bold">{temp}°C</span><AlertTriangle className="h-7 w-7" /></>}
+                                {status === 'pending' && <ChevronRight className="h-7 w-7 text-slate-500" />}
                             </div>
                         </Button>
                     );
                 })}
             </div>
+
             {showKeypad && selectedEquipment && <TemperatureKeypadWithCorrectiveAction equipment={selectedEquipment} onSave={handleSaveTemperature} onClose={() => { setShowKeypad(false); setSelectedEquipment(null); }} />}
         </div>
     );
