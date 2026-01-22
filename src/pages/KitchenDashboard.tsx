@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Thermometer, ClipboardList, Package, Tag, Sparkles, Home, FileSpreadsheet, Bell } from "lucide-react";
+import { Thermometer, ClipboardList, Package, Tag, Sparkles, Home, FileSpreadsheet, Bell, History } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemperatureRoundsTab } from "@/components/kitchen/TemperatureRoundsTab";
 import { ReceptionTab } from "@/components/kitchen/ReceptionTab";
@@ -7,34 +7,26 @@ import { TraceabilityTab } from "@/components/kitchen/TraceabilityTab";
 import { CleaningPlanTab } from "@/components/kitchen/CleaningPlanTab";
 import { ExcelReportExport } from "@/components/kitchen/ExcelReportExport";
 import { NotificationSettings } from "@/components/kitchen/NotificationSettings";
+import { HistoryArchive } from "@/components/kitchen/HistoryArchive";
 import { initializeNotifications, getNotificationPermission, checkExpiringMeat } from "@/lib/kitchenNotifications";
 import { supabase } from "@/integrations/supabase/client";
 
 const KitchenDashboard = () => {
     const [activeTab, setActiveTab] = useState("temp-rounds");
 
-    // Initialize notifications when component mounts
     useEffect(() => {
         if (getNotificationPermission() === 'granted') {
             initializeNotifications();
-
-            // Check for expiring products every hour
             checkExpiringMeat(supabase);
-            const interval = setInterval(() => {
-                checkExpiringMeat(supabase);
-            }, 60 * 60 * 1000); // Every hour
-
+            const interval = setInterval(() => checkExpiringMeat(supabase), 60 * 60 * 1000);
             return () => clearInterval(interval);
         }
     }, []);
 
-    // Handle URL params for deep linking
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const tab = params.get('tab');
-        if (tab) {
-            setActiveTab(tab);
-        }
+        if (tab) setActiveTab(tab);
     }, []);
 
     return (
@@ -57,7 +49,7 @@ const KitchenDashboard = () => {
             </header>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-                <TabsList className="w-full grid grid-cols-6 bg-slate-900 rounded-none border-b border-slate-800 h-auto p-0">
+                <TabsList className="w-full grid grid-cols-4 bg-slate-900 rounded-none border-b border-slate-800 h-auto p-0">
                     <TabsTrigger value="temp-rounds" className="py-3 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-orange-500 text-slate-400 text-xs flex flex-col gap-1">
                         <Thermometer className="h-4 w-4" /><span>Relevés</span>
                     </TabsTrigger>
@@ -70,10 +62,17 @@ const KitchenDashboard = () => {
                     <TabsTrigger value="cleaning" className="py-3 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-purple-400 text-slate-400 text-xs flex flex-col gap-1">
                         <Sparkles className="h-4 w-4" /><span>Nettoyage</span>
                     </TabsTrigger>
-                    <TabsTrigger value="rapport" className="py-3 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-emerald-400 text-slate-400 text-xs flex flex-col gap-1">
+                </TabsList>
+
+                {/* Second row of tabs */}
+                <TabsList className="w-full grid grid-cols-3 bg-slate-900/50 rounded-none border-b border-slate-800 h-auto p-0">
+                    <TabsTrigger value="history" className="py-2 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-cyan-400 text-slate-400 text-xs flex flex-col gap-1">
+                        <History className="h-4 w-4" /><span>Historique</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="rapport" className="py-2 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-emerald-400 text-slate-400 text-xs flex flex-col gap-1">
                         <FileSpreadsheet className="h-4 w-4" /><span>Rapport</span>
                     </TabsTrigger>
-                    <TabsTrigger value="notifications" className="py-3 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-amber-400 text-slate-400 text-xs flex flex-col gap-1">
+                    <TabsTrigger value="notifications" className="py-2 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-amber-400 text-slate-400 text-xs flex flex-col gap-1">
                         <Bell className="h-4 w-4" /><span>Alertes</span>
                     </TabsTrigger>
                 </TabsList>
@@ -82,13 +81,10 @@ const KitchenDashboard = () => {
                 <TabsContent value="reception" className="p-4 mt-0"><ReceptionTab /></TabsContent>
                 <TabsContent value="traceability" className="p-4 mt-0"><TraceabilityTab /></TabsContent>
                 <TabsContent value="cleaning" className="p-4 mt-0"><CleaningPlanTab /></TabsContent>
+                <TabsContent value="history" className="p-4 mt-0"><HistoryArchive /></TabsContent>
                 <TabsContent value="rapport" className="p-4 mt-0"><ExcelReportExport /></TabsContent>
                 <TabsContent value="notifications" className="p-4 mt-0"><NotificationSettings /></TabsContent>
             </Tabs>
-
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-900 to-transparent pointer-events-none">
-                <p className="text-center text-slate-500 text-xs">💡 Ajoutez cette page à l'écran d'accueil pour une utilisation optimale</p>
-            </div>
         </div>
     );
 };
