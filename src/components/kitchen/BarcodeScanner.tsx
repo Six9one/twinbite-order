@@ -53,9 +53,20 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
                 }
             );
             setIsScanning(true);
-        } catch (err) {
+        } catch (err: unknown) {
             console.error("Scanner error:", err);
-            setError("Impossible d'accéder à la caméra. Vérifiez les permissions.");
+            const errorMessage = err instanceof Error ? err.message : String(err);
+
+            // Check for specific error types
+            if (errorMessage.includes("NotAllowedError") || errorMessage.includes("Permission")) {
+                setError("⚠️ Permission refusée.\n\nAllez dans les paramètres de votre navigateur → Autorisations → Caméra → Autoriser pour ce site.");
+            } else if (errorMessage.includes("NotFoundError")) {
+                setError("📷 Aucune caméra détectée.\n\nVérifiez que votre appareil a une caméra.");
+            } else if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") {
+                setError("🔒 HTTPS requis.\n\nLa caméra ne fonctionne que sur les sites sécurisés (HTTPS).");
+            } else {
+                setError("Impossible d'accéder à la caméra.\n\nVérifiez les permissions dans les paramètres de votre navigateur.");
+            }
         }
     };
 
@@ -103,9 +114,9 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
             {/* Scanner Area */}
             <div className="flex-1 flex flex-col items-center justify-center p-4">
                 {error ? (
-                    <div className="text-center">
+                    <div className="text-center max-w-sm">
                         <Camera className="h-20 w-20 text-red-500 mx-auto mb-4" />
-                        <p className="text-red-400 text-lg mb-4">{error}</p>
+                        <p className="text-red-400 text-lg mb-6 whitespace-pre-line">{error}</p>
                         <Button
                             onClick={startScanner}
                             className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 text-lg"
