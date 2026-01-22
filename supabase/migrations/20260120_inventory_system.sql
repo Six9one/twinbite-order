@@ -254,4 +254,4 @@ CREATE TRIGGER update_inventory_categories_updated_at
 
 CREATE TRIGGER update_inventory_items_updated_at
     BEFORE UPDATE ON inventory_items
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
