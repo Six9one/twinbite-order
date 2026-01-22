@@ -140,8 +140,31 @@ export function NotificationSettings() {
                             <BellRing className="mr-2 h-5 w-5" />
                             Tester une notification
                         </Button>
+                        <Button
+                            onClick={() => {
+                                toast.success('🧪 Test: Matin dans 30s, Soir dans 60s!');
+                                setTimeout(() => {
+                                    showNotification('☀️ Relevé Matin (TEST)', {
+                                        body: 'Il est temps de faire le relevé température du matin!',
+                                        tag: 'test-morning',
+                                        requireInteraction: true,
+                                    });
+                                }, 30000);
+                                setTimeout(() => {
+                                    showNotification('🌙 Relevé Soir (TEST)', {
+                                        body: 'Il est temps de faire le relevé température du soir!',
+                                        tag: 'test-night',
+                                        requireInteraction: true,
+                                    });
+                                }, 60000);
+                            }}
+                            className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500"
+                        >
+                            <Clock className="mr-2 h-5 w-5" />
+                            Démo: Matin (30s) + Soir (60s)
+                        </Button>
                         <p className="text-center text-slate-500 text-xs">
-                            Les notifications sont activées. Gardez l'app ouverte pour recevoir les rappels.
+                            Gardez l'app ouverte pour recevoir les rappels.
                         </p>
                     </div>
                 )}
