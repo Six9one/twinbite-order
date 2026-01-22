@@ -8,6 +8,11 @@ interface OCRResult {
     dlc: string; // Expiry date
     lotNumber: string;
     origin: string;
+    size?: string; // e.g. "2KG", "500g"
+    pieces?: string; // e.g. "x4", "6 pièces"
+    supplier?: string; // e.g. "Eurial", "Metro"
+    description?: string; // Additional product details
+    barcodeFromLabel?: string; // Barcode if visible in label
 }
 
 interface LabelOCRScannerProps {
@@ -111,6 +116,7 @@ export const LabelOCRScanner = ({ onScan, onClose }: LabelOCRScannerProps) => {
 
     const parseOCRText = (text: string): OCRResult => {
         const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+        const fullText = text.toUpperCase();
 
         // Default values
         const result: OCRResult = {
@@ -118,23 +124,18 @@ export const LabelOCRScanner = ({ onScan, onClose }: LabelOCRScannerProps) => {
             dlc: "",
             lotNumber: "",
             origin: "",
+            size: "",
+            pieces: "",
+            supplier: "",
+            description: "",
+            barcodeFromLabel: "",
         };
 
-        // Regex patterns
+        // === DATE PATTERNS (DLC/DDM/Best Before) ===
         const datePatterns = [
-            /(?:DLC|DDM|À\s*consommer|Best\s*before|Exp)[:\s]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
-            /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/,
+            /(?:DLC|DDM|À\s*consommer|Best\s*before|Exp(?:iry)?|Péremption)[:\s]*(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/i,
+            /(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/,
         ];
-        const lotPatterns = [
-            /(?:LOT|L|N°\s*LOT|BATCH)[:\s]*([A-Z0-9\-]+)/i,
-            /\bL\s*:?\s*([A-Z0-9]{4,})/i,
-        ];
-        const originPatterns = [
-            /(?:Origine|Origin|Provenance|Fabriqué en|Made in)[:\s]*([A-Za-zÀ-ÿ\s]+)/i,
-            /(?:FR|DE|IT|ES|BE|NL)\s*[\d\.]+\s*CE/i,
-        ];
-
-        // Extract DLC
         for (const pattern of datePatterns) {
             const match = text.match(pattern);
             if (match) {
@@ -143,7 +144,11 @@ export const LabelOCRScanner = ({ onScan, onClose }: LabelOCRScannerProps) => {
             }
         }
 
-        // Extract Lot Number
+        // === LOT NUMBER ===
+        const lotPatterns = [
+            /(?:LOT|L|N°\s*LOT|BATCH|Lot\s*N°?)[:\s]*([A-Z0-9\-\.]+)/i,
+            /\bL\s*:?\s*([A-Z0-9]{4,})/i,
+        ];
         for (const pattern of lotPatterns) {
             const match = text.match(pattern);
             if (match) {
@@ -152,7 +157,12 @@ export const LabelOCRScanner = ({ onScan, onClose }: LabelOCRScannerProps) => {
             }
         }
 
-        // Extract Origin
+        // === ORIGIN / COUNTRY ===
+        const originPatterns = [
+            /(?:Origine|Origin|Provenance|Fabriqué en|Made in|Pays)[:\s]*([A-Za-zÀ-ÿ\s]+)/i,
+            /(France|Italie|Italy|Espagne|Spain|Allemagne|Germany|Belgique|Belgium|Pays-Bas|Netherlands)/i,
+            /([A-Z]{2})\s*[\d\.]+\s*CE/i, // FR 44.123 CE
+        ];
         for (const pattern of originPatterns) {
             const match = text.match(pattern);
             if (match) {
@@ -161,16 +171,83 @@ export const LabelOCRScanner = ({ onScan, onClose }: LabelOCRScannerProps) => {
             }
         }
 
-        // Product name - first non-date, non-lot line that's reasonably long
+        // === SIZE / WEIGHT ===
+        const sizePatterns = [
+            /(\d+(?:[.,]\d+)?\s*(?:kg|g|ml|l|cl|L))\b/i,
+            /(?:Poids|Net|Contenu)[:\s]*(\d+(?:[.,]\d+)?\s*(?:kg|g|ml|l|cl))/i,
+            /(\d+\s*[xX]\s*\d+(?:[.,]\d+)?\s*(?:kg|g|ml|l|cl)?)/i, // 2x500g
+        ];
+        for (const pattern of sizePatterns) {
+            const match = text.match(pattern);
+            if (match) {
+                result.size = match[1] || match[0];
+                break;
+            }
+        }
+
+        // === PIECES / QUANTITY ===
+        const piecesPatterns = [
+            /(\d+\s*(?:pièces?|pcs?|unités?|portions?))/i,
+            /(?:x|X)\s*(\d+)\b/,
+            /(\d+)\s*(?:x|X)\s*\d/,
+        ];
+        for (const pattern of piecesPatterns) {
+            const match = text.match(pattern);
+            if (match) {
+                result.pieces = match[1] || match[0];
+                break;
+            }
+        }
+
+        // === SUPPLIER / BRAND ===
+        const knownSuppliers = [
+            "EURIAL", "METRO", "SYSCO", "BRAKE", "TRANSGOURMET", "POMONA",
+            "DAVIGEL", "SODEXO", "DELICE", "PRESIDENT", "GALBANI", "LACTALIS",
+            "BONDUELLE", "MCCAIN", "HEINZ", "NESTLE", "UNILEVER"
+        ];
+        for (const supplier of knownSuppliers) {
+            if (fullText.includes(supplier)) {
+                result.supplier = supplier.charAt(0) + supplier.slice(1).toLowerCase();
+                break;
+            }
+        }
+
+        // === BARCODE FROM LABEL ===
+        const barcodePatterns = [
+            /\b(\d{13})\b/, // EAN-13
+            /\b(\d{12})\b/, // UPC-A
+            /\b(\d{8})\b/,  // EAN-8
+        ];
+        for (const pattern of barcodePatterns) {
+            const match = text.match(pattern);
+            if (match) {
+                result.barcodeFromLabel = match[1];
+                break;
+            }
+        }
+
+        // === PRODUCT NAME - Find the most descriptive line ===
+        const ignoredPrefixes = /^(LOT|L:|DLC|DDM|À consommer|Best before|Exp|Origine|Made in|Poids|Net|Code|Ref)/i;
+        const productLines: string[] = [];
+
         for (const line of lines) {
             if (
                 line.length > 3 &&
-                !line.match(/\d{1,2}[\/\-\.]\d{1,2}/) &&
-                !line.match(/^(LOT|L:|DLC|DDM|À consommer)/i) &&
-                !line.match(/^\d+\s*(g|kg|ml|l|cl)$/i)
+                !line.match(/^\d{1,2}[\/-\.]\d{1,2}/) &&
+                !line.match(ignoredPrefixes) &&
+                !line.match(/^\d+\s*(g|kg|ml|l|cl)$/i) &&
+                !line.match(/^\d{8,13}$/) // Skip pure barcodes
             ) {
-                result.productName = line;
-                break;
+                productLines.push(line);
+            }
+        }
+
+        // Take the longest line as product name, next as description
+        if (productLines.length > 0) {
+            productLines.sort((a, b) => b.length - a.length);
+            result.productName = productLines[0];
+            if (productLines.length > 1) {
+                result.description = productLines.slice(1, 3).join(" - ");
             }
         }
 

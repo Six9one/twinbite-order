@@ -8,6 +8,7 @@ import {
     Settings,
     Menu,
     Home,
+    FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,6 +22,7 @@ import { DeviceManager, type Device } from "@/components/kitchen/DeviceManager";
 import { DeviceCard } from "@/components/kitchen/DeviceCard";
 import { TemperatureKeypad } from "@/components/kitchen/TemperatureKeypad";
 import { ExpiryDashboard, type StockItem } from "@/components/kitchen/ExpiryDashboard";
+import { FacturesManager, type Facture } from "@/components/kitchen/FacturesManager";
 
 // Google Sheets API endpoint - replace with your deployed Apps Script URL
 const GOOGLE_SCRIPT_URL = ""; // User will set this
@@ -51,14 +53,19 @@ const KitchenDashboard = () => {
         origin: string;
     }>>({});
 
+    // Factures - invoices linked with merchandise photos
+    const [factures, setFactures] = useState<Facture[]>([]);
+
     // Load from localStorage on mount
     useEffect(() => {
         const savedDevices = localStorage.getItem("kitchen_devices");
         const savedStock = localStorage.getItem("kitchen_stock");
         const savedProductMemory = localStorage.getItem("kitchen_product_memory");
+        const savedFactures = localStorage.getItem("kitchen_factures");
         if (savedDevices) setDevices(JSON.parse(savedDevices));
         if (savedStock) setStockItems(JSON.parse(savedStock));
         if (savedProductMemory) setProductMemory(JSON.parse(savedProductMemory));
+        if (savedFactures) setFactures(JSON.parse(savedFactures));
     }, []);
 
     // Save to localStorage on change
@@ -73,6 +80,10 @@ const KitchenDashboard = () => {
     useEffect(() => {
         localStorage.setItem("kitchen_product_memory", JSON.stringify(productMemory));
     }, [productMemory]);
+
+    useEffect(() => {
+        localStorage.setItem("kitchen_factures", JSON.stringify(factures));
+    }, [factures]);
 
     // Send data to Google Sheets
     const sendToGoogleSheets = async (
@@ -269,27 +280,34 @@ const KitchenDashboard = () => {
 
             {/* Main Content with Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-                <TabsList className="w-full grid grid-cols-3 bg-slate-900 rounded-none border-b border-slate-800 h-auto p-0">
+                <TabsList className="w-full grid grid-cols-4 bg-slate-900 rounded-none border-b border-slate-800 h-auto p-0">
                     <TabsTrigger
                         value="stock-in"
-                        className="py-4 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-orange-500 text-slate-400"
+                        className="py-3 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-orange-500 text-slate-400 text-xs"
                     >
-                        <Package className="h-5 w-5 mr-2" />
-                        Stock In
+                        <Package className="h-4 w-4 mr-1" />
+                        Stock
                     </TabsTrigger>
                     <TabsTrigger
                         value="fridge-logs"
-                        className="py-4 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-blue-400 text-slate-400"
+                        className="py-3 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-blue-400 text-slate-400 text-xs"
                     >
-                        <Thermometer className="h-5 w-5 mr-2" />
+                        <Thermometer className="h-4 w-4 mr-1" />
                         Frigos
                     </TabsTrigger>
                     <TabsTrigger
                         value="live-stock"
-                        className="py-4 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-green-400 text-slate-400"
+                        className="py-3 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-green-400 text-slate-400 text-xs"
                     >
-                        <ClipboardList className="h-5 w-5 mr-2" />
-                        Stock
+                        <ClipboardList className="h-4 w-4 mr-1" />
+                        DLC
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="factures"
+                        className="py-3 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-purple-400 text-slate-400 text-xs"
+                    >
+                        <FileText className="h-4 w-4 mr-1" />
+                        Factures
                     </TabsTrigger>
                 </TabsList>
 
@@ -399,6 +417,15 @@ const KitchenDashboard = () => {
                     </div>
 
                     <ExpiryDashboard items={stockItems} onMarkAsWasted={handleMarkAsWasted} />
+                </TabsContent>
+
+                {/* Factures Tab */}
+                <TabsContent value="factures" className="p-4 mt-0">
+                    <FacturesManager
+                        factures={factures}
+                        onAddFacture={(facture) => setFactures(prev => [...prev, facture])}
+                        onDeleteFacture={(id) => setFactures(prev => prev.filter(f => f.id !== id))}
+                    />
                 </TabsContent>
             </Tabs>
 
