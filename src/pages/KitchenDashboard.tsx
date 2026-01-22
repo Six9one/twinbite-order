@@ -45,12 +45,20 @@ const KitchenDashboard = () => {
     const [devices, setDevices] = useState<Device[]>([]);
     const [stockItems, setStockItems] = useState<StockItem[]>([]);
 
+    // Product memory - remembers product info by barcode
+    const [productMemory, setProductMemory] = useState<Record<string, {
+        productName: string;
+        origin: string;
+    }>>({});
+
     // Load from localStorage on mount
     useEffect(() => {
         const savedDevices = localStorage.getItem("kitchen_devices");
         const savedStock = localStorage.getItem("kitchen_stock");
+        const savedProductMemory = localStorage.getItem("kitchen_product_memory");
         if (savedDevices) setDevices(JSON.parse(savedDevices));
         if (savedStock) setStockItems(JSON.parse(savedStock));
+        if (savedProductMemory) setProductMemory(JSON.parse(savedProductMemory));
     }, []);
 
     // Save to localStorage on change
@@ -61,6 +69,10 @@ const KitchenDashboard = () => {
     useEffect(() => {
         localStorage.setItem("kitchen_stock", JSON.stringify(stockItems));
     }, [stockItems]);
+
+    useEffect(() => {
+        localStorage.setItem("kitchen_product_memory", JSON.stringify(productMemory));
+    }, [productMemory]);
 
     // Send data to Google Sheets
     const sendToGoogleSheets = async (
@@ -87,15 +99,31 @@ const KitchenDashboard = () => {
     // Handlers for barcode scanner
     const handleBarcodeScan = (barcode: string) => {
         setShowBarcodeScanner(false);
-        setPendingData({
-            productName: "",
-            dlc: "",
-            lotNumber: "",
-            origin: "",
-            barcode,
-        });
+
+        // Check if we've seen this barcode before
+        const remembered = productMemory[barcode];
+        if (remembered) {
+            // Auto-fill with remembered product info!
+            setPendingData({
+                productName: remembered.productName,
+                dlc: "", // DLC changes each time
+                lotNumber: "", // Lot number changes each time
+                origin: remembered.origin,
+                barcode,
+            });
+            toast.success(`✅ Produit reconnu: ${remembered.productName}`);
+        } else {
+            // New barcode - empty form
+            setPendingData({
+                productName: "",
+                dlc: "",
+                lotNumber: "",
+                origin: "",
+                barcode,
+            });
+            toast.info(`Nouveau code-barres: ${barcode}`);
+        }
         setShowReviewCard(true);
-        toast.success(`Code-barres scanné: ${barcode}`);
     };
 
     // Handlers for label OCR
@@ -120,6 +148,17 @@ const KitchenDashboard = () => {
         setStockItems((prev) => [...prev, newItem]);
         setShowReviewCard(false);
         setPendingData(null);
+
+        // Save to product memory if has barcode
+        if (data.barcode && data.productName) {
+            setProductMemory((prev) => ({
+                ...prev,
+                [data.barcode!]: {
+                    productName: data.productName,
+                    origin: data.origin,
+                },
+            }));
+        }
 
         // Send to Google Sheets
         sendToGoogleSheets("traceability", {
