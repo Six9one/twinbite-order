@@ -45,10 +45,6 @@ export function NotificationSettings() {
 
         try {
             // Check if Service Worker is ready first (crucial for iOS)
-            if (!navigator.serviceWorker.controller) {
-                console.log('SW not controlling, waiting or checking...');
-            }
-
             const registration = await navigator.serviceWorker.ready;
             console.log('SW Registration ready:', !!registration);
 
@@ -62,7 +58,10 @@ export function NotificationSettings() {
                 return;
             }
 
-            // Subscribe to push
+            // Small delay for iOS stability after permission grant
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Subscribe to push - now it throws on error
             const subscription = await subscribeToPush();
 
             if (subscription) {
@@ -78,12 +77,15 @@ export function NotificationSettings() {
                         body: 'Vous recevrez des notifications même si l\'app est fermée.',
                     });
                 }, 1000);
-            } else {
-                toast.error("Erreur d'abonnement. Vérifiez que vous n'êtes pas en navigation privée.");
             }
         } catch (error: any) {
             console.error('Push activation error:', error);
-            toast.error(`Erreur: ${error.message || 'Inconnue'}`);
+            // More specific error messages for the user
+            let message = error.message || 'Erreur inconnue';
+            if (message.includes('registration')) message = "Le Service Worker n'est pas encore prêt. Réessayez dans 2 secondes.";
+            if (message.includes('applicationServerKey')) message = "Clé de sécurité (VAPID) invalide.";
+
+            toast.error(`❌ ${message}`, { duration: 5000 });
         }
 
         setLoading(false);

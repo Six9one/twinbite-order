@@ -44,13 +44,18 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 // Subscribe to push notifications
 export async function subscribeToPush(): Promise<PushSubscription | null> {
     if (!isPushSupported()) {
-        console.error('Push notifications not supported');
-        return null;
+        throw new Error('Push notifications not supported on this browser');
     }
 
     try {
         // Wait for service worker to be ready
+        console.log('Waiting for Service Worker to be ready...');
         const registration = await navigator.serviceWorker.ready;
+        console.log('Service Worker ready:', registration.scope);
+
+        if (!registration.pushManager) {
+            throw new Error('PushManager not available on registration. Check if you are using HTTPS.');
+        }
 
         // Check if already subscribed
         let subscription = await registration.pushManager.getSubscription();
@@ -62,20 +67,24 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
         }
 
         // Subscribe with VAPID key
+        console.log('Creating new subscription with VAPID key...');
+        const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+
         subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            applicationServerKey: applicationServerKey
         });
 
-        console.log('Push subscription created:', subscription);
+        console.log('Push subscription created successfully');
 
         // Save to database
         await saveSubscription(subscription);
 
         return subscription;
-    } catch (error) {
-        console.error('Error subscribing to push:', error);
-        return null;
+    } catch (error: any) {
+        console.error('Detailed push subscription error:', error);
+        // Throw the error instead of returning null to catch it in the UI
+        throw error;
     }
 }
 
