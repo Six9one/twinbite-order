@@ -27,18 +27,25 @@ export function getVapidPublicKey(): string {
 
 // Convert VAPID key to Uint8Array for subscription
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
+    // Trim any spaces or newlines that might have come from copy-paste
+    const cleanedString = base64String.trim();
+    const padding = '='.repeat((4 - (cleanedString.length % 4)) % 4);
+    const base64 = (cleanedString + padding)
         .replace(/-/g, '+')
         .replace(/_/g, '/');
 
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
+    try {
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
 
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    } catch (e) {
+        console.error('Failed to decode VAPID key:', base64);
+        throw new Error('La clé de sécurité (VAPID) est mal formatée.');
     }
-    return outputArray;
 }
 
 // Subscribe to push notifications
