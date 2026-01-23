@@ -29,12 +29,14 @@ export function NotificationSettings() {
     const handleEnablePush = async () => {
         setLoading(true);
 
-        // Check if iOS and not in Standalone mode (must be added to home screen)
+        // Improved iOS detection
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+
+        console.log('Push Debug - isIOS:', isIOS, 'isStandalone:', isStandalone);
 
         if (isIOS && !isStandalone) {
-            toast.error("📱 Sur iPhone, vous devez d'abord 'Ajouter à l'écran d'accueil' pour activer les notifications.", {
+            toast.error("📱 Sur iPhone, vous devez impérativement ouvrir l'app depuis l'icône sur votre écran d'accueil pour activer les notifications.", {
                 duration: 6000
             });
             setLoading(false);
@@ -42,8 +44,17 @@ export function NotificationSettings() {
         }
 
         try {
-            // Request notification permission first
+            // Check if Service Worker is ready first (crucial for iOS)
+            if (!navigator.serviceWorker.controller) {
+                console.log('SW not controlling, waiting or checking...');
+            }
+
+            const registration = await navigator.serviceWorker.ready;
+            console.log('SW Registration ready:', !!registration);
+
+            // Request permission
             const permission = await Notification.requestPermission();
+            console.log('Permission result:', permission);
 
             if (permission !== 'granted') {
                 toast.error('Veuillez autoriser les notifications dans les réglages de votre navigateur');
