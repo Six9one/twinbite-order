@@ -206,6 +206,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
   // Calculate totals with promotions - recalculate on every render to ensure accuracy
   const pizzaItems = cart.filter(item => item.item.category === 'pizzas');
+  const hasPizza = pizzaItems.length > 0;  // Check if cart has any pizza items
   const otherItems = cart.filter(item => item.item.category !== 'pizzas');
 
   const pizzaPromo = applyPizzaPromotions(pizzaItems, orderType);
