@@ -29,33 +29,50 @@ export function NotificationSettings() {
     const handleEnablePush = async () => {
         setLoading(true);
 
-        // Request notification permission first
-        const permission = await Notification.requestPermission();
+        // Check if iOS and not in Standalone mode (must be added to home screen)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
-        if (permission !== 'granted') {
-            toast.error('Veuillez autoriser les notifications dans votre navigateur');
+        if (isIOS && !isStandalone) {
+            toast.error("📱 Sur iPhone, vous devez d'abord 'Ajouter à l'écran d'accueil' pour activer les notifications.", {
+                duration: 6000
+            });
             setLoading(false);
             return;
         }
 
-        // Subscribe to push
-        const subscription = await subscribeToPush();
+        try {
+            // Request notification permission first
+            const permission = await Notification.requestPermission();
 
-        if (subscription) {
-            setPushEnabled(true);
-            toast.success('🔔 Notifications push activées!');
+            if (permission !== 'granted') {
+                toast.error('Veuillez autoriser les notifications dans les réglages de votre navigateur');
+                setLoading(false);
+                return;
+            }
 
-            // Initialize local notifications too
-            initializeNotifications();
+            // Subscribe to push
+            const subscription = await subscribeToPush();
 
-            // Show test notification
-            setTimeout(() => {
-                showNotification('✅ Push activé!', {
-                    body: 'Vous recevrez des notifications même si l\'app est fermée.',
-                });
-            }, 1000);
-        } else {
-            toast.error('Erreur lors de l\'activation des notifications');
+            if (subscription) {
+                setPushEnabled(true);
+                toast.success('🔔 Notifications push activées!');
+
+                // Initialize local notifications too
+                initializeNotifications();
+
+                // Show test notification
+                setTimeout(() => {
+                    showNotification('✅ Push activé!', {
+                        body: 'Vous recevrez des notifications même si l\'app est fermée.',
+                    });
+                }, 1000);
+            } else {
+                toast.error("Erreur d'abonnement. Vérifiez que vous n'êtes pas en navigation privée.");
+            }
+        } catch (error: any) {
+            console.error('Push activation error:', error);
+            toast.error(`Erreur: ${error.message || 'Inconnue'}`);
         }
 
         setLoading(false);
@@ -99,8 +116,8 @@ export function NotificationSettings() {
             <CardContent className="space-y-4">
                 {/* Status Card */}
                 <div className={`flex items-center justify-between p-4 rounded-xl border-2 ${pushEnabled
-                        ? 'bg-green-500/10 border-green-500/30'
-                        : 'bg-red-500/10 border-red-500/30'
+                    ? 'bg-green-500/10 border-green-500/30'
+                    : 'bg-red-500/10 border-red-500/30'
                     }`}>
                     <div className="flex items-center gap-3">
                         {pushEnabled ? (
