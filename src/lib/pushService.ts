@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Your VAPID public key (generate with: npx web-push generate-vapid-keys)
 // This is the public key - safe to expose in frontend
-const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+const VAPID_PUBLIC_KEY = 'BEvtMAF1QtIQm6X7X9wD91p02R8QXK5C-8yv5Xf6H9pIe9qxCzT9UhEndkkF7bzyULmUq';
 
 export interface PushSubscriptionData {
     endpoint: string;
