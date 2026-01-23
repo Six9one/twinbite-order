@@ -38,8 +38,8 @@ const KitchenDashboard = () => {
                             <ClipboardList className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-white">Twin Pizza Kitchen</h1>
-                            <p className="text-xs text-slate-400">Plan de Maîtrise Sanitaire</p>
+                            <h1 className="text-xl font-bold text-white">Twin Pizza HACCP</h1>
+                            <p className="text-xs text-slate-400">Suivi sanitaire cuisine</p>
                         </div>
                     </div>
                     <a href="/" className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700">
