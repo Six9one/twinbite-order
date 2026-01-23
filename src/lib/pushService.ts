@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Your VAPID public key (generate with: npx web-push generate-vapid-keys)
 // This is the public key - safe to expose in frontend
-const VAPID_PUBLIC_KEY = 'BEvtMAF1QtIQm6X7X9wD91p02R8QXK5C-8yv5Xf6H9pIe9qxCzT9UhEndkkF7bzyULmUq';
+const VAPID_PUBLIC_KEY = 'BDcrHvu2wZYL0ZkWkf9pszrKVTudXJCypKHcjCxWNwewJwfBxKir1VkrJU2RldVwv8yyZ5S8ChkpzR5pjoaR4vo';
 
 export interface PushSubscriptionData {
     endpoint: string;
@@ -79,7 +79,7 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
 
         subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: applicationServerKey
+            applicationServerKey: applicationServerKey as any
         });
 
         console.log('Push subscription created successfully');
