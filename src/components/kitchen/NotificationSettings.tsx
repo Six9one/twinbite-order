@@ -3,48 +3,75 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Bell, BellOff, BellRing, Clock, Sun, Moon, AlertTriangle } from 'lucide-react';
+import { Bell, BellOff, BellRing, Clock, Sun, Moon, AlertTriangle, Smartphone, CheckCircle } from 'lucide-react';
+import { isPushSupported, subscribeToPush, unsubscribeFromPush, isSubscribed } from '@/lib/pushService';
 import {
-    isNotificationSupported,
-    requestNotificationPermission,
-    getNotificationPermission,
     initializeNotifications,
     showNotification,
 } from '@/lib/kitchenNotifications';
 
 export function NotificationSettings() {
-    const [permission, setPermission] = useState<NotificationPermission>('default');
+    const [pushEnabled, setPushEnabled] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [isSupported, setIsSupported] = useState(false);
 
     useEffect(() => {
-        setIsSupported(isNotificationSupported());
-        setPermission(getNotificationPermission());
+        checkStatus();
     }, []);
 
-    const handleEnableNotifications = async () => {
-        const result = await requestNotificationPermission();
-        setPermission(getNotificationPermission());
+    const checkStatus = async () => {
+        setIsSupported(isPushSupported());
+        const subscribed = await isSubscribed();
+        setPushEnabled(subscribed);
+        setLoading(false);
+    };
 
-        if (result.granted) {
-            toast.success('🔔 Notifications activées!');
+    const handleEnablePush = async () => {
+        setLoading(true);
+
+        // Request notification permission first
+        const permission = await Notification.requestPermission();
+
+        if (permission !== 'granted') {
+            toast.error('Veuillez autoriser les notifications dans votre navigateur');
+            setLoading(false);
+            return;
+        }
+
+        // Subscribe to push
+        const subscription = await subscribeToPush();
+
+        if (subscription) {
+            setPushEnabled(true);
+            toast.success('🔔 Notifications push activées!');
+
+            // Initialize local notifications too
             initializeNotifications();
 
             // Show test notification
             setTimeout(() => {
-                showNotification('✅ Notifications activées', {
-                    body: 'Vous recevrez des rappels pour les relevés température.',
-                    tag: 'test-notification',
+                showNotification('✅ Push activé!', {
+                    body: 'Vous recevrez des notifications même si l\'app est fermée.',
                 });
             }, 1000);
         } else {
-            toast.error(result.message);
+            toast.error('Erreur lors de l\'activation des notifications');
         }
+
+        setLoading(false);
     };
 
-    const handleTestNotification = () => {
-        showNotification('🧪 Test de notification', {
-            body: 'Les notifications fonctionnent correctement!',
-            tag: 'test',
+    const handleDisablePush = async () => {
+        setLoading(true);
+        await unsubscribeFromPush();
+        setPushEnabled(false);
+        toast.success('Notifications désactivées');
+        setLoading(false);
+    };
+
+    const handleTestPush = () => {
+        showNotification('🧪 Test Push', {
+            body: 'Si vous voyez ceci, les notifications fonctionnent!',
         });
         toast.success('Notification envoyée!');
     };
@@ -54,8 +81,8 @@ export function NotificationSettings() {
             <Card className="bg-slate-800 border-slate-700">
                 <CardContent className="p-6 text-center">
                     <BellOff className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-                    <p className="text-slate-400">Les notifications ne sont pas supportées sur ce navigateur.</p>
-                    <p className="text-slate-500 text-sm mt-2">Utilisez Chrome, Firefox, ou Edge sur mobile ou desktop.</p>
+                    <p className="text-slate-400">Les notifications push ne sont pas supportées.</p>
+                    <p className="text-slate-500 text-sm mt-2">Utilisez Chrome, Firefox, ou Edge.</p>
                 </CardContent>
             </Card>
         );
@@ -66,27 +93,36 @@ export function NotificationSettings() {
             <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
                     <Bell className="h-5 w-5 text-amber-500" />
-                    Notifications de rappel
+                    Notifications Push
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                {/* Status */}
-                <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+                {/* Status Card */}
+                <div className={`flex items-center justify-between p-4 rounded-xl border-2 ${pushEnabled
+                        ? 'bg-green-500/10 border-green-500/30'
+                        : 'bg-red-500/10 border-red-500/30'
+                    }`}>
                     <div className="flex items-center gap-3">
-                        {permission === 'granted' ? (
-                            <BellRing className="h-6 w-6 text-green-400" />
+                        {pushEnabled ? (
+                            <div className="p-2 bg-green-500/20 rounded-full">
+                                <CheckCircle className="h-6 w-6 text-green-400" />
+                            </div>
                         ) : (
-                            <BellOff className="h-6 w-6 text-red-400" />
+                            <div className="p-2 bg-red-500/20 rounded-full">
+                                <BellOff className="h-6 w-6 text-red-400" />
+                            </div>
                         )}
                         <div>
-                            <span className="text-white font-medium">Statut</span>
-                            <p className="text-slate-400 text-sm">
-                                {permission === 'granted' ? 'Activées' : permission === 'denied' ? 'Bloquées' : 'Non configurées'}
-                            </p>
+                            <span className="text-white font-medium block">
+                                {pushEnabled ? 'Notifications activées' : 'Notifications désactivées'}
+                            </span>
+                            <span className="text-slate-400 text-sm">
+                                {pushEnabled ? 'Fonctionne même app fermée' : 'Activez pour recevoir les alertes'}
+                            </span>
                         </div>
                     </div>
-                    <Badge className={permission === 'granted' ? 'bg-green-600' : 'bg-red-600'}>
-                        {permission === 'granted' ? '✓ ON' : '✗ OFF'}
+                    <Badge className={pushEnabled ? 'bg-green-600' : 'bg-red-600'}>
+                        {pushEnabled ? '✓ ON' : '✗ OFF'}
                     </Badge>
                 </div>
 
@@ -94,7 +130,7 @@ export function NotificationSettings() {
                 <div className="space-y-2">
                     <h4 className="text-slate-300 text-sm font-medium flex items-center gap-2">
                         <Clock className="h-4 w-4" />
-                        Rappels programmés
+                        Notifications automatiques
                     </h4>
                     <div className="grid gap-2">
                         <div className="flex items-center justify-between p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
@@ -102,38 +138,47 @@ export function NotificationSettings() {
                                 <Sun className="h-5 w-5 text-orange-400" />
                                 <span className="text-orange-300">Relevé Matin</span>
                             </div>
-                            <span className="text-orange-400 font-mono">11:30</span>
+                            <span className="text-orange-400 font-mono font-bold">11:30</span>
                         </div>
                         <div className="flex items-center justify-between p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
                             <div className="flex items-center gap-2">
                                 <Moon className="h-5 w-5 text-indigo-400" />
                                 <span className="text-indigo-300">Relevé Soir</span>
                             </div>
-                            <span className="text-indigo-400 font-mono">23:00</span>
+                            <span className="text-indigo-400 font-mono font-bold">23:00</span>
                         </div>
                         <div className="flex items-center justify-between p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
                             <div className="flex items-center gap-2">
                                 <AlertTriangle className="h-5 w-5 text-red-400" />
-                                <span className="text-red-300">Viandes expirantes</span>
+                                <span className="text-red-300">Produits expirants</span>
                             </div>
-                            <span className="text-red-400 text-sm">Auto</span>
+                            <span className="text-red-400 text-sm">Automatique</span>
                         </div>
                     </div>
                 </div>
 
+                {/* Device Info */}
+                <div className="flex items-center gap-2 p-3 bg-slate-700/50 rounded-lg">
+                    <Smartphone className="h-5 w-5 text-slate-400" />
+                    <span className="text-slate-400 text-sm">
+                        Cet appareil recevra les notifications push
+                    </span>
+                </div>
+
                 {/* Actions */}
-                {permission !== 'granted' ? (
+                {!pushEnabled ? (
                     <Button
-                        onClick={handleEnableNotifications}
-                        className="w-full h-14 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold"
+                        onClick={handleEnablePush}
+                        disabled={loading}
+                        className="w-full h-14 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-lg"
                     >
-                        <Bell className="mr-2 h-5 w-5" />
-                        Activer les notifications
+                        <BellRing className="mr-2 h-5 w-5" />
+                        {loading ? 'Activation...' : 'Activer les notifications'}
                     </Button>
                 ) : (
                     <div className="space-y-2">
                         <Button
-                            onClick={handleTestNotification}
+                            onClick={handleTestPush}
                             variant="outline"
                             className="w-full h-12 border-slate-600 text-slate-300 hover:bg-slate-700"
                         >
@@ -141,49 +186,21 @@ export function NotificationSettings() {
                             Tester une notification
                         </Button>
                         <Button
-                            onClick={() => {
-                                toast.success('🧪 Test: Matin dans 30s, Soir dans 60s!');
-                                setTimeout(() => {
-                                    showNotification('☀️ Relevé Matin (TEST)', {
-                                        body: 'Cliquez pour ouvrir le relevé matin!',
-                                        tag: 'test-morning',
-                                        requireInteraction: true,
-                                        data: { url: '/kitchen?tab=temp-rounds&shift=Morning' },
-                                    });
-                                }, 30000);
-                                setTimeout(() => {
-                                    showNotification('🌙 Relevé Soir (TEST)', {
-                                        body: 'Cliquez pour ouvrir le relevé soir!',
-                                        tag: 'test-night',
-                                        requireInteraction: true,
-                                        data: { url: '/kitchen?tab=temp-rounds&shift=Night' },
-                                    });
-                                }, 60000);
-                            }}
-                            className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500"
+                            onClick={handleDisablePush}
+                            variant="ghost"
+                            disabled={loading}
+                            className="w-full text-red-400 hover:text-red-300 hover:bg-red-500/10"
                         >
-                            <Clock className="mr-2 h-5 w-5" />
-                            Démo: Matin (30s) + Soir (60s)
+                            <BellOff className="mr-2 h-4 w-4" />
+                            Désactiver les notifications
                         </Button>
-                        <p className="text-center text-slate-500 text-xs">
-                            Gardez l'app ouverte pour recevoir les rappels.
-                        </p>
                     </div>
                 )}
 
-                {permission === 'denied' && (
-                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                        <p className="text-red-400 text-sm">
-                            ⚠️ Les notifications sont bloquées. Pour les activer:
-                        </p>
-                        <ol className="text-red-300/80 text-sm mt-2 list-decimal list-inside space-y-1">
-                            <li>Cliquez sur l'icône 🔒 dans la barre d'adresse</li>
-                            <li>Trouvez "Notifications"</li>
-                            <li>Changez en "Autoriser"</li>
-                            <li>Rechargez la page</li>
-                        </ol>
-                    </div>
-                )}
+                {/* Info */}
+                <p className="text-center text-slate-500 text-xs">
+                    📱 Les notifications fonctionnent même quand l'app est fermée
+                </p>
             </CardContent>
         </Card>
     );
