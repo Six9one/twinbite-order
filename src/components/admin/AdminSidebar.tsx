@@ -29,7 +29,9 @@ import {
   Globe,
   CreditCard,
   Power,
-  Euro
+  Euro,
+  ExternalLink,
+  Ticket
 } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -51,11 +53,12 @@ const navItems: NavItem[] = [
   { label: '💰 Tous les Prix', icon: Euro, value: 'prices' },
   { label: 'TV Dashboard', icon: Tv, href: '/tv' },
   {
-    label: 'Imprimante',
+    label: 'Tickets & Factures',
     icon: Printer,
     children: [
-      { label: 'Configuration', icon: Printer, value: 'printer' },
-      { label: 'Templates Tickets', icon: FileText, value: 'tickets' },
+      { label: 'Gestion des Tickets', icon: Ticket, value: 'tickets' },
+      { label: 'Configuration Imprimante', icon: Printer, value: 'printer' },
+      { label: 'Templates de Tickets', icon: FileText, value: 'ticket-templates' },
     ]
   },
   {
@@ -107,7 +110,7 @@ const navItems: NavItem[] = [
   { label: 'Ventes', icon: BarChart3, value: 'ventes' },
   { label: 'Paiements', icon: CreditCard, value: 'payments' },
   { label: 'Paramètres', icon: Settings, value: 'settings' },
-  { label: 'Portail Clients (Tickets)', icon: User, href: '/tickets' },
+  { label: 'Voir Portail Public (Tickets)', icon: ExternalLink, href: '/tickets' },
 ];
 
 interface AdminSidebarProps {
