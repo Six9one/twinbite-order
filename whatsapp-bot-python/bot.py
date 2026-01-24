@@ -590,7 +590,7 @@ def send_whatsapp_image(phone: str, image_path: str, caption: str = "") -> bool:
         return False
 
 def send_order_confirmation(order: dict):
-    """Send order confirmation message with portal link - ALL IN ONE MESSAGE"""
+    """Send order confirmation message with FULL ORDER DETAILS in French"""
     
     phone = order.get('customer_phone', '')
     if not phone:
@@ -602,44 +602,137 @@ def send_order_confirmation(order: dict):
     total = order.get('total', 0)
     order_type = order.get('order_type', '')
     items = order.get('items', [])
+    customer_address = order.get('customer_address', '')
+    customer_notes = order.get('customer_notes', '')
     
-    # Count items
-    items_count = 0
-    if isinstance(items, list):
-        for item in items:
-            items_count += item.get('quantity', 1)
-    
-    # Order type in French (no emojis - causes ChromeDriver issues)
+    # Order type in French
     order_type_text = {
         'livraison': 'Livraison',
         'emporter': 'A emporter',
         'surplace': 'Sur place'
     }.get(order_type, order_type)
     
+    # Build detailed items list
+    items_text = ""
+    if isinstance(items, list):
+        for item in items:
+            qty = item.get('quantity', 1)
+            # Get product name from different possible structures
+            name = item.get('name', '')
+            if not name and item.get('item'):
+                name = item['item'].get('name', 'Produit')
+            if not name:
+                name = 'Produit'
+            
+            price = item.get('totalPrice', item.get('price', 0))
+            
+            # Build item line
+            items_text += f"\n  {qty}x {name}"
+            if price:
+                items_text += f" - {price:.2f} EUR"
+            
+            # Get customizations
+            customization = item.get('customization', {})
+            if customization:
+                details = []
+                
+                # Check if this is a pizza
+                item_category = (item.get('category', '') or item.get('item', {}).get('category', '') or '').lower()
+                is_pizza = 'pizza' in item_category
+                
+                # Size (Taille) - MEGA in bold - ONLY FOR PIZZAS
+                if is_pizza:
+                    size = customization.get('size', '')
+                    if size and size.lower() not in ['', 'none']:
+                        if size.upper() == 'MEGA':
+                            details.append(f"*MEGA*")
+                        else:
+                            details.append(f"{size.upper()}")
+                
+                # Base sauce removed - not needed
+                
+                # Meats (Viandes)
+                meats = customization.get('meats', [])
+                if isinstance(meats, list) and meats:
+                    details.append(f"Viandes: {', '.join(meats)}")
+                elif customization.get('meat'):
+                    details.append(f"Viande: {customization.get('meat')}")
+                
+                # Sauces
+                sauces = customization.get('sauces', [])
+                if isinstance(sauces, list) and sauces:
+                    details.append(f"Sauces: {', '.join(sauces)}")
+                
+                # Garnitures
+                garnitures = customization.get('garnitures', [])
+                if isinstance(garnitures, list) and garnitures:
+                    details.append(f"Garnitures: {', '.join(garnitures)}")
+                
+                # Supplements
+                supplements = customization.get('supplements', [])
+                if isinstance(supplements, list) and supplements:
+                    details.append(f"Supplements: {', '.join(supplements)}")
+                
+                # Cheese supplements
+                cheese = customization.get('cheeseSupplements', [])
+                if isinstance(cheese, list) and cheese:
+                    details.append(f"Fromages: {', '.join(cheese)}")
+                
+                # Menu option
+                menu = customization.get('menuOption', '')
+                if menu and menu.lower() not in ['', 'none']:
+                    details.append(f"Menu: {menu}")
+                
+                # Add details if any
+                if details:
+                    items_text += f"\n     ({' | '.join(details)})"
+            
+            # Item note
+            note = item.get('note', '') or (customization.get('note', '') if customization else '')
+            if note:
+                items_text += f"\n     Note: {note}"
+    
     # Build portal URL with phone number
     portal_url = f"https://twinpizza.fr/ticket?phone={phone.replace('+', '')}"
     
-    # Build message WITHOUT emojis (ChromeDriver doesn't support them well)
-    message = f"""TWIN PIZZA
+    # Build FULL message in French (no emojis for ChromeDriver compatibility)
+    message = f"""*TWIN PIZZA*
+================================
 
-Merci {customer_name} !
+Bonjour {customer_name} !
 
-Votre commande *#{order_number}* est confirmee.
+Votre commande *{order_number}* est confirmee.
 
-Details :
-- Articles : {items_count}
-- Total : *{total:.2f} EUR*
+--------------------------------
+*VOTRE COMMANDE :*
+{items_text if items_text else '  (aucun article)'}
+
+--------------------------------
+*RECAPITULATIF :*
 - Mode : *{order_type_text}*
-- Temps d'attente : *10 a 20 min*
+- Total : *{total:.2f} EUR*
+- Delai estime : *15 a 25 minutes*"""
 
-Ticket + Carte de fidelite :
+    # Add address for delivery
+    if order_type == 'livraison' and customer_address:
+        message += f"\n- Adresse : {customer_address}"
+    
+    # Add customer notes if any
+    if customer_notes:
+        message += f"\n- Note : {customer_notes}"
+    
+    message += f"""
+
+--------------------------------
+Suivez votre commande :
 {portal_url}
 
-Merci pour votre confiance!"""
+Merci pour votre confiance !
+*TWIN PIZZA*"""
     
-    # Send ONE message with everything
+    # Send the message
     send_whatsapp_message(phone, message)
-    safe_print("[OK] Message + portal link sent!")
+    safe_print("[OK] Message complet envoye!")
 
 def send_ready_notification(order: dict):
     """Send order ready notification"""
@@ -661,7 +754,7 @@ def send_ready_notification(order: dict):
 
 Bonjour {customer_name} !
 
-Votre commande *N{order_number}* est *PRETE* !
+Votre commande *{order_number}* est *PRETE* !
 
 {delivery_text}
 

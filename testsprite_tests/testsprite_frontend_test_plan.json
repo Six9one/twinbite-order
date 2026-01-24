@@ -1,0 +1,416 @@
+[
+  {
+    "id": "TC001",
+    "title": "Menu Browsing - Category Display",
+    "description": "Verify that the menu categories are displayed correctly on customer homepage and selecting each category shows relevant products.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the customer homepage."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that all menu categories are visible."
+      },
+      {
+        "type": "action",
+        "description": "Select each menu category one by one."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify products displayed belong only to the selected category."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Product Card Display and Info Accuracy",
+    "description": "Check that each product card displays correct name, image, price, and basic description.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Browse products under each category."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify product cards show accurate and consistent product information."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Product Customization Wizards Functionality",
+    "description": "Verify all product customization wizards operate correctly and update product preview and price accordingly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Select a customizable product (e.g., pizza) from the menu."
+      },
+      {
+        "type": "action",
+        "description": "Open the customization wizard."
+      },
+      {
+        "type": "action",
+        "description": "Make selections for all customizable options."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the product preview and price reflect chosen options."
+      },
+      {
+        "type": "action",
+        "description": "Repeat for tacos, sandwiches, and other wizard products."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify wizard validation and proper handling of invalid inputs."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Add to Cart and Cart Updates",
+    "description": "Verify adding items from product cards and customization wizards updates the cart accurately with correct quantities and prices.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Add multiple products including customized items to the cart."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify cart shows all items with correct details and total price."
+      },
+      {
+        "type": "action",
+        "description": "Change the quantity of items and remove items from cart."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify cart updates totals and item counts correctly."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Order Type Selection and Delivery Zone Mapping",
+    "description": "Verify customer can select 'Delivery' or 'Pickup' at checkout and delivery zones are displayed correctly on map.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Proceed to checkout with items in cart."
+      },
+      {
+        "type": "action",
+        "description": "Select 'Delivery' order type."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify delivery zone map shows correct zones using Mapbox GL."
+      },
+      {
+        "type": "action",
+        "description": "Select different delivery address locations inside and outside zones."
+      },
+      {
+        "type": "assertion",
+        "description": "Validate delivery availability and display appropriate warnings for out-of-zone."
+      },
+      {
+        "type": "action",
+        "description": "Switch order type to 'Pickup'."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify delivery zone map and delivery options are hidden or disabled."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Checkout Form Validation and Submission",
+    "description": "Verify all required customer information fields validate input properly and checkout submission succeeds or fails gracefully.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to submit checkout form with empty required fields."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify appropriate validation errors are shown."
+      },
+      {
+        "type": "action",
+        "description": "Input invalid data (e.g., improper email, phone, address)."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify form does not submit and shows relevant error messages."
+      },
+      {
+        "type": "action",
+        "description": "Fill all fields with valid data."
+      },
+      {
+        "type": "action",
+        "description": "Submit checkout form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify order is successfully submitted and confirmation screen is displayed."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Loyalty Rewards Stamp Tracking and Application",
+    "description": "Verify loyalty program correctly tracks stamps, displays status, and applies rewards during checkout.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Add items to cart and proceed to checkout."
+      },
+      {
+        "type": "action",
+        "description": "View current loyalty stamp status in UI."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify stamp count matches user data."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to apply loyalty rewards at checkout."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify discounts or offers are applied correctly to order total."
+      },
+      {
+        "type": "action",
+        "description": "Complete checkout and verify updated loyalty stamps post-order."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Real-time Order Status Updates Across Dashboards",
+    "description": "Verify order status changes propagate in real-time to customer Ticket Portal, Admin Dashboard, and TV Kitchen Dashboard.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Place an order using customer interface."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify order appears in Admin and TV Dashboards in pending status."
+      },
+      {
+        "type": "action",
+        "description": "Update order status (e.g., preparing, ready, completed) on Admin Dashboard."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify order status updates are reflected immediately on TV Dashboard and customer Ticket Portal."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Admin Dashboard - Order and Product Management",
+    "description": "Verify admin can view, update order statuses, add/edit products, and configure site settings.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login to Admin Dashboard."
+      },
+      {
+        "type": "action",
+        "description": "View list of current orders."
+      },
+      {
+        "type": "action",
+        "description": "Change order status and save."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify changes persist and update real-time."
+      },
+      {
+        "type": "action",
+        "description": "Add a new product with complete details."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify product appears in customer menu after saving."
+      },
+      {
+        "type": "action",
+        "description": "Edit an existing product and save."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updated product details shown correctly."
+      },
+      {
+        "type": "action",
+        "description": "Modify site settings for order processing."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify settings update succeeds and takes effect."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Crew Dashboard - System Health and Operations Monitoring",
+    "description": "Verify crew dashboard shows accurate system health metrics and allows staff operational tasks.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login to Crew Dashboard."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify real-time system health metrics are displayed (e.g., backend connectivity, order queue stats)."
+      },
+      {
+        "type": "action",
+        "description": "Perform available operational tasks."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify tasks complete successfully and status updates occur."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Customer Ticket Portal - Order History and Tracking",
+    "description": "Verify customers can view full order history and track current orders with live status updates.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login or access Ticket Portal."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify past order history is complete and accurate."
+      },
+      {
+        "type": "action",
+        "description": "Select a current order."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify live status tracking updates as order progresses."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Progressive Web App (PWA) Features Verification",
+    "description": "Verify install prompts, offline support, and automatic update notifications function correctly.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the application on a supported browser."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify app install prompt is shown under correct conditions."
+      },
+      {
+        "type": "action",
+        "description": "Simulate offline mode."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify offline support is indicated and basic functionality remains."
+      },
+      {
+        "type": "action",
+        "description": "Trigger application update."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify update notification appears and app reloads on user confirmation."
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Responsive Design Validation",
+    "description": "Verify application UI layout and elements adapt correctly across multiple screen sizes and orientations.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Access the app on desktop with various screen resolutions."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI elements resize, reposition, and remain readable and accessible."
+      },
+      {
+        "type": "action",
+        "description": "Access the app on mobile devices (phones/tablets) with both portrait and landscape orientations."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify consistent and functional UI layouts with no broken elements."
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Backend Integration Stability Under Load",
+    "description": "Verify Supabase backend handles multiple concurrent requests for orders, products, and status updates stably and performs real-time synchronization.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate multiple customers placing orders simultaneously."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all orders are processed correctly, status updates propagate in real-time without error."
+      },
+      {
+        "type": "action",
+        "description": "Perform concurrent admin and kitchen dashboard operations updating orders."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no data conflicts or stale data issues arise."
+      }
+    ]
+  }
+]

@@ -20,6 +20,8 @@ import TVDashboard from "./pages/TVDashboard";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 import TicketPortal from "./pages/TicketPortal";
+import CrewDashboard from "./pages/CrewDashboard";
+import KitchenDashboard from "./pages/KitchenDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,15 +35,21 @@ const App = () => (
           <Sonner />
           <OfflineIndicator />
           <UpdateChecker />
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/admin" element={<AdminLogin />} />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/tv" element={<TVDashboard />} />
+              <Route path="/crew" element={<CrewDashboard />} />
               <Route path="/payment-success" element={<PaymentSuccess />} />
               <Route path="/payment-cancel" element={<PaymentCancel />} />
+<<<<<<< HEAD
               <Route path="/tickets" element={<TicketPortal />} />
+=======
+              <Route path="/ticket" element={<TicketPortal />} />
+              <Route path="/kitchen" element={<KitchenDashboard />} />
+>>>>>>> 9811434c424ca55eb4d42ce15e893e1988d1fe0a
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

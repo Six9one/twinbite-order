@@ -31,7 +31,7 @@ const coulisList = [
 
 export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
   const { addToCart } = useOrder();
-  
+
   const [step, setStep] = useState(1);
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [selectedCoulis, setSelectedCoulis] = useState<string | null>(null);
@@ -63,9 +63,9 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
       const topping = milkshakeToppings.find(t => t.id === id);
       return topping?.name || id;
     });
-    
-    const coulisName = selectedCoulis 
-      ? coulisList.find(c => c.id === selectedCoulis)?.name 
+
+    const coulisName = selectedCoulis
+      ? coulisList.find(c => c.id === selectedCoulis)?.name
       : null;
 
     const description = `Base vanille, ${toppingNames.join(' + ')}${coulisName ? `, ${coulisName}` : ''}, Crème Chantilly`;
@@ -79,7 +79,7 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
     };
 
     const customization = {
-      base: 'vanille',
+      flavor: 'vanille',  // Use 'flavor' instead of 'base' to avoid pizza detection conflict
       toppings: toppingNames,
       coulis: coulisName || undefined,
       chantilly: true,
@@ -92,14 +92,14 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
     };
 
     addToCart(cartItem, 1, customization as any, calculatePrice());
-    
+
     trackAddToCart(baseItem.id, `Milkshake`, 'milkshakes');
-    
+
     toast({
       title: 'Ajouté au panier',
       description: `Milkshake ${toppingNames.join(' & ')}`,
     });
-    
+
     onClose();
   };
 
@@ -113,14 +113,14 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
               <Badge>{selectedToppings.length}/{maxToppings}</Badge>
             </div>
             <p className="text-sm text-muted-foreground">Sélectionnez jusqu'à 2 toppings</p>
-            
+
             <Alert className="bg-primary/10 border-primary/20">
               <AlertCircle className="h-4 w-4 text-primary" />
               <AlertDescription className="text-primary">
                 Base vanille • Crème Chantilly incluse
               </AlertDescription>
             </Alert>
-            
+
             <div className="grid grid-cols-2 gap-3">
               {milkshakeToppings.map((topping) => (
                 <Card
@@ -173,7 +173,7 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
         return (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Récapitulatif</h2>
-            
+
             <Card className="p-4 space-y-3">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Base</span>
@@ -183,7 +183,7 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Toppings</span>
                 <span className="font-medium">
-                  {selectedToppings.map(id => 
+                  {selectedToppings.map(id =>
                     milkshakeToppings.find(t => t.id === id)?.name
                   ).join(', ')}
                 </span>
@@ -192,8 +192,8 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Coulis</span>
                 <span className="font-medium">
-                  {selectedCoulis 
-                    ? coulisList.find(c => c.id === selectedCoulis)?.name 
+                  {selectedCoulis
+                    ? coulisList.find(c => c.id === selectedCoulis)?.name
                     : 'Sans coulis'}
                 </span>
               </div>
@@ -235,7 +235,7 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
             </div>
             <span className="text-xl font-bold text-primary">{calculatePrice().toFixed(2)}€</span>
           </div>
-          
+
           <div className="flex gap-2 mt-4">
             {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
               <div
@@ -254,16 +254,16 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
         <div className="container mx-auto">
           {step < totalSteps ? (
-            <Button 
-              className="w-full h-14 text-lg" 
+            <Button
+              className="w-full h-14 text-lg"
               onClick={() => setStep(step + 1)}
               disabled={!canContinue()}
             >
               Continuer
             </Button>
           ) : (
-            <Button 
-              className="w-full h-14 text-lg" 
+            <Button
+              className="w-full h-14 text-lg"
               onClick={handleAddToCart}
             >
               Ajouter au panier - {calculatePrice().toFixed(2)}€

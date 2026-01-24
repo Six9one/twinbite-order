@@ -105,29 +105,126 @@ async function sendOrderNotification(order) {
             return;
         }
 
-        // Créer le message
+        // Build detailed items list
         const items = order.items || [];
-        const itemsList = items.map(item => `• ${item.quantity}x ${item.name}`).join('\n');
+        let itemsList = '';
 
-        const message = `🍕 *TWIN PIZZA - Commande Confirmée*
+        items.forEach(item => {
+            const qty = item.quantity || 1;
+            const name = item.name || item.item?.name || 'Produit';
+            const price = item.totalPrice || item.price || 0;
+
+            itemsList += `\n  ${qty}x ${name}`;
+            if (price) itemsList += ` - ${price.toFixed(2)} EUR`;
+
+            // Get customizations
+            const customization = item.customization || {};
+            const details = [];
+
+            // Check if this is a pizza
+            const itemCategory = (item.category || item.item?.category || '').toLowerCase();
+            const isPizza = itemCategory.includes('pizza');
+
+            // Size - MEGA in bold - ONLY FOR PIZZAS
+            if (isPizza && customization.size && customization.size.toLowerCase() !== 'none') {
+                if (customization.size.toUpperCase() === 'MEGA') {
+                    details.push('*MEGA*');
+                } else {
+                    details.push(customization.size.toUpperCase());
+                }
+            }
+
+            // Base sauce removed - not needed
+
+            // Meats (Viandes)
+            if (customization.meats?.length) {
+                details.push(`Viandes: ${customization.meats.join(', ')}`);
+            } else if (customization.meat) {
+                details.push(`Viande: ${customization.meat}`);
+            }
+
+            // Sauces
+            if (customization.sauces?.length) {
+                details.push(`Sauces: ${customization.sauces.join(', ')}`);
+            }
+
+            // Garnitures
+            if (customization.garnitures?.length) {
+                details.push(`Garnitures: ${customization.garnitures.join(', ')}`);
+            }
+
+            // Supplements
+            if (customization.supplements?.length) {
+                details.push(`Supplements: ${customization.supplements.join(', ')}`);
+            }
+
+            // Menu option
+            if (customization.menuOption && customization.menuOption.toLowerCase() !== 'none') {
+                details.push(`Menu: ${customization.menuOption}`);
+            }
+
+            // Add details if any
+            if (details.length > 0) {
+                itemsList += `\n     (${details.join(' | ')})`;
+            }
+
+            // Item note
+            const note = item.note || customization.note;
+            if (note) {
+                itemsList += `\n     Note: ${note}`;
+            }
+        });
+
+        // Order type in French
+        const orderType = order.order_type === 'livraison' ? 'Livraison'
+            : order.order_type === 'emporter' ? 'A emporter'
+                : 'Sur place';
+
+        // Portal URL
+        const portalUrl = `https://twinpizza.fr/ticket?phone=${phone}`;
+
+        // Build FULL message
+        let message = `*TWIN PIZZA*
+================================
 
 Bonjour ${order.customer_name || 'Client'} !
 
-✅ Votre commande *N°${order.order_number}* est confirmée.
+Votre commande *${order.order_number}* est confirmee.
 
-📋 *Votre commande:*
-${itemsList}
+--------------------------------
+*VOTRE COMMANDE :*
+${itemsList || '  (aucun article)'}
 
-💰 *Total:* ${order.total?.toFixed(2) || '0.00'}€
-📍 *Type:* ${order.order_type === 'livraison' ? 'Livraison' : order.order_type === 'emporter' ? 'À emporter' : 'Sur place'}
+--------------------------------
+*RECAPITULATIF :*
+- Mode : *${orderType}*
+- Total : *${order.total?.toFixed(2) || '0.00'} EUR*
+- Delai estime : *15 a 25 minutes*`;
 
-Merci de votre confiance ! 🙏`;
+        // Add address for delivery
+        if (order.order_type === 'livraison' && order.customer_address) {
+            message += `\n- Adresse : ${order.customer_address}`;
+        }
+
+        // Add customer notes if any
+        if (order.customer_notes) {
+            message += `\n- Note : ${order.customer_notes}`;
+        }
+
+        message += `
+
+--------------------------------
+Suivez votre commande :
+${portalUrl}
+
+Merci pour votre confiance !
+*TWIN PIZZA*`;
 
         // Envoyer le message
         const chatId = phone + '@c.us';
         await client.sendMessage(chatId, message);
 
-        console.log(`✅ Message envoyé à ${phone}`);
+        console.log(`✅ Message complet envoyé à ${phone}`);
 
     } catch (error) {
         console.error('❌ Erreur envoi message:', error.message);
@@ -150,7 +247,7 @@ async function sendReadyNotification(order) {
 
 Bonjour ${order.customer_name || 'Client'} !
 
-✅ Votre commande *N°${order.order_number}* est *PRÊTE* !
+✅ Votre commande *${order.order_number}* est *PRÊTE* !
 
 ${order.order_type === 'livraison'
                 ? '🚗 Notre livreur arrive bientôt !'

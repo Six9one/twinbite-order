@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; }
+  h1 { color: #d97706; text-align: center; margin-bottom: 5px; font-size: 28px; }
+  .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 14px; }
+  .info { background: #fef3c7; padding: 10px; margin-bottom: 15px; border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+  th { 
+    background: #d97706; 
+    color: white; 
+    padding: 12px 8px; 
+    text-align: left; 
+    font-weight: bold;
+    border: 1px solid #b45309;
+  }
+  td { 
+    padding: 10px 8px; 
+    border: 1px solid #e5e7eb; 
+  }
+  tr:nth-child(even) { background: #fef9ee; }
+  .category-header td {
+    font-weight: bold;
+    font-size: 14px;
+    text-align: center;
+    padding: 8px;
+  }
+  .viandes { background: #dc2626 !important; color: white !important; }
+  .fromages { background: #f59e0b !important; color: white !important; }
+  .surgeles { background: #3b82f6 !important; color: white !important; }
+  .frais { background: #10b981 !important; color: white !important; }
+  .desserts { background: #ec4899 !important; color: white !important; }
+  .sauces { background: #8b5cf6 !important; color: white !important; }
+  .ingredients { background: #6366f1 !important; color: white !important; }
+  .emballages { background: #78716c !important; color: white !important; }
+  .boissons { background: #06b6d4 !important; color: white !important; }
+  .nettoyage { background: #22c55e !important; color: white !important; }
+  .legumes { background: #84cc16 !important; color: white !important; }
+  .pains { background: #d97706 !important; color: white !important; }
+  .toppings { background: #a855f7 !important; color: white !important; }
+  .footer { 
+    margin-top: 20px; 
+    padding: 10px; 
+    background: #f3f4f6; 
+    border-radius: 8px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <h1>BON DE COMMANDE</h1>
+  <div class="subtitle">TWIN PIZZA - Grand-Couronne</div>
+  
+  <div class="info">
+    <strong>Date:</strong> ____/____/________ &nbsp;&nbsp;&nbsp;
+    <strong>Fournisseur:</strong> ________________________________
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 70%;">Produit</th>
+        <th style="width: 30%;">Quantite</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- VIANDES -->
+      <tr class="category-header"><td colspan="2" class="viandes">VIANDES</td></tr>
+      <tr><td>Escalope</td><td></td></tr>
+      <tr><td>Viande hachee</td><td></td></tr>
+      <tr><td>Tenders</td><td></td></tr>
+      <tr><td>Kebab</td><td></td></tr>
+      <tr><td>Wings</td><td></td></tr>
+      <tr><td>Jambon</td><td></td></tr>
+      <tr><td>Lardons</td><td></td></tr>
+      <tr><td>Merguez</td><td></td></tr>
+      <tr><td>Poulet</td><td></td></tr>
+      
+      <!-- FROMAGES -->
+      <tr class="category-header"><td colspan="2" class="fromages">FROMAGES</td></tr>
+      <tr><td>Mozzarella</td><td></td></tr>
+      <tr><td>Chevre</td><td></td></tr>
+      <tr><td>Raclette</td><td></td></tr>
+      <tr><td>Reblochon</td><td></td></tr>
+      <tr><td>Cheddar</td><td></td></tr>
+      <tr><td>Emmental</td><td></td></tr>
+      
+      <!-- SURGELES -->
+      <tr class="category-header"><td colspan="2" class="surgeles">SURGELES / FRITES</td></tr>
+      <tr><td>Frites</td><td></td></tr>
+      <tr><td>Pomme de terre</td><td></td></tr>
+      <tr><td>Pomme de terre cubes</td><td></td></tr>
+      <tr><td>Mozza sticks</td><td></td></tr>
+      <tr><td>Poivrons</td><td></td></tr>
+      <tr><td>Cordon Bleu</td><td></td></tr>
+      
+      <!-- OEUFS & FRAIS -->
+      <tr class="category-header"><td colspan="2" class="frais">OEUFS & PRODUITS FRAIS</td></tr>
+      <tr><td>Oeufs</td><td></td></tr>
+      <tr><td>Levure</td><td></td></tr>
+      
+      <!-- DESSERTS -->
+      <tr class="category-header"><td colspan="2" class="desserts">DESSERTS & GLACES</td></tr>
+      <tr><td>Tiramisu</td><td></td></tr>
+      <tr><td>Tarte au Daim</td><td></td></tr>
+      <tr><td>Glace vanille</td><td></td></tr>
+      <tr><td>Glace chocolat</td><td></td></tr>
+      <tr><td>Glace fraise</td><td></td></tr>
+      
+      <!-- SAUCES -->
+      <tr class="category-header"><td colspan="2" class="sauces">SAUCES</td></tr>
+      <tr><td>Sauce piquante</td><td></td></tr>
+      <tr><td>Ketchup</td><td></td></tr>
+      <tr><td>Mayonnaise</td><td></td></tr>
+      <tr><td>Algerienne</td><td></td></tr>
+      <tr><td>Harissa</td><td></td></tr>
+      <tr><td>Biggy burger</td><td></td></tr>
+      <tr><td>Barbecue</td><td></td></tr>
+      <tr><td>Samourai</td><td></td></tr>
+      
+      <!-- HUILES -->
+      <tr class="category-header"><td colspan="2" class="ingredients">HUILES & INGREDIENTS</td></tr>
+      <tr><td>Huile de tournesol 10L</td><td></td></tr>
+      <tr><td>Huile de friture</td><td></td></tr>
+      
+      <!-- EMBALLAGES -->
+      <tr class="category-header"><td colspan="2" class="emballages">EMBALLAGES</td></tr>
+      <tr><td>Boites sandwiches</td><td></td></tr>
+      <tr><td>Boites Senior 31cm</td><td></td></tr>
+      <tr><td>Boites Junior 26cm</td><td></td></tr>
+      <tr><td>Cup milkshake</td><td></td></tr>
+      <tr><td>Serviettes carrees</td><td></td></tr>
+      <tr><td>Sacs kraft</td><td></td></tr>
+      <tr><td>Papier aluminium</td><td></td></tr>
+      <tr><td>Film etirable</td><td></td></tr>
+      
+      <!-- BOISSONS -->
+      <tr class="category-header"><td colspan="2" class="boissons">BOISSONS</td></tr>
+      <tr><td>Coca-Cola</td><td></td></tr>
+      <tr><td>Fanta</td><td></td></tr>
+      <tr><td>Sprite</td><td></td></tr>
+      <tr><td>Eau</td><td></td></tr>
+      <tr><td>Ice Tea</td><td></td></tr>
+      <tr><td>Oasis</td><td></td></tr>
+      
+      <!-- NETTOYAGE -->
+      <tr class="category-header"><td colspan="2" class="nettoyage">PRODUITS NETTOYAGE</td></tr>
+      <tr><td>Liquide vaisselle</td><td></td></tr>
+      <tr><td>Desinfectant</td><td></td></tr>
+      <tr><td>Eponges</td><td></td></tr>
+      <tr><td>Essuie-tout</td><td></td></tr>
+      <tr><td>Sacs poubelle</td><td></td></tr>
+      
+      <!-- LEGUMES -->
+      <tr class="category-header"><td colspan="2" class="legumes">LEGUMES</td></tr>
+      <tr><td>Salade</td><td></td></tr>
+      <tr><td>Tomates</td><td></td></tr>
+      <tr><td>Oignons</td><td></td></tr>
+      <tr><td>Cornichons</td><td></td></tr>
+      
+      <!-- PAINS -->
+      <tr class="category-header"><td colspan="2" class="pains">PAINS</td></tr>
+      <tr><td>Pain tacos</td><td></td></tr>
+      <tr><td>Pain panini</td><td></td></tr>
+      <tr><td>Pain burger</td><td></td></tr>
+      <tr><td>Pain hot-dog</td><td></td></tr>
+      
+      <!-- TOPPINGS -->
+      <tr class="category-header"><td colspan="2" class="toppings">TOPPINGS DESSERTS</td></tr>
+      <tr><td>Sauce chocolat</td><td></td></tr>
+      <tr><td>Sauce caramel</td><td></td></tr>
+      <tr><td>Chantilly</td><td></td></tr>
+      <tr><td>M&Ms</td><td></td></tr>
+      <tr><td>Oreo</td><td></td></tr>
+      <tr><td>Smarties</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <strong>Notes:</strong><br>
+    _______________________________________________________________________________<br>
+    _______________________________________________________________________________
+  </div>
+</body>
+</html>

@@ -258,12 +258,25 @@ export function useUpdateOrderStatus() {
   });
 }
 
-// Generate order number using timestamp + random (guaranteed unique, no database dependency)
+// Generate order number using server-side daily counter (resets to 001 each day)
 export async function generateOrderNumber(): Promise<string> {
-  // Format: HHMMSS + 3 random digits (e.g., "143527-482")
-  // This is unique per millisecond + random, human-readable for display
+  try {
+    // Use server-side function that resets daily (001, 002, 003...)
+    const { data, error } = await supabase.rpc('get_next_order_number');
+
+    if (!error && data) {
+      return data;
+    }
+
+    // Fallback: timestamp + random if server call fails
+    console.warn('[generateOrderNumber] Server call failed, using fallback:', error);
+  } catch (e) {
+    console.warn('[generateOrderNumber] Exception, using fallback:', e);
+  }
+
+  // Fallback: HHMMSS + 3 random digits
   const now = new Date();
-  const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, ''); // HHMMSS
+  const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '');
   const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
   return `${timeStr}-${random}`;
 }

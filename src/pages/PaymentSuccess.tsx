@@ -22,7 +22,7 @@ export default function PaymentSuccess() {
         </p>
         {orderNumber && (
           <p className="text-lg font-semibold text-primary mb-6">
-            Commande #{orderNumber}
+            Commande {orderNumber}
           </p>
         )}
         <p className="text-sm text-muted-foreground mb-6">

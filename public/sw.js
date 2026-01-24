@@ -2,7 +2,7 @@
 // This version automatically checks for updates and refreshes cached content
 
 // VERSION: Change this when deploying updates - triggers cache refresh
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `twin-pizza-${CACHE_VERSION}`;
 
 // Files to cache for offline support (minimal - only essentials)
@@ -162,15 +162,20 @@ self.addEventListener('message', (event) => {
     }
 });
 
-// Push notification event
+// Push notification event - HACCP Kitchen Notifications
 self.addEventListener('push', (event) => {
     console.log('[SW] Push received:', event);
 
-    let data = { title: 'Twin Pizza', body: 'Nouvelle notification!' };
+    let data = {
+        title: '🍕 Twin Pizza HACCP',
+        body: 'Nouvelle notification!',
+        tag: 'haccp-notification',
+        url: '/kitchen'
+    };
 
     if (event.data) {
         try {
-            data = event.data.json();
+            data = { ...data, ...event.data.json() };
         } catch (e) {
             data.body = event.data.text();
         }
@@ -180,16 +185,17 @@ self.addEventListener('push', (event) => {
         body: data.body,
         icon: '/favicon.png',
         badge: '/favicon.png',
-        vibrate: [100, 50, 100],
+        vibrate: [200, 100, 200, 100, 200],
+        requireInteraction: true,
         data: {
-            url: data.url || '/',
+            url: data.url || '/kitchen',
             dateOfArrival: Date.now()
         },
-        actions: data.actions || [
-            { action: 'open', title: 'Ouvrir' },
-            { action: 'close', title: 'Fermer' }
+        actions: [
+            { action: 'open', title: '📋 Ouvrir' },
+            { action: 'close', title: '❌ Fermer' }
         ],
-        tag: data.tag || 'twin-pizza-notification',
+        tag: data.tag || 'haccp-notification',
         renotify: true
     };
 

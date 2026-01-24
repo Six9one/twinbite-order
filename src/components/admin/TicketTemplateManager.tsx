@@ -10,8 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { useAdminSetting, useUpdateAdminSetting } from '@/hooks/useAdminSettings';
-import { 
-  Printer, Save, RotateCcw, Eye, FileText, 
+import {
+  Printer, Save, RotateCcw, Eye, FileText,
   ChefHat, Store, Code, HelpCircle, Copy
 } from 'lucide-react';
 
@@ -168,7 +168,7 @@ const escPosCommands = [
 export function TicketTemplateManager() {
   const { data: settingsData, isLoading } = useAdminSetting('ticket_templates');
   const updateSetting = useUpdateAdminSetting();
-  
+
   const [settings, setSettings] = useState<TicketSettings>(defaultSettings);
   const [activeTemplateTab, setActiveTemplateTab] = useState<'kitchen' | 'counter'>('counter');
   const [showPreview, setShowPreview] = useState(false);
@@ -252,7 +252,7 @@ export function TicketTemplateManager() {
         <div style="text-align: center; font-weight: bold; font-size: ${settings.fontSize === 'large' ? '18px' : settings.fontSize === 'small' ? '12px' : '14px'};">${template.header}</div>
         ${template.subheader ? `<div style="text-align: center; font-size: 10px; white-space: pre-line;">${template.subheader}</div>` : ''}
         <div style="border-top: 1px dashed black; margin: 8px 0;"></div>
-        ${template.showOrderNumber ? `<div><strong>N°:</strong> ${sampleOrder.order_number}</div>` : ''}
+        ${template.showOrderNumber ? `<div><strong>Commande:</strong> ${sampleOrder.order_number}</div>` : ''}
         ${template.showDateTime ? `<div><strong>Date:</strong> ${sampleOrder.created_at}</div>` : ''}
         <div><strong>Type:</strong> ${sampleOrder.order_type.toUpperCase()}</div>
         ${template.showCustomerInfo ? `<div><strong>Client:</strong> ${sampleOrder.customer_name}</div>` : ''}
@@ -501,7 +501,7 @@ export function TicketTemplateManager() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div 
+                <div
                   className="bg-white border rounded-lg overflow-auto max-h-[500px]"
                   dangerouslySetInnerHTML={{ __html: generatePreviewHtml() }}
                 />
@@ -519,7 +519,7 @@ export function TicketTemplateManager() {
             </CardHeader>
             <CardContent className="space-y-2 max-h-[300px] overflow-y-auto">
               {availableVariables.map(({ variable, description }) => (
-                <div 
+                <div
                   key={variable}
                   className="flex items-center justify-between gap-2 p-2 rounded hover:bg-muted cursor-pointer group"
                   onClick={() => copyVariable(variable)}
@@ -544,7 +544,7 @@ export function TicketTemplateManager() {
             </CardHeader>
             <CardContent className="space-y-2 max-h-[200px] overflow-y-auto">
               {escPosCommands.map(({ command, description }) => (
-                <div 
+                <div
                   key={command}
                   className="flex items-center justify-between gap-2 p-2 rounded hover:bg-muted cursor-pointer group"
                   onClick={() => copyVariable(command)}

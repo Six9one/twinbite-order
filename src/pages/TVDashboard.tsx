@@ -204,7 +204,12 @@ const printOrderTicket = (order: Order) => {
     const price = cartItem.totalPrice?.toFixed(2) || '0.00';
     const customization = cartItem.customization;
     let details: string[] = [];
-    // Size is NOT shown - it's already in product name
+    // Show pizza SIZE prominently (MEGA uppercase) - ONLY FOR PIZZAS
+    const category = (cartItem.item?.category || cartItem.category || '').toLowerCase();
+    const isPizza = category.includes('pizza');
+    if (isPizza && customization?.size) {
+      details.push(customization.size.toUpperCase());
+    }
     if (customization?.meats?.length) details.push(customization.meats.join(', '));
     if (customization?.sauces?.length) details.push(customization.sauces.join(', '));
     if (customization?.supplements?.length) details.push(customization.supplements.join(', '));
@@ -227,7 +232,7 @@ ${line}
       ${subheader}
        ${phone}
 ${line}
-N° ${order.order_number}
+${order.order_number}
 ${dateStr}
 ${line}
     ${orderTypeLabels[order.order_type] || order.order_type.toUpperCase()}
@@ -508,7 +513,7 @@ export default function TVDashboard() {
             <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">REÇUE !</h2>
             <div className="bg-black text-white px-8 py-4 rounded-xl inline-block">
               <p className="text-xl font-bold">{newOrderInfo.orderType}</p>
-              <p className="text-3xl font-mono font-bold mt-1">N° {newOrderInfo.orderNumber}</p>
+              <p className="text-3xl font-mono font-bold mt-1">{newOrderInfo.orderNumber}</p>
             </div>
           </div>
         </div>
@@ -691,7 +696,7 @@ export default function TVDashboard() {
             <span className="text-xs text-white/40 flex-shrink-0">OK:</span>
             {completedOrders.slice(0, 20).map((order) => (
               <div key={order.id} className="bg-gray-800/50 rounded px-1.5 py-0.5 text-xs text-white/50 flex-shrink-0">
-                #{orderNumberMap.get(order.id)}
+                {orderNumberMap.get(order.id)}
               </div>
             ))}
           </div>
@@ -903,7 +908,7 @@ function ColumnOrderCard({
       <div className={`${config.color} px-2 py-1 flex items-center justify-between`}>
         <div className="flex items-center gap-1.5">
           <Icon className="w-3 h-3" />
-          <span className="font-bold text-xs">#{String(orderNumber).padStart(3, '0')}</span>
+          <span className="font-bold text-xs">{String(orderNumber).padStart(3, '0')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           {order.payment_method === 'en_ligne' ? (
@@ -1130,7 +1135,7 @@ function ScheduledOrderCard({
           <span className="font-semibold text-xs">{typeConfig?.label}</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="font-bold text-xs">#{String(orderNumber).padStart(3, '0')}</span>
+          <span className="font-bold text-xs">{String(orderNumber).padStart(3, '0')}</span>
           {order.payment_method === 'en_ligne' ? (
             <Badge className="bg-green-700 text-white text-[10px] px-1 py-0 h-4">PAYÉE</Badge>
           ) : (

@@ -1,0 +1,120 @@
+name: HACCP Kitchen Notifications
+
+on:
+  schedule:
+    # Morning notification at 11:30 AM Paris time (10:30 UTC in winter, 9:30 UTC in summer)
+    - cron: '30 10 * * *'  # 10:30 UTC = 11:30 CET
+    # Night notification at 11:00 PM Paris time (22:00 UTC in winter, 21:00 UTC in summer)  
+    - cron: '0 22 * * *'   # 22:00 UTC = 23:00 CET
+  workflow_dispatch:  # Allow manual trigger for testing
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install web-push
+        run: npm install web-push
+
+      - name: Determine notification type
+        id: notif-type
+        run: |
+          HOUR=$(date -u +%H)
+          if [ "$HOUR" -lt "15" ]; then
+            echo "type=morning" >> $GITHUB_OUTPUT
+            echo "title=☀️ Relevé Matin" >> $GITHUB_OUTPUT
+            echo "body=Il est temps de faire le relevé température du matin!" >> $GITHUB_OUTPUT
+            echo "url=/kitchen?tab=temp-rounds&shift=Morning" >> $GITHUB_OUTPUT
+          else
+            echo "type=night" >> $GITHUB_OUTPUT
+            echo "title=🌙 Relevé Soir" >> $GITHUB_OUTPUT
+            echo "body=Il est temps de faire le relevé température du soir!" >> $GITHUB_OUTPUT
+            echo "url=/kitchen?tab=temp-rounds&shift=Night" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Push Notifications
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_EMAIL: ${{ secrets.VAPID_EMAIL }}
+        run: |
+          node << 'EOF'
+          const webpush = require('web-push');
+          
+          // Configure VAPID
+          webpush.setVapidDetails(
+            `mailto:${process.env.VAPID_EMAIL}`,
+            process.env.VAPID_PUBLIC_KEY,
+            process.env.VAPID_PRIVATE_KEY
+          );
+          
+          // Fetch subscriptions from Supabase
+          async function sendNotifications() {
+            const response = await fetch(
+              `${process.env.SUPABASE_URL}/rest/v1/push_subscriptions?is_active=eq.true&select=*`,
+              {
+                headers: {
+                  'apikey': process.env.SUPABASE_SERVICE_KEY,
+                  'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
+                }
+              }
+            );
+            
+            const subscriptions = await response.json();
+            console.log(`Found ${subscriptions.length} active subscriptions`);
+            
+            const payload = JSON.stringify({
+              title: '${{ steps.notif-type.outputs.title }}',
+              body: '${{ steps.notif-type.outputs.body }}',
+              url: '${{ steps.notif-type.outputs.url }}',
+              tag: 'haccp-${{ steps.notif-type.outputs.type }}'
+            });
+            
+            let sent = 0;
+            let failed = 0;
+            
+            for (const sub of subscriptions) {
+              try {
+                await webpush.sendNotification({
+                  endpoint: sub.endpoint,
+                  keys: sub.keys
+                }, payload);
+                sent++;
+                console.log(`✓ Sent to ${sub.device_name || 'device'}`);
+              } catch (error) {
+                failed++;
+                console.error(`✗ Failed: ${error.message}`);
+                
+                // Mark as inactive if subscription is invalid
+                if (error.statusCode === 410 || error.statusCode === 404) {
+                  await fetch(
+                    `${process.env.SUPABASE_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(sub.endpoint)}`,
+                    {
+                      method: 'PATCH',
+                      headers: {
+                        'apikey': process.env.SUPABASE_SERVICE_KEY,
+                        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({ is_active: false })
+                    }
+                  );
+                }
+              }
+            }
+            
+            console.log(`\n📊 Results: ${sent} sent, ${failed} failed`);
+          }
+          
+          sendNotifications().catch(console.error);
+          EOF

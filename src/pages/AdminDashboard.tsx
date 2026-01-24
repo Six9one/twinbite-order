@@ -27,6 +27,7 @@ import { StoreStatusManager } from '@/components/admin/StoreStatusManager';
 import { CategoryImagesManager } from '@/components/admin/CategoryImagesManager';
 import { PriceManager } from '@/components/admin/PriceManager';
 import { HACCPManager } from '@/components/admin/HACCPManager';
+import { TicketManager } from '@/components/admin/TicketManager';
 import {
   LogOut, Home, Search, RefreshCw, Download, Printer,
   Clock, CheckCircle, XCircle, ChefHat, Package,
@@ -36,7 +37,7 @@ import {
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'stats' | 'dashboard' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'prices' | 'haccp';
+type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'promotions' | 'loyalty' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'prices' | 'haccp';
 
 
 
@@ -132,7 +133,7 @@ ${line}
       ${subheader}
        ${phone}
 ${line}
-N° ${order.order_number}
+${order.order_number}
 ${dateStr}
 ${line}
     ${orderTypeLabels[order.order_type] || order.order_type.toUpperCase()}
@@ -452,8 +453,14 @@ export default function AdminDashboard() {
     const note = cartItem.note || customization?.note;
 
     let details: string[] = [];
-    // Size is NOT shown - it's already in product name
-    if (customization?.base) details.push(customization.base);
+    // Show pizza SIZE prominently (MEGA in bold) - ONLY FOR PIZZAS
+    const category = (cartItem.item?.category || cartItem.category || '').toLowerCase();
+    const isPizza = category.includes('pizza');
+    if (isPizza && customization?.size) {
+      const sizeText = customization.size.toUpperCase() === 'MEGA' ? '<b>MEGA</b>' : customization.size.toUpperCase();
+      details.push(sizeText);
+    }
+    // Remove base sauce from display - not needed
     if (customization?.meats?.length) details.push(customization.meats.join(', '));
     if (customization?.meat) details.push(customization.meat);
     if (customization?.sauces?.length) details.push(customization.sauces.join(', '));
@@ -502,7 +509,7 @@ export default function AdminDashboard() {
           <p>Grand-Couronne</p>
         </div>
         <div class="info">
-          <p><strong>N°:</strong> ${escapeHtml(order.order_number)}</p>
+          <p><strong>Commande:</strong> ${escapeHtml(order.order_number)}</p>
           <p><strong>Type:</strong> ${escapeHtml(order.order_type.toUpperCase())}</p>
           <p><strong>Client:</strong> ${escapeHtml(order.customer_name)}</p>
           <p><strong>Tél:</strong> ${escapeHtml(order.customer_phone)}</p>
@@ -743,7 +750,8 @@ export default function AdminDashboard() {
           {activeTab === 'printer' && <PrinterConfig />}
 
           {/* Ticket Templates */}
-          {activeTab === 'tickets' && <TicketTemplateManager />}
+          {/* Ticket Manager */}
+          {activeTab === 'tickets' && <TicketManager />}
 
           {/* New Sections */}
           {activeTab === 'promotions' && <PromotionsManager />}
@@ -844,10 +852,16 @@ function OrderCard({
                   <span>{cartItem.quantity}x {productName}</span>
                   <span>{Number(price).toFixed(2)}€</span>
                 </div>
-                {/* Size is NOT shown - it's already in product name */}
-                {customization?.base && (
-                  <p className="text-xs text-pink-600 ml-4">🍕 {customization.base}</p>
-                )}
+                {/* Show pizza SIZE prominently (MEGA in bold) - ONLY FOR PIZZAS */}
+                {(() => {
+                  const category = (cartItem.item?.category || cartItem.category || '').toLowerCase();
+                  const isPizza = category.includes('pizza');
+                  return isPizza && customization?.size ? (
+                    <p className={`text-xs ml-4 font-bold ${customization.size.toUpperCase() === 'MEGA' ? 'text-red-600' : 'text-blue-600'}`}>
+                      🍕 {customization.size.toUpperCase()}
+                    </p>
+                  ) : null;
+                })()}
                 {customization?.meats?.length > 0 && (
                   <p className="text-xs text-red-600 ml-4">🥩 {customization.meats.join(', ')}</p>
                 )}

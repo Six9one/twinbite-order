@@ -1,7 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
-  LayoutDashboard,
   Package,
   Tv,
   Printer,
@@ -47,7 +46,6 @@ import { FileText } from 'lucide-react';
 
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', icon: LayoutDashboard, value: 'dashboard' },
   { label: 'Commandes', icon: Package, value: 'orders' },
   { label: '💰 Tous les Prix', icon: Euro, value: 'prices' },
   { label: 'TV Dashboard', icon: Tv, href: '/tv' },
@@ -105,7 +103,6 @@ const navItems: NavItem[] = [
   { label: 'Contenu du Site', icon: Globe, value: 'content' },
   { label: '🧾 HACCP', icon: Shield, value: 'haccp' },
   { label: '⚡ Statut & Horaires', icon: Power, value: 'store-status' },
-  { label: 'Statistiques', icon: BarChart3, value: 'stats' },
   { label: 'Ventes', icon: BarChart3, value: 'ventes' },
   { label: 'Paiements', icon: CreditCard, value: 'payments' },
   { label: 'Paramètres', icon: Settings, value: 'settings' },
@@ -120,7 +117,8 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ activeTab, onTabChange, isOpen = true, onClose }: AdminSidebarProps) {
-  const [openGroups, setOpenGroups] = useState<string[]>(['Produits']);
+  // All sections closed by default - open only when clicked
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
 
   const toggleGroup = (label: string) => {
     setOpenGroups(prev =>
@@ -219,7 +217,7 @@ export function AdminSidebar({ activeTab, onTabChange, isOpen = true, onClose }:
         !isOpen && "md:w-0 md:overflow-hidden"
       )}>
         <div className="p-4 border-b border-border flex items-center justify-between">
-          <button onClick={() => handleNavClick('dashboard')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <button onClick={() => handleNavClick('orders')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <img src={logoImage} alt="Twin Pizza" className="w-10 h-10 rounded-full" />
             <div>
               <h1 className="text-lg font-bold">

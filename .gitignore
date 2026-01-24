@@ -32,7 +32,13 @@ dist-ssr
 whatsapp-bot-python/venv/
 whatsapp-bot-python/__pycache__/
 whatsapp-bot-python/whatsapp_session/
+venv/
+__pycache__/
+*.pyc
 
 # Node
 print-server/node_modules/
 
+# WhatsApp & Local App
+testsprite_tests/tmp/
+code_summary.json
