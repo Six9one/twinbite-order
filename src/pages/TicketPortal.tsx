@@ -144,9 +144,9 @@ export default function TicketPortal() {
                 }
             }
 
-            // Fetch Loyalty
-            const { data: loyaltyData } = await supabase
-                .from('loyalty_customers')
+            // Fetch Loyalty from loyalty_customers table
+            const { data: loyaltyData, error: loyaltyError } = await supabase
+                .from('loyalty_customers' as any)
                 .select('points, stamps, total_stamps, free_items_available')
                 .eq('phone', phone)
                 .single();
@@ -379,9 +379,9 @@ export default function TicketPortal() {
                                                 {/* Progress Bar (Visual flair) */}
                                                 <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-2">
                                                     <div className={`h-full rounded-full transition-all duration-1000 ${order.status === 'completed' ? 'w-full bg-green-500' :
-                                                            order.status === 'ready' ? 'w-3/4 bg-green-400' :
-                                                                order.status === 'preparing' ? 'w-1/2 bg-blue-500' :
-                                                                    'w-1/4 bg-amber-400'
+                                                        order.status === 'ready' ? 'w-3/4 bg-green-400' :
+                                                            order.status === 'preparing' ? 'w-1/2 bg-blue-500' :
+                                                                'w-1/4 bg-amber-400'
                                                         }`} />
                                                 </div>
                                             </div>
