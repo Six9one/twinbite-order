@@ -24,38 +24,43 @@ import CrewDashboard from "./pages/CrewDashboard";
 import KitchenDashboard from "./pages/KitchenDashboard";
 import NotFound from "./pages/NotFound";
 
+// Components
+import ErrorBoundary from "./components/ErrorBoundary";
+
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <LanguageProvider>
-      <LoyaltyProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <OfflineIndicator />
-          <UpdateChecker />
-          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/admin" element={<AdminLogin />} />
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/tv" element={<TVDashboard />} />
-              <Route path="/crew" element={<CrewDashboard />} />
-              <Route path="/payment-success" element={<PaymentSuccess />} />
-              <Route path="/payment-cancel" element={<PaymentCancel />} />
-              <Route path="/tickets" element={<TicketPortal />} />
-              <Route path="/ticket" element={<TicketPortal />} />
-              <Route path="/kitchen" element={<KitchenDashboard />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <PWAInstallPrompt />
-          </BrowserRouter>
-        </TooltipProvider>
-      </LoyaltyProvider>
-    </LanguageProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <LanguageProvider>
+        <LoyaltyProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <OfflineIndicator />
+            <UpdateChecker />
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/admin" element={<AdminLogin />} />
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/tv" element={<TVDashboard />} />
+                <Route path="/crew" element={<CrewDashboard />} />
+                <Route path="/payment-success" element={<PaymentSuccess />} />
+                <Route path="/payment-cancel" element={<PaymentCancel />} />
+                <Route path="/tickets" element={<TicketPortal />} />
+                <Route path="/ticket" element={<TicketPortal />} />
+                <Route path="/kitchen" element={<KitchenDashboard />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <PWAInstallPrompt />
+            </BrowserRouter>
+          </TooltipProvider>
+        </LoyaltyProvider>
+      </LanguageProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

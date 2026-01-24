@@ -570,8 +570,8 @@ export function CheckoutLoyaltySection({
                             key={reward.id}
                             onClick={() => handleSelectReward(selectedReward?.id === reward.id ? null : reward)}
                             className={`w-full p-3 rounded-lg border-2 flex items-center justify-between transition-all ${selectedReward?.id === reward.id
-                                    ? 'border-primary bg-primary/10'
-                                    : 'border-border hover:border-primary/50'
+                                ? 'border-primary bg-primary/10'
+                                : 'border-border hover:border-primary/50'
                                 }`}
                         >
                             <div className="flex items-center gap-2">
@@ -585,10 +585,10 @@ export function CheckoutLoyaltySection({
             )}
 
             {/* Points to earn */}
-            {pointsToEarn.total > 0 && (
+            {pointsToEarn > 0 && (
                 <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-950/30 p-2 rounded">
                     <Sparkles className="w-4 h-4" />
-                    <span>Vous gagnerez <strong>+{pointsToEarn.total} points</strong> avec cette commande!</span>
+                    <span>Vous gagnerez <strong>+{pointsToEarn} points</strong> avec cette commande!</span>
                 </div>
             )}
         </Card>

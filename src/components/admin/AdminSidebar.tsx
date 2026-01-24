@@ -11,6 +11,7 @@ import {
   Star,
   BarChart3,
   Users,
+  User,
   Shield,
   Settings,
   Clock,

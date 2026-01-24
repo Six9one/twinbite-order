@@ -30,18 +30,32 @@ function MainApp() {
   useEffect(() => {
     const checkAdmin = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { data: roleData } = await supabase
+        const { data, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+          return;
+        }
+
+        if (data?.session) {
+          const { data: roleData, error: roleError } = await supabase
             .from('user_roles')
             .select('role')
-            .eq('user_id', session.user.id)
+            .eq('user_id', data.session.user.id)
             .eq('role', 'admin')
             .maybeSingle();
-          setIsAdmin(!!roleData);
+
+          if (roleError) {
+            console.error("Role fetch error:", roleError);
+            return;
+          }
+
+          if (roleData) {
+            setIsAdmin(true);
+          }
         }
       } catch (e) {
-        // Not admin
+        console.error("Admin check failed:", e);
       }
     };
     checkAdmin();

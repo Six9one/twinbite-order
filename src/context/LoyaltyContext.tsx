@@ -106,7 +106,16 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                     .eq('is_active', true)
                     .order('points_cost', { ascending: true });
 
-                if (!error && data && (data as any[]).length > 0) {
+                if (error) {
+                    if (error.code === '42P01' || error.message?.includes('does not exist')) {
+                        console.warn('Loyalty rewards table not found, using defaults.');
+                    } else {
+                        console.error('Error fetching rewards:', error.message);
+                    }
+                    return;
+                }
+
+                if (data && (data as any[]).length > 0) {
                     setRewards((data as any[]).map((r: any) => ({
                         id: r.id,
                         name: r.name,
@@ -116,8 +125,6 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                         value: r.value,
                         isActive: r.is_active
                     })));
-                } else if (error) {
-                    console.warn('Loyalty rewards table not found, using defaults:', error.message);
                 }
             } catch (e) {
                 console.warn('Failed to fetch rewards, using defaults:', e);
@@ -147,23 +154,31 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             }
 
             if (error || !data) {
+                if (error && error.code !== 'PGRST116') { // PGRST116 is just "no rows found" which is fine
+                    console.error('Error looking up customer:', error.message);
+                }
                 setIsLoading(false);
                 return null;
             }
 
             const rec = data as any;
+            if (!rec) {
+                setIsLoading(false);
+                return null;
+            }
+
             const customerData: LoyaltyCustomer = {
                 id: rec.id,
                 phone: rec.phone,
-                name: rec.name,
-                points: rec.points,
+                name: rec.name || 'Client',
+                points: rec.points || 0,
                 stamps: rec.stamps || 0,
                 totalStamps: rec.total_stamps || 0,
                 freeItemsAvailable: rec.free_items_available || 0,
-                totalSpent: rec.total_spent,
-                totalOrders: rec.total_orders,
+                totalSpent: rec.total_spent || 0,
+                totalOrders: rec.total_orders || 0,
                 firstOrderDone: rec.first_order_done || false,
-                joinedAt: new Date(rec.created_at)
+                joinedAt: rec.created_at ? new Date(rec.created_at) : new Date()
             };
 
             setCustomer(customerData);
@@ -426,9 +441,9 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 console.error('Failed to fetch fresh customer data:', fetchError);
                 return false;
             }
-
-            const currentTotalStamps = freshData.total_stamps || 0;
-            const currentFreeItems = freshData.free_items_available || 0;
+            const freshRec = freshData as any;
+            const currentTotalStamps = freshRec.total_stamps || 0;
+            const currentFreeItems = freshRec.free_items_available || 0;
 
             const newTotalStamps = currentTotalStamps + stampCount;
             const STAMPS_FOR_FREE = 10;
