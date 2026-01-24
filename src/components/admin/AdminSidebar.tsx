@@ -109,6 +109,7 @@ const navItems: NavItem[] = [
   { label: 'Ventes', icon: BarChart3, value: 'ventes' },
   { label: 'Paiements', icon: CreditCard, value: 'payments' },
   { label: 'Paramètres', icon: Settings, value: 'settings' },
+  { label: 'Portail Clients (Tickets)', icon: User, href: '/tickets' },
 ];
 
 interface AdminSidebarProps {

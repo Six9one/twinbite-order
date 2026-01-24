@@ -580,6 +580,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 <p className="text-sm opacity-80">TWIN PIZZA</p>
                 <p className="text-4xl font-bold font-mono mt-1">#{confirmedOrderData.orderNumber}</p>
                 <p className="text-xs opacity-70 mt-1">Présentez ce ticket à la caisse</p>
+                <div className="mt-2 bg-white/20 p-2 rounded text-xs select-all">
+                  Lien: twinpizza.fr/tickets?phone={confirmedOrderData.customerPhone}
+                </div>
               </div>
 
               {/* Order info */}
