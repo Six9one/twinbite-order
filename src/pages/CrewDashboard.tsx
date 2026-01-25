@@ -7,31 +7,23 @@ import {
   ChefHat,
   AlertTriangle,
   Settings,
-  Printer,
-  MessageSquare,
   Clock,
   ShoppingCart,
   LayoutDashboard,
   Power,
   Package,
-  Terminal,
   ClipboardList
 } from 'lucide-react';
 import { HACCPManager } from '@/components/admin/HACCPManager';
 import { InventoryManager } from '@/components/crew/InventoryManager';
-import { SystemHealthPanel } from '@/components/crew/SystemHealthPanel';
 import { OrdersKanban } from '@/components/crew/OrdersKanban';
 import { useLowStockAlerts } from '@/hooks/useInventory';
-import { useSystemHealth } from '@/hooks/useSystemHealth';
 
-type CrewTab = 'dashboard' | 'orders' | 'haccp' | 'inventory' | 'system' | 'settings';
+type CrewTab = 'dashboard' | 'orders' | 'haccp' | 'inventory' | 'settings';
 
 export default function CrewDashboard() {
   const [activeTab, setActiveTab] = useState<CrewTab>('dashboard');
   const [currentTime, setCurrentTime] = useState(new Date());
-
-  // System health monitoring
-  const { health } = useSystemHealth();
 
   // Get low stock alerts for dashboard
   const { data: lowStockItems } = useLowStockAlerts();
@@ -80,12 +72,6 @@ export default function CrewDashboard() {
             badge={lowStockItems?.length}
           />
           <NavItem
-            icon={<Terminal />}
-            label="Système"
-            active={activeTab === 'system'}
-            onClick={() => setActiveTab('system')}
-          />
-          <NavItem
             icon={<Settings />}
             label="Réglages"
             active={activeTab === 'settings'}
@@ -94,8 +80,6 @@ export default function CrewDashboard() {
         </nav>
 
         <div className="p-4 border-t border-white/5 space-y-4">
-          <StatusLine icon={<Printer />} label="Printer" online={health.printer.isOnline} />
-          <StatusLine icon={<MessageSquare />} label="WhatsApp Bot" online={health.whatsappBot.isOnline} />
           <Button variant="ghost" className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-950/20 mt-4">
             <Power className="mr-2 h-4 w-4" /> Fermer Session
           </Button>
@@ -111,8 +95,7 @@ export default function CrewDashboard() {
               activeTab === 'orders' ? 'Commandes Live' :
                 activeTab === 'haccp' ? 'HACCP Labels' :
                   activeTab === 'inventory' ? 'Stocks & Commandes' :
-                    activeTab === 'system' ? 'Système & WhatsApp' :
-                      'Réglages'}
+                    'Réglages'}
           </h2>
           <div className="flex items-center gap-4">
             <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20 px-3 py-1">
@@ -167,10 +150,6 @@ export default function CrewDashboard() {
             <InventoryManager />
           )}
 
-          {activeTab === 'system' && (
-            <SystemHealthPanel />
-          )}
-
           {activeTab === 'settings' && (
             <div className="space-y-6">
               <Card className="bg-[#161618] border-white/5 p-6">
@@ -204,23 +183,6 @@ function NavItem({ icon, label, active, onClick, badge }: { icon: React.ReactNod
       )}
       {active && !badge && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,1)]" />}
     </button>
-  );
-}
-
-function StatusLine({ icon, label, online }: { icon: React.ReactNode, label: string, online: boolean }) {
-  return (
-    <div className="flex items-center justify-between text-xs px-2">
-      <div className="flex items-center gap-2 text-gray-400">
-        {icon}
-        <span>{label}</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className={`w-2 h-2 rounded-full ${online ? 'bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-red-500'}`} />
-        <span className={online ? 'text-green-500 font-medium' : 'text-red-500'}>
-          {online ? 'ONLINE' : 'OFFLINE'}
-        </span>
-      </div>
-    </div>
   );
 }
 
