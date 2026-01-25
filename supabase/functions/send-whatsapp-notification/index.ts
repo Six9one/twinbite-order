@@ -36,16 +36,24 @@ serve(async (req) => {
             return new Response(JSON.stringify({ success: false, message: 'WhatsApp not configured' }), { headers: corsHeaders })
         }
 
-        // 1. Format order items into a readable list
+        // 1. Format order items into a readable list with sizes
         let itemsText = '';
         if (Array.isArray(items) && items.length > 0) {
             itemsText = items.map((item: any) => {
                 const name = item.item?.name || item.name || 'Article';
                 const qty = item.quantity || 1;
+                // Include size for pizzas
+                const size = item.customization?.size;
+                const category = (item.item?.category || item.category || '').toLowerCase();
+                const isPizza = category.includes('pizza');
+
+                if (isPizza && size) {
+                    return `${qty}x ${name} (${size.toUpperCase()})`;
+                }
                 return `${qty}x ${name}`;
             }).join(', ');
         } else {
-            itemsText = '(détails sur votre ticket)';
+            itemsText = '(voir votre ticket)';
         }
 
         const orderTypeLabels: Record<string, string> = {
@@ -85,7 +93,7 @@ serve(async (req) => {
                                     { type: 'text', text: itemsText },  // {{3}} Body - now shows item names
                                     { type: 'text', text: `${total.toFixed(2)}` }, // {{4}} Body
                                     { type: 'text', text: orderTypeLabels[orderType] || orderType }, // {{5}} Body
-                                    { type: 'text', text: '15 à 25 min' }       // {{6}} Body
+                                    { type: 'text', text: '10 à 20 min' }       // {{6}} Body - reduced wait time
                                 ]
                             },
                             {

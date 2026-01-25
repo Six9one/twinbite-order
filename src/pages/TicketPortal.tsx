@@ -379,20 +379,42 @@ export default function TicketPortal() {
                                                     <div>
                                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Détails de la commande</p>
                                                         <div className="space-y-3 bg-white p-3 rounded-xl border border-slate-100">
-                                                            {(order.items || []).map((item: any, i: number) => (
-                                                                <div key={i} className="flex justify-between items-start text-sm">
-                                                                    <div className="flex gap-2">
-                                                                        <span className="font-bold text-slate-700">{item.quantity}x</span>
-                                                                        <div>
-                                                                            <span className="text-slate-800">{item.name}</span>
-                                                                            {/* Customization details could go here */}
+                                                            {(order.items || []).map((item: any, i: number) => {
+                                                                // Extract name from various possible structures
+                                                                const itemName = item.item?.name || item.name || 'Article';
+                                                                // Extract price from various possible structures
+                                                                const unitPrice = item.item?.price || item.calculatedPrice || item.price || 0;
+                                                                const quantity = item.quantity || 1;
+                                                                const lineTotal = typeof item.totalPrice === 'number' ? item.totalPrice : (unitPrice * quantity);
+                                                                const customization = item.customization;
+
+                                                                return (
+                                                                    <div key={i} className="space-y-1">
+                                                                        <div className="flex justify-between items-start text-sm">
+                                                                            <div className="flex gap-2">
+                                                                                <span className="font-bold text-slate-700">{quantity}x</span>
+                                                                                <span className="text-slate-800 font-medium">{itemName}</span>
+                                                                            </div>
+                                                                            <span className="text-primary font-bold">
+                                                                                {lineTotal.toFixed(2)}€
+                                                                            </span>
                                                                         </div>
+                                                                        {customization && (
+                                                                            <div className="text-[11px] text-slate-500 ml-6 space-y-0.5">
+                                                                                {customization.size && <div>📏 Taille: <span className="font-medium">{customization.size}</span></div>}
+                                                                                {customization.meat && <div>🥩 Viande: {customization.meat}</div>}
+                                                                                {customization.meats?.length > 0 && <div>🥩 Viandes: {customization.meats.join(', ')}</div>}
+                                                                                {customization.sauces?.length > 0 && <div>🫗 Sauces: {customization.sauces.join(', ')}</div>}
+                                                                                {customization.garnitures?.length > 0 && <div>🥬 Garnitures: {customization.garnitures.join(', ')}</div>}
+                                                                                {customization.supplements?.length > 0 && <div>➕ Suppléments: {customization.supplements.join(', ')}</div>}
+                                                                                {customization.menuOption && customization.menuOption !== 'none' && (
+                                                                                    <div className="text-green-600 font-bold">🍟 {customization.menuOption.toUpperCase()}</div>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
-                                                                    <span className="text-slate-500 font-medium">
-                                                                        {((item.price || 0) * (item.quantity || 1)).toFixed(2)}€
-                                                                    </span>
-                                                                </div>
-                                                            ))}
+                                                                );
+                                                            })}
 
                                                             <Separator />
 
