@@ -22,7 +22,8 @@ BEGIN
             'customerName', NEW.customer_name,
             'orderNumber', NEW.order_number,
             'orderType', NEW.order_type,
-            'total', NEW.total
+            'total', NEW.total,
+            'items', NEW.items
         );
 
         -- Call the Supabase Edge Function asynchronously
@@ -30,7 +31,7 @@ BEGIN
             url := 'https://hsylnrzxeyqxczdalurj.functions.supabase.co/send-whatsapp-notification',
             headers := jsonb_build_object(
                 'Content-Type', 'application/json',
-                'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'SERVICE_ROLE_TOKEN' LIMIT 1) -- Use vault or hardcode service key
+                'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzeWxucnp4ZXlxeGN6ZGFsdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4ODIzMDksImV4cCI6MjA4MTQ1ODMwOX0.LmDeLvw6vHO7mjHi2qWeWwIEaNDutZ1spsahUGxEAnc'
             ),
             body := payload
         );
