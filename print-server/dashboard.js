@@ -7,10 +7,26 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import open from 'open';
 import fs from 'fs';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 
 // Setup paths
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Load environment variables (from .env in the same folder)
+dotenv.config({ path: join(__dirname, '.env') });
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('❌ Missing SUPABASE credentials in .env');
+    // We don't exit here to allow local dashboard to work anyway
+}
+
+// Initialize Supabase client
+const supabase = SUPABASE_URL ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 // Initialize Express and Socket.IO
 const app = express();
@@ -45,7 +61,6 @@ function addLog(source, type, message) {
 // Socket.IO Connection
 io.on('connection', (socket) => {
     console.log('Frontend connected');
-    // Send history
     socket.emit('history', logs);
 });
 
@@ -53,90 +68,182 @@ io.on('connection', (socket) => {
 // SERVICE MANAGEMENT
 // ==========================================
 
-// 1. WhatsApp Bot
-const botPath = join(__dirname, '../whatsapp-bot-python/bot.py');
-const pythonPath = join(__dirname, '../whatsapp-bot-python/venv/Scripts/python.exe'); // Try venv first
+let botProcess = null;
+let printerProcess = null;
 
-// Fallback to global python if venv doesn't exist OR if we force it
-// We prioritize 'python' command because venv seems corrupted/locked
-const pythonCmd = 'python'; // Always use global python for stability
+function startBot() {
+    if (botProcess) {
+        addLog('bot', 'warning', 'Bot already running. Use stop/restart.');
+        return;
+    }
 
-console.log(`Starting WhatsApp Bot with: ${pythonCmd}`);
+    const botPath = join(__dirname, '../whatsapp-bot-python/bot.py');
+    const pythonCmd = 'python'; // Always use global python for stability
 
-const botProcess = spawn(pythonCmd, ['-u', botPath], {
-    cwd: join(__dirname, '../whatsapp-bot-python'),
-    stdio: ['pipe', 'pipe', 'pipe'] // Pipe stdio to capture output
-});
+    addLog('bot', 'info', `🚀 Starting WhatsApp Bot...`);
 
-botProcess.stdout.on('data', (data) => {
-    const msg = data.toString();
-    console.log(`[BOT] ${msg}`);
+    botProcess = spawn(pythonCmd, ['-u', botPath], {
+        cwd: join(__dirname, '../whatsapp-bot-python'),
+        stdio: ['pipe', 'pipe', 'pipe']
+    });
 
-    // Classify logs based on content
-    let type = 'info';
-    if (msg.includes('ERROR')) type = 'error';
-    if (msg.includes('WARN')) type = 'warning';
-    if (msg.includes('OK') || msg.includes('succes') || msg.includes('Connecte')) type = 'success';
+    botProcess.stdout.on('data', (data) => {
+        const msg = data.toString();
+        let type = 'info';
+        if (msg.includes('ERROR')) type = 'error';
+        if (msg.includes('WARN')) type = 'warning';
+        if (msg.includes('OK') || msg.includes('succes') || msg.includes('Connecte')) type = 'success';
+        addLog('bot', type, msg);
+    });
 
-    addLog('bot', type, msg);
-});
+    botProcess.stderr.on('data', (data) => {
+        const msg = data.toString();
+        if (msg.includes('DevTools listening') || msg.includes('gpu_device')) return;
+        addLog('bot', 'error', msg);
+    });
 
-botProcess.stderr.on('data', (data) => {
-    const msg = data.toString();
-    // Filter out harmless Chrome noise
-    if (msg.includes('DevTools listening') || msg.includes('gpu_device')) return;
+    botProcess.on('close', (code) => {
+        addLog('bot', 'error', `Bot process exited with code ${code}`);
+        botProcess = null;
+    });
+}
 
-    addLog('bot', 'error', msg);
-});
+function stopBot() {
+    if (botProcess) {
+        addLog('bot', 'warning', '⏹️ Stopping WhatsApp Bot...');
+        botProcess.kill();
+        botProcess = null;
+    } else {
+        addLog('bot', 'info', 'Bot is not running.');
+    }
+}
 
-botProcess.on('close', (code) => {
-    addLog('bot', 'error', `Bot process exited with code ${code}`);
-});
+function startPrinter() {
+    if (printerProcess) {
+        addLog('printer', 'warning', 'Printer server already running.');
+        return;
+    }
 
+    addLog('printer', 'info', `🚀 Starting Print Server...`);
 
-// 2. Print Server (Internal to this process, but we'll import logic)
-// We will run the print server logic directly here by importing it, 
-// OR simpler: spawn it as a child too to keep isolation strong.
-// Spawning is safer to avoid context pollution and easier to restart.
+    printerProcess = spawn('node', ['server.js'], {
+        cwd: __dirname,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, FORCE_COLOR: true }
+    });
 
-const printerProcess = spawn('node', ['server.js'], {
-    cwd: __dirname,
-    stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, FORCE_COLOR: true }
-});
+    printerProcess.stdout.on('data', (data) => {
+        const msg = data.toString();
+        let type = 'info';
+        if (msg.includes('❌') || msg.includes('Error')) type = 'error';
+        if (msg.includes('⚠️')) type = 'warning';
+        if (msg.includes('✅') || msg.includes('Connected')) type = 'success';
+        if (msg.includes('NEW ORDER')) type = 'highlight';
+        addLog('printer', type, msg);
+    });
 
-printerProcess.stdout.on('data', (data) => {
-    const msg = data.toString();
-    console.log(`[PRINTER] ${msg}`);
+    printerProcess.stderr.on('data', (data) => {
+        addLog('printer', 'error', data.toString());
+    });
 
-    let type = 'info';
-    if (msg.includes('❌') || msg.includes('Error')) type = 'error';
-    if (msg.includes('⚠️')) type = 'warning';
-    if (msg.includes('✅') || msg.includes('Connected')) type = 'success';
-    if (msg.includes('NEW ORDER')) type = 'highlight';
+    printerProcess.on('close', (code) => {
+        addLog('printer', 'error', `Print Server exited with code ${code}`);
+        printerProcess = null;
+    });
+}
 
-    addLog('printer', type, msg);
-});
+function stopPrinter() {
+    if (printerProcess) {
+        addLog('printer', 'warning', '⏹️ Stopping Print Server...');
+        printerProcess.kill();
+        printerProcess = null;
+    } else {
+        addLog('printer', 'info', 'Printer server is not running.');
+    }
+}
 
-printerProcess.stderr.on('data', (data) => {
-    addLog('printer', 'error', data.toString());
-});
+// ==========================================
+// REMOTE COMMAND LISTENER (SUPABASE)
+// ==========================================
 
-printerProcess.on('close', (code) => {
-    addLog('printer', 'error', `Print Server exited with code ${code}`);
-});
+if (supabase) {
+    console.log('✅ Remote command listener active (Supabase Realtime)');
 
+    supabase
+        .channel('remote-commands')
+        .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'system_remote_commands' },
+            async (payload) => {
+                const { id, server_name, command } = payload.new;
+                console.log(`📥 Received Remote Command: [${server_name}] ${command}`);
 
-// 3. Start Web Server
+                // Update status to processing
+                await supabase
+                    .from('system_remote_commands')
+                    .update({ status: 'processing', updated_at: new Date() })
+                    .eq('id', id);
+
+                try {
+                    if (server_name === 'whatsapp') {
+                        if (command === 'stop') stopBot();
+                        else if (command === 'start') startBot();
+                        else if (command === 'restart') {
+                            stopBot();
+                            setTimeout(startBot, 2000);
+                        }
+                    } else if (server_name === 'printer') {
+                        if (command === 'stop') stopPrinter();
+                        else if (command === 'start') startPrinter();
+                        else if (command === 'restart') {
+                            stopPrinter();
+                            setTimeout(startPrinter, 2000);
+                        }
+                    }
+
+                    // Complete
+                    await supabase
+                        .from('system_remote_commands')
+                        .update({ status: 'completed', updated_at: new Date() })
+                        .eq('id', id);
+
+                    console.log(`✅ Command ${id} executed successfully`);
+                } catch (error) {
+                    console.error('❌ Command execution failed:', error);
+                    await supabase
+                        .from('system_remote_commands')
+                        .update({
+                            status: 'failed',
+                            error_message: error.message,
+                            updated_at: new Date()
+                        })
+                        .eq('id', id);
+                }
+            }
+        )
+        .subscribe();
+} else {
+    console.warn('⚠️ Supabase not configured. Remote commands will not work.');
+}
+
+// ==========================================
+// STARTUP
+// ==========================================
+
+// Initial Start
+startBot();
+startPrinter();
+
 httpServer.listen(PORT, () => {
+    console.log(`\n==========================================`);
     console.log(`Dashboard running at http://localhost:${PORT}`);
-    // Open the dashboard automatically
-    open(`http://localhost:${PORT}`);
+    console.log(`==========================================\n`);
+    // open(`http://localhost:${PORT}`); // Auto-open disabled for remote-friendly stability
 });
 
 // Cleanup on exit
 process.on('SIGINT', () => {
-    botProcess.kill();
-    printerProcess.kill();
+    stopBot();
+    stopPrinter();
     process.exit();
 });

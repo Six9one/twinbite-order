@@ -32,6 +32,8 @@ import {
   CreditCard,
   Power,
   Euro,
+  Activity,
+  LogOut,
   ExternalLink,
   Ticket,
   FileText
@@ -131,6 +133,7 @@ const navItems: NavItem[] = [
     label: 'Réglages Système',
     icon: Settings,
     children: [
+      { label: 'Santé du Système', icon: Activity, value: 'health' },
       { label: 'Paiements', icon: CreditCard, value: 'payments' },
       { label: 'Configuration Imprimante', icon: Printer, value: 'printer' },
       { label: 'Templates Tickets', icon: FileText, value: 'ticket-templates' },

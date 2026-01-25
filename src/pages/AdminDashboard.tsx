@@ -36,9 +36,10 @@ import {
   Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv, TrendingUp,
   Menu, Volume2, VolumeX, Bell, LayoutDashboard
 } from 'lucide-react';
+import { SystemHealthPanel } from '@/components/crew/SystemHealthPanel';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'dashboard' | 'stats' | 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'loyalty' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'prices' | 'haccp';
+type AdminTab = 'dashboard' | 'stats' | 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'loyalty' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'prices' | 'haccp' | 'health';
 
 
 
@@ -929,6 +930,7 @@ export default function AdminDashboard() {
           {activeTab === 'reviews' && <ReviewsManager />}
           {activeTab === 'hours' && <OpeningHoursManager />}
           {activeTab === 'store-status' && <StoreStatusManager />}
+          {activeTab === 'health' && <SystemHealthPanel />}
           {activeTab === 'stats' && <StatisticsSection orders={orders || []} />}
 
           {/* Payments */}
