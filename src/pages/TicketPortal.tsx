@@ -72,92 +72,94 @@ export default function TicketPortal() {
         setPhone(raw);
     };
 
-    const fetchOrdersData = async (phoneNumber: string) => {
-        const { data: ordersData, error: ordersError } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('customer_phone', phoneNumber)
-            .order('created_at', { ascending: false });
-
-        if (ordersError) {
-            console.error('Error fetching orders:', ordersError);
-            return null;
-        }
-        return ordersData;
-    };
-
     const searchOrders = async () => {
-        if (phone.length < 10) return;
+        // Allow shorter inputs for manual testing, but typically we want close to a full number
+        if (phone.length < 4) return;
 
         setLoading(true);
         setSearched(true);
+        setOrders([]); // Clear previous
+        setLoyaltyInfo(null);
 
         try {
-            const ordersData = await fetchOrdersData(phone);
+            const { data, error } = await supabase
+                .rpc('get_client_data_normalized', { phone_input: phone });
 
-            let totalStampsFromOrders = 0;
+            if (error) {
+                console.error('Error fetching data:', error);
+                return;
+            }
 
-            if (ordersData) {
-                const mappedOrders: Order[] = ordersData.map((o: any) => ({
-                    id: o.id,
-                    order_number: o.order_number,
-                    customer_name: o.customer_name,
-                    customer_phone: o.customer_phone,
-                    total: o.total,
-                    order_type: o.order_type,
-                    payment_method: o.payment_method,
-                    items: Array.isArray(o.items) ? o.items : [],
-                    created_at: o.created_at,
-                    status: o.status,
-                    loyalty_card_image_url: o.loyalty_card_image_url,
-                    customer_address: o.customer_address,
-                    customer_notes: o.customer_notes,
-                    delivery_fee: o.delivery_fee,
-                    tva: o.tva,
-                    subtotal: o.subtotal
-                }));
-                setOrders(mappedOrders.slice(0, 20));
+            // Separate orders and loyalty
+            const foundOrders: any[] = [];
+            let foundLoyalty: any = null;
 
-                // Auto-expand the most recent order if it's recent (less than 24h)
-                if (mappedOrders.length > 0) {
-                    setCustomerName(mappedOrders[0].customer_name || '');
-                    const mostRecent = mappedOrders[0];
-                    const orderDate = new Date(mostRecent.created_at);
-                    const now = new Date();
-                    const diffHours = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
-                    if (diffHours < 24) {
-                        setExpandedOrder(mostRecent.id);
+            if (data) {
+                data.forEach((item: any) => {
+                    if (item.result_type === 'order') {
+                        foundOrders.push(item.data);
+                    } else if (item.result_type === 'loyalty') {
+                        foundLoyalty = item.data;
                     }
-                }
+                });
+            }
 
-                // Calculate stamps logic (same as before)
-                const qualifyingCategories = ['pizzas', 'soufflets', 'makloub', 'tacos', 'panini', 'salades', 'sandwiches', 'menus-midi'];
-                for (const order of ordersData) {
-                    const items = Array.isArray(order.items) ? order.items : [];
-                    for (const item of items) {
-                        const category = (item.item?.category || item.category || '').toLowerCase();
-                        const quantity = item.quantity || 1;
-                        if (qualifyingCategories.some(cat => category.includes(cat))) {
-                            totalStampsFromOrders += quantity;
-                        }
+            // Process Orders
+            let totalStampsFromOrders = 0;
+            const mappedOrders: Order[] = foundOrders.map((o: any) => ({
+                id: o.id,
+                order_number: o.order_number,
+                customer_name: o.customer_name,
+                customer_phone: o.customer_phone,
+                total: o.total,
+                order_type: o.order_type,
+                payment_method: o.payment_method,
+                items: Array.isArray(o.items) ? o.items : [],
+                created_at: o.created_at,
+                status: o.status,
+                loyalty_card_image_url: o.loyalty_card_image_url,
+                customer_address: o.customer_address,
+                customer_notes: o.customer_notes,
+                delivery_fee: o.delivery_fee,
+                tva: o.tva,
+                subtotal: o.subtotal
+            }));
+
+            setOrders(mappedOrders);
+
+            // Auto-expand logic
+            if (mappedOrders.length > 0) {
+                setCustomerName(mappedOrders[0].customer_name || '');
+                const mostRecent = mappedOrders[0];
+                const orderDate = new Date(mostRecent.created_at);
+                const now = new Date();
+                const diffHours = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
+                if (diffHours < 24) {
+                    setExpandedOrder(mostRecent.id);
+                }
+            }
+
+            // Calculate Stamps
+            const qualifyingCategories = ['pizzas', 'soufflets', 'makloub', 'tacos', 'panini', 'salades', 'sandwiches', 'menus-midi'];
+            for (const order of foundOrders) {
+                const items = Array.isArray(order.items) ? order.items : [];
+                for (const item of items) {
+                    const category = (item.item?.category || item.category || '').toLowerCase();
+                    const quantity = item.quantity || 1;
+                    if (qualifyingCategories.some(cat => category.includes(cat))) {
+                        totalStampsFromOrders += quantity;
                     }
                 }
             }
 
-            // Fetch Loyalty from loyalty_customers table
-            const { data: loyaltyData, error: loyaltyError } = await supabase
-                .from('loyalty_customers' as any)
-                .select('points, stamps, total_stamps, free_items_available')
-                .eq('phone', phone)
-                .single();
-
-            const STAMPS_FOR_FREE = 9; // Configurable
+            // Process Loyalty
+            const STAMPS_FOR_FREE = 9;
             let stampsFromDB = 0;
             let freeItemsFromDB = 0;
 
-            if (loyaltyData) {
-                stampsFromDB = loyaltyData.points || loyaltyData.stamps || loyaltyData.total_stamps || 0;
-                freeItemsFromDB = loyaltyData.free_items_available || 0;
+            if (foundLoyalty) {
+                stampsFromDB = foundLoyalty.points || foundLoyalty.stamps || foundLoyalty.total_stamps || 0;
+                freeItemsFromDB = foundLoyalty.free_items_available || 0;
             }
 
             const finalStamps = Math.max(stampsFromDB, totalStampsFromOrders);
@@ -170,7 +172,7 @@ export default function TicketPortal() {
             });
 
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Catch Error:', error);
         } finally {
             setLoading(false);
         }
