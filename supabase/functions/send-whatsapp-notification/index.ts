@@ -6,15 +6,15 @@ const corsHeaders = {
 }
 
 // WhatsApp Business API (Meta Cloud API v22.0)
-// Free for first 1000 service conversations per month
+// Using Template 'order_confirmation' for guaranteed delivery
 
 interface WhatsAppPayload {
-    type: 'confirmation' | 'ready' | 'cancelled';
+    type: 'confirmation'; // Only confirmation for now
     customerPhone: string;
     customerName: string;
     orderNumber: string;
     orderType: string;
-    total?: number;
+    total: number;
 }
 
 serve(async (req) => {
@@ -56,17 +56,7 @@ serve(async (req) => {
             surplace: 'Sur place 🍽️'
         }
 
-        let messageBody = ''
-
-        if (type === 'confirmation') {
-            messageBody = `🍕 *TWIN PIZZA*\n\nBonjour ${customerName} !\n\n✅ Votre commande *N°${orderNumber}* est confirmée !\n\n💰 Total: ${total?.toFixed(2)} €\n🏃 Mode: ${orderTypeLabels[orderType] || orderType}\n🕒 Délai estimé: 20-30 min\n\nMerci pour votre confiance ! 🙏`
-        } else if (type === 'ready') {
-            messageBody = `🍕 *TWIN PIZZA*\n\nBonjour ${customerName} !\n\n✅ Votre commande *N°${orderNumber}* est *PRÊTE* !\n\n${orderType === 'livraison' ? '🚗 Notre livreur est en route.' : '👋 Vous pouvez passer la récupérer.'}\n\nÀ très vite ! 🍕`
-        } else if (type === 'cancelled') {
-            messageBody = `🍕 *TWIN PIZZA*\n\nBonjour ${customerName} !\n\n⚠️ Désolé, votre commande *N°${orderNumber}* a été annulée.\n\nN'hésitez pas à nous appeler pour plus d'infos. 🙏`
-        }
-
-        // Send WhatsApp message via Meta Cloud API
+        // Send WhatsApp message via Meta Cloud API using the 'order_confirmation' TEMPLATE
         const response = await fetch(
             `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`,
             {
@@ -77,11 +67,24 @@ serve(async (req) => {
                 },
                 body: JSON.stringify({
                     messaging_product: 'whatsapp',
-                    recipient_type: 'individual',
                     to: formattedPhone,
-                    type: 'text',
-                    text: {
-                        body: messageBody
+                    type: 'template',
+                    template: {
+                        name: 'order_confirmation',
+                        language: {
+                            code: 'fr'
+                        },
+                        components: [
+                            {
+                                type: 'body',
+                                parameters: [
+                                    { type: 'text', text: customerName },     // {{1}}
+                                    { type: 'text', text: orderNumber },      // {{2}}
+                                    { type: 'text', text: `${total?.toFixed(2)} €` }, // {{3}}
+                                    { type: 'text', text: orderTypeLabels[orderType] || orderType } // {{4}}
+                                ]
+                            }
+                        ]
                     }
                 }),
             }
@@ -90,7 +93,7 @@ serve(async (req) => {
         const result = await response.json()
 
         if (response.ok) {
-            console.log(`✅ Message (${type}) sent to ${formattedPhone}`)
+            console.log(`✅ Template sent to ${formattedPhone}`)
             return new Response(
                 JSON.stringify({ success: true, messageId: result.messages?.[0]?.id }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
