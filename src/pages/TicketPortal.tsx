@@ -347,9 +347,6 @@ export default function TicketPortal() {
                                 </Card>
                             ) : (
                                 orders.map((order) => {
-                                    const status = statusConfig[order.status] || statusConfig.pending;
-                                    const StatusIcon = status.icon;
-
                                     return (
                                         <Card key={order.id} className="overflow-hidden border-0 shadow-md ring-1 ring-slate-100 hover:ring-primary/20 transition-all">
                                             <div
@@ -357,14 +354,9 @@ export default function TicketPortal() {
                                                 onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
                                             >
                                                 {/* Header Row */}
-                                                <div className="flex justify-between items-start mb-4">
+                                                <div className="flex justify-between items-start mb-2">
                                                     <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-mono font-bold text-lg tracking-tight">#{order.order_number}</span>
-                                                            <Badge variant="outline" className={`${status.bg} ${status.color} border-0`}>
-                                                                {status.label}
-                                                            </Badge>
-                                                        </div>
+                                                        <span className="font-mono font-bold text-lg tracking-tight">#{order.order_number}</span>
                                                         <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                                                             <Clock className="w-3 h-3" />
                                                             {format(new Date(order.created_at), "d MMMM 'à' HH:mm", { locale: fr })}
@@ -376,15 +368,6 @@ export default function TicketPortal() {
                                                             {getOrderTypeLabel(order.order_type)}
                                                         </span>
                                                     </div>
-                                                </div>
-
-                                                {/* Progress Bar (Visual flair) */}
-                                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-2">
-                                                    <div className={`h-full rounded-full transition-all duration-1000 ${order.status === 'completed' ? 'w-full bg-green-500' :
-                                                        order.status === 'ready' ? 'w-3/4 bg-green-400' :
-                                                            order.status === 'preparing' ? 'w-1/2 bg-blue-500' :
-                                                                'w-1/4 bg-amber-400'
-                                                        }`} />
                                                 </div>
                                             </div>
 
