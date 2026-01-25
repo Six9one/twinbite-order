@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
 import { Card } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { ShoppingBag, Truck, UtensilsCrossed, CalendarClock } from 'lucide-react
 import { format, addDays, setHours, setMinutes, isSunday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useSearchParams } from 'react-router-dom';
 
 interface HeroOrderSelectorProps {
   onSelect: () => void;
@@ -65,11 +66,22 @@ export function HeroOrderSelector({
     setOrderType,
     setScheduledInfo
   } = useOrder();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [selectedOrderType, setSelectedOrderType] = useState<OrderType>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
+
+  // Auto-open schedule dialog if ?schedule=true is in URL
+  useEffect(() => {
+    if (searchParams.get('schedule') === 'true') {
+      setShowScheduleDialog(true);
+      // Remove the param from URL
+      searchParams.delete('schedule');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleSelect = (type: OrderType) => {
     setOrderType(type);
