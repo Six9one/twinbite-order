@@ -1,6 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
+  LayoutDashboard,
+  TrendingUp,
   Package,
   Tv,
   Printer,
@@ -31,7 +33,8 @@ import {
   Power,
   Euro,
   ExternalLink,
-  Ticket
+  Ticket,
+  FileText
 } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -45,72 +48,96 @@ interface NavItem {
   children?: NavItem[];
 }
 
-import { FileText } from 'lucide-react';
-
-
 const navItems: NavItem[] = [
-  { label: 'Commandes', icon: Package, value: 'orders' },
-  { label: '💰 Tous les Prix', icon: Euro, value: 'prices' },
-  { label: 'TV Dashboard', icon: Tv, href: '/tv' },
   {
-    label: 'Tickets & Factures',
-    icon: Printer,
+    label: 'Analytique',
+    icon: TrendingUp,
     children: [
-      { label: 'Gestion des Tickets', icon: Ticket, value: 'tickets' },
-      { label: 'Configuration Imprimante', icon: Printer, value: 'printer' },
-      { label: 'Templates de Tickets', icon: FileText, value: 'ticket-templates' },
+      { label: 'Dashboard', icon: LayoutDashboard, value: 'dashboard' },
+      { label: 'Ventes', icon: BarChart3, value: 'ventes' },
+      { label: 'Statistiques', icon: TrendingUp, value: 'stats' },
+      { label: 'Mode TV', icon: Tv, href: '/tv' },
+      { label: 'Avis Clients', icon: MessageSquare, value: 'reviews' },
     ]
   },
   {
-    label: 'Produits',
+    label: 'Gestion Commandes',
+    icon: Package,
+    children: [
+      { label: 'Live Orders', icon: Package, value: 'orders' },
+      { label: 'Tickets Clients', icon: Ticket, value: 'tickets' },
+    ]
+  },
+  {
+    label: 'Menu Digital',
     icon: Pizza,
     children: [
-      { label: '🍕 Pizzas', icon: Pizza, value: 'pizzas' },
-      { label: '🥙 Soufflé', icon: Package, value: 'soufflet' },
-      { label: '🌯 Makloub', icon: Package, value: 'makloub' },
-      { label: '🫓 Mlawi', icon: Package, value: 'mlawi' },
-      { label: '🥖 Sandwich (Pain Maison)', icon: Sandwich, value: 'sandwiches' },
-      { label: '🌮 Tacos', icon: Package, value: 'tacos' },
-      { label: '🥪 Panini', icon: Package, value: 'panini' },
-      { label: '🧀 Croques', icon: Package, value: 'croques' },
-      { label: '🌶️ Tex-Mex', icon: Flame, value: 'texmex' },
-      { label: '🍟 Frites', icon: Package, value: 'frites' },
+      { label: 'Pizzas', icon: Pizza, value: 'pizzas' },
+      { label: 'Sandwiches', icon: Sandwich, value: 'sandwiches' },
+      {
+        label: 'Autres Catégories',
+        icon: Utensils,
+        children: [
+          { label: 'Soufflé', icon: Package, value: 'soufflet' },
+          { label: 'Makloub', icon: Package, value: 'makloub' },
+          { label: 'Mlawi', icon: Package, value: 'mlawi' },
+          { label: 'Tacos', icon: Package, value: 'tacos' },
+          { label: 'Panini', icon: Package, value: 'panini' },
+          { label: 'Croques', icon: Package, value: 'croques' },
+          { label: 'Tex-Mex', icon: Flame, value: 'texmex' },
+          { label: 'Frites', icon: Package, value: 'frites' },
+          { label: 'Milkshakes', icon: GlassWater, value: 'milkshakes' },
+          { label: 'Crêpes', icon: Cake, value: 'crepes' },
+          { label: 'Gaufres', icon: Cake, value: 'gaufres' },
+          { label: 'Boissons', icon: GlassWater, value: 'drinks' },
+          { label: 'Desserts', icon: Cake, value: 'desserts' },
+        ]
+      },
+      {
+        label: 'Options & Extras',
+        icon: Plus,
+        children: [
+          { label: 'Viandes', icon: Utensils, value: 'meats' },
+          { label: 'Sauces', icon: Droplet, value: 'sauces' },
+          { label: 'Garnitures', icon: Leaf, value: 'garnitures' },
+          { label: 'Crudités', icon: Salad, value: 'crudites' },
+          { label: 'Suppléments', icon: Plus, value: 'supplements' },
+        ]
+      },
+      { label: '💰 Tous les Prix', icon: Euro, value: 'prices' },
     ]
   },
   {
-    label: 'Desserts',
-    icon: Cake,
+    label: 'Marketing & CRM',
+    icon: Gift,
     children: [
-      { label: '🥤 Milkshakes', icon: GlassWater, value: 'milkshakes' },
-      { label: '🥞 Crêpes', icon: Cake, value: 'crepes' },
-      { label: '🧇 Gaufres', icon: Cake, value: 'gaufres' },
-      { label: '🥤 Boissons', icon: GlassWater, value: 'drinks' },
+      { label: 'Promotions', icon: Gift, value: 'promotions' },
+      { label: 'Fidélité', icon: Star, value: 'loyalty' },
+      { label: 'Carousel Media', icon: Image, value: 'carousel' },
+      { label: 'Images Catégories', icon: Image, value: 'category-images' },
+      { label: 'Contenu Site', icon: Globe, value: 'content' },
     ]
   },
   {
-    label: 'Options & Extras',
-    icon: Plus,
+    label: 'Config. Établissement',
+    icon: Power,
     children: [
-      { label: 'Viandes', icon: Utensils, value: 'meats' },
-      { label: 'Sauces', icon: Droplet, value: 'sauces' },
-      { label: 'Garnitures', icon: Leaf, value: 'garnitures' },
-      { label: 'Crudités', icon: Salad, value: 'crudites' },
-      { label: 'Suppléments', icon: Plus, value: 'supplements' },
+      { label: 'Statut & Horaires', icon: Power, value: 'store-status' },
+      { label: 'Zones de Livraison', icon: MapPin, value: 'zones' },
+      { label: '🧾 HACCP', icon: Shield, value: 'haccp' },
     ]
   },
-  { label: 'Zones de Livraison', icon: MapPin, value: 'zones' },
-  { label: 'Carousel & Média', icon: Image, value: 'carousel' },
-  { label: '🖼️ Images Catégories', icon: Image, value: 'category-images' },
-  { label: 'Promotions', icon: Gift, value: 'promotions' },
-  { label: 'Fidélité', icon: Star, value: 'loyalty' },
-  { label: 'Avis Clients', icon: MessageSquare, value: 'reviews' },
-  { label: 'Contenu du Site', icon: Globe, value: 'content' },
-  { label: '🧾 HACCP', icon: Shield, value: 'haccp' },
-  { label: '⚡ Statut & Horaires', icon: Power, value: 'store-status' },
-  { label: 'Ventes', icon: BarChart3, value: 'ventes' },
-  { label: 'Paiements', icon: CreditCard, value: 'payments' },
-  { label: 'Paramètres', icon: Settings, value: 'settings' },
-  { label: 'Voir Portail Public (Tickets)', icon: ExternalLink, href: '/tickets' },
+  {
+    label: 'Réglages Système',
+    icon: Settings,
+    children: [
+      { label: 'Paiements', icon: CreditCard, value: 'payments' },
+      { label: 'Configuration Imprimante', icon: Printer, value: 'printer' },
+      { label: 'Templates Tickets', icon: FileText, value: 'ticket-templates' },
+      { label: 'Settings Gérants', icon: Settings, value: 'settings' },
+      { label: 'Portail Tickets Public', icon: ExternalLink, href: '/tickets' },
+    ]
+  }
 ];
 
 interface AdminSidebarProps {

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrders, useUpdateOrderStatus, Order } from '@/hooks/useSupabaseData';
@@ -31,13 +32,13 @@ import { TicketManager } from '@/components/admin/TicketManager';
 import {
   LogOut, Home, Search, RefreshCw, Download, Printer,
   Clock, CheckCircle, XCircle, ChefHat, Package,
-  MapPin, Phone, User, MessageSquare, CreditCard, Banknote,
+  MapPin, Phone, User, MessageSquare, CreditCard, Banknote, Shield,
   Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv, TrendingUp,
-  Menu, Volume2, VolumeX, Bell
+  Menu, Volume2, VolumeX, Bell, LayoutDashboard
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'loyalty' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'prices' | 'haccp';
+type AdminTab = 'dashboard' | 'stats' | 'orders' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'loyalty' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'prices' | 'haccp';
 
 
 
@@ -628,22 +629,188 @@ export default function AdminDashboard() {
         <main className="flex-1 p-6 overflow-auto">
           {/* Dashboard */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold">Dashboard</h2>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {Object.entries(statusConfig).map(([key, config]) => {
-                  const count = filteredOrders?.filter(o => o.status === key).length || 0;
-                  const Icon = config.icon;
-                  return (
-                    <div key={key} className={`p-4 rounded-lg ${config.color} text-white`}>
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-5 h-5" />
-                        <span className="font-semibold">{count}</span>
-                      </div>
-                      <p className="text-sm opacity-90">{config.label}</p>
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-3xl font-extrabold tracking-tight">Tableau de Bord</h1>
+                  <p className="text-muted-foreground">Bienvenue ! Voici le résumé de l'activité pour aujourd'hui.</p>
+                </div>
+                <div className="flex items-center gap-3 bg-card border shadow-sm p-3 rounded-2xl">
+                  <div className="bg-amber-500/10 p-2.5 rounded-xl">
+                    <Clock className="w-5 h-5 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Date Actuelle</p>
+                    <p className="text-sm font-bold">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Stats Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="p-6 border-none bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl shadow-emerald-500/20 transition-all hover:shadow-emerald-500/30 hover:-translate-y-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-emerald-100 text-xs font-bold uppercase tracking-wider">Ventes Total (Jour)</p>
+                      <h3 className="text-3xl font-black mt-1">
+                        {orders?.reduce((acc, o) => acc + (o.status !== 'cancelled' ? o.total : 0), 0).toFixed(2)}€
+                      </h3>
                     </div>
-                  );
-                })}
+                    <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
+                      <TrendingUp className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                  <div className="mt-5 flex items-center gap-2 text-xs text-emerald-500 font-bold">
+                    <span className="bg-white px-2 py-1 rounded-full">{orders?.length || 0} commandes</span>
+                    <span className="text-emerald-100 font-normal">Activité en direct</span>
+                  </div>
+                </Card>
+
+                <Card className="p-6 border-none bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-xl shadow-amber-500/20 transition-all hover:shadow-amber-500/30 hover:-translate-y-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-amber-100 text-xs font-bold uppercase tracking-wider">En Préparation</p>
+                      <h3 className="text-3xl font-black mt-1">
+                        {orders?.filter(o => o.status === 'preparing').length || 0}
+                      </h3>
+                    </div>
+                    <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
+                      <ChefHat className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                  <div className="mt-5 flex items-center gap-2 text-xs text-amber-500 font-bold">
+                    <span className="bg-white px-2 py-1 rounded-full">Action requise</span>
+                    <span className="text-amber-100 font-normal">Cuisine active</span>
+                  </div>
+                </Card>
+
+                <Card className="p-6 border-none bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl shadow-blue-500/20 transition-all hover:shadow-blue-500/30 hover:-translate-y-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-100 text-xs font-bold uppercase tracking-wider">Nouveaux (Attente)</p>
+                      <h3 className="text-3xl font-black mt-1">
+                        {orders?.filter(o => o.status === 'pending').length || 0}
+                      </h3>
+                    </div>
+                    <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
+                      <Bell className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                  <div className="mt-5 flex items-center gap-2 text-xs text-blue-500 font-bold">
+                    <span className="bg-white px-2 py-1 rounded-full">Priorité ++</span>
+                    <span className="text-blue-100 font-normal">À valider</span>
+                  </div>
+                </Card>
+
+                <Card className="p-6 border-none bg-gradient-to-br from-gray-700 to-slate-900 text-white shadow-xl shadow-gray-500/20 transition-all hover:shadow-gray-500/30 hover:-translate-y-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-300 text-xs font-bold uppercase tracking-wider">Livrées / Terminer</p>
+                      <h3 className="text-3xl font-black mt-1">
+                        {orders?.filter(o => o.status === 'completed').length || 0}
+                      </h3>
+                    </div>
+                    <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md">
+                      <CheckCircle className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                  <div className="mt-5 flex items-center gap-2 text-xs text-gray-400 font-bold">
+                    <span className="bg-white/10 px-2 py-1 rounded-full">Historique</span>
+                    <span className="text-gray-400 font-normal">Total aujourd'hui</span>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Status Breakdown & Details */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <Card className="lg:col-span-2 shadow-sm border-border/50">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2 border-b mb-6">
+                    <CardTitle className="text-lg font-black flex items-center gap-2">
+                      <Package className="w-5 h-5 text-amber-500" />
+                      Dernières Commandes
+                    </CardTitle>
+                    <Button variant="outline" size="sm" onClick={() => setActiveTab('orders')} className="border-amber-500/20 text-amber-600 hover:bg-amber-50 hover:border-amber-500">
+                      Voir tout le journal
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {(orders && orders.length > 0) ? (
+                      orders.slice(0, 6).map(order => (
+                        <div key={order.id} className="flex items-center justify-between p-4 rounded-2xl hover:bg-muted/50 transition-all border border-transparent hover:border-border cursor-pointer group">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold shadow-sm ${statusConfig[order.status].color} text-white`}>
+                              {order.order_number.slice(-2)}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-extrabold text-sm">Commande #{order.order_number}</p>
+                                <Badge variant="outline" className="text-[9px] uppercase font-black px-1.5 py-0 border-muted-foreground/30">{order.status}</Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground font-medium mt-0.5">{order.customer_name} • {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-black text-primary transition-transform group-hover:scale-110">{order.total.toFixed(2)}€</p>
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{order.order_type}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-20 text-center flex flex-col items-center">
+                        <Package className="w-12 h-12 text-muted-foreground/30 mb-3" />
+                        <p className="text-muted-foreground font-bold">Aucune commande pour le moment</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-6">
+                  <Card className="p-6 bg-gradient-to-b from-card to-muted/20 border-border/50">
+                    <h3 className="font-black text-lg mb-6 flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-amber-500" />
+                      Résumé de Performance
+                    </h3>
+                    <div className="space-y-6">
+                      <div>
+                        <div className="flex justify-between text-[11px] font-black uppercase text-muted-foreground mb-2 tracking-widest">
+                          <span>Volume Commandes</span>
+                          <span>{Math.min(100, (orders?.length || 0) * 4)}%</span>
+                        </div>
+                        <div className="w-full h-3 bg-muted rounded-full overflow-hidden border border-border/50 p-0.5">
+                          <div className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, (orders?.length || 0) * 4)}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11px] font-black uppercase text-muted-foreground mb-2 tracking-widest">
+                          <span>Efficacité Cuisine</span>
+                          <span>92%</span>
+                        </div>
+                        <div className="w-full h-3 bg-muted rounded-full overflow-hidden border border-border/50 p-0.5">
+                          <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-600 rounded-full transition-all duration-1000" style={{ width: '92%' }} />
+                        </div>
+                      </div>
+
+                      <div className="pt-6 mt-6 border-t border-border/50">
+                        <Card className="bg-amber-50 border-none p-4">
+                          <p className="text-sm text-amber-800 font-bold leading-relaxed">
+                            💡 Conseil du jour : Proposez une boisson offerte pour toute commande &gt; 50€ pour booster le panier moyen !
+                          </p>
+                        </Card>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-6 border-none bg-blue-600 text-white shadow-xl shadow-blue-600/20 relative overflow-hidden group">
+                    <div className="relative z-10">
+                      <h4 className="font-black text-xl mb-1">Besoin d'aide ?</h4>
+                      <p className="text-blue-100 text-sm mb-4">Consultez la documentation ou contactez le support.</p>
+                      <Button variant="secondary" size="sm" className="bg-white text-blue-600 font-black hover:bg-blue-50 border-none">
+                        Contact Support
+                      </Button>
+                    </div>
+                    <Shield className="absolute -right-4 -bottom-4 w-32 h-32 text-white/10 rotate-12 transition-transform group-hover:rotate-0" />
+                  </Card>
+                </div>
               </div>
             </div>
           )}
