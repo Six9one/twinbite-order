@@ -139,6 +139,11 @@ function startBot() {
         addLog('bot', 'error', `Processus Bot arrêté (Code: ${code})`);
         botProcess = null;
         syncStatusToSupabase('whatsapp', false);
+        // Auto-restart if it crashed (non-zero exit code)
+        if (code !== 0 && code !== null) {
+            addLog('bot', 'warning', 'Relance automatique du bot après crash...');
+            setTimeout(startBot, 5000);
+        }
     });
 
     syncStatusToSupabase('whatsapp', true);
@@ -185,6 +190,11 @@ function startPrinter() {
         addLog('printer', 'error', `Serveur d'Impression arrêté (Code: ${code})`);
         printerProcess = null;
         syncStatusToSupabase('printer', false);
+        // Auto-restart if it crashed
+        if (code !== 0 && code !== null) {
+            addLog('printer', 'warning', 'Relance automatique de l\'imprimante après crash...');
+            setTimeout(startPrinter, 5000);
+        }
     });
 
     syncStatusToSupabase('printer', true);

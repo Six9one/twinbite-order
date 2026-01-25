@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ServiceStatus {
     isOnline: boolean;
@@ -20,9 +21,7 @@ const DEFAULT_STATUS: ServiceStatus = {
 
 /**
  * Hook pour surveiller la santé des services du système
- * - Printer: vérifie si le navigateur peut accéder à l'API d'impression
- * - WhatsApp Bot: ping le processus Python
- * - Supabase: vérifie la connexion à la base de données
+ * Version 2.0: Lit les statuts depuis la table system_status dans Supabase
  */
 export function useSystemHealth(pollInterval: number = 30000) {
     const [health, setHealth] = useState<SystemHealth>({
@@ -31,134 +30,72 @@ export function useSystemHealth(pollInterval: number = 30000) {
         supabase: { ...DEFAULT_STATUS, isOnline: true }, // Start optimistic
     });
 
-    // Check if printer is available
-    const checkPrinter = useCallback(async (): Promise<ServiceStatus> => {
+    // Check remote status from Supabase system_status table
+    const checkRemoteStatus = useCallback(async () => {
         try {
-            // Check if the browser supports printing
-            const canPrint = typeof window !== 'undefined' && 'print' in window;
+            const { data, error } = await supabase
+                .from('system_status' as any)
+                .select('*');
 
-            // Check if there's USB printer access (needs HTTPS in production)
-            let hasUSBAccess = false;
-            if ('usb' in navigator) {
-                try {
-                    const devices = await (navigator as any).usb.getDevices();
-                    hasUSBAccess = devices.length > 0;
-                } catch {
-                    // USB access might be denied
-                }
+            if (error) throw error;
+
+            const now = new Date();
+            const newHealth: Partial<SystemHealth> = {};
+
+            if (data) {
+                data.forEach((row: any) => {
+                    const lastHeartbeat = new Date(row.last_heartbeat);
+                    // Consider offline if no heartbeat for more than 45 seconds
+                    const isRecentlyActive = (now.getTime() - lastHeartbeat.getTime()) < 45000;
+                    const isOnline = row.is_online && isRecentlyActive;
+
+                    if (row.server_name === 'whatsapp') {
+                        newHealth.whatsappBot = {
+                            isOnline,
+                            lastChecked: lastHeartbeat,
+                            error: isOnline ? null : 'Serveur inactif ou hors ligne',
+                        };
+                    } else if (row.server_name === 'printer') {
+                        newHealth.printer = {
+                            isOnline,
+                            lastChecked: lastHeartbeat,
+                            error: isOnline ? null : 'Serveur d\'impression hors ligne',
+                        };
+                    }
+                });
             }
 
-            return {
-                isOnline: canPrint,
+            // Also check Supabase itself
+            const sbStatus = {
+                isOnline: true,
                 lastChecked: new Date(),
                 error: null,
             };
+
+            setHealth(prev => ({
+                ...prev,
+                ...newHealth,
+                supabase: sbStatus,
+            }));
         } catch (error: any) {
-            return {
-                isOnline: false,
-                lastChecked: new Date(),
-                error: error.message || 'Printer check failed',
-            };
+            console.error('Failed to fetch system status:', error);
+            setHealth(prev => ({
+                ...prev,
+                supabase: { isOnline: false, lastChecked: new Date(), error: error.message },
+            }));
         }
-    }, []);
-
-    // Check if WhatsApp bot is running by checking if its port is open
-    const checkWhatsAppBot = useCallback(async (): Promise<ServiceStatus> => {
-        try {
-            // The WhatsApp bot uses Chrome with remote debugging on port 9222
-            // We can't directly ping localhost from browser due to CORS
-            // Instead, we check localStorage for last bot activity
-
-            const lastBotPing = localStorage.getItem('whatsapp_bot_last_ping');
-            const lastPingTime = lastBotPing ? new Date(lastBotPing) : null;
-
-            // Consider online if pinged within last 2 minutes
-            const isRecent = lastPingTime &&
-                (new Date().getTime() - lastPingTime.getTime()) < 120000;
-
-            // For now, we'll assume it's running if user confirmed
-            // In production, the bot would ping an endpoint periodically
-            const botStatus = localStorage.getItem('whatsapp_bot_status');
-
-            return {
-                isOnline: botStatus === 'online' || isRecent || false,
-                lastChecked: new Date(),
-                error: null,
-            };
-        } catch (error: any) {
-            return {
-                isOnline: false,
-                lastChecked: new Date(),
-                error: error.message || 'WhatsApp bot check failed',
-            };
-        }
-    }, []);
-
-    // Check Supabase connection
-    const checkSupabase = useCallback(async (): Promise<ServiceStatus> => {
-        try {
-            // Simple health check - try to fetch from Supabase
-            const response = await fetch(
-                `${import.meta.env.VITE_SUPABASE_URL || 'https://hsylnrzxeyqxczdalurj.supabase.co'}/rest/v1/`,
-                {
-                    method: 'HEAD',
-                    headers: {
-                        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-                    },
-                }
-            );
-
-            return {
-                isOnline: response.ok || response.status === 400, // 400 is fine, means API is responding
-                lastChecked: new Date(),
-                error: null,
-            };
-        } catch (error: any) {
-            return {
-                isOnline: false,
-                lastChecked: new Date(),
-                error: error.message || 'Supabase check failed',
-            };
-        }
-    }, []);
-
-    // Manual refresh function
-    const refresh = useCallback(async () => {
-        const [printer, whatsappBot, supabase] = await Promise.all([
-            checkPrinter(),
-            checkWhatsAppBot(),
-            checkSupabase(),
-        ]);
-
-        setHealth({ printer, whatsappBot, supabase });
-    }, [checkPrinter, checkWhatsAppBot, checkSupabase]);
-
-    // Toggle WhatsApp bot status manually (for user to confirm bot is running)
-    const setWhatsAppBotOnline = useCallback((isOnline: boolean) => {
-        localStorage.setItem('whatsapp_bot_status', isOnline ? 'online' : 'offline');
-        localStorage.setItem('whatsapp_bot_last_ping', new Date().toISOString());
-
-        setHealth(prev => ({
-            ...prev,
-            whatsappBot: {
-                isOnline,
-                lastChecked: new Date(),
-                error: null,
-            },
-        }));
     }, []);
 
     // Initial check and polling
     useEffect(() => {
-        refresh();
-        const interval = setInterval(refresh, pollInterval);
+        checkRemoteStatus();
+        const interval = setInterval(checkRemoteStatus, pollInterval);
         return () => clearInterval(interval);
-    }, [refresh, pollInterval]);
+    }, [checkRemoteStatus, pollInterval]);
 
     return {
         health,
-        refresh,
-        setWhatsAppBotOnline,
+        refresh: checkRemoteStatus,
         isAllHealthy: health.printer.isOnline && health.whatsappBot.isOnline && health.supabase.isOnline,
     };
 }
