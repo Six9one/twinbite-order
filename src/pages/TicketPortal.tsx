@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Package, ChevronDown, ChevronUp, Ticket, Phone, ArrowLeft, RefreshCw, ChefHat, Clock, CheckCircle, MapPin, ExternalLink } from 'lucide-react';
+import { Package, ChevronDown, ChevronUp, Ticket, Phone, ArrowLeft, RefreshCw, ChefHat, Clock, CheckCircle, MapPin, ExternalLink, Gift } from 'lucide-react';
 import { LoyaltyStampCard } from '@/components/LoyaltyStampCard';
 import { Badge } from '@/components/ui/badge';
 
