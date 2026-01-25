@@ -314,22 +314,19 @@ export function ClosedBanner() {
 
       {/* Schedule Dialog */}
       {showScheduleDialog && (
-        <div className="fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center gap-2 mb-2">
-                <CalendarClock className="w-6 h-6 text-purple-500" />
-                <h2 className="text-xl font-bold">Programmer votre commande</h2>
+        <div className="fixed inset-0 z-[10000] bg-black/90 flex items-center justify-center p-2">
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[95vh] overflow-y-auto">
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarClock className="w-5 h-5 text-purple-500" />
+                <h2 className="text-lg font-bold">Programmer votre commande</h2>
               </div>
-              <p className="text-muted-foreground text-sm mb-6">
-                Choisissez la date, l'heure et le type de commande. <span className="text-red-500 font-medium">Fermé le dimanche.</span>
-              </p>
 
-              <div className="space-y-5">
-                {/* Order Type */}
+              <div className="space-y-4">
+                {/* Order Type - Compact */}
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Type de commande</label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <label className="text-xs font-medium mb-1.5 block text-gray-600">Type de commande</label>
+                  <div className="grid grid-cols-3 gap-1.5">
                     {orderOptions.map((opt) => {
                       const Icon = opt.icon;
                       return (
@@ -337,66 +334,91 @@ export function ClosedBanner() {
                           key={opt.type}
                           onClick={() => setSelectedOrderType(opt.type)}
                           className={cn(
-                            "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                            "flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all text-xs",
                             selectedOrderType === opt.type
                               ? "border-purple-500 bg-purple-50"
                               : "border-gray-200 hover:border-gray-300"
                           )}
                         >
-                          <Icon className={cn("w-5 h-5", selectedOrderType === opt.type ? "text-purple-500" : "text-gray-500")} />
-                          <span className="text-xs font-medium">{opt.label}</span>
+                          <Icon className={cn("w-4 h-4", selectedOrderType === opt.type ? "text-purple-500" : "text-gray-400")} />
+                          <span className="font-medium">{opt.label}</span>
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Date */}
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Date <span className="text-red-500">(Dimanche = Fermé)</span></label>
-                  <CalendarPicker
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    disabled={isDisabledDay}
-                    locale={fr}
-                    className="rounded-xl border mx-auto"
-                  />
-                </div>
+                {/* Date & Time in 2 columns */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Date - Compact Calendar */}
+                  <div>
+                    <label className="text-xs font-medium mb-1.5 block text-gray-600">Date</label>
+                    <CalendarPicker
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      disabled={isDisabledDay}
+                      locale={fr}
+                      className="rounded-lg border p-1 text-xs [&_table]:w-full [&_td]:p-0.5 [&_th]:p-0.5 [&_button]:h-7 [&_button]:w-7 [&_button]:text-xs"
+                    />
+                    <p className="text-[10px] text-red-500 mt-1">Dimanche = Fermé</p>
+                  </div>
 
-                {/* Time */}
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Heure</label>
-                  <Select value={selectedTime} onValueChange={setSelectedTime}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Choisir une heure" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      <div className="text-xs text-muted-foreground px-2 py-1 font-semibold">Midi (11h00 - 15h00)</div>
-                      {timeSlots.filter(t => parseInt(t.split(':')[0]) < 16).map(slot => (
-                        <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                      ))}
-                      <div className="text-xs text-muted-foreground px-2 py-1 font-semibold border-t mt-1 pt-2">Soir (17h30 - 00h00)</div>
-                      {timeSlots.filter(t => parseInt(t.split(':')[0]) >= 17).map(slot => (
-                        <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {/* Time - Grid of buttons */}
+                  <div>
+                    <label className="text-xs font-medium mb-1.5 block text-gray-600">Heure</label>
+                    <div className="border rounded-lg p-2 max-h-[200px] overflow-y-auto">
+                      <p className="text-[10px] font-bold text-gray-500 mb-1">Midi</p>
+                      <div className="grid grid-cols-3 gap-1 mb-2">
+                        {['11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00'].map(time => (
+                          <button
+                            key={time}
+                            onClick={() => setSelectedTime(time)}
+                            className={cn(
+                              "px-1 py-1.5 rounded text-xs font-medium transition-all",
+                              selectedTime === time
+                                ? "bg-purple-500 text-white"
+                                : "bg-gray-100 hover:bg-gray-200"
+                            )}
+                          >
+                            {time}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] font-bold text-gray-500 mb-1 border-t pt-1">Soir</p>
+                      <div className="grid grid-cols-3 gap-1">
+                        {['17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30'].map(time => (
+                          <button
+                            key={time}
+                            onClick={() => setSelectedTime(time)}
+                            className={cn(
+                              "px-1 py-1.5 rounded text-xs font-medium transition-all",
+                              selectedTime === time
+                                ? "bg-purple-500 text-white"
+                                : "bg-gray-100 hover:bg-gray-200"
+                            )}
+                          >
+                            {time}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Buttons */}
-                <div className="flex gap-3 pt-2">
+                <div className="flex gap-2 pt-1">
                   <Button
                     variant="outline"
                     onClick={() => setShowScheduleDialog(false)}
-                    className="flex-1"
+                    className="flex-1 h-10"
                   >
                     Retour
                   </Button>
                   <Button
                     onClick={handleConfirmSchedule}
                     disabled={!selectedOrderType || !selectedDate || !selectedTime}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700"
+                    className="flex-1 h-10 bg-purple-600 hover:bg-purple-700"
                   >
                     Confirmer
                   </Button>
