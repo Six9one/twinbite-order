@@ -221,7 +221,7 @@ ${footer}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<AdminTab>('orders');
+  const [activeTab, setActiveTab] = useState<AdminTab>('pizzas');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10));
   const [isAuthenticated, setIsAuthenticated] = useState(false);

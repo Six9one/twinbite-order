@@ -51,21 +51,17 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    label: 'Analytique',
+    label: 'Outils Rapides',
     icon: TrendingUp,
     children: [
-      { label: 'Dashboard', icon: LayoutDashboard, value: 'dashboard' },
-      { label: 'Ventes', icon: BarChart3, value: 'ventes' },
-      { label: 'Statistiques', icon: TrendingUp, value: 'stats' },
       { label: 'Mode TV', icon: Tv, href: '/tv' },
       { label: 'Avis Clients', icon: MessageSquare, value: 'reviews' },
     ]
   },
   {
-    label: 'Gestion Commandes',
-    icon: Package,
+    label: 'Clients',
+    icon: Users,
     children: [
-      { label: 'Live Orders', icon: Package, value: 'orders' },
       { label: 'Tickets Clients', icon: Ticket, value: 'tickets' },
     ]
   },
