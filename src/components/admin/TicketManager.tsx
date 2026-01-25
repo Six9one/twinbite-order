@@ -247,24 +247,37 @@ export function TicketManager() {
 
                                 <div className="space-y-3 pb-4 border-b">
                                     <p className="font-bold underline">Articles:</p>
-                                    {viewingOrder.items.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between items-start gap-4">
-                                            <div className="flex-1">
+                                    {viewingOrder.items.map((item: any, idx) => {
+                                        // Extract name from various possible structures
+                                        const itemName = item.item?.name || item.name || 'Article';
+                                        // Extract price from various possible structures
+                                        const unitPrice = item.item?.price || item.calculatedPrice || item.totalPrice || item.price || 0;
+                                        const quantity = item.quantity || 1;
+                                        const lineTotal = typeof item.totalPrice === 'number' ? item.totalPrice : (unitPrice * quantity);
+                                        const customization = item.customization;
+
+                                        return (
+                                            <div key={idx} className="space-y-1">
                                                 <div className="flex justify-between font-bold">
-                                                    <span>{item.quantity}x {item.name}</span>
-                                                    <span>{(item.price * item.quantity).toFixed(2)}€</span>
+                                                    <span>{quantity}x {itemName}</span>
+                                                    <span>{lineTotal.toFixed(2)}€</span>
                                                 </div>
-                                                {item.customization && (
-                                                    <div className="text-[10px] text-muted-foreground ml-4">
-                                                        {item.customization.size && <span>Taille: {item.customization.size}</span>}
-                                                        {item.customization.meat && <div>Viande: {item.customization.meat}</div>}
-                                                        {item.customization.meats?.length > 0 && <div>Viandes: {item.customization.meats.join(', ')}</div>}
-                                                        {item.customization.sauces?.length > 0 && <div>Sauces: {item.customization.sauces.join(', ')}</div>}
+                                                {customization && (
+                                                    <div className="text-[10px] text-muted-foreground ml-4 space-y-0.5">
+                                                        {customization.size && <div>Taille: {customization.size}</div>}
+                                                        {customization.meat && <div>Viande: {customization.meat}</div>}
+                                                        {customization.meats?.length > 0 && <div>Viandes: {customization.meats.join(', ')}</div>}
+                                                        {customization.sauces?.length > 0 && <div>Sauces: {customization.sauces.join(', ')}</div>}
+                                                        {customization.garnitures?.length > 0 && <div>Garnitures: {customization.garnitures.join(', ')}</div>}
+                                                        {customization.supplements?.length > 0 && <div>Suppléments: {customization.supplements.join(', ')}</div>}
+                                                        {customization.menuOption && customization.menuOption !== 'none' && (
+                                                            <div className="text-green-600 font-bold">🍟 {customization.menuOption.toUpperCase()}</div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
 
                                 <div className="space-y-1 text-right">
