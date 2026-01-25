@@ -9,7 +9,6 @@ import { NewCart } from '@/components/NewCart';
 import { NewCheckout } from '@/components/NewCheckout';
 import { Footer } from '@/components/Footer';
 import { DeliveryMapSection } from '@/components/DeliveryMapSection';
-import { PromoBanner } from '@/components/PromoBanner';
 import { Header } from '@/components/Header';
 import { AnnouncementBanner } from '@/components/AnnouncementBanner';
 import { ReviewSection } from '@/components/ReviewSection';
@@ -127,18 +126,17 @@ function MainApp() {
         onScheduleClick={scrollToOrderSelector}
       />
       <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
-      <PromoBanner />
 
-      {/* Hero Section */}
-      <section className="relative min-h-[80vh] sm:min-h-[90vh] flex items-center justify-center overflow-hidden">
+      {/* Hero Section - optimized height */}
+      <section className="relative min-h-[60vh] sm:min-h-[70vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroPizza})` }} />
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-background" />
 
-        <div className="relative z-10 container mx-auto px-4 py-12">
-          <div className="text-center mb-10 animate-fade-in">
-            <div className="mb-6">
+        <div className="relative z-10 container mx-auto px-3 sm:px-4 py-8">
+          <div className="text-center mb-6 sm:mb-8 animate-fade-in">
+            <div className="mb-4">
               <a href="/" className="hover:opacity-80 transition-opacity">
-                <h1 className="text-4xl sm:text-6xl md:text-8xl font-medium tracking-wide whitespace-nowrap">
+                <h1 className="text-3xl sm:text-5xl md:text-7xl font-medium tracking-wide whitespace-nowrap">
                   <span className="text-amber-400">Twin</span>
                   <span className="text-white ml-2 sm:ml-3">Pizza</span>
                 </h1>
@@ -161,7 +159,7 @@ function MainApp() {
       </section>
 
       {/* Call Now Section */}
-      <section className="py-8 bg-primary/10">
+      <section className="py-4 sm:py-6 bg-primary/10">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
             <div className="flex items-center gap-2 text-lg font-semibold">
@@ -183,7 +181,7 @@ function MainApp() {
       </section>
 
       {/* Deals Carousel */}
-      <section className="py-12 bg-gradient-to-b from-muted/30 to-background">
+      <section className="py-6 sm:py-10 bg-gradient-to-b from-muted/30 to-background">
         <div className="container mx-auto px-4">
           <DealsCarousel />
           <div className="flex justify-center mt-8">
@@ -196,7 +194,7 @@ function MainApp() {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 bg-background">
+      <section className="py-8 sm:py-12 bg-background">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 text-center">
             <div className="group p-6 rounded-2xl bg-card hover:bg-primary/5 transition-all duration-300 hover:-translate-y-2">
