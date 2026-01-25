@@ -527,19 +527,10 @@ export default function TVDashboard() {
             <span className="text-lg font-bold"><span className="text-amber-500">TWIN</span> <span className="text-white/80">TV</span></span>
           </Link>
 
-          {/* Compact Status counters */}
+          {/* Order count - simplified */}
           <div className="flex gap-1.5">
-            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${pendingCount > 0 ? 'bg-yellow-500 animate-pulse' : 'bg-yellow-500/30'}`}>
-              <Clock className="w-3 h-3" />{pendingCount}
-            </div>
-            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${preparingCount > 0 ? 'bg-blue-500' : 'bg-blue-500/30'}`}>
-              <ChefHat className="w-3 h-3" />{preparingCount}
-            </div>
-            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${readyCount > 0 ? 'bg-green-500 animate-pulse' : 'bg-green-500/30'}`}>
-              <Package className="w-3 h-3" />{readyCount}
-            </div>
-            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${scheduledCount > 0 ? 'bg-purple-500' : 'bg-purple-500/30'}`}>
-              <CalendarClock className="w-3 h-3" />{scheduledCount}
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500">
+              <Package className="w-3 h-3" />{liveOrders.length} commandes
             </div>
           </div>
         </div>
@@ -901,9 +892,7 @@ function ColumnOrderCard({
   };
 
   return (
-    <div className={`rounded overflow-hidden ${isNew ? 'ring-1 ring-yellow-400 animate-pulse' :
-      isReady ? 'ring-1 ring-green-400' : ''
-      } bg-white/5`}>
+    <div className="rounded overflow-hidden bg-white/5">
       {/* Header - Ultra compact */}
       <div className={`${config.color} px-2 py-1 flex items-center justify-between`}>
         <div className="flex items-center gap-1.5">
@@ -1015,35 +1004,16 @@ function ColumnOrderCard({
           )}
         </div>
 
-        {/* Single "Ready" Button - Simplified workflow */}
+        {/* Print button only */}
         <div className="flex gap-1">
           <Button
             size="sm"
             variant="outline"
-            className="bg-white/10 border-white/20 hover:bg-white/20 text-[10px] py-0.5 h-6 px-1.5 gap-0.5"
+            className="flex-1 bg-white/10 border-white/20 hover:bg-white/20 text-[10px] py-0.5 h-6 px-1.5 gap-0.5"
             onClick={() => printOrderTicket(order)}
           >
-            <Printer className="w-3 h-3" />
+            <Printer className="w-3 h-3" /> Imprimer
           </Button>
-          {order.status !== 'completed' && order.status !== 'cancelled' && (
-            <Button
-              size="sm"
-              className="flex-1 bg-green-500 hover:bg-green-600 text-[10px] py-0.5 h-6 gap-0.5 font-bold"
-              onClick={() => onStatusUpdate(order.id, 'completed')}
-            >
-              <CheckCircle className="w-3 h-3" /> PRÊTE
-            </Button>
-          )}
-          {order.status !== 'completed' && order.status !== 'cancelled' && (
-            <Button
-              variant="destructive"
-              size="sm"
-              className="text-[10px] py-0.5 h-6 px-1.5"
-              onClick={() => onStatusUpdate(order.id, 'cancelled')}
-            >
-              <XCircle className="w-3 h-3" />
-            </Button>
-          )}
         </div>
       </div>
     </div>
