@@ -11,6 +11,7 @@ import { Footer } from '@/components/Footer';
 import { DeliveryMapSection } from '@/components/DeliveryMapSection';
 import { Header } from '@/components/Header';
 import { AnnouncementBanner } from '@/components/AnnouncementBanner';
+import { ClosedBanner } from '@/components/ClosedBanner';
 import { ReviewSection } from '@/components/ReviewSection';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -125,6 +126,7 @@ function MainApp() {
         onMenuClick={scrollToOrderSelector}
         onScheduleClick={scrollToOrderSelector}
       />
+      <ClosedBanner />
       <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
 
       {/* Hero Section - optimized height */}
