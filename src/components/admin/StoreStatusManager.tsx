@@ -21,6 +21,7 @@ interface StoreStatus {
     show_banner: boolean;
     banner_message: string;
     banner_type: 'info' | 'warning' | 'error';
+    hours_enforcement_enabled: boolean;
 }
 
 interface DayHours {
@@ -46,6 +47,7 @@ const defaultStatus: StoreStatus = {
     show_banner: false,
     banner_message: '',
     banner_type: 'info',
+    hours_enforcement_enabled: true,
 };
 
 const defaultHours: DayHours[] = [
@@ -90,6 +92,7 @@ export function StoreStatusManager() {
                 if (s.key === 'store_show_banner') statusFromDb.show_banner = s.value === 'true';
                 if (s.key === 'store_banner_message') statusFromDb.banner_message = s.value;
                 if (s.key === 'store_banner_type') statusFromDb.banner_type = s.value as any;
+                if (s.key === 'hours_enforcement_enabled') statusFromDb.hours_enforcement_enabled = s.value === 'true';
             });
 
             setStatus({ ...defaultStatus, ...statusFromDb });
@@ -121,6 +124,7 @@ export function StoreStatusManager() {
             { key: 'store_show_banner', value: String(status.show_banner), category: 'store' },
             { key: 'store_banner_message', value: status.banner_message, category: 'store' },
             { key: 'store_banner_type', value: status.banner_type, category: 'store' },
+            { key: 'hours_enforcement_enabled', value: String(status.hours_enforcement_enabled), category: 'store' },
         ];
 
         for (const setting of statusSettings) {
@@ -217,6 +221,29 @@ export function StoreStatusManager() {
 
                 {/* Status Tab */}
                 <TabsContent value="status" className="space-y-4">
+                    {/* Hours Enforcement Toggle */}
+                    <Card className="p-4 border-2 border-purple-200 bg-purple-50/50">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Clock className="w-6 h-6 text-purple-600" />
+                                <div>
+                                    <Label className="text-lg font-bold text-purple-900">Système d'horaires</Label>
+                                    <p className="text-sm text-purple-700">Popup "Fermé" automatique hors horaires</p>
+                                </div>
+                            </div>
+                            <Switch
+                                checked={status.hours_enforcement_enabled}
+                                onCheckedChange={(checked) => setStatus({ ...status, hours_enforcement_enabled: checked })}
+                                className="scale-150"
+                            />
+                        </div>
+                        <p className="text-xs text-purple-600 mt-2">
+                            {status.hours_enforcement_enabled
+                                ? "✅ Activé - Les clients voient la popup hors heures d'ouverture"
+                                : "❌ Désactivé - Les clients peuvent commander à tout moment"}
+                        </p>
+                    </Card>
+
                     {/* Quick Open/Close */}
                     <Card className="p-4">
                         <h3 className="font-semibold mb-4 flex items-center gap-2">
@@ -457,8 +484,8 @@ export function StoreStatusManager() {
                                     {/* Preview */}
                                     {status.banner_message && (
                                         <div className={`p-3 rounded-lg text-center text-white ${status.banner_type === 'info' ? 'bg-blue-500' :
-                                                status.banner_type === 'warning' ? 'bg-yellow-500 text-black' :
-                                                    'bg-red-500'
+                                            status.banner_type === 'warning' ? 'bg-yellow-500 text-black' :
+                                                'bg-red-500'
                                             }`}>
                                             <p className="font-medium">Aperçu: {status.banner_message}</p>
                                         </div>

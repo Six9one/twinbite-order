@@ -89,6 +89,20 @@ export function ClosedBanner() {
 
   const checkIfClosed = async () => {
     try {
+      // First check if hours enforcement is enabled
+      const { data: settingsData } = await supabase
+        .from('site_settings' as any)
+        .select('value')
+        .eq('key', 'hours_enforcement_enabled')
+        .single();
+
+      // If enforcement is disabled, don't show the closed banner
+      if (settingsData && (settingsData as any).value === 'false') {
+        setIsClosed(false);
+        setLoading(false);
+        return;
+      }
+
       const now = new Date();
       const currentDay = now.getDay();
       const currentTime = now.getHours() * 60 + now.getMinutes();
@@ -314,19 +328,20 @@ export function ClosedBanner() {
 
       {/* Schedule Dialog */}
       {showScheduleDialog && (
-        <div className="fixed inset-0 z-[10000] bg-black/90 flex items-center justify-center p-2">
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[95vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[10000] bg-black/90 flex items-center justify-center p-3">
+          <div className="bg-white rounded-2xl w-full max-w-sm max-h-[95vh] overflow-y-auto shadow-2xl">
             <div className="p-4">
-              <div className="flex items-center gap-2 mb-3">
+              {/* Header */}
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b">
                 <CalendarClock className="w-5 h-5 text-purple-500" />
                 <h2 className="text-lg font-bold">Programmer votre commande</h2>
               </div>
 
               <div className="space-y-4">
-                {/* Order Type - Compact */}
+                {/* 1. Order Type */}
                 <div>
-                  <label className="text-xs font-medium mb-1.5 block text-gray-600">Type de commande</label>
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <label className="text-sm font-semibold mb-2 block">Type de commande</label>
+                  <div className="grid grid-cols-3 gap-2">
                     {orderOptions.map((opt) => {
                       const Icon = opt.icon;
                       return (
@@ -334,48 +349,49 @@ export function ClosedBanner() {
                           key={opt.type}
                           onClick={() => setSelectedOrderType(opt.type)}
                           className={cn(
-                            "flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all text-xs",
+                            "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all",
                             selectedOrderType === opt.type
                               ? "border-purple-500 bg-purple-50"
                               : "border-gray-200 hover:border-gray-300"
                           )}
                         >
-                          <Icon className={cn("w-4 h-4", selectedOrderType === opt.type ? "text-purple-500" : "text-gray-400")} />
-                          <span className="font-medium">{opt.label}</span>
+                          <Icon className={cn("w-5 h-5", selectedOrderType === opt.type ? "text-purple-500" : "text-gray-400")} />
+                          <span className="text-xs font-medium">{opt.label}</span>
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Date & Time in 2 columns */}
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Date - Compact Calendar */}
-                  <div>
-                    <label className="text-xs font-medium mb-1.5 block text-gray-600">Date</label>
+                {/* 2. Date - Full width calendar */}
+                <div>
+                  <label className="text-sm font-semibold mb-2 block">Date <span className="text-red-500 text-xs">(Fermé le dimanche)</span></label>
+                  <div className="flex justify-center">
                     <CalendarPicker
                       mode="single"
                       selected={selectedDate}
                       onSelect={setSelectedDate}
                       disabled={isDisabledDay}
                       locale={fr}
-                      className="rounded-lg border p-1 text-xs [&_table]:w-full [&_td]:p-0.5 [&_th]:p-0.5 [&_button]:h-7 [&_button]:w-7 [&_button]:text-xs"
+                      className="rounded-xl border"
                     />
-                    <p className="text-[10px] text-red-500 mt-1">Dimanche = Fermé</p>
                   </div>
+                </div>
 
-                  {/* Time - Grid of buttons */}
-                  <div>
-                    <label className="text-xs font-medium mb-1.5 block text-gray-600">Heure</label>
-                    <div className="border rounded-lg p-2 max-h-[200px] overflow-y-auto">
-                      <p className="text-[10px] font-bold text-gray-500 mb-1">Midi</p>
-                      <div className="grid grid-cols-3 gap-1 mb-2">
+                {/* 3. Time - Chips horizontaly */}
+                <div>
+                  <label className="text-sm font-semibold mb-2 block">Heure</label>
+                  <div className="space-y-3">
+                    {/* Midi */}
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 mb-1.5">🌞 Midi (11h-15h)</p>
+                      <div className="flex flex-wrap gap-1.5">
                         {['11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00'].map(time => (
                           <button
                             key={time}
                             onClick={() => setSelectedTime(time)}
                             className={cn(
-                              "px-1 py-1.5 rounded text-xs font-medium transition-all",
+                              "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
                               selectedTime === time
                                 ? "bg-purple-500 text-white"
                                 : "bg-gray-100 hover:bg-gray-200"
@@ -385,14 +401,17 @@ export function ClosedBanner() {
                           </button>
                         ))}
                       </div>
-                      <p className="text-[10px] font-bold text-gray-500 mb-1 border-t pt-1">Soir</p>
-                      <div className="grid grid-cols-3 gap-1">
+                    </div>
+                    {/* Soir */}
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 mb-1.5">🌙 Soir (17h30-00h)</p>
+                      <div className="flex flex-wrap gap-1.5">
                         {['17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30'].map(time => (
                           <button
                             key={time}
                             onClick={() => setSelectedTime(time)}
                             className={cn(
-                              "px-1 py-1.5 rounded text-xs font-medium transition-all",
+                              "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
                               selectedTime === time
                                 ? "bg-purple-500 text-white"
                                 : "bg-gray-100 hover:bg-gray-200"
@@ -407,18 +426,18 @@ export function ClosedBanner() {
                 </div>
 
                 {/* Buttons */}
-                <div className="flex gap-2 pt-1">
+                <div className="flex gap-3 pt-2 border-t mt-4">
                   <Button
                     variant="outline"
                     onClick={() => setShowScheduleDialog(false)}
-                    className="flex-1 h-10"
+                    className="flex-1 h-11"
                   >
                     Retour
                   </Button>
                   <Button
                     onClick={handleConfirmSchedule}
                     disabled={!selectedOrderType || !selectedDate || !selectedTime}
-                    className="flex-1 h-10 bg-purple-600 hover:bg-purple-700"
+                    className="flex-1 h-11 bg-purple-600 hover:bg-purple-700"
                   >
                     Confirmer
                   </Button>
