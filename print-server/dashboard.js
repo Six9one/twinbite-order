@@ -22,7 +22,6 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     console.error('❌ Missing SUPABASE credentials in .env');
-    // We don't exit here to allow local dashboard to work anyway
 }
 
 // Initialize Supabase client
@@ -45,6 +44,35 @@ const logs = {
     printer: []
 };
 
+// ==========================================
+// HEARTBEAT & LOG SYNC TO SUPABASE
+// ==========================================
+
+async function syncStatusToSupabase(serverName, isOnline, lastLog = null) {
+    if (!supabase) return;
+
+    try {
+        const updateData = {
+            server_name: serverName,
+            is_online: isOnline,
+            last_heartbeat: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        if (lastLog) {
+            updateData.last_log = lastLog.message || lastLog;
+        }
+
+        const { error } = await supabase
+            .from('system_status')
+            .upsert(updateData, { onConflict: 'server_name' });
+
+        if (error) console.error(`❌ Sync error for ${serverName}:`, error.message);
+    } catch (err) {
+        // Silently fail to avoid crashing the local bridge
+    }
+}
+
 function addLog(source, type, message) {
     const logEntry = {
         timestamp: new Date().toLocaleTimeString(),
@@ -56,6 +84,11 @@ function addLog(source, type, message) {
     if (logs[source].length > MAX_LOGS) logs[source].shift();
 
     io.emit('log', { source, ...logEntry });
+
+    // Sync to Supabase periodically (only important logs or highlights)
+    if (type === 'error' || type === 'success' || type === 'highlight') {
+        syncStatusToSupabase(source === 'bot' ? 'whatsapp' : 'printer', true, logEntry);
+    }
 }
 
 // Socket.IO Connection
@@ -73,14 +106,14 @@ let printerProcess = null;
 
 function startBot() {
     if (botProcess) {
-        addLog('bot', 'warning', 'Bot already running. Use stop/restart.');
+        addLog('bot', 'warning', 'Bot already running.');
         return;
     }
 
     const botPath = join(__dirname, '../whatsapp-bot-python/bot.py');
-    const pythonCmd = 'python'; // Always use global python for stability
+    const pythonCmd = 'python';
 
-    addLog('bot', 'info', `🚀 Starting WhatsApp Bot...`);
+    addLog('bot', 'info', `🚀 Lancement du Bot WhatsApp...`);
 
     botProcess = spawn(pythonCmd, ['-u', botPath], {
         cwd: join(__dirname, '../whatsapp-bot-python'),
@@ -103,28 +136,30 @@ function startBot() {
     });
 
     botProcess.on('close', (code) => {
-        addLog('bot', 'error', `Bot process exited with code ${code}`);
+        addLog('bot', 'error', `Processus Bot arrêté (Code: ${code})`);
         botProcess = null;
+        syncStatusToSupabase('whatsapp', false);
     });
+
+    syncStatusToSupabase('whatsapp', true);
 }
 
 function stopBot() {
     if (botProcess) {
-        addLog('bot', 'warning', '⏹️ Stopping WhatsApp Bot...');
+        addLog('bot', 'warning', '⏹️ Arrêt du Bot WhatsApp...');
         botProcess.kill();
         botProcess = null;
-    } else {
-        addLog('bot', 'info', 'Bot is not running.');
+        syncStatusToSupabase('whatsapp', false);
     }
 }
 
 function startPrinter() {
     if (printerProcess) {
-        addLog('printer', 'warning', 'Printer server already running.');
+        addLog('printer', 'warning', 'Serveur d\'impression déjà actif.');
         return;
     }
 
-    addLog('printer', 'info', `🚀 Starting Print Server...`);
+    addLog('printer', 'info', `🚀 Lancement du Serveur d'Impression...`);
 
     printerProcess = spawn('node', ['server.js'], {
         cwd: __dirname,
@@ -147,18 +182,20 @@ function startPrinter() {
     });
 
     printerProcess.on('close', (code) => {
-        addLog('printer', 'error', `Print Server exited with code ${code}`);
+        addLog('printer', 'error', `Serveur d'Impression arrêté (Code: ${code})`);
         printerProcess = null;
+        syncStatusToSupabase('printer', false);
     });
+
+    syncStatusToSupabase('printer', true);
 }
 
 function stopPrinter() {
     if (printerProcess) {
-        addLog('printer', 'warning', '⏹️ Stopping Print Server...');
+        addLog('printer', 'warning', '⏹️ Arrêt du Serveur d\'Impression...');
         printerProcess.kill();
         printerProcess = null;
-    } else {
-        addLog('printer', 'info', 'Printer server is not running.');
+        syncStatusToSupabase('printer', false);
     }
 }
 
@@ -167,7 +204,7 @@ function stopPrinter() {
 // ==========================================
 
 if (supabase) {
-    console.log('✅ Remote command listener active (Supabase Realtime)');
+    console.log('✅ Remote command listener active');
 
     supabase
         .channel('remote-commands')
@@ -176,9 +213,8 @@ if (supabase) {
             { event: 'INSERT', schema: 'public', table: 'system_remote_commands' },
             async (payload) => {
                 const { id, server_name, command } = payload.new;
-                console.log(`📥 Received Remote Command: [${server_name}] ${command}`);
+                console.log(`📥 Commande à distance : [${server_name}] ${command}`);
 
-                // Update status to processing
                 await supabase
                     .from('system_remote_commands')
                     .update({ status: 'processing', updated_at: new Date() })
@@ -199,49 +235,48 @@ if (supabase) {
                             stopPrinter();
                             setTimeout(startPrinter, 2000);
                         }
+                    } else if (server_name === 'system') {
+                        if (command === 'morning_start') {
+                            addLog('printer', 'highlight', '🌞 EXÉCUTION DU LANCEMENT MATINAL...');
+                            startBot();
+                            startPrinter();
+                            // Optional: open whatsapp web
+                            open('https://web.whatsapp.com');
+                        } else if (command === 'open_whatsapp') {
+                            open('https://web.whatsapp.com');
+                            addLog('bot', 'info', '🌐 Ouverture de WhatsApp Web sur le PC local...');
+                        }
                     }
 
-                    // Complete
                     await supabase
                         .from('system_remote_commands')
                         .update({ status: 'completed', updated_at: new Date() })
                         .eq('id', id);
-
-                    console.log(`✅ Command ${id} executed successfully`);
                 } catch (error) {
-                    console.error('❌ Command execution failed:', error);
                     await supabase
                         .from('system_remote_commands')
-                        .update({
-                            status: 'failed',
-                            error_message: error.message,
-                            updated_at: new Date()
-                        })
+                        .update({ status: 'failed', error_message: error.message })
                         .eq('id', id);
                 }
             }
         )
         .subscribe();
-} else {
-    console.warn('⚠️ Supabase not configured. Remote commands will not work.');
+
+    // Heartbeat Interval
+    setInterval(() => {
+        syncStatusToSupabase('whatsapp', !!botProcess);
+        syncStatusToSupabase('printer', !!printerProcess);
+    }, 15000);
 }
 
 // ==========================================
 // STARTUP
 // ==========================================
 
-// Initial Start
-startBot();
-startPrinter();
-
 httpServer.listen(PORT, () => {
-    console.log(`\n==========================================`);
-    console.log(`Dashboard running at http://localhost:${PORT}`);
-    console.log(`==========================================\n`);
-    // open(`http://localhost:${PORT}`); // Auto-open disabled for remote-friendly stability
+    console.log(`\nDashboard local actif sur : http://localhost:${PORT}`);
 });
 
-// Cleanup on exit
 process.on('SIGINT', () => {
     stopBot();
     stopPrinter();

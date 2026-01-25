@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,28 +17,65 @@ import {
     Loader2,
     Activity,
     Server,
-    Smartphone,
+    RotateCcw,
     Power,
-    RotateCcw
+    Sunrise,
+    Globe
 } from 'lucide-react';
 import { useSystemHealth, formatLastChecked } from '@/hooks/useSystemHealth';
 import { cn } from '@/lib/utils';
-
 import { supabase } from '@/integrations/supabase/client';
 
+interface ServerLog {
+    server_name: string;
+    is_online: boolean;
+    last_log: string;
+    last_heartbeat: string;
+}
+
 export function SystemHealthPanel() {
-    const { health, refresh, setWhatsAppBotOnline, isAllHealthy } = useSystemHealth();
+    const { health, refresh, isAllHealthy } = useSystemHealth();
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [pendingCmd, setPendingCmd] = useState<string | null>(null);
+    const [serverLogs, setServerLogs] = useState<ServerLog[]>([]);
+
+    // Fetch live status and logs from system_status table
+    const fetchLiveLogs = async () => {
+        const { data, error } = await supabase
+            .from('system_status' as any)
+            .select('*')
+            .order('updated_at', { ascending: false });
+
+        if (data) setServerLogs(data as ServerLog[]);
+    };
+
+    useEffect(() => {
+        fetchLiveLogs();
+        const interval = setInterval(fetchLiveLogs, 5000);
+
+        // Subscribe to real-time status updates
+        const channel = supabase
+            .channel('system-status-sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'system_status' }, () => {
+                fetchLiveLogs();
+            })
+            .subscribe();
+
+        return () => {
+            clearInterval(interval);
+            supabase.removeChannel(channel);
+        };
+    }, []);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
         await refresh();
+        await fetchLiveLogs();
         setIsRefreshing(false);
         toast.success('Statuts mis à jour');
     };
 
-    const sendRemoteCommand = async (server: 'whatsapp' | 'printer', command: 'start' | 'stop' | 'restart') => {
+    const sendRemoteCommand = async (server: string, command: string) => {
         const cmdId = `${server}-${command}`;
         setPendingCmd(cmdId);
 
@@ -52,323 +89,208 @@ export function SystemHealthPanel() {
                 });
 
             if (error) throw error;
-
-            toast.success(`Commande [${command.toUpperCase()}] envoyée au serveur ${server}`);
-
-            // Auto refresh after a short delay to see status change
-            setTimeout(refresh, 5000);
+            toast.success(`Commande envoyée : ${command.toUpperCase()}`);
+            setTimeout(() => { refresh(); fetchLiveLogs(); }, 3000);
         } catch (error: any) {
-            console.error('Remote command error:', error);
-            toast.error(`Erreur d'envoi : ${error.message}`);
+            toast.error(`Erreur : ${error.message}`);
         } finally {
             setPendingCmd(null);
         }
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3">
-                        <Activity className="w-8 h-8 text-amber-500" />
-                        Santé du Système
-                    </h1>
-                    <p className="text-muted-foreground">Surveillance et contrôle à distance des serveurs locaux.</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={handleRefresh}
-                        disabled={isRefreshing}
-                        className="rounded-xl border-amber-500/20 hover:bg-amber-50 text-amber-600 font-bold"
-                    >
-                        {isRefreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                        Actualiser Statuts
-                    </Button>
-                </div>
-            </div>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+            {/* Morning Mode Hero Section */}
+            <Card className="p-8 border-none bg-gradient-to-br from-amber-500 via-orange-600 to-rose-700 text-white rounded-[2rem] shadow-2xl relative overflow-hidden group">
+                <div className="relative z-10 flex flex-col items-center text-center space-y-6">
+                    <div className="bg-white/20 p-4 rounded-full backdrop-blur-xl animate-pulse">
+                        <Sunrise className="w-12 h-12" />
+                    </div>
+                    <div>
+                        <h2 className="text-4xl font-black tracking-tighter uppercase italic">Mode Matinal</h2>
+                        <p className="text-white/80 font-bold text-lg mt-2">Démarrage complet du restaurant Twin Pizza</p>
+                    </div>
 
-            {/* Global Status Banner */}
-            <div className={cn(
-                "p-6 rounded-3xl border-none shadow-xl flex flex-col md:flex-row items-center gap-6 transition-all duration-500",
-                isAllHealthy
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-500/20"
-                    : "bg-gradient-to-r from-red-500 to-orange-600 text-white shadow-red-500/20"
-            )}>
-                <div className="bg-white/20 p-4 rounded-2xl backdrop-blur-md">
-                    {isAllHealthy ? <CheckCircle className="w-10 h-10" /> : <AlertTriangle className="w-10 h-10" />}
-                </div>
-                <div className="flex-1 text-center md:text-left">
-                    <h2 className="text-xl font-black italic uppercase tracking-wider">
-                        {isAllHealthy ? 'Système 100% Opérationnel' : 'Action Requise : Services Interrompus'}
-                    </h2>
-                    <p className="text-white/80 font-medium">
-                        Dernière analyse complète effectuée à {formatLastChecked(health.supabase.lastChecked)}
-                    </p>
-                </div>
-                {!isAllHealthy && (
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
                         <Button
-                            onClick={() => {
-                                sendRemoteCommand('whatsapp', 'restart');
-                                sendRemoteCommand('printer', 'restart');
-                            }}
-                            className="bg-white text-red-600 font-black hover:bg-white/90"
+                            size="lg"
+                            onClick={() => sendRemoteCommand('system', 'morning_start')}
+                            disabled={pendingCmd === 'system-morning_start'}
+                            className="bg-white text-orange-600 hover:bg-white/90 font-black text-xl py-8 rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 flex-1"
                         >
-                            Relancer tout
+                            {pendingCmd === 'system-morning_start' ? <Loader2 className="animate-spin mr-2" /> : <Play className="mr-2" />}
+                            LANCER TOUT
+                        </Button>
+                        <Button
+                            size="lg"
+                            variant="outline"
+                            onClick={() => sendRemoteCommand('system', 'open_whatsapp')}
+                            className="border-white/40 text-white hover:bg-white/10 font-bold rounded-2xl flex-1 backdrop-blur-sm"
+                        >
+                            <Globe className="mr-2 w-5 h-5" /> WhatsApp Web
                         </Button>
                     </div>
-                )}
-            </div>
 
-            {/* Detailed Services Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Printer Card */}
-                <ServiceCardPremiumWithControls
-                    icon={<Printer className="w-7 h-7" />}
-                    name="Imprimante Ticket"
-                    description="Serveur d'impression local (80mm)"
-                    status={health.printer}
-                    gradient="from-blue-500 to-indigo-600"
-                    onStart={() => sendRemoteCommand('printer', 'start')}
-                    onStop={() => sendRemoteCommand('printer', 'stop')}
-                    onRestart={() => sendRemoteCommand('printer', 'restart')}
-                    isPending={!!pendingCmd?.startsWith('printer')}
-                />
+                    <div className="flex items-center gap-6 pt-4 text-xs font-black uppercase tracking-widest text-white/60">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${health.printer.isOnline ? 'bg-green-400' : 'bg-white/20'}`} /> IMPRIMANTE
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${health.whatsappBot.isOnline ? 'bg-green-400' : 'bg-white/20'}`} /> BOT WHATSAPP
+                        </div>
+                    </div>
+                </div>
+                <Sunrise className="absolute -right-12 -bottom-12 w-64 h-64 text-white/5 rotate-12 transition-transform group-hover:rotate-0" />
+            </Card>
 
-                {/* Database Card */}
-                <ServiceCardPremium
-                    icon={<Database className="w-7 h-7" />}
-                    name="Base de Données"
-                    description="Cloud Supabase & Realtime Sync"
-                    status={health.supabase}
-                    gradient="from-violet-500 to-purple-600"
-                />
-
-                {/* WhatsApp Bot Card - Integrated Controls */}
-                <ServiceCardPremiumWithControls
-                    icon={<MessageSquare className="w-7 h-7" />}
-                    name="Bot WhatsApp"
-                    description="Envoi automatique des tickets clients."
-                    status={health.whatsappBot}
-                    gradient="from-emerald-500 to-teal-600"
-                    onStart={() => sendRemoteCommand('whatsapp', 'start')}
-                    onStop={() => sendRemoteCommand('whatsapp', 'stop')}
-                    onRestart={() => sendRemoteCommand('whatsapp', 'restart')}
-                    isPending={!!pendingCmd?.startsWith('whatsapp')}
-                />
-            </div>
-
-            {/* Technical Documentation / Guide Section */}
-            <Card className="p-8 border-none bg-slate-900 text-white rounded-3xl shadow-2xl relative overflow-hidden">
-                <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
-                    <div className="space-y-4">
-                        <h3 className="text-2xl font-black flex items-center gap-2">
-                            <Terminal className="w-6 h-6 text-amber-500" />
-                            Guide de Dépannage
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Real-time Console Log */}
+                <Card className="lg:col-span-2 p-6 bg-slate-950 border-none rounded-[2rem] shadow-xl flex flex-col h-[500px]">
+                    <div className="flex items-center justify-between mb-4 px-2">
+                        <h3 className="text-white font-black flex items-center gap-2 uppercase tracking-wider text-sm">
+                            <Terminal className="w-4 h-4 text-amber-500" />
+                            Console Serveur Direct
+                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse ml-2" />
                         </h3>
-                        <div className="space-y-4 pt-4">
-                            <div className="flex gap-4">
-                                <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center font-black shrink-0">1</div>
-                                <p className="text-slate-300 text-sm">Vérifiez que le PC principal est allumé et connecté à l'imprimante via USB.</p>
-                            </div>
-                            <div className="flex gap-4">
-                                <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center font-black shrink-0">2</div>
-                                <p className="text-slate-300 text-sm">Le bot WhatsApp nécessite une fenêtre Chrome ouverte en arrière-plan (port 9222).</p>
-                            </div>
-                            <div className="flex gap-4">
-                                <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center font-black shrink-0">3</div>
-                                <p className="text-slate-300 text-sm">En cas de logo rouge sur l'imprimante, relancez le script <code className="bg-white/10 px-1 rounded text-amber-400">START_PRINT_SERVER.bat</code>.</p>
-                            </div>
-                        </div>
-                        <Button
-                            variant="secondary"
-                            className="mt-6 bg-amber-500 text-black font-black hover:bg-amber-400 border-none rounded-xl"
-                            onClick={() => window.open('file:///C:/Users/Slicydicy/Documents/GitHub/twinbite-order/', '_blank')}
-                        >
-                            <ExternalLink className="w-4 h-4 mr-2" /> Ouvrir dossier racine
+                        <Button variant="ghost" size="sm" onClick={handleRefresh} className="text-white/40 hover:text-white hover:bg-white/5">
+                            <RefreshCw className="w-4 h-4" />
                         </Button>
                     </div>
+                    <div className="flex-1 bg-black/50 rounded-2xl p-6 font-mono text-[13px] overflow-y-auto custom-scrollbar border border-white/5">
+                        <div className="space-y-3">
+                            {serverLogs.length > 0 ? serverLogs.map((log, i) => (
+                                <div key={i} className="animate-in fade-in slide-in-from-left-2 duration-300">
+                                    <span className="text-amber-500/50 mr-2">[{new Date(log.last_heartbeat).toLocaleTimeString()}]</span>
+                                    <span className={cn(
+                                        "font-black mr-2 uppercase",
+                                        log.server_name === 'whatsapp' ? "text-emerald-500" : "text-blue-500"
+                                    )}>
+                                        {log.server_name}:
+                                    </span>
+                                    <span className="text-slate-300">{log.last_log || "Attente d'activité..."}</span>
+                                </div>
+                            )) : (
+                                <div className="text-slate-600 italic">Initialisation de la console...</div>
+                            )}
+                            <div className="flex items-center gap-2 text-white/20 italic pt-4">
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <span>En attente de nouveaux logs...</span>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
 
-                    <div className="bg-white/5 rounded-2xl p-6 border border-white/10 backdrop-blur-sm">
-                        <h4 className="font-bold text-amber-500 mb-4 uppercase tracking-widest text-xs">Informations Système</h4>
-                        <div className="space-y-4">
-                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                <span className="text-slate-400 text-sm">WhatsApp Port</span>
-                                <span className="font-mono text-sm">9222</span>
+                {/* Individual Controls Area */}
+                <div className="space-y-6">
+                    {/* Printer Control */}
+                    <Card className="p-6 bg-white border-border/50 rounded-3xl shadow-sm group">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className={cn("p-3 rounded-2xl bg-gradient-to-br text-white", health.printer.isOnline ? "from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20" : "bg-slate-200 text-slate-400")}>
+                                <Printer className="w-6 h-6" />
                             </div>
-                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                <span className="text-slate-400 text-sm">Socket.io Service</span>
-                                <span className="text-emerald-400 text-sm font-bold">ACTIF</span>
+                            <ServiceBadge isOnline={health.printer.isOnline} />
+                        </div>
+                        <h4 className="font-black text-lg">Imprimante Ticket</h4>
+                        <p className="text-sm text-muted-foreground mt-1 mb-6">Gestion des commandes cuisines.</p>
+
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={!!pendingCmd}
+                                onClick={() => sendRemoteCommand('printer', 'restart')}
+                                className="rounded-xl border-amber-500/20 text-amber-600 font-bold"
+                            >
+                                <RotateCcw className="w-4 h-4 mr-1.5" /> Relancer
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={!!pendingCmd || !health.printer.isOnline}
+                                onClick={() => sendRemoteCommand('printer', 'stop')}
+                                className="rounded-xl border-red-500/20 text-red-600 font-bold"
+                            >
+                                <Power className="w-4 h-4 mr-1.5" /> Arrêter
+                            </Button>
+                        </div>
+                    </Card>
+
+                    {/* WhatsApp Control */}
+                    <Card className="p-6 bg-white border-border/50 rounded-3xl shadow-sm group">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className={cn("p-3 rounded-2xl bg-gradient-to-br text-white", health.whatsappBot.isOnline ? "from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20" : "bg-slate-200 text-slate-400")}>
+                                <MessageSquare className="w-6 h-6" />
                             </div>
-                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                <span className="text-slate-400 text-sm">Dernier Ping Bot</span>
-                                <span className="text-slate-200 text-sm">{formatLastChecked(health.whatsappBot.lastChecked)}</span>
+                            <ServiceBadge isOnline={health.whatsappBot.isOnline} />
+                        </div>
+                        <h4 className="font-black text-lg">Bot WhatsApp</h4>
+                        <p className="text-sm text-muted-foreground mt-1 mb-6">Notifications clients automatiques.</p>
+
+                        <div className="flex flex-col gap-2">
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!!pendingCmd}
+                                    onClick={() => sendRemoteCommand('whatsapp', 'restart')}
+                                    className="rounded-xl border-amber-500/20 text-amber-600 font-bold"
+                                >
+                                    <RotateCcw className="w-4 h-4 mr-1.5" /> Relancer
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!!pendingCmd || !health.whatsappBot.isOnline}
+                                    onClick={() => sendRemoteCommand('whatsapp', 'stop')}
+                                    className="rounded-xl border-red-500/20 text-red-600 font-bold"
+                                >
+                                    <Power className="w-4 h-4 mr-1.5" /> Arrêter
+                                </Button>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-slate-400 text-sm">OS Host</span>
-                                <span className="text-slate-200 text-sm">Windows Server / PC</span>
-                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => sendRemoteCommand('system', 'open_whatsapp')}
+                                className="rounded-xl border-blue-500/20 text-blue-600 font-bold"
+                            >
+                                <Globe className="w-4 h-4 mr-1.5" /> WhatsApp Web
+                            </Button>
+                        </div>
+                    </Card>
+                </div>
+            </div>
+
+            {/* Bottom Info Card */}
+            <Card className="p-10 border-none bg-slate-100 rounded-[2.5rem] relative overflow-hidden">
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
+                    <div className="bg-white p-6 rounded-[2rem] shadow-xl">
+                        <Terminal className="w-12 h-12 text-blue-600" />
+                    </div>
+                    <div>
+                        <h3 className="text-2xl font-black">Besoin de réinitialiser le PC ?</h3>
+                        <p className="text-slate-500 mt-2 max-w-xl">
+                            Si les boutons ne répondent pas, fermez les terminaux ouverts sur le PC local et lancez le fichier <code className="bg-white px-2 py-0.5 rounded border">START.bat</code> à la racine du dossier projet.
+                        </p>
+                        <div className="flex gap-4 mt-6">
+                            <Button variant="outline" className="rounded-xl font-bold border-slate-300" onClick={() => window.open('file:///C:/Users/Slicydicy/Documents/GitHub/twinbite-order/', '_blank')}>
+                                Accès Dossier Local
+                            </Button>
                         </div>
                     </div>
                 </div>
-                <Server className="absolute -left-8 -bottom-8 w-48 h-48 text-white/5 -rotate-12" />
             </Card>
         </div>
     );
 }
 
-function ServiceCardPremium({
-    icon,
-    name,
-    description,
-    status,
-    gradient
-}: {
-    icon: React.ReactNode;
-    name: string;
-    description: string;
-    status: { isOnline: boolean; error: string | null };
-    gradient: string;
-}) {
+function ServiceBadge({ isOnline }: { isOnline: boolean }) {
     return (
-        <Card className="p-6 border-border/50 shadow-sm rounded-3xl overflow-hidden relative group">
-            <div className={cn(
-                "absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity",
-                status.isOnline ? "text-emerald-500" : "text-red-500"
-            )}>
-                {icon}
-            </div>
-
-            <div className="relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                    <div className={cn(
-                        "p-3 rounded-2xl bg-gradient-to-br text-white shadow-lg",
-                        status.isOnline ? gradient : "from-gray-400 to-gray-600"
-                    )}>
-                        {icon}
-                    </div>
-                    <StatusBadgePremium isOnline={status.isOnline} />
-                </div>
-
-                <h3 className="text-lg font-black tracking-tight">{name}</h3>
-                <p className="text-sm text-muted-foreground mb-4">{description}</p>
-
-                {status.error && (
-                    <div className="mt-2 p-2 bg-red-50 text-red-600 text-[10px] rounded-lg font-bold uppercase overflow-hidden text-ellipsis whitespace-nowrap">
-                        ❌ {status.error}
-                    </div>
-                )}
-            </div>
-        </Card>
-    );
-}
-
-function ServiceCardPremiumWithControls({
-    icon,
-    name,
-    description,
-    status,
-    gradient,
-    onStart,
-    onStop,
-    onRestart,
-    isPending
-}: {
-    icon: React.ReactNode;
-    name: string;
-    description: string;
-    status: { isOnline: boolean; error: string | null };
-    gradient: string;
-    onStart: () => void;
-    onStop: () => void;
-    onRestart: () => void;
-    isPending: boolean;
-}) {
-    return (
-        <Card className="p-6 border-border/50 shadow-sm rounded-3xl overflow-hidden relative group">
-            <div className={cn(
-                "absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity",
-                status.isOnline ? "text-emerald-500" : "text-red-500"
-            )}>
-                {icon}
-            </div>
-
-            <div className="relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                    <div className={cn(
-                        "p-3 rounded-2xl bg-gradient-to-br text-white shadow-lg",
-                        status.isOnline ? gradient : "from-gray-400 to-gray-600"
-                    )}>
-                        {icon}
-                    </div>
-                    <StatusBadgePremium isOnline={status.isOnline} />
-                </div>
-
-                <h3 className="text-lg font-black tracking-tight">{name}</h3>
-                <p className="text-sm text-muted-foreground mb-6">{description}</p>
-
-                <div className="grid grid-cols-1 gap-2">
-                    {!status.isOnline ? (
-                        <Button
-                            onClick={onStart}
-                            disabled={isPending}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl"
-                        >
-                            {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
-                            Démarrer
-                        </Button>
-                    ) : (
-                        <div className="grid grid-cols-2 gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={onRestart}
-                                disabled={isPending}
-                                className="border-amber-500/20 text-amber-600 font-bold rounded-xl"
-                            >
-                                {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-2" />}
-                                Relancer
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={onStop}
-                                disabled={isPending}
-                                className="border-red-500/20 text-red-500 font-bold rounded-xl hover:bg-red-50"
-                            >
-                                {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Power className="w-4 h-4 mr-2" />}
-                                Arrêter
-                            </Button>
-                        </div>
-                    )}
-                </div>
-
-                {status.error && (
-                    <div className="mt-4 p-2 bg-red-50 text-red-600 text-[10px] rounded-lg font-bold uppercase overflow-hidden text-ellipsis whitespace-nowrap">
-                        ❌ {status.error}
-                    </div>
-                )}
-            </div>
-        </Card>
-    );
-}
-
-function StatusBadgePremium({ isOnline }: { isOnline: boolean }) {
-    return (
-        <Badge
-            variant="outline"
-            className={cn(
-                "rounded-full px-3 py-1 font-black text-[10px] tracking-widest uppercase border-2",
-                isOnline
-                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                    : "bg-red-500/10 text-red-600 border-red-500/20"
-            )}
-        >
-            <span className={cn(
-                "w-2 h-2 rounded-full mr-2",
-                isOnline ? "bg-emerald-500 animate-pulse" : "bg-red-500"
-            )} />
-            {isOnline ? 'Online' : 'Offline'}
+        <Badge variant="outline" className={cn(
+            "rounded-full px-3 py-1 font-black text-[10px] tracking-widest uppercase border-2 transition-all",
+            isOnline ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-red-500/10 text-red-600 border-red-500/20"
+        )}>
+            <div className={`w-1.5 h-1.5 rounded-full mr-2 ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+            {isOnline ? 'ONLINE' : 'OFFLINE'}
         </Badge>
     );
 }
