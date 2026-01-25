@@ -126,7 +126,7 @@ function MainApp() {
         onMenuClick={scrollToOrderSelector}
         onScheduleClick={scrollToOrderSelector}
       />
-      <ClosedBanner />
+      <ClosedBanner onScheduleConfirmed={handleOrderTypeSelect} />
       <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
 
       {/* Hero Section - optimized height */}

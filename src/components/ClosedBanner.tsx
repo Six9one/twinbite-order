@@ -65,7 +65,11 @@ const generateTimeSlots = () => {
 
 const timeSlots = generateTimeSlots();
 
-export function ClosedBanner() {
+interface ClosedBannerProps {
+  onScheduleConfirmed?: () => void;
+}
+
+export function ClosedBanner({ onScheduleConfirmed }: ClosedBannerProps) {
   const { setOrderType, setScheduledInfo } = useOrder();
 
   // Start with closed overlay showing immediately while we check
@@ -241,6 +245,11 @@ export function ClosedBanner() {
     setScheduledInfo({ isScheduled: true, scheduledFor: scheduledDateTime });
     setShowScheduleDialog(false);
     setIsClosed(false);
+
+    // Call the callback to redirect to menu
+    if (onScheduleConfirmed) {
+      onScheduleConfirmed();
+    }
   };
 
   const isDisabledDay = (date: Date) => {
