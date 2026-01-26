@@ -112,6 +112,7 @@ const navItems: NavItem[] = [
       { label: 'Fidélité', icon: Star, value: 'loyalty' },
       { label: 'Carousel Media', icon: Image, value: 'carousel' },
       { label: 'Images Catégories', icon: Image, value: 'category-images' },
+      { label: 'Images Wizard', icon: Image, value: 'wizard-images' },
       { label: 'Contenu Site', icon: Globe, value: 'content' },
     ]
   },

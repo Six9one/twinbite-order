@@ -85,11 +85,40 @@ export function ClosedBanner({ onScheduleConfirmed }: ClosedBannerProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
 
+  // Helper to check if a time slot is in the past (for today)
+  const isTimeSlotDisabled = (time: string): boolean => {
+    if (!selectedDate) return false;
+
+    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const checkDate = new Date(selectedDate);
+    checkDate.setHours(0, 0, 0, 0);
+
+    // If not today, all slots are available
+    if (checkDate.getTime() !== today.getTime()) return false;
+
+    // For today, check if the time has passed (with 30 min buffer for preparation)
+    const [hours, minutes] = time.split(':').map(Number);
+    const slotTime = new Date();
+    slotTime.setHours(hours, minutes, 0, 0);
+
+    // Disable if slot is less than 30 minutes from now
+    const bufferMs = 30 * 60 * 1000; // 30 minutes buffer
+    return slotTime.getTime() < (now.getTime() + bufferMs);
+  };
+
   useEffect(() => {
     checkIfClosed();
     const interval = setInterval(checkIfClosed, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Reset selected time when date changes to force re-render of time slots
+  useEffect(() => {
+    setSelectedTime('');
+  }, [selectedDate]);
 
   const checkIfClosed = async () => {
     try {
@@ -232,6 +261,13 @@ export function ClosedBanner({ onScheduleConfirmed }: ClosedBannerProps) {
 
   const handleOrderLater = () => {
     console.log('Opening schedule dialog');
+    // Pre-select today's date when opening the dialog
+    const today = new Date();
+    // If today is Sunday, select tomorrow instead
+    if (today.getDay() === 0) {
+      today.setDate(today.getDate() + 1);
+    }
+    setSelectedDate(today);
     setShowScheduleDialog(true);
   };
 
@@ -255,7 +291,13 @@ export function ClosedBanner({ onScheduleConfirmed }: ClosedBannerProps) {
   const isDisabledDay = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return date < today || date > addDays(today, 30) || date.getDay() === 0;
+
+    // Normalize the check date to midnight as well to ensure fair comparison
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+
+    // Disable past dates (strictly before today), dates more than 30 days ahead, and Sundays
+    return checkDate.getTime() < today.getTime() || checkDate > addDays(today, 30) || checkDate.getDay() === 0;
   };
 
   // Loading state
@@ -275,7 +317,7 @@ export function ClosedBanner({ onScheduleConfirmed }: ClosedBannerProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[9999] bg-black/30 flex items-center justify-center p-4">
         <div className="bg-gradient-to-b from-slate-900 to-slate-800 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden">
           {/* Header */}
           <div className="bg-red-600 p-6 text-center">
@@ -395,40 +437,52 @@ export function ClosedBanner({ onScheduleConfirmed }: ClosedBannerProps) {
                     <div>
                       <p className="text-xs font-bold text-gray-500 mb-1.5">🌞 Midi (11h-15h)</p>
                       <div className="flex flex-wrap gap-1.5">
-                        {['11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00'].map(time => (
-                          <button
-                            key={time}
-                            onClick={() => setSelectedTime(time)}
-                            className={cn(
-                              "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
-                              selectedTime === time
-                                ? "bg-purple-500 text-white"
-                                : "bg-gray-100 hover:bg-gray-200"
-                            )}
-                          >
-                            {time}
-                          </button>
-                        ))}
+                        {['11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00'].map(time => {
+                          const disabled = isTimeSlotDisabled(time);
+                          return (
+                            <button
+                              key={time}
+                              onClick={() => !disabled && setSelectedTime(time)}
+                              disabled={disabled}
+                              className={cn(
+                                "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                                disabled
+                                  ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-50"
+                                  : selectedTime === time
+                                    ? "bg-purple-500 text-white"
+                                    : "bg-gray-100 hover:bg-gray-200"
+                              )}
+                            >
+                              {time}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                     {/* Soir */}
                     <div>
                       <p className="text-xs font-bold text-gray-500 mb-1.5">🌙 Soir (17h30-00h)</p>
                       <div className="flex flex-wrap gap-1.5">
-                        {['17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30'].map(time => (
-                          <button
-                            key={time}
-                            onClick={() => setSelectedTime(time)}
-                            className={cn(
-                              "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
-                              selectedTime === time
-                                ? "bg-purple-500 text-white"
-                                : "bg-gray-100 hover:bg-gray-200"
-                            )}
-                          >
-                            {time}
-                          </button>
-                        ))}
+                        {['17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30'].map(time => {
+                          const disabled = isTimeSlotDisabled(time);
+                          return (
+                            <button
+                              key={time}
+                              onClick={() => !disabled && setSelectedTime(time)}
+                              disabled={disabled}
+                              className={cn(
+                                "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                                disabled
+                                  ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-50"
+                                  : selectedTime === time
+                                    ? "bg-purple-500 text-white"
+                                    : "bg-gray-100 hover:bg-gray-200"
+                              )}
+                            >
+                              {time}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>

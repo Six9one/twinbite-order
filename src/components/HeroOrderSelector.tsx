@@ -109,8 +109,13 @@ export function HeroOrderSelector({
   const isDisabledDay = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    // Normalize the check date to midnight as well to ensure fair comparison
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+
     // Disable past dates, dates more than 30 days ahead, and Sundays
-    return date < today || date > addDays(new Date(), 30) || isSunday(date);
+    return checkDate.getTime() < today.getTime() || checkDate > addDays(new Date(), 30) || isSunday(checkDate);
   };
 
   return (

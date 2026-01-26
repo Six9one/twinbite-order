@@ -3,6 +3,7 @@ import { MenuItem, SouffletCustomization, MakloubCustomization, MlawiCustomizati
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { useMeatOptions, useSauceOptions, useSupplementOptions } from '@/hooks/useCustomizationOptions';
+import { useWizardImage } from '@/hooks/useWizardImages';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -112,6 +113,9 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
   const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
   const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'menu'>('none');
   const [note, setNote] = useState('');
+
+  // Load wizard image
+  const { data: wizardImage } = useWizardImage(productType);
 
   // Load options from database (with static fallback)
   const { data: dbMeats } = useMeatOptions();
@@ -342,6 +346,20 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
                 );
               })}
             </div>
+
+            {/* Product Image */}
+            {wizardImage && (
+              <div className="mt-6 flex justify-center">
+                <div className="relative w-full max-w-xs overflow-hidden rounded-xl shadow-lg">
+                  <img
+                    src={wizardImage}
+                    alt={config.title}
+                    className="w-full h-auto object-cover"
+                    style={{ aspectRatio: '4/5' }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         );
 

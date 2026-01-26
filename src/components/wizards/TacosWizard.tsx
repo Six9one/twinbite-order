@@ -6,6 +6,7 @@ import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { useProductsByCategory, Product } from '@/hooks/useProducts';
 import { useMeatOptions, useSauceOptions } from '@/hooks/useCustomizationOptions';
+import { useWizardImage } from '@/hooks/useWizardImages';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +70,9 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   // Load tacos from database (fallback to static)
   const { data: dbTacos } = useProductsByCategory('tacos');
   const tacosProducts = mapDbProductsToTacos(dbTacos);
+
+  // Load wizard image
+  const { data: wizardImage } = useWizardImage('tacos');
 
   // Load meat and sauce options from database (fallback to static)
   const { data: dbMeats } = useMeatOptions();
@@ -220,6 +224,20 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
                 );
               })}
             </div>
+
+            {/* Product Image */}
+            {wizardImage && (
+              <div className="mt-6 flex justify-center">
+                <div className="relative w-full max-w-xs overflow-hidden rounded-xl shadow-lg">
+                  <img
+                    src={wizardImage}
+                    alt="Tacos"
+                    className="w-full h-auto object-cover"
+                    style={{ aspectRatio: '4/5' }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         );
 
