@@ -261,7 +261,8 @@ function formatOrderForPrint(order) {
         const orderDate = new Date(order.created_at);
         ticket += orderDate.toLocaleString('fr-FR', {
             dateStyle: 'short',
-            timeStyle: 'short'
+            timeStyle: 'short',
+            timeZone: 'Europe/Paris'
         }) + '\n';
     }
 
@@ -290,7 +291,8 @@ function formatOrderForPrint(order) {
             day: 'numeric',
             month: 'short',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            timeZone: 'Europe/Paris'
         }) + '\n';
         ticket += ESCPOS.BOLD_OFF;
     }
@@ -712,7 +714,7 @@ function startHeartbeat() {
                 console.error('💔 Heartbeat failed:', error.message);
                 handleDisconnect();
             } else {
-                const now = new Date().toLocaleTimeString('fr-FR');
+                const now = new Date().toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris' });
                 console.log(`💚 Heartbeat OK - ${now}`);
             }
         } catch (err) {
@@ -791,7 +793,7 @@ function formatHACCPTicket(data) {
 
     // Footer
     ticket += ESCPOS.CENTER;
-    ticket += new Date().toLocaleString('fr-FR') + '\n';
+    ticket += new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }) + '\n';
     ticket += 'Operateur: ' + operator + '\n';
     ticket += '\n';
 
@@ -843,9 +845,50 @@ function setupHttpServer() {
         }
     });
 
+    // Reprint an order by order number
+    app.post('/reprint/:orderNumber', async (req, res) => {
+        const orderNumber = req.params.orderNumber;
+        console.log(`\n📥 Reprint request for order #${orderNumber}`);
+
+        try {
+            // Fetch order from Supabase
+            const { data: orders, error } = await supabase
+                .from('orders')
+                .select('*')
+                .eq('order_number', orderNumber)
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            const order = orders?.[0];
+
+            if (error || !order) {
+                console.error(`❌ Order #${orderNumber} not found:`, error?.message);
+                return res.status(404).json({ error: 'Order not found' });
+            }
+
+            console.log(`   Found: ${order.customer_name} - ${order.total}€`);
+
+            // Format and print
+            const ticketData = formatOrderForPrint(order);
+            const success = await printWithRetry(ticketData, orderNumber);
+
+            if (success) {
+                console.log(`✅ Order #${orderNumber} reprinted successfully!`);
+                res.json({ success: true, message: 'Order reprinted' });
+            } else {
+                console.error(`❌ Failed to reprint order #${orderNumber}`);
+                res.status(500).json({ error: 'Print failed after retries' });
+            }
+        } catch (error) {
+            console.error('❌ Reprint error:', error.message);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     app.listen(HTTP_PORT, '0.0.0.0', () => {
         console.log(`🌐 HTTP server listening on port ${HTTP_PORT}`);
         console.log(`   HACCP endpoint: http://localhost:${HTTP_PORT}/print-haccp`);
+        console.log(`   Reprint endpoint: POST http://localhost:${HTTP_PORT}/reprint/:orderNumber`);
     });
 }
 

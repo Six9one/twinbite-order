@@ -173,11 +173,13 @@ serve(async (req) => {
       const formattedDate = scheduledDate.toLocaleDateString('fr-FR', {
         weekday: 'long',
         day: 'numeric',
-        month: 'long'
+        month: 'long',
+        timeZone: 'Europe/Paris'
       });
       const formattedTime = scheduledDate.toLocaleTimeString('fr-FR', {
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'Europe/Paris'
       });
       scheduledText = `\n\n⏰ *COMMANDE PROGRAMMÉE*\n📅 ${formattedDate}\n🕐 ${formattedTime}`;
     }
