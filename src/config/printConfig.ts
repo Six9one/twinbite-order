@@ -42,3 +42,47 @@ export async function printHACCPDirect(data: {
         return false;
     }
 }
+
+// Print Freezer/Congélation ticket
+export async function printFreezerLabel(data: {
+    productName: string;
+    frozenDate: string;
+    originalDlc: string;
+    lotNumber: string;
+    weight: string;
+    expiryDate: string;
+    operator: string;
+}): Promise<boolean> {
+    try {
+        const { error } = await supabase
+            .from('haccp_print_queue' as any)
+            .insert({
+                product_name: data.productName,
+                category_name: 'Congélation',
+                category_color: '#3b82f6', // blue
+                action_date: data.frozenDate,
+                dlc_date: data.expiryDate,
+                storage_temp: '-18°C',
+                operator: data.operator,
+                dlc_hours: 2160, // 90 days = 3 months
+                action_label: 'Mise en congélation',
+                // Additional freezer-specific fields stored in notes
+                notes: JSON.stringify({
+                    type: 'freezer',
+                    originalDlc: data.originalDlc,
+                    lotNumber: data.lotNumber,
+                    weight: data.weight,
+                }),
+            } as any);
+
+        if (error) {
+            console.error('Failed to queue freezer label print:', error);
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Failed to queue freezer label print:', error);
+        return false;
+    }
+}
