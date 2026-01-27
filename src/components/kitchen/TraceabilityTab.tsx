@@ -133,27 +133,42 @@ export function TraceabilityTab() {
             const base64 = reader.result as string;
             setFreezerPhoto(base64);
 
-            // Call OCR API
+            // Call OCR.space API directly (FREE - 500/day)
             setOcrLoading(true);
             try {
-                const { data, error } = await supabase.functions.invoke('ocr-label', {
-                    body: { imageBase64: base64 }
+                const formData = new FormData();
+                formData.append('base64Image', base64);
+                formData.append('language', 'fre');
+                formData.append('isOverlayRequired', 'false');
+                formData.append('OCREngine', '2');
+                formData.append('scale', 'true');
+
+                const response = await fetch('https://api.ocr.space/parse/image', {
+                    method: 'POST',
+                    headers: {
+                        'apikey': 'K88888888888957', // Free demo key
+                    },
+                    body: formData
                 });
 
-                if (error) throw error;
+                const ocrData = await response.json();
+                console.log('OCR Response:', ocrData);
 
-                if (data && !data.error) {
-                    setOcrResult(data);
-                    setFreezerProductName(data.productName || '');
-                    setFreezerDlc(data.dlc || '');
-                    setFreezerLotNumber(data.lotNumber || '');
-                    setFreezerWeight(data.weight || '');
-                    setFreezerOrigin(data.origin || '');
-                    toast.success('✅ Étiquette analysée!');
-                    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-                } else {
-                    throw new Error(data?.error || 'OCR failed');
+                if (ocrData.IsErroredOnProcessing) {
+                    throw new Error(ocrData.ErrorMessage?.[0] || 'OCR failed');
                 }
+
+                const rawText = ocrData.ParsedResults?.[0]?.ParsedText || '';
+                const data = parseOCRText(rawText);
+
+                setOcrResult(data);
+                setFreezerProductName(data.productName || '');
+                setFreezerDlc(data.dlc || '');
+                setFreezerLotNumber(data.lotNumber || '');
+                setFreezerWeight(data.weight || '');
+                setFreezerOrigin(data.origin || '');
+                toast.success('✅ Étiquette analysée!');
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             } catch (err) {
                 console.error('OCR Error:', err);
                 toast.error('Erreur OCR - Entrez les données manuellement');
@@ -162,6 +177,40 @@ export function TraceabilityTab() {
             }
         };
         reader.readAsDataURL(file);
+    };
+
+    // Parse OCR text to extract product info
+    const parseOCRText = (text: string): OCRResult => {
+        const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+        const result: OCRResult = { productName: '', dlc: '', lotNumber: '', origin: '', weight: '', rawText: text, confidence: 0.9 };
+
+        // Date patterns
+        const dateMatch = text.match(/(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/);
+        if (dateMatch) result.dlc = dateMatch[1];
+
+        // Lot number
+        const lotMatch = text.match(/(?:LOT|L)[:\s]*([A-Z0-9\-\.]+)/i);
+        if (lotMatch) result.lotNumber = lotMatch[1];
+
+        // Weight
+        const weightMatch = text.match(/(\d+(?:[.,]\d+)?\s*(?:KG|G|ML|L))/i);
+        if (weightMatch) result.weight = weightMatch[1];
+
+        // Origin
+        const originMatch = text.match(/(FRANCE|ITALIE|ESPAGNE|ALLEMAGNE|BELGIQUE|POLOGNE|IRLANDE)/i);
+        if (originMatch) result.origin = originMatch[1];
+
+        // Product name - find first descriptive line
+        for (const line of lines) {
+            if (line.length > 3 && line.length < 50 &&
+                !line.match(/^(LOT|L:|DLC|DDM|ORIGINE|POIDS|\d)/i) &&
+                !line.match(/^\d{1,2}[\/\-\.]/)) {
+                result.productName = line;
+                break;
+            }
+        }
+
+        return result;
     };
 
     const handleSaveFreezerEntry = async () => {
