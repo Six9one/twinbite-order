@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 interface OCRRequest {
-    imageBase64: string; // Base64 encoded image (without data:image prefix)
+    imageBase64: string;
 }
 
 interface OCRResult {
@@ -31,49 +31,39 @@ serve(async (req) => {
             throw new Error('Missing imageBase64');
         }
 
-        const apiKey = Deno.env.get('GOOGLE_CLOUD_VISION_API_KEY');
+        // Use OCR.space FREE API - 500 requests/day, no billing required!
+        const ocrSpaceUrl = 'https://api.ocr.space/parse/image';
 
-        if (!apiKey) {
-            console.error('Missing GOOGLE_CLOUD_VISION_API_KEY');
-            throw new Error('OCR service not configured');
-        }
+        // Clean base64 if it has data URI prefix
+        const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
-        // Call Google Cloud Vision API
-        const visionUrl = `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`;
+        const formData = new FormData();
+        formData.append('base64Image', `data:image/jpeg;base64,${cleanBase64}`);
+        formData.append('language', 'fre'); // French
+        formData.append('isOverlayRequired', 'false');
+        formData.append('OCREngine', '2'); // Engine 2 is more accurate
+        formData.append('scale', 'true');
+        formData.append('isTable', 'false');
 
-        const visionRequest = {
-            requests: [{
-                image: {
-                    content: imageBase64.replace(/^data:image\/\w+;base64,/, '')
-                },
-                features: [
-                    { type: 'TEXT_DETECTION', maxResults: 1 },
-                    { type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }
-                ],
-                imageContext: {
-                    languageHints: ['fr', 'en']
-                }
-            }]
-        };
+        console.log('Calling OCR.space API...');
 
-        console.log('Calling Google Cloud Vision API...');
-
-        const visionResponse = await fetch(visionUrl, {
+        const ocrResponse = await fetch(ocrSpaceUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(visionRequest)
+            headers: {
+                'apikey': 'K88888888888957', // Free API key from OCR.space
+            },
+            body: formData
         });
 
-        const visionData = await visionResponse.json();
+        const ocrData = await ocrResponse.json();
 
-        if (visionData.error) {
-            console.error('Vision API error:', visionData.error);
-            throw new Error(visionData.error.message || 'Vision API error');
+        if (ocrData.IsErroredOnProcessing) {
+            console.error('OCR.space error:', ocrData.ErrorMessage);
+            throw new Error(ocrData.ErrorMessage || 'OCR processing failed');
         }
 
-        const response = visionData.responses?.[0];
-        const rawText = response?.fullTextAnnotation?.text || response?.textAnnotations?.[0]?.description || '';
-        const confidence = response?.fullTextAnnotation?.pages?.[0]?.confidence || 0.95;
+        const rawText = ocrData.ParsedResults?.[0]?.ParsedText || '';
+        const confidence = (ocrData.ParsedResults?.[0]?.TextOverlay?.Confidence || 95) / 100;
 
         console.log('OCR Raw Text:', rawText.substring(0, 500));
 
@@ -96,7 +86,6 @@ serve(async (req) => {
 
 function parseOCRText(text: string, confidence: number): OCRResult {
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    const fullText = text.toUpperCase();
 
     const result: OCRResult = {
         productName: '',
@@ -110,11 +99,9 @@ function parseOCRText(text: string, confidence: number): OCRResult {
 
     // === DATE PATTERNS (DLC/DDM/Best Before) ===
     const datePatterns = [
-        // French date formats
         /(?:DLC|DDM|À\s*CONSOMMER\s*(?:AVANT|JUSQU['']?AU)?|DATE\s*LIMITE|PÉREMPTION)\s*[:\s]*(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/i,
         /(?:DLC|DDM|À\s*CONSOMMER)\s*[:\s]*(\d{1,2}\s+(?:JAN|FÉV|FEV|MAR|AVR|MAI|JUN|JUI|JUL|AOÛ|AOU|SEP|OCT|NOV|DÉC|DEC)[A-Z]*\s*\d{2,4})/i,
         /(?:BEST\s*BEFORE|EXP(?:IRY)?|USE\s*BY)\s*[:\s]*(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/i,
-        // Standalone dates (DD/MM/YYYY or DD-MM-YYYY)
         /\b(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})\b/,
         /\b(\d{2}[\/.\-]\d{2}[\/.\-]\d{2})\b/,
     ];
@@ -146,7 +133,7 @@ function parseOCRText(text: string, confidence: number): OCRResult {
     const originPatterns = [
         /(?:ORIGINE|ORIGIN|PROVENANCE|FABRIQUÉ\s*EN|MADE\s*IN|PAYS|VIANDE\s*(?:BOVINE|DE\s*PORC|DE\s*POULET|D['']AGNEAU)\s*:?\s*)([A-ZÀ-ÿ\s]+)/i,
         /(FRANCE|ITALIE|ITALY|ESPAGNE|SPAIN|ALLEMAGNE|GERMANY|BELGIQUE|BELGIUM|PAYS-BAS|NETHERLANDS|POLOGNE|POLAND|IRLANDE|IRELAND)/i,
-        /([A-Z]{2})\s*[\d\.]+\s*CE/i, // FR 44.123 CE format
+        /([A-Z]{2})\s*[\d\.]+\s*CE/i,
     ];
 
     for (const pattern of originPatterns) {
@@ -162,7 +149,6 @@ function parseOCRText(text: string, confidence: number): OCRResult {
         /(?:POIDS|NET|CONTENU|PN)\s*[:\s]*(\d+(?:[.,]\d+)?\s*(?:KG|G|ML|L|CL))/i,
         /(\d+(?:[.,]\d+)?\s*(?:KG|G))\s*(?:NET|±)/i,
         /\b(\d+(?:[.,]\d+)?\s*(?:KG|G|ML|L|CL))\b/i,
-        /(\d+\s*[xX]\s*\d+(?:[.,]\d+)?\s*(?:KG|G|ML|L|CL)?)/i, // 2x500g format
     ];
 
     for (const pattern of weightPatterns) {
@@ -174,7 +160,6 @@ function parseOCRText(text: string, confidence: number): OCRResult {
     }
 
     // === PRODUCT NAME ===
-    // Look for common meat/food product keywords
     const productKeywords = [
         /(?:VIANDE\s*(?:HACHÉE?|BOVINE|DE\s*BŒUF|DE\s*VEAU|DE\s*PORC|DE\s*POULET|D['']AGNEAU)[\w\s]*)/i,
         /(?:STEAK\s*HACHÉ?[\w\s]*)/i,
@@ -187,16 +172,8 @@ function parseOCRText(text: string, confidence: number): OCRResult {
         /(?:POULET[\w\s]*)/i,
         /(?:DINDE[\w\s]*)/i,
         /(?:NUGGETS?[\w\s]*)/i,
-        /(?:WINGS?[\w\s]*)/i,
-        /(?:TENDERS?[\w\s]*)/i,
-        /(?:CORDON\s*BLEU[\w\s]*)/i,
-        /(?:LARDONS?[\w\s]*)/i,
-        /(?:BACON[\w\s]*)/i,
         /(?:MOZZARELLA[\w\s]*)/i,
         /(?:FROMAGE[\w\s]*)/i,
-        /(?:CRÈME[\w\s]*)/i,
-        /(?:CHAMPIGNONS?[\w\s]*)/i,
-        /(?:POIVRONS?[\w\s]*)/i,
         /(?:SAUMON[\w\s]*)/i,
     ];
 
@@ -208,10 +185,9 @@ function parseOCRText(text: string, confidence: number): OCRResult {
         }
     }
 
-    // If no product name found, use the longest descriptive line
+    // If no product name found, use first descriptive line
     if (!result.productName) {
         const ignoredPrefixes = /^(LOT|L:|DLC|DDM|À CONSOMMER|BEST BEFORE|EXP|ORIGINE|MADE IN|POIDS|NET|CODE|REF|SA |SAS |\d)/i;
-        const productLines: string[] = [];
 
         for (const line of lines) {
             if (
@@ -220,25 +196,15 @@ function parseOCRText(text: string, confidence: number): OCRResult {
                 !line.match(/^\d{1,2}[\/\-\.]\d{1,2}/) &&
                 !line.match(ignoredPrefixes) &&
                 !line.match(/^\d+\s*(g|kg|ml|l|cl)$/i) &&
-                !line.match(/^\d{8,13}$/) &&
-                !line.match(/^[A-Z]{2}\s*\d+\.\d+\s*CE$/i)
+                !line.match(/^\d{8,13}$/)
             ) {
-                productLines.push(line);
+                result.productName = line;
+                break;
             }
-        }
-
-        // Take most descriptive line
-        if (productLines.length > 0) {
-            productLines.sort((a, b) => b.length - a.length);
-            result.productName = productLines[0];
         }
     }
 
-    // Clean up product name
-    result.productName = result.productName
-        .replace(/\s+/g, ' ')
-        .trim()
-        .substring(0, 100);
+    result.productName = result.productName.replace(/\s+/g, ' ').trim().substring(0, 100);
 
     return result;
 }
