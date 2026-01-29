@@ -258,7 +258,7 @@ export function useUpdateOrderStatus() {
   });
 }
 
-// Generate order number using server-side daily counter (resets to 001 each day)
+// Generate order number using server-side continuous counter (never resets: 42, 43, 44...)
 export async function generateOrderNumber(): Promise<string> {
   try {
     // Use server-side function that resets daily (001, 002, 003...)

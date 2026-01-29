@@ -3,34 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Twin Pizza - System Monitor</title>
+    <title>Twin Pizza - Contrôle Système</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .log-line { font-family: 'JetBrains Mono', 'Consolas', monospace; }
+        .log-line { font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 12px; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1f2937; }
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
-        .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .btn-control {
+            transition: all 0.2s;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .btn-start { background: #059669; color: white; }
+        .btn-start:hover { background: #047857; }
+        .btn-stop { background: #dc2626; color: white; }
+        .btn-stop:hover { background: #b91c1c; }
+        .btn-restart { background: #2563eb; color: white; }
+        .btn-restart:hover { background: #1d4ed8; }
+        .btn-control:disabled { opacity: 0.5; cursor: not-allowed; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .status-online { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+        .status-offline { background: #6b7280; }
     </style>
 </head>
 <body class="bg-gray-900 text-white h-screen flex flex-col overflow-hidden">
 
     <!-- Header -->
-    <header class="bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center shadow-lg z-10">
-        <div class="flex items-center space-x-3">
-            <div class="h-8 w-8 bg-green-500 rounded-lg flex items-center justify-center font-bold text-gray-900 text-xl">T</div>
-            <h1 class="text-xl font-bold tracking-wide">TWIN PIZZA <span class="text-gray-400 text-sm font-normal ml-2">System Monitor</span></h1>
+    <header class="bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700 p-4 flex justify-between items-center shadow-xl z-10">
+        <div class="flex items-center space-x-4">
+            <div class="h-10 w-10 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center font-bold text-white text-xl shadow-lg">🍕</div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wide">TWIN PIZZA</h1>
+                <p class="text-xs text-gray-400">Contrôle WhatsApp & Imprimante</p>
+            </div>
         </div>
         <div class="flex items-center space-x-4">
-            <div class="flex items-center bg-gray-900 rounded-full px-3 py-1 border border-gray-700">
-                <div class="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></div>
-                <span class="text-xs text-gray-300 font-medium">SYSTEME ACTIF</span>
-            </div>
-            <div class="text-xs text-gray-500" id="clock">00:00:00</div>
+            <div class="text-sm text-gray-400 font-mono" id="clock">00:00:00</div>
         </div>
     </header>
 
@@ -38,43 +53,61 @@
     <main class="flex-1 flex overflow-hidden">
         
         <!-- Left Panel: WhatsApp Bot -->
-        <div class="flex-1 flex flex-col border-r border-gray-700 bg-gray-900/50">
-            <div class="p-4 bg-gray-800/80 border-b border-gray-700 flex justify-between items-center backdrop-blur-sm sticky top-0">
-                <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-green-500/10 rounded-lg">
-                        <svg class="w-6 h-6 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.882 3.805.882 4.301 0 7.798-3.498 7.798-7.798 0-4.301-3.497-7.798-7.797-7.798zm6.602 4.091c.081 2.155-1.071 4.225-3.058 5.253-1.896.98-4.217.653-5.769-.769-1.551-1.422-1.88-3.238-1.002-4.939l-.004-.004c.007-.014.07-.123.151-.233.157-.215.395-.453.681-.531.026.002.348-.112.551.173.075.105.166.368.261.64.098.283.18.519.191.564.062.247.018.423-.099.643-.116.216-.299.39-.524.591-.018.016-.038.033-.06.05-.286.257-.04.606.097.808 1.411 2.083 3.69 2.148 4.218 2.091.077-.008.156-.006.236.007.135.021.32-.089.467-.234.148-.146.331-.418.425-.689a.44.44 0 0 1 .432-.303c.312.012.721.203 1.393.535.597.296.969.492 1.01.52.122.082.203.188.225.217.135.176.109.522-.056.816z"/></svg>
-                    </div>
-                    <div>
-                        <h2 class="font-bold text-gray-100">WhatsApp Bot</h2>
-                        <div class="text-xs text-green-400 flex items-center mt-0.5">
-                            <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
-                            Online
+        <div class="flex-1 flex flex-col border-r border-gray-700">
+            <!-- Panel Header with Controls -->
+            <div class="p-4 bg-gradient-to-r from-green-900/30 to-gray-800/50 border-b border-gray-700">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-2 bg-green-500/20 rounded-lg">
+                            <svg class="w-7 h-7 text-green-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.882 3.805.882 4.301 0 7.798-3.498 7.798-7.798 0-4.301-3.497-7.798-7.797-7.798zm6.602 4.091c.081 2.155-1.071 4.225-3.058 5.253-1.896.98-4.217.653-5.769-.769-1.551-1.422-1.88-3.238-1.002-4.939l-.004-.004c.007-.014.07-.123.151-.233.157-.215.395-.453.681-.531.026.002.348-.112.551.173.075.105.166.368.261.64.098.283.18.519.191.564.062.247.018.423-.099.643-.116.216-.299.39-.524.591-.018.016-.038.033-.06.05-.286.257-.04.606.097.808 1.411 2.083 3.69 2.148 4.218 2.091.077-.008.156-.006.236.007.135.021.32-.089.467-.234.148-.146.331-.418.425-.689a.44.44 0 0 1 .432-.303c.312.012.721.203 1.393.535.597.296.969.492 1.01.52.122.082.203.188.225.217.135.176.109.522-.056.816z"/></svg>
                         </div>
+                        <div>
+                            <h2 class="font-bold text-lg text-white">WhatsApp Bot</h2>
+                            <div class="flex items-center space-x-2 mt-1">
+                                <div id="bot-status-dot" class="status-dot status-offline"></div>
+                                <span id="bot-status-text" class="text-xs text-gray-400">Arrêté</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="controlService('bot', 'start')" class="btn-control btn-start">▶ Démarrer</button>
+                        <button onclick="controlService('bot', 'stop')" class="btn-control btn-stop">⬛ Arrêter</button>
+                        <button onclick="controlService('bot', 'restart')" class="btn-control btn-restart">🔄 Relancer</button>
                     </div>
                 </div>
             </div>
             
-            <div id="logs-bot" class="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs md:text-sm"></div>
+            <!-- Logs -->
+            <div id="logs-bot" class="flex-1 overflow-y-auto p-3 space-y-1 bg-gray-950/50"></div>
         </div>
 
         <!-- Right Panel: Print Server -->
-        <div class="flex-1 flex flex-col bg-gray-900/50">
-            <div class="p-4 bg-gray-800/80 border-b border-gray-700 flex justify-between items-center backdrop-blur-sm sticky top-0">
-                <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-blue-500/10 rounded-lg">
-                        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                    </div>
-                    <div>
-                        <h2 class="font-bold text-gray-100">Serveur d'Impression</h2>
-                        <div class="text-xs text-blue-400 flex items-center mt-0.5">
-                            <span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
-                            Connecté
+        <div class="flex-1 flex flex-col">
+            <!-- Panel Header with Controls -->
+            <div class="p-4 bg-gradient-to-r from-blue-900/30 to-gray-800/50 border-b border-gray-700">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-2 bg-blue-500/20 rounded-lg">
+                            <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                         </div>
+                        <div>
+                            <h2 class="font-bold text-lg text-white">Serveur d'Impression</h2>
+                            <div class="flex items-center space-x-2 mt-1">
+                                <div id="printer-status-dot" class="status-dot status-offline"></div>
+                                <span id="printer-status-text" class="text-xs text-gray-400">Arrêté</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="controlService('printer', 'start')" class="btn-control btn-start">▶ Démarrer</button>
+                        <button onclick="controlService('printer', 'stop')" class="btn-control btn-stop">⬛ Arrêter</button>
+                        <button onclick="controlService('printer', 'restart')" class="btn-control btn-restart">🔄 Relancer</button>
                     </div>
                 </div>
             </div>
             
-            <div id="logs-printer" class="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs md:text-sm"></div>
+            <!-- Logs -->
+            <div id="logs-printer" class="flex-1 overflow-y-auto p-3 space-y-1 bg-gray-950/50"></div>
         </div>
     </main>
 
@@ -84,25 +117,51 @@
         const logsBot = document.getElementById('logs-bot');
         const logsPrinter = document.getElementById('logs-printer');
 
+        // Control service via API
+        async function controlService(service, action) {
+            try {
+                const response = await fetch(`/api/${service}/${action}`, { method: 'POST' });
+                const data = await response.json();
+                console.log(`${service} ${action}:`, data);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Update status indicators
+        function updateStatus(service, isOnline) {
+            const dot = document.getElementById(`${service}-status-dot`);
+            const text = document.getElementById(`${service}-status-text`);
+            
+            if (isOnline) {
+                dot.className = 'status-dot status-online';
+                text.textContent = service === 'bot' ? 'En ligne' : 'Connecté';
+                text.className = 'text-xs text-green-400';
+            } else {
+                dot.className = 'status-dot status-offline';
+                text.textContent = 'Arrêté';
+                text.className = 'text-xs text-gray-400';
+            }
+        }
+
         function createLogElement(log) {
             const div = document.createElement('div');
             div.className = 'log-line flex items-start space-x-2 py-1 px-2 rounded hover:bg-white/5 transition-colors';
             
             let colorClass = 'text-gray-300';
-            let icon = '';
             
             if (log.type === 'error') {
-                colorClass = 'text-red-400 bg-red-500/10 border-l-2 border-red-500';
+                colorClass = 'text-red-400 bg-red-500/10 border-l-2 border-red-500 pl-2';
             } else if (log.type === 'success') {
                 colorClass = 'text-green-400';
             } else if (log.type === 'warning') {
                 colorClass = 'text-yellow-400';
             } else if (log.type === 'highlight') {
-                colorClass = 'text-white font-bold bg-blue-600/20 border-l-2 border-blue-500 py-2';
+                colorClass = 'text-white font-bold bg-blue-600/30 border-l-2 border-blue-400 pl-2 py-2';
             }
             
             div.innerHTML = `
-                <span class="text-gray-500 text-xs mt-0.5 shrink-0 select-none w-16">${log.timestamp}</span>
+                <span class="text-gray-500 text-xs shrink-0 select-none w-14">${log.timestamp}</span>
                 <span class="break-words ${colorClass}">${log.message}</span>
             `;
             return div;
@@ -112,11 +171,10 @@
             const container = source === 'bot' ? logsBot : logsPrinter;
             const element = createLogElement(log);
             container.appendChild(element);
-            
-            // Auto scroll
             container.scrollTop = container.scrollHeight;
         }
 
+        // Socket events
         socket.on('history', (history) => {
             logsBot.innerHTML = '';
             logsPrinter.innerHTML = '';
@@ -128,9 +186,17 @@
             appendLog(data.source, data);
         });
 
+        socket.on('status', (data) => {
+            updateStatus('bot', data.bot);
+            updateStatus('printer', data.printer);
+        });
+
+        // Request initial status
+        socket.emit('getStatus');
+
         // Clock
         setInterval(() => {
-            document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+            document.getElementById('clock').textContent = new Date().toLocaleTimeString('fr-FR');
         }, 1000);
     </script>
 </body>

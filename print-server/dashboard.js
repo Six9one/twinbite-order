@@ -36,6 +36,53 @@ const PORT = 3000;
 
 // Serve static files from 'public' directory
 app.use(express.static(join(__dirname, 'public')));
+app.use(express.json());
+
+// ==========================================
+// API ENDPOINTS FOR CONTROL
+// ==========================================
+
+// Bot control
+app.post('/api/bot/start', (req, res) => {
+    startBot();
+    res.json({ success: true, message: 'Bot starting...' });
+});
+
+app.post('/api/bot/stop', (req, res) => {
+    stopBot();
+    res.json({ success: true, message: 'Bot stopped' });
+});
+
+app.post('/api/bot/restart', (req, res) => {
+    stopBot();
+    setTimeout(startBot, 2000);
+    res.json({ success: true, message: 'Bot restarting...' });
+});
+
+// Printer control
+app.post('/api/printer/start', (req, res) => {
+    startPrinter();
+    res.json({ success: true, message: 'Printer starting...' });
+});
+
+app.post('/api/printer/stop', (req, res) => {
+    stopPrinter();
+    res.json({ success: true, message: 'Printer stopped' });
+});
+
+app.post('/api/printer/restart', (req, res) => {
+    stopPrinter();
+    setTimeout(startPrinter, 2000);
+    res.json({ success: true, message: 'Printer restarting...' });
+});
+
+// Status endpoint
+app.get('/api/status', (req, res) => {
+    res.json({
+        bot: !!botProcess,
+        printer: !!printerProcess
+    });
+});
 
 // Store logs in memory for new connections
 const MAX_LOGS = 100;
@@ -91,10 +138,23 @@ function addLog(source, type, message) {
     }
 }
 
+// Emit status to all clients
+function emitStatus() {
+    io.emit('status', {
+        bot: !!botProcess,
+        printer: !!printerProcess
+    });
+}
+
 // Socket.IO Connection
 io.on('connection', (socket) => {
     console.log('Frontend connected');
     socket.emit('history', logs);
+    socket.emit('status', { bot: !!botProcess, printer: !!printerProcess });
+
+    socket.on('getStatus', () => {
+        socket.emit('status', { bot: !!botProcess, printer: !!printerProcess });
+    });
 });
 
 // ==========================================
@@ -138,6 +198,7 @@ function startBot() {
     botProcess.on('close', (code) => {
         addLog('bot', 'error', `Processus Bot arrêté (Code: ${code})`);
         botProcess = null;
+        emitStatus();
         syncStatusToSupabase('whatsapp', false);
         // Auto-restart if it crashed (non-zero exit code)
         if (code !== 0 && code !== null) {
@@ -146,6 +207,7 @@ function startBot() {
         }
     });
 
+    emitStatus();
     syncStatusToSupabase('whatsapp', true);
 }
 
@@ -154,6 +216,7 @@ function stopBot() {
         addLog('bot', 'warning', '⏹️ Arrêt du Bot WhatsApp...');
         botProcess.kill();
         botProcess = null;
+        emitStatus();
         syncStatusToSupabase('whatsapp', false);
     }
 }
@@ -189,6 +252,7 @@ function startPrinter() {
     printerProcess.on('close', (code) => {
         addLog('printer', 'error', `Serveur d'Impression arrêté (Code: ${code})`);
         printerProcess = null;
+        emitStatus();
         syncStatusToSupabase('printer', false);
         // Auto-restart if it crashed
         if (code !== 0 && code !== null) {
@@ -197,6 +261,7 @@ function startPrinter() {
         }
     });
 
+    emitStatus();
     syncStatusToSupabase('printer', true);
 }
 
@@ -205,6 +270,7 @@ function stopPrinter() {
         addLog('printer', 'warning', '⏹️ Arrêt du Serveur d\'Impression...');
         printerProcess.kill();
         printerProcess = null;
+        emitStatus();
         syncStatusToSupabase('printer', false);
     }
 }
@@ -284,7 +350,15 @@ if (supabase) {
 // ==========================================
 
 httpServer.listen(PORT, () => {
-    console.log(`\nDashboard local actif sur : http://localhost:${PORT}`);
+    console.log(`\n${'='.repeat(50)}`);
+    console.log(`   TWIN PIZZA - Contrôle Système`);
+    console.log(`   Dashboard: http://localhost:${PORT}`);
+    console.log(`${'='.repeat(50)}\n`);
+
+    // Auto-start both services
+    console.log('🚀 Démarrage automatique des services...\n');
+    startBot();
+    startPrinter();
 });
 
 process.on('SIGINT', () => {
