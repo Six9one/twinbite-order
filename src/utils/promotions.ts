@@ -160,18 +160,19 @@ export function applyPizzaPromotions(
     if (freePizzas > 0) {
       promoDescription = `1 achetée = 1 offerte (${freePizzas} pizza${freePizzas > 1 ? 's' : ''} offerte${freePizzas > 1 ? 's' : ''})`;
     }
-  } else if (orderType === 'livraison' && (seniorCount + megaCount) >= 3) {
-    // LIVRAISON: 2 achetées = 1 offerte (groups of 3, pay for 2)
-    const seniorGroups = Math.floor(seniorCount / 3);
-    const seniorRemainder = seniorCount % 3;
-    const megaGroups = Math.floor(megaCount / 3);
-    const megaRemainder = megaCount % 3;
+  } else if (orderType === 'livraison' && (seniorCount + megaCount) >= 2) {
+    // LIVRAISON: 2 achetées = 1 offerte
+    // Buy 2 pizzas (pay 36€) → get 1 free pizza (can take or defer)
+    const seniorPairs = Math.floor(seniorCount / 2);
+    const seniorSingles = seniorCount % 2;
+    const megaPairs = Math.floor(megaCount / 2);
+    const megaSingles = megaCount % 2;
 
-    discountedBaseTotal =
-      (seniorGroups * 2 * pizzaPrices.senior) + (seniorRemainder * pizzaPrices.senior) +
-      (megaGroups * 2 * pizzaPrices.mega) + (megaRemainder * pizzaPrices.mega);
+    // Customer pays FULL price for pizzas in cart
+    discountedBaseTotal = (seniorCount * pizzaPrices.senior) + (megaCount * pizzaPrices.mega);
 
-    freePizzas = seniorGroups + megaGroups;
+    // They earn 1 free pizza per 2 ordered (to add now or defer)
+    freePizzas = seniorPairs + megaPairs;
 
     if (freePizzas > 0) {
       promoDescription = `2 achetées = 1 offerte (${freePizzas} pizza${freePizzas > 1 ? 's' : ''} offerte${freePizzas > 1 ? 's' : ''})`;
