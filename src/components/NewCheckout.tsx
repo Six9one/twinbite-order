@@ -701,6 +701,26 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 />
               </div>
             )}
+
+            {/* Pizza Credits Section - Show if customer earned free pizzas to defer */}
+            {pizzaPromo.freePizzas > 0 && pizzasToDefer > 0 && (
+              <Card className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400">
+                <div className="flex items-center gap-3">
+                  <div className="text-4xl">🍕</div>
+                  <div>
+                    <h3 className="font-bold text-green-800 text-lg">
+                      Pizza sauvegardée!
+                    </h3>
+                    <p className="text-sm text-green-700">
+                      Vous avez {pizzasToDefer} pizza{pizzasToDefer > 1 ? 's' : ''} en réserve pour votre prochaine commande.
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      ✅ Valable sans limite de temps!
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
 
           {/* Actions */}
