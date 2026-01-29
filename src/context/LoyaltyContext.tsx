@@ -36,6 +36,7 @@ interface LoyaltyCustomer {
     stamps: number; // Stamp card count (resets every 10)
     totalStamps: number; // Total stamps ever earned
     freeItemsAvailable: number; // Number of free items to claim
+    pizzaCredits: number; // Deferred free pizzas from 1+1 deal
     totalSpent: number;
     totalOrders: number;
     firstOrderDone: boolean;
@@ -64,6 +65,9 @@ interface LoyaltyContextType {
     calculatePointsToEarn: (amount: number) => number;
     canUseReward: (rewardId: string, hasPromoCode: boolean) => boolean;
     logout: () => void;
+    // Pizza credits
+    getPizzaCredits: () => number;
+    addPizzaCredit: (orderId: string) => Promise<boolean>;
 }
 
 // V1 Default rewards - SIMPLIFIED: 100 points = €10
@@ -547,6 +551,31 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('twinpizza-loyalty-phone');
     };
 
+    // Pizza Credits
+    const getPizzaCredits = (): number => {
+        return customer?.pizzaCredits || 0;
+    };
+
+    const addPizzaCredit = async (orderId: string): Promise<boolean> => {
+        if (!customer) return false;
+        try {
+            const { error } = await (supabase.rpc as any)('add_pizza_credit', {
+                p_phone: customer.phone,
+                p_order_id: orderId
+            });
+            if (error) {
+                console.error('Failed to add pizza credit:', error);
+                return false;
+            }
+            // Refresh customer data
+            await lookupCustomer(customer.phone);
+            return true;
+        } catch (e) {
+            console.error('Add pizza credit error:', e);
+            return false;
+        }
+    };
+
 
     return (
         <LoyaltyContext.Provider value={{
@@ -567,7 +596,9 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             getNextReward,
             calculatePointsToEarn,
             canUseReward,
-            logout
+            logout,
+            getPizzaCredits,
+            addPizzaCredit
         }}>
 
             {children}
