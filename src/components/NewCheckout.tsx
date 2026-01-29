@@ -1085,6 +1085,82 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               </div>
             </Card>
 
+            {/* 🍕 PIZZA CREDIT DEFERRAL - Show when promotion gives free pizzas */}
+            {pizzaPromo.freePizzas > 0 && (
+              <Card className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400">
+                <div className="flex items-start gap-3">
+                  <div className="text-3xl">🍕</div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-green-800 text-lg">
+                      {pizzaPromo.freePizzas} Pizza{pizzaPromo.freePizzas > 1 ? 's' : ''} Gratuite{pizzaPromo.freePizzas > 1 ? 's' : ''}!
+                    </h3>
+                    <p className="text-sm text-green-700 mt-1">
+                      Vous pouvez prendre {pizzaPromo.freePizzas === 1 ? 'votre pizza' : 'vos pizzas'} maintenant ou les garder pour plus tard.
+                    </p>
+
+                    <div className="mt-3 space-y-2">
+                      <label className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-green-300 cursor-pointer hover:bg-green-50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={pizzasToDefer > 0}
+                          onChange={(e) => setPizzasToDefer(e.target.checked ? pizzaPromo.freePizzas : 0)}
+                          className="w-5 h-5 accent-green-600"
+                        />
+                        <div>
+                          <p className="font-semibold text-green-800">
+                            Garder pour plus tard
+                          </p>
+                          <p className="text-xs text-green-600">
+                            Vos pizzas seront sauvegardées sur votre compte (sans date limite!)
+                          </p>
+                        </div>
+                      </label>
+
+                      {pizzasToDefer > 0 && (
+                        <div className="p-2 bg-green-100 rounded text-center text-sm text-green-700 font-medium animate-pulse">
+                          ✅ {pizzasToDefer} pizza{pizzasToDefer > 1 ? 's' : ''} sera{pizzasToDefer > 1 ? 'ont' : ''} sauvegardée{pizzasToDefer > 1 ? 's' : ''}!
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Show available pizza credits to use */}
+            {availablePizzaCredits > 0 && (
+              <Card className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-400">
+                <div className="flex items-start gap-3">
+                  <div className="text-3xl">🎁</div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-amber-800">
+                      Vous avez {availablePizzaCredits} pizza{availablePizzaCredits > 1 ? 's' : ''} en réserve!
+                    </h3>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Utilisez vos pizzas gratuites maintenant?
+                    </p>
+
+                    <label className="flex items-center gap-3 mt-3 p-3 bg-white rounded-lg border-2 border-amber-300 cursor-pointer hover:bg-amber-50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={usePizzaCredit}
+                        onChange={(e) => setUsePizzaCredit(e.target.checked)}
+                        className="w-5 h-5 accent-amber-600"
+                      />
+                      <div>
+                        <p className="font-semibold text-amber-800">
+                          Utiliser 1 pizza gratuite
+                        </p>
+                        <p className="text-xs text-amber-600">
+                          Une pizza sera ajoutée gratuitement à cette commande
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             <Card className="p-4">
               <h3 className="font-semibold mb-3">Articles ({cart.length})</h3>
               <div className="space-y-2">
