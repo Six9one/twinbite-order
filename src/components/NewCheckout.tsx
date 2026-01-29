@@ -54,7 +54,7 @@ interface NewCheckoutProps {
 
 export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const { cart, orderType, setOrderType, clearCart, scheduledInfo, setScheduledInfo } = useOrder();
-  const { customer, lookupCustomer, calculatePointsToEarn, findOrCreateCustomer, earnPoints, addStamps, redeemReward, rewards } = useLoyalty();
+  const { customer, lookupCustomer, calculatePointsToEarn, findOrCreateCustomer, earnPoints, addStamps, redeemReward, rewards, getPizzaCredits, addPizzaCredit } = useLoyalty();
   const createOrder = useCreateOrder();
   const { data: paymentSettings, isLoading: isLoadingPaymentSettings } = usePaymentSettings();
   const [step, setStep] = useState<'info' | 'payment' | 'schedule-confirm' | 'confirm' | 'success'>('info');
@@ -73,6 +73,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const [tempScheduleDate, setTempScheduleDate] = useState<Date | undefined>(undefined);
   const [tempScheduleTime, setTempScheduleTime] = useState<string>('12:00');
   const [useLoyaltyDiscount, setUseLoyaltyDiscount] = useState(false);
+  const [pizzasToDefer, setPizzasToDefer] = useState(0);
+  const [usePizzaCredit, setUsePizzaCredit] = useState(false);
+  const availablePizzaCredits = getPizzaCredits();
   const [lastLookedUpPhone, setLastLookedUpPhone] = useState<string>('');
   const [confirmedOrderData, setConfirmedOrderData] = useState<{
     orderNumber: string;
