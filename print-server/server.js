@@ -458,6 +458,26 @@ function formatOrderForPrint(order) {
     ticket += '= 10ème GRATUIT (10€)!\n';
     ticket += LINE;
 
+    // Pizza Credits Section (if any)
+    const pizzaCreditsSaved = order.pizza_credits_saved || 0;
+    const pizzaCreditsRemaining = order.pizza_credits_remaining || 0;
+    if (pizzaCreditsSaved > 0 || pizzaCreditsRemaining > 0) {
+        ticket += ESCPOS.CENTER;
+        ticket += ESCPOS.BOLD_ON;
+        ticket += '*** PIZZAS EN RESERVE ***\n';
+        ticket += ESCPOS.BOLD_OFF;
+        if (pizzaCreditsSaved > 0) {
+            ticket += `Pizza sauvegardee: ${pizzaCreditsSaved}\n`;
+        }
+        if (pizzaCreditsRemaining > 0) {
+            ticket += ESCPOS.BOLD_ON;
+            ticket += `TOTAL EN RESERVE: ${pizzaCreditsRemaining}\n`;
+            ticket += ESCPOS.BOLD_OFF;
+        }
+        ticket += 'Valable sans limite de temps!\n';
+        ticket += LINE;
+    }
+
     // Footer
     if (template.footer) {
         ticket += template.footer.replace(/\\n/g, '\n');
