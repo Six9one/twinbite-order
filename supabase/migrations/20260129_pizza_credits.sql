@@ -38,6 +38,13 @@ DROP POLICY IF EXISTS "Allow update pizza_credits" ON public.pizza_credits;
 CREATE POLICY "Allow update pizza_credits" ON public.pizza_credits
     FOR UPDATE USING (true);
 
+-- Drop existing functions first (to allow changing return types)
+DROP FUNCTION IF EXISTS add_pizza_credit(TEXT, UUID);
+DROP FUNCTION IF EXISTS add_pizza_credit(TEXT, UUID, TEXT);
+DROP FUNCTION IF EXISTS redeem_pizza_credit(TEXT, UUID);
+DROP FUNCTION IF EXISTS get_pizza_credits_info(TEXT);
+DROP FUNCTION IF EXISTS get_pizza_credits_count(TEXT);
+
 -- Function to add a pizza credit WITH SIZE
 CREATE OR REPLACE FUNCTION add_pizza_credit(
     p_phone TEXT,
