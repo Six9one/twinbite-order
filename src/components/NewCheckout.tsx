@@ -1167,45 +1167,70 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             {pizzaPromo.freePizzas > 0 && (
               <Card className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400">
                 <div className="flex items-start gap-3">
-                  <div className="text-3xl">🍕</div>
+                  <div className="text-4xl animate-bounce">🍕</div>
                   <div className="flex-1">
                     <h3 className="font-bold text-green-800 text-lg">
                       {pizzaPromo.freePizzas} Pizza{pizzaPromo.freePizzas > 1 ? 's' : ''} {dominantPizzaSize === 'mega' ? 'Mega' : 'Senior'} Gratuite{pizzaPromo.freePizzas > 1 ? 's' : ''}!
                     </h3>
                     <p className="text-sm text-green-700 mt-1">
-                      Vous pouvez prendre {pizzaPromo.freePizzas === 1 ? 'votre pizza' : 'vos pizzas'} maintenant ou les garder pour plus tard.
+                      Choisissez une option:
                     </p>
 
-                    <div className="mt-3 space-y-2">
-                      <label className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-green-300 cursor-pointer hover:bg-green-50 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={pizzasToDefer > 0}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setPizzasToDefer(pizzaPromo.freePizzas);
-                              setDeferSize(dominantPizzaSize);
-                            } else {
-                              setPizzasToDefer(0);
-                            }
-                          }}
-                          className="w-5 h-5 accent-green-600"
-                        />
-                        <div>
-                          <p className="font-semibold text-green-800">
-                            Garder pour plus tard
-                          </p>
-                          <p className="text-xs text-green-600">
-                            {pizzaPromo.freePizzas} pizza{pizzaPromo.freePizzas > 1 ? 's' : ''} {dominantPizzaSize === 'mega' ? 'Mega' : 'Senior'} sera{pizzaPromo.freePizzas > 1 ? 'ont' : ''} sauvegardée{pizzaPromo.freePizzas > 1 ? 's' : ''} (sans date limite!)
-                          </p>
+                    <div className="mt-3 flex flex-col gap-2">
+                      {/* Option 1: Prendre maintenant - redirect to pizza menu */}
+                      <Button
+                        variant="outline"
+                        className="w-full p-4 h-auto bg-white border-2 border-green-400 hover:bg-green-50 text-left justify-start"
+                        onClick={() => {
+                          // Go back to menu to pick the pizza
+                          onBack();
+                          // TODO: The pizza wizard should be opened with size locked
+                        }}
+                      >
+                        <div className="flex items-center gap-3 w-full">
+                          <span className="text-2xl">👉</span>
+                          <div>
+                            <p className="font-bold text-green-800">
+                              Prendre maintenant
+                            </p>
+                            <p className="text-xs text-green-600">
+                              Ajouter {pizzaPromo.freePizzas === 1 ? 'ma pizza' : 'mes pizzas'} {dominantPizzaSize === 'mega' ? 'Mega' : 'Senior'} à cette commande
+                            </p>
+                          </div>
                         </div>
-                      </label>
+                      </Button>
 
-                      {pizzasToDefer > 0 && (
-                        <div className="p-2 bg-green-100 rounded text-center text-sm text-green-700 font-medium animate-pulse">
-                          ✅ {pizzasToDefer} pizza{pizzasToDefer > 1 ? 's' : ''} {deferSize === 'mega' ? 'Mega' : 'Senior'} sera{pizzasToDefer > 1 ? 'ont' : ''} sauvegardée{pizzasToDefer > 1 ? 's' : ''}!
+                      {/* Option 2: Garder pour plus tard - save to wallet */}
+                      <Button
+                        variant={pizzasToDefer > 0 ? "default" : "outline"}
+                        className={`w-full p-4 h-auto text-left justify-start ${pizzasToDefer > 0
+                            ? 'bg-green-600 hover:bg-green-700 text-white border-green-600'
+                            : 'bg-white border-2 border-amber-400 hover:bg-amber-50'
+                          }`}
+                        onClick={() => {
+                          if (pizzasToDefer > 0) {
+                            setPizzasToDefer(0);
+                          } else {
+                            setPizzasToDefer(pizzaPromo.freePizzas);
+                            setDeferSize(dominantPizzaSize);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3 w-full">
+                          <span className="text-2xl">{pizzasToDefer > 0 ? '✅' : '💾'}</span>
+                          <div>
+                            <p className={`font-bold ${pizzasToDefer > 0 ? 'text-white' : 'text-amber-800'}`}>
+                              Garder pour plus tard
+                            </p>
+                            <p className={`text-xs ${pizzasToDefer > 0 ? 'text-green-100' : 'text-amber-600'}`}>
+                              {pizzasToDefer > 0
+                                ? `${pizzasToDefer} pizza${pizzasToDefer > 1 ? 's' : ''} sera${pizzasToDefer > 1 ? 'ont' : ''} sauvegardée${pizzasToDefer > 1 ? 's' : ''}!`
+                                : `Sauvegarder pour une prochaine commande (sans date limite!)`
+                              }
+                            </p>
+                          </div>
                         </div>
-                      )}
+                      </Button>
                     </div>
                   </div>
                 </div>
