@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   croques,
   frites,
@@ -28,6 +28,8 @@ import { useCategoryImages } from '@/hooks/useCategoryImages';
 interface CategoryMenuProps {
   onBack: () => void;
   onOpenCart: () => void;
+  lockedPizzaSize?: 'senior' | 'mega' | null;
+  onClearLockedSize?: () => void;
 }
 
 // Product category labels (ordered as requested)
@@ -99,11 +101,18 @@ function mapProductsToMenuItems(
   }));
 }
 
-export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
+export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLockedSize }: CategoryMenuProps) {
   const { orderType, getItemCount, getTotal } = useOrder();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const itemCount = getItemCount();
   const { getImageOrEmoji, getDisplayName } = useCategoryImages();
+
+  // Auto-redirect to pizzas if coming from checkout to pick a free pizza
+  useEffect(() => {
+    if (lockedPizzaSize && !selectedCategory) {
+      setSelectedCategory('pizzas');
+    }
+  }, [lockedPizzaSize]);
 
   // Load products from backend for simple categories (fallback to static data)
   const { data: croquesProducts } = useProductsByCategory('croques');
@@ -133,7 +142,15 @@ export function CategoryMenu({ onBack, onOpenCart }: CategoryMenuProps) {
   const renderWizard = () => {
     switch (selectedCategory) {
       case 'pizzas':
-        return <PizzaWizard onClose={() => setSelectedCategory(null)} />;
+        return (
+          <PizzaWizard
+            onClose={() => {
+              setSelectedCategory(null);
+              if (onClearLockedSize) onClearLockedSize();
+            }}
+            lockedSize={lockedPizzaSize}
+          />
+        );
       case 'sandwiches':
         return <SandwichWizard onClose={() => setSelectedCategory(null)} />;
       case 'tacos':

@@ -48,7 +48,7 @@ const customerInfoSchema = z.object({
 });
 
 interface NewCheckoutProps {
-  onBack: () => void;
+  onBack: (size?: 'senior' | 'mega') => void;
   onComplete: () => void;
 }
 
@@ -1182,9 +1182,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                         variant="outline"
                         className="w-full p-4 h-auto bg-white border-2 border-green-400 hover:bg-green-50 text-left justify-start"
                         onClick={() => {
-                          // Go back to menu to pick the pizza
-                          onBack();
-                          // TODO: The pizza wizard should be opened with size locked
+                          // Go back to menu to pick the pizza with size locked
+                          onBack(dominantPizzaSize);
                         }}
                       >
                         <div className="flex items-center gap-3 w-full">
@@ -1204,8 +1203,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                       <Button
                         variant={pizzasToDefer > 0 ? "default" : "outline"}
                         className={`w-full p-4 h-auto text-left justify-start ${pizzasToDefer > 0
-                            ? 'bg-green-600 hover:bg-green-700 text-white border-green-600'
-                            : 'bg-white border-2 border-amber-400 hover:bg-amber-50'
+                          ? 'bg-green-600 hover:bg-green-700 text-white border-green-600'
+                          : 'bg-white border-2 border-amber-400 hover:bg-amber-50'
                           }`}
                         onClick={() => {
                           if (pizzasToDefer > 0) {

@@ -22,6 +22,7 @@ import heroPizza from '@/assets/hero-pizza.jpg';
 function MainApp() {
   const { orderType, setOrderType } = useOrder();
   const [view, setView] = useState<'home' | 'menu' | 'checkout'>('home');
+  const [selectedPizzaSize, setSelectedPizzaSize] = useState<'senior' | 'mega' | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const orderSelectorRef = useRef<HTMLDivElement>(null);
@@ -78,6 +79,7 @@ function MainApp() {
   const handleOrderComplete = () => {
     setView('home');
     setOrderType(null);
+    setSelectedPizzaSize(null);
   };
 
   const handleNavOrderTypeSelect = (type: OrderType) => {
@@ -91,14 +93,27 @@ function MainApp() {
   // Menu view
   if (view === 'menu') {
     return <>
-      <CategoryMenu onBack={handleBackToHome} onOpenCart={() => setIsCartOpen(true)} />
+      <CategoryMenu
+        onBack={handleBackToHome}
+        onOpenCart={() => setIsCartOpen(true)}
+        lockedPizzaSize={selectedPizzaSize}
+        onClearLockedSize={() => setSelectedPizzaSize(null)}
+      />
       <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
     </>;
   }
 
   // Checkout view
   if (view === 'checkout') {
-    return <NewCheckout onBack={() => setView('menu')} onComplete={handleOrderComplete} />;
+    return (
+      <NewCheckout
+        onBack={(size) => {
+          if (size) setSelectedPizzaSize(size);
+          setView('menu');
+        }}
+        onComplete={handleOrderComplete}
+      />
+    );
   }
 
   // Home view

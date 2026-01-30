@@ -143,9 +143,19 @@ export function applyPizzaPromotions(
   let promoDescription: string | null = null;
   let freePizzas = 0;
 
-  // Only apply promotions to REGULAR pizzas (not Menu Midi)
-  if ((orderType === 'surplace' || orderType === 'emporter') && (seniorCount + megaCount) >= 2) {
-    // 1 achetée = 1 offerte (pairs of 2)
+  // Calculate potential free pizzas based on "incomplete sets"
+  // For emporter/surplace (1+1): 1 pizza entitles to 1 free pizza.
+  // For livraison (2+1): 2 pizzas entitle to 1 free pizza.
+  const totalCount = seniorCount + megaCount;
+
+  if (orderType === 'surplace' || orderType === 'emporter') {
+    // 1 achetée = 1 offerte
+    // If odd number of pizzas, the user is entitled to 1 more free pizza (to add or defer)
+    if (totalCount % 2 === 1) {
+      freePizzas = 1;
+    }
+
+    // Existing pairing logic for discount in cart
     const seniorPairs = Math.floor(seniorCount / 2);
     const seniorSingles = seniorCount % 2;
     const megaPairs = Math.floor(megaCount / 2);
@@ -155,27 +165,39 @@ export function applyPizzaPromotions(
       (seniorPairs * pizzaPrices.senior) + (seniorSingles * pizzaPrices.senior) +
       (megaPairs * pizzaPrices.mega) + (megaSingles * pizzaPrices.mega);
 
-    freePizzas = seniorPairs + megaPairs;
-
-    if (freePizzas > 0) {
-      promoDescription = `1 achetée = 1 offerte (${freePizzas} pizza${freePizzas > 1 ? 's' : ''} offerte${freePizzas > 1 ? 's' : ''})`;
+    if (totalCount >= 1) {
+      promoDescription = `1 achetée = 1 offerte ${freePizzas > 0 ? '(1 pizza offerte à ajouter ou différer)' : ''}`;
     }
-  } else if (orderType === 'livraison' && (seniorCount + megaCount) >= 2) {
-    // LIVRAISON: 2 achetées = 1 offerte
-    // Buy 2 pizzas (pay 36€) → get 1 free pizza (can take or defer)
-    const seniorPairs = Math.floor(seniorCount / 2);
-    const seniorSingles = seniorCount % 2;
-    const megaPairs = Math.floor(megaCount / 2);
-    const megaSingles = megaCount % 2;
+  } else if (orderType === 'livraison') {
+    // 2 achetées = 1 offerte
+    // If exactly 2 pizzas (or 5, 8...), the user is entitled to 1 more free pizza
+    if (totalCount % 3 === 2) {
+      freePizzas = 1;
+    }
 
-    // Customer pays FULL price for pizzas in cart
+    // Pairing logic for discount in cart: groups of 3 (2 paid, 1 free)
+    // We prioritize discounting mega pizzas if there's a mix
+    let tempSenior = seniorCount;
+    let tempMega = megaCount;
+    let paidSenior = 0;
+    let paidMega = 0;
+
+    // Count full sets of 3
+    const fullSets = Math.floor(totalCount / 3);
+    const remaining = totalCount % 3;
+
+    // For all full sets, we pay for 2 and get 1 free.
+    // We prioritize mega for the "paid" slots to be conservative/fair? 
+    // Actually, usually the cheapest is free. So we pay for all mega first.
+    let totalPaidInSets = fullSets * 2;
+
+    // Simplest logic: pay for everyone, then discount the cheapest pizzas in the sets
     discountedBaseTotal = (seniorCount * pizzaPrices.senior) + (megaCount * pizzaPrices.mega);
+    const discountAmount = fullSets * pizzaPrices.senior; // Always discount the senior price for now as it's the 18€ one
+    discountedBaseTotal -= discountAmount;
 
-    // They earn 1 free pizza per 2 ordered (to add now or defer)
-    freePizzas = seniorPairs + megaPairs;
-
-    if (freePizzas > 0) {
-      promoDescription = `2 achetées = 1 offerte (${freePizzas} pizza${freePizzas > 1 ? 's' : ''} offerte${freePizzas > 1 ? 's' : ''})`;
+    if (totalCount >= 2) {
+      promoDescription = `2 achetées = 1 offerte ${freePizzas > 0 ? '(1 pizza offerte à ajouter ou différer)' : ''}`;
     }
   } else {
     discountedBaseTotal = originalBaseTotal;
