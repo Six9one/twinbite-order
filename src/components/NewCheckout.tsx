@@ -54,7 +54,7 @@ interface NewCheckoutProps {
 
 export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const { cart, orderType, setOrderType, clearCart, scheduledInfo, setScheduledInfo } = useOrder();
-  const { customer, lookupCustomer, calculatePointsToEarn, findOrCreateCustomer, earnPoints, addStamps, redeemReward, rewards, getPizzaCredits, addPizzaCredit } = useLoyalty();
+  const { customer, lookupCustomer, calculatePointsToEarn, findOrCreateCustomer, earnPoints, addStamps, redeemReward, rewards, getPizzaCredits, getPizzaCreditsWithSize, addPizzaCredit, redeemPizzaCredit } = useLoyalty();
   const createOrder = useCreateOrder();
   const { data: paymentSettings, isLoading: isLoadingPaymentSettings } = usePaymentSettings();
   const [step, setStep] = useState<'info' | 'payment' | 'schedule-confirm' | 'confirm' | 'success'>('info');
@@ -74,8 +74,10 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const [tempScheduleTime, setTempScheduleTime] = useState<string>('12:00');
   const [useLoyaltyDiscount, setUseLoyaltyDiscount] = useState(false);
   const [pizzasToDefer, setPizzasToDefer] = useState(0);
+  const [deferSize, setDeferSize] = useState<'senior' | 'mega'>('senior'); // Track deferred pizza size
   const [usePizzaCredit, setUsePizzaCredit] = useState(false);
   const availablePizzaCredits = getPizzaCredits();
+  const pizzaCreditsList = getPizzaCreditsWithSize();
   const [lastLookedUpPhone, setLastLookedUpPhone] = useState<string>('');
   const [confirmedOrderData, setConfirmedOrderData] = useState<{
     orderNumber: string;
@@ -211,6 +213,15 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const pizzaItems = cart.filter(item => item.item.category === 'pizzas');
   const hasPizza = pizzaItems.length > 0;  // Check if cart has any pizza items
   const otherItems = cart.filter(item => item.item.category !== 'pizzas');
+
+  // Determine the dominant pizza size in cart (for deferral)
+  const pizzaSizes = pizzaItems.map(item => {
+    const custom = item.customization as any;
+    return custom?.size || 'senior';
+  });
+  const seniorCount = pizzaSizes.filter(s => s === 'senior').length;
+  const megaCount = pizzaSizes.filter(s => s === 'mega').length;
+  const dominantPizzaSize: 'senior' | 'mega' = megaCount > seniorCount ? 'mega' : 'senior';
 
   const pizzaPromo = applyPizzaPromotions(pizzaItems, orderType);
   const otherTotal = otherItems.reduce((sum, item) =>
@@ -469,6 +480,14 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           if (useLoyaltyDiscount && loyaltyDiscount > 0) {
             await redeemReward('discount-5-euro');
             console.log('[CHECKOUT] Loyalty discount redeemed: -5€ (100 pts)');
+          }
+
+          // Save pizza credits if user chose to defer
+          if (pizzasToDefer > 0) {
+            for (let i = 0; i < pizzasToDefer; i++) {
+              await addPizzaCredit(result.id, deferSize);
+            }
+            console.log('[CHECKOUT] Pizza credits saved:', pizzasToDefer, 'size:', deferSize);
           }
         }
       } catch (loyaltyError) {
@@ -1115,7 +1134,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   <div className="text-3xl">🍕</div>
                   <div className="flex-1">
                     <h3 className="font-bold text-green-800 text-lg">
-                      {pizzaPromo.freePizzas} Pizza{pizzaPromo.freePizzas > 1 ? 's' : ''} Gratuite{pizzaPromo.freePizzas > 1 ? 's' : ''}!
+                      {pizzaPromo.freePizzas} Pizza{pizzaPromo.freePizzas > 1 ? 's' : ''} {dominantPizzaSize === 'mega' ? 'Mega' : 'Senior'} Gratuite{pizzaPromo.freePizzas > 1 ? 's' : ''}!
                     </h3>
                     <p className="text-sm text-green-700 mt-1">
                       Vous pouvez prendre {pizzaPromo.freePizzas === 1 ? 'votre pizza' : 'vos pizzas'} maintenant ou les garder pour plus tard.
@@ -1126,7 +1145,14 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                         <input
                           type="checkbox"
                           checked={pizzasToDefer > 0}
-                          onChange={(e) => setPizzasToDefer(e.target.checked ? pizzaPromo.freePizzas : 0)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setPizzasToDefer(pizzaPromo.freePizzas);
+                              setDeferSize(dominantPizzaSize);
+                            } else {
+                              setPizzasToDefer(0);
+                            }
+                          }}
                           className="w-5 h-5 accent-green-600"
                         />
                         <div>
@@ -1134,14 +1160,14 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                             Garder pour plus tard
                           </p>
                           <p className="text-xs text-green-600">
-                            Vos pizzas seront sauvegardées sur votre compte (sans date limite!)
+                            {pizzaPromo.freePizzas} pizza{pizzaPromo.freePizzas > 1 ? 's' : ''} {dominantPizzaSize === 'mega' ? 'Mega' : 'Senior'} sera{pizzaPromo.freePizzas > 1 ? 'ont' : ''} sauvegardée{pizzaPromo.freePizzas > 1 ? 's' : ''} (sans date limite!)
                           </p>
                         </div>
                       </label>
 
                       {pizzasToDefer > 0 && (
                         <div className="p-2 bg-green-100 rounded text-center text-sm text-green-700 font-medium animate-pulse">
-                          ✅ {pizzasToDefer} pizza{pizzasToDefer > 1 ? 's' : ''} sera{pizzasToDefer > 1 ? 'ont' : ''} sauvegardée{pizzasToDefer > 1 ? 's' : ''}!
+                          ✅ {pizzasToDefer} pizza{pizzasToDefer > 1 ? 's' : ''} {deferSize === 'mega' ? 'Mega' : 'Senior'} sera{pizzasToDefer > 1 ? 'ont' : ''} sauvegardée{pizzasToDefer > 1 ? 's' : ''}!
                         </div>
                       )}
                     </div>

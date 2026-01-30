@@ -36,11 +36,19 @@ interface LoyaltyCustomer {
     stamps: number; // Stamp card count (resets every 10)
     totalStamps: number; // Total stamps ever earned
     freeItemsAvailable: number; // Number of free items to claim
-    pizzaCredits: number; // Deferred free pizzas from 1+1 deal
+    pizzaCredits: number; // Total count of deferred free pizzas
+    pizzaCreditsList: PizzaCredit[]; // Detailed list with sizes
     totalSpent: number;
     totalOrders: number;
     firstOrderDone: boolean;
     joinedAt: Date;
+}
+
+// Pizza credit with size info
+interface PizzaCredit {
+    id: string;
+    size: 'senior' | 'mega';
+    createdAt: Date;
 }
 
 interface LoyaltyContextType {
@@ -67,7 +75,9 @@ interface LoyaltyContextType {
     logout: () => void;
     // Pizza credits
     getPizzaCredits: () => number;
-    addPizzaCredit: (orderId: string) => Promise<boolean>;
+    getPizzaCreditsWithSize: () => PizzaCredit[];
+    addPizzaCredit: (orderId: string, size: 'senior' | 'mega') => Promise<boolean>;
+    redeemPizzaCredit: (orderId: string) => Promise<{ success: boolean; size?: 'senior' | 'mega' }>;
 }
 
 // V1 Default rewards - SIMPLIFIED: 100 points = €10
@@ -180,11 +190,29 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 totalStamps: rec.total_stamps || 0,
                 freeItemsAvailable: rec.free_items_available || 0,
                 pizzaCredits: rec.pizza_credits_available || 0,
+                pizzaCreditsList: [], // Will be populated below
                 totalSpent: rec.total_spent || 0,
                 totalOrders: rec.total_orders || 0,
                 firstOrderDone: rec.first_order_done || false,
                 joinedAt: rec.created_at ? new Date(rec.created_at) : new Date()
             };
+
+            // Fetch pizza credits with size info
+            try {
+                const { data: creditsData } = await (supabase.rpc as any)('get_pizza_credits_info', {
+                    p_phone: normalizedPhone
+                });
+                if (creditsData && creditsData[0]?.credits) {
+                    customerData.pizzaCreditsList = (creditsData[0].credits || []).map((c: any) => ({
+                        id: c.id,
+                        size: c.size || 'senior',
+                        createdAt: new Date(c.created_at)
+                    }));
+                    customerData.pizzaCredits = creditsData[0].total_credits || 0;
+                }
+            } catch (e) {
+                console.log('Could not fetch pizza credits info:', e);
+            }
 
             setCustomer(customerData);
             localStorage.setItem('twinpizza-loyalty-phone', normalizedPhone);
@@ -264,6 +292,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 totalStamps: 0,
                 freeItemsAvailable: 0,
                 pizzaCredits: 0,
+                pizzaCreditsList: [],
                 totalSpent: 0,
                 totalOrders: 0,
                 firstOrderDone: false,
@@ -558,12 +587,17 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
         return customer?.pizzaCredits || 0;
     };
 
-    const addPizzaCredit = async (orderId: string): Promise<boolean> => {
+    const getPizzaCreditsWithSize = (): PizzaCredit[] => {
+        return customer?.pizzaCreditsList || [];
+    };
+
+    const addPizzaCredit = async (orderId: string, size: 'senior' | 'mega'): Promise<boolean> => {
         if (!customer) return false;
         try {
             const { error } = await (supabase.rpc as any)('add_pizza_credit', {
                 p_phone: customer.phone,
-                p_order_id: orderId
+                p_order_id: orderId,
+                p_size: size
             });
             if (error) {
                 console.error('Failed to add pizza credit:', error);
@@ -575,6 +609,26 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
         } catch (e) {
             console.error('Add pizza credit error:', e);
             return false;
+        }
+    };
+
+    const redeemPizzaCredit = async (orderId: string): Promise<{ success: boolean; size?: 'senior' | 'mega' }> => {
+        if (!customer) return { success: false };
+        try {
+            const { data, error } = await (supabase.rpc as any)('redeem_pizza_credit', {
+                p_phone: customer.phone,
+                p_order_id: orderId
+            });
+            if (error) {
+                console.error('Failed to redeem pizza credit:', error);
+                return { success: false };
+            }
+            // Refresh customer data
+            await lookupCustomer(customer.phone);
+            return { success: true, size: data as 'senior' | 'mega' };
+        } catch (e) {
+            console.error('Redeem pizza credit error:', e);
+            return { success: false };
         }
     };
 
@@ -600,7 +654,9 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             canUseReward,
             logout,
             getPizzaCredits,
-            addPizzaCredit
+            getPizzaCreditsWithSize,
+            addPizzaCredit,
+            redeemPizzaCredit
         }}>
 
             {children}
