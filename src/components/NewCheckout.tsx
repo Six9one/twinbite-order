@@ -248,6 +248,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   // Only apply delivery fee if there are non-regular-pizza items
   const shouldApplyDeliveryFee = isDelivery && !hasRegularPizzaOnly && productsSubtotal < FREE_DELIVERY_THRESHOLD;
   const deliveryFee = shouldApplyDeliveryFee ? DELIVERY_FEE : 0;
+  const qualifiesForFreeDelivery = productsSubtotal >= FREE_DELIVERY_THRESHOLD || hasRegularPizzaOnly;
 
   const subtotal = productsSubtotal + deliveryFee;
 
@@ -908,6 +909,30 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                       Encore {10 - ((customer.stamps || 0) % 10)} tampon(s) pour un produit gratuit!
                     </p>
                   )}
+                </div>
+              </Card>
+            )}
+
+            {/* 🍕 PIZZA CREDITS - Show saved pizzas prominently when customer has credits */}
+            {customer && availablePizzaCredits > 0 && (
+              <Card className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400">
+                <div className="flex items-start gap-3">
+                  <div className="text-4xl animate-bounce">🍕</div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-green-800 text-lg">
+                      Vous avez {availablePizzaCredits} pizza{availablePizzaCredits > 1 ? 's' : ''} en réserve!
+                    </h3>
+                    <p className="text-sm text-green-700 mt-1">
+                      {pizzaCreditsList.length > 0 && pizzaCreditsList.map((credit, idx) => (
+                        <span key={credit.id}>
+                          {idx > 0 ? ', ' : ''}Pizza {credit.size === 'mega' ? 'Mega' : 'Senior'}
+                        </span>
+                      ))}
+                    </p>
+                    <p className="text-xs text-green-600 mt-2">
+                      ✅ Ces pizzas sont gratuites et sans date limite!
+                    </p>
+                  </div>
                 </div>
               </Card>
             )}
