@@ -39,14 +39,26 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
   const subtotal = pizzaPromo.discountedTotal + otherTotal;
 
   // Delivery fee logic: 
-  // - Orders < 25€ → 5€ delivery fee
-  // - Orders >= 25€ → FREE delivery
+  // - 5€ fee for orders < 25€ (only for non-pizza items + menu midi)
+  // - Regular pizzas: NO delivery fee at all
+  // - Other products (soufflet, makloub, tacos, mlawi, sandwiches, menu midi): 5€ if < 25€
   const FREE_DELIVERY_THRESHOLD = 25;
   const DELIVERY_FEE = 5;
   const isDelivery = orderType === 'livraison';
-  const qualifiesForFreeDelivery = subtotal >= FREE_DELIVERY_THRESHOLD;
-  const deliveryFee = isDelivery && !qualifiesForFreeDelivery ? DELIVERY_FEE : 0;
-  const amountToFreeDelivery = FREE_DELIVERY_THRESHOLD - subtotal;
+
+  // Check if there are any items that should incur delivery fee (non-pizza or menu midi pizza)
+  const hasMenuMidiPizza = pizzaItems.some(item => {
+    const custom = item.customization as any;
+    return custom?.isMenuMidi === true;
+  });
+  const hasOtherProducts = otherItems.length > 0;
+  const hasRegularPizzaOnly = pizzaItems.length > 0 && !hasMenuMidiPizza && !hasOtherProducts;
+
+  // Only apply delivery fee if there are non-regular-pizza items
+  const shouldApplyDeliveryFee = isDelivery && !hasRegularPizzaOnly && subtotal < FREE_DELIVERY_THRESHOLD;
+  const deliveryFee = shouldApplyDeliveryFee ? DELIVERY_FEE : 0;
+  const qualifiesForFreeDelivery = subtotal >= FREE_DELIVERY_THRESHOLD || hasRegularPizzaOnly;
+  const amountToFreeDelivery = hasRegularPizzaOnly ? 0 : FREE_DELIVERY_THRESHOLD - subtotal;
 
   const total = subtotal + deliveryFee;
 
