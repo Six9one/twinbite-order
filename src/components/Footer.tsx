@@ -48,19 +48,19 @@ export function Footer() {
   };
 
   return (
-    <footer className="bg-foreground text-background py-10">
+    <footer className="bg-foreground text-background py-8 sm:py-10">
       <div className="container mx-auto px-4">
         {/* Main Footer Content */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mb-6 sm:mb-8">
           {/* Logo & Info */}
           <div className="text-center md:text-left">
-            <Link to="/" className="hover:opacity-80 transition-opacity inline-flex items-center gap-3 mb-4">
+            <Link to="/" className="hover:opacity-80 transition-opacity inline-flex items-center gap-3 mb-3 sm:mb-4">
               <img
                 src={logoImage}
                 alt="Twin Pizza"
-                className="w-14 h-14 rounded-full"
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full"
               />
-              <h3 className="font-display text-2xl font-bold">Twin Pizza</h3>
+              <h3 className="font-display text-xl sm:text-2xl font-bold">Twin Pizza</h3>
             </Link>
             <div className="space-y-2 text-sm text-background/70">
               <div className="flex items-center gap-2 justify-center md:justify-start">
@@ -75,8 +75,8 @@ export function Footer() {
           </div>
 
           {/* Opening Hours */}
-          <div className="text-center">
-            <h4 className="font-semibold text-lg mb-4 flex items-center gap-2 justify-center">
+          <div className="text-center sm:text-left md:text-center">
+            <h4 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4 flex items-center gap-2 justify-center sm:justify-start md:justify-center">
               <Clock className="w-5 h-5 text-primary" />
               Horaires d'ouverture
             </h4>
@@ -101,24 +101,24 @@ export function Footer() {
           </div>
 
           {/* Social Media */}
-          <div className="text-center md:text-right">
-            <h4 className="font-semibold text-lg mb-4">Suivez-nous</h4>
-            <div className="flex items-center justify-center md:justify-end gap-4">
+          <div className="text-center sm:text-right">
+            <h4 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4">Suivez-nous</h4>
+            <div className="flex items-center justify-center sm:justify-end gap-3 sm:gap-4">
               <a
                 href="https://facebook.com/twinpizza"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-background/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all"
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-background/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all active:scale-95"
               >
-                <Facebook className="w-5 h-5" />
+                <Facebook className="w-5 h-5 sm:w-6 sm:h-6" />
               </a>
               <a
                 href="https://instagram.com/twinpizza"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-background/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all"
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-background/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all active:scale-95"
               >
-                <Instagram className="w-5 h-5" />
+                <Instagram className="w-5 h-5 sm:w-6 sm:h-6" />
               </a>
             </div>
           </div>

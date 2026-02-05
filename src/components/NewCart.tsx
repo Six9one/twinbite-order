@@ -207,26 +207,27 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-md flex flex-col z-[99999]">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <ShoppingBag className="w-5 h-5" />
+      <SheetContent className="w-full sm:max-w-md flex flex-col z-[99999] p-0 sm:p-0">
+        <SheetHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2">
+          <SheetTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
             Votre Panier
           </SheetTitle>
         </SheetHeader>
 
         {cart.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-muted-foreground">
-              <ShoppingBag className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Votre panier est vide</p>
+            <div className="text-center text-muted-foreground p-6">
+              <ShoppingBag className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 opacity-40" />
+              <p className="text-base sm:text-lg">Votre panier est vide</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">Ajoutez des articles pour commencer</p>
             </div>
           </div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto py-4 space-y-3">
+            <div className="flex-1 overflow-y-auto py-3 sm:py-4 px-4 sm:px-6 space-y-3">
               {cart.map((item) => (
-                <Card key={item.id} className="p-3">
+                <Card key={item.id} className="p-3 sm:p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h4 className="font-semibold">{item.item.name}</h4>
@@ -246,27 +247,27 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
                     </Button>
                   </div>
 
-                  <div className="flex items-center justify-between mt-3">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-muted/50">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg"
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
                       >
-                        <Minus className="w-3 h-3" />
+                        <Minus className="w-4 h-4" />
                       </Button>
-                      <span className="w-8 text-center font-medium">{item.quantity}</span>
+                      <span className="w-8 text-center font-bold text-base">{item.quantity}</span>
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg"
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-4 h-4" />
                       </Button>
                     </div>
-                    <span className="font-semibold text-primary">
+                    <span className="font-bold text-base sm:text-lg text-primary">
                       {(getItemPrice(item) * item.quantity).toFixed(2)}€
                     </span>
                   </div>
@@ -274,7 +275,7 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
               ))}
             </div>
 
-            <div className="border-t pt-4 space-y-3">
+            <div className="border-t pt-3 sm:pt-4 px-4 sm:px-6 space-y-3 bg-muted/20">
               {/* Scheduled order indicator or button */}
               {scheduledInfo.isScheduled && scheduledInfo.scheduledFor ? (
                 <Card className="p-3 bg-purple-50 border-purple-200">
@@ -414,7 +415,7 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
 
               <Separator />
 
-              <div className="flex justify-between text-lg font-bold">
+              <div className="flex justify-between text-lg sm:text-xl font-bold">
                 <span>Total</span>
                 <span className="text-primary">{total.toFixed(2)}€</span>
               </div>
@@ -454,7 +455,7 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
               )}
 
               <Button
-                className="w-full h-12"
+                className="w-full h-14 sm:h-16 text-base sm:text-lg rounded-xl"
                 onClick={onCheckout}
                 disabled={cart.length === 0}
               >

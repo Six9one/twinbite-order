@@ -74,7 +74,7 @@ export function Header({
               loading="eager"
               decoding="async"
               fetchPriority="high"
-              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-primary/20"
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-primary/20"
             />
             <div>
               <h1 className="text-lg sm:text-xl font-display font-bold text-foreground leading-tight">Twin Pizza</h1>
@@ -150,12 +150,12 @@ export function Header({
 
             <Button
               onClick={onCartClick}
-              className="relative flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 h-9 sm:h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-lg hover:shadow-primary/20 transition-all active:scale-95"
+              className="relative flex items-center gap-2 px-4 sm:px-6 h-11 sm:h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-lg hover:shadow-primary/20 transition-all active:scale-95"
             >
-              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
+              <ShoppingCart className="w-5 h-5" />
               <span className="font-bold text-sm sm:text-base">Panier</span>
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-accent text-accent-foreground text-[10px] sm:text-xs font-black rounded-full flex items-center justify-center border-2 border-background animate-in zoom-in">
+                <span className="absolute -top-1.5 -right-1.5 w-6 h-6 sm:w-7 sm:h-7 bg-accent text-accent-foreground text-xs font-black rounded-full flex items-center justify-center border-2 border-background animate-in zoom-in">
                   {itemCount}
                 </span>
               )}
@@ -163,9 +163,9 @@ export function Header({
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-muted flex items-center justify-center transition-colors hover:bg-muted/80 active:scale-95"
+              className="lg:hidden w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-muted flex items-center justify-center transition-colors hover:bg-muted/80 active:scale-95"
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5 text-foreground" />}
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6 text-foreground" />}
             </button>
           </div>
         </div>
@@ -205,25 +205,25 @@ export function Header({
             <Button
               variant="outline"
               onClick={handleMenuClick}
-              className="w-full h-12 justify-between px-4 text-base font-semibold rounded-xl border-muted-foreground/10 hover:bg-muted"
+              className="w-full h-14 justify-between px-5 text-base font-semibold rounded-2xl border-muted-foreground/10 hover:bg-muted active:scale-[0.98] transition-transform"
             >
               <div className="flex items-center gap-3">
-                <Pizza className="w-5 h-5 text-primary" />
+                <Pizza className="w-6 h-6 text-primary" />
                 <span>Menu complet</span>
               </div>
-              <ChevronDown className="w-4 h-4 -rotate-90 opacity-40" />
+              <ChevronDown className="w-5 h-5 -rotate-90 opacity-40" />
             </Button>
 
             <Button
               variant="outline"
               onClick={handleLivraisonClick}
-              className="w-full h-12 justify-between px-4 text-base font-semibold rounded-xl border-muted-foreground/10 hover:bg-muted"
+              className="w-full h-14 justify-between px-5 text-base font-semibold rounded-2xl border-muted-foreground/10 hover:bg-muted active:scale-[0.98] transition-transform"
             >
               <div className="flex items-center gap-3">
-                <Truck className="w-5 h-5 text-primary" />
+                <Truck className="w-6 h-6 text-primary" />
                 <span>Zone de Livraison</span>
               </div>
-              <ChevronDown className="w-4 h-4 -rotate-90 opacity-40" />
+              <ChevronDown className="w-5 h-5 -rotate-90 opacity-40" />
             </Button>
 
             <Button
@@ -232,13 +232,13 @@ export function Header({
                 onScheduleClick?.();
                 setMobileMenuOpen(false);
               }}
-              className="w-full h-12 justify-between px-4 text-base font-semibold rounded-xl border-purple-100 bg-purple-50/50 text-purple-700 hover:bg-purple-100"
+              className="w-full h-14 justify-between px-5 text-base font-semibold rounded-2xl border-purple-100 bg-purple-50/50 text-purple-700 hover:bg-purple-100 active:scale-[0.98] transition-transform"
             >
               <div className="flex items-center gap-3">
-                <CalendarClock className="w-5 h-5" />
+                <CalendarClock className="w-6 h-6" />
                 <span>Commander plus tard</span>
               </div>
-              <ChevronDown className="w-4 h-4 -rotate-90 opacity-40" />
+              <ChevronDown className="w-5 h-5 -rotate-90 opacity-40" />
             </Button>
           </div>
 
@@ -256,7 +256,7 @@ export function Header({
                       handleOrderTypeChange(type as OrderType);
                       setMobileMenuOpen(false);
                     }}
-                    className={`flex items-center justify-between w-full h-12 px-4 rounded-xl text-sm font-bold transition-all ${isActive
+                    className={`flex items-center justify-between w-full h-14 px-5 rounded-2xl text-base font-bold transition-all active:scale-[0.98] ${isActive
                       ? 'bg-primary text-primary-foreground shadow-md'
                       : 'bg-white hover:bg-white/80 text-foreground shadow-sm'
                       }`}

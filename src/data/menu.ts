@@ -247,7 +247,7 @@ export const tacos: MenuItem[] = [
     id: "tacos-solo",
     name: "Tacos Solo",
     description: "1 viande au choix, frites, fromage, sauce",
-    price: 7,
+    price: 7.5,
     category: "tacos",
   },
   {
@@ -261,7 +261,7 @@ export const tacos: MenuItem[] = [
     id: "tacos-triple",
     name: "Tacos Triple",
     description: "3 viandes au choix, frites, fromage, sauces",
-    price: 11,
+    price: 10.5,
     category: "tacos",
   },
 ];

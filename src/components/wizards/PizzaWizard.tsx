@@ -148,11 +148,11 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={onClose}>
+              <Button variant="ghost" size="icon" onClick={onClose} className="w-10 h-10 sm:w-11 sm:h-11">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div>
-                <h1 className="text-2xl font-display font-bold">Nos Pizzas</h1>
+                <h1 className="text-xl sm:text-2xl font-display font-bold">Nos Pizzas</h1>
                 {promoText && (
                   <Badge variant="secondary" className="mt-1 bg-primary/10 text-primary">
                     {promoText}
@@ -184,19 +184,19 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
           <Tabs defaultValue="tomate" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="tomate" className="text-base">
+            <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 h-12 sm:h-14">
+              <TabsTrigger value="tomate" className="text-sm sm:text-base h-10 sm:h-12">
                 🍅 Base Tomate
               </TabsTrigger>
-              <TabsTrigger value="creme" className="text-base">
+              <TabsTrigger value="creme" className="text-sm sm:text-base h-10 sm:h-12">
                 🥛 Base Crème
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="tomate">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {(loadingTomate ? [] : displayPizzasTomate).map((pizza: any) => {
                   const imageUrl = pizza.image_url || pizza.imageUrl || pizza.image;
                   const imageZoom = pizza.image_zoom || 1.0;
@@ -229,11 +229,25 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
                         <h3 className="font-display font-semibold text-lg text-center">{pizza.name}</h3>
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2 text-center">{pizza.description}</p>
                         <div className="mt-3 flex items-center justify-center gap-2">
-                          <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
-                          <span className="text-sm text-muted-foreground">Senior</span>
-                          <span className="text-muted-foreground">|</span>
-                          <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
-                          <span className="text-sm text-muted-foreground">Mega</span>
+                          {lockedSize === 'senior' ? (
+                            <>
+                              <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
+                              <span className="text-sm text-muted-foreground">Senior (Offerte)</span>
+                            </>
+                          ) : lockedSize === 'mega' ? (
+                            <>
+                              <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
+                              <span className="text-sm text-muted-foreground">Mega (Offerte)</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
+                              <span className="text-sm text-muted-foreground">Senior</span>
+                              <span className="text-muted-foreground">|</span>
+                              <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
+                              <span className="text-sm text-muted-foreground">Mega</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </Card>
@@ -248,7 +262,7 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
             </TabsContent>
 
             <TabsContent value="creme">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {(loadingCreme ? [] : displayPizzasCreme).map((pizza: any) => {
                   const imageUrl = pizza.image_url || pizza.imageUrl || pizza.image;
                   const imageZoom = pizza.image_zoom || 1.0;
@@ -281,11 +295,25 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
                         <h3 className="font-display font-semibold text-lg text-center">{pizza.name}</h3>
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2 text-center">{pizza.description}</p>
                         <div className="mt-3 flex items-center justify-center gap-2">
-                          <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
-                          <span className="text-sm text-muted-foreground">Senior</span>
-                          <span className="text-muted-foreground">|</span>
-                          <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
-                          <span className="text-sm text-muted-foreground">Mega</span>
+                          {lockedSize === 'senior' ? (
+                            <>
+                              <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
+                              <span className="text-sm text-muted-foreground">Senior (Offerte)</span>
+                            </>
+                          ) : lockedSize === 'mega' ? (
+                            <>
+                              <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
+                              <span className="text-sm text-muted-foreground">Mega (Offerte)</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
+                              <span className="text-sm text-muted-foreground">Senior</span>
+                              <span className="text-muted-foreground">|</span>
+                              <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
+                              <span className="text-sm text-muted-foreground">Mega</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </Card>
@@ -458,10 +486,10 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
       </div>
 
       {/* Bottom Action */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 sm:p-4 z-50 safe-bottom">
         <div className="container mx-auto">
           <Button
-            className="w-full h-14 text-lg"
+            className="w-full h-14 sm:h-16 text-base sm:text-lg rounded-xl"
             onClick={handleAddToCart}
           >
             Ajouter au panier - {getPrice().toFixed(2)}€

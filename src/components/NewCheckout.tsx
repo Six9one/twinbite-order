@@ -755,11 +755,11 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           </div>
 
           {/* Actions */}
-          <div className="mt-4 space-y-2">
+          <div className="mt-4 sm:mt-6 space-y-3">
             <p className="text-center text-sm text-muted-foreground">
               📸 Faites une capture d'écran de votre ticket!
             </p>
-            <Button onClick={onComplete} className="w-full h-12 text-lg">
+            <Button onClick={onComplete} className="w-full h-14 sm:h-16 text-base sm:text-lg rounded-xl">
               Retour à l'accueil
             </Button>
           </div>
@@ -770,33 +770,34 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-28">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <Button
               variant="ghost"
               size="icon"
+              className="w-10 h-10 sm:w-11 sm:h-11"
               onClick={() => step === 'info' ? onBack() : setStep(step === 'confirm' ? 'payment' : 'info')}
               disabled={isProcessing}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-display font-bold">Finaliser la commande</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="text-xl sm:text-2xl font-display font-bold">Finaliser la commande</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 {step === 'info' ? 'Vos informations' : step === 'payment' ? 'Paiement' : 'Confirmation'}
               </p>
             </div>
           </div>
 
           {/* Progress */}
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-3 sm:mt-4">
             {['info', 'payment', 'confirm'].map((s, i) => (
               <div
                 key={s}
-                className={`h-1 flex-1 rounded-full transition-colors ${['info', 'payment', 'schedule-confirm', 'confirm'].indexOf(step) >= i ? 'bg-primary' : 'bg-muted'
+                className={`h-1.5 sm:h-2 flex-1 rounded-full transition-colors ${['info', 'payment', 'schedule-confirm', 'confirm'].indexOf(step) >= i ? 'bg-primary' : 'bg-muted'
                   }`}
               />
             ))}
@@ -804,7 +805,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Cart validation warning */}
         {!isCartValid && (
           <Card className="p-4 bg-destructive/10 border-destructive">
@@ -815,26 +816,26 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         )}
 
         {step === 'info' && (
-          <div className="space-y-4">
+          <div className="space-y-4 sm:space-y-5">
             <div>
-              <Label htmlFor="name">Nom *</Label>
+              <Label htmlFor="name" className="text-sm sm:text-base font-semibold">Nom *</Label>
               <Input
                 id="name"
                 value={customerInfo.name}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
                 placeholder="Votre nom"
-                className="mt-1"
+                className="mt-1.5 sm:mt-2"
               />
             </div>
             <div>
-              <Label htmlFor="phone">Téléphone *</Label>
+              <Label htmlFor="phone" className="text-sm sm:text-base font-semibold">Téléphone *</Label>
               <Input
                 id="phone"
                 type="tel"
                 value={customerInfo.phone}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
                 placeholder="06 XX XX XX XX"
-                className="mt-1"
+                className="mt-1.5 sm:mt-2"
               />
             </div>
             {orderType === 'livraison' && (

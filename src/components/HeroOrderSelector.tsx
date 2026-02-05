@@ -119,28 +119,28 @@ export function HeroOrderSelector({
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <p className="text-center text-white/80 mb-6 text-lg">
+    <div className="max-w-4xl mx-auto px-2 sm:px-0">
+      <p className="text-center text-white/80 mb-4 sm:mb-6 text-base sm:text-lg">
         Comment souhaitez-vous commander ?
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
         {orderOptions.map(option => {
           const Icon = option.icon;
           return (
             <Card
               key={option.type}
-              className="p-4 sm:p-6 cursor-pointer transition-all duration-300 bg-background/90 hover:bg-primary/10 hover:scale-105 hover:ring-2 hover:ring-primary active:scale-100 touch-target"
+              className="p-4 sm:p-5 cursor-pointer transition-all duration-300 bg-background/95 hover:bg-primary/10 hover:scale-[1.02] hover:ring-2 hover:ring-primary active:scale-[0.98] touch-target border-2 border-transparent"
               onClick={() => handleSelect(option.type)}
             >
               <div className="flex sm:flex-col items-center sm:text-center gap-4 sm:gap-0">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 sm:mx-auto rounded-full flex items-center justify-center sm:mb-4 transition-colors bg-primary flex-shrink-0">
-                  <Icon className="w-6 h-6 sm:w-8 sm:h-8" />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 sm:mx-auto rounded-full flex items-center justify-center sm:mb-4 transition-colors bg-primary flex-shrink-0">
+                  <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                 </div>
                 <div className="flex-1 sm:flex-none">
                   <h3 className="font-display font-bold text-lg sm:text-xl mb-0.5 sm:mb-1">{option.label}</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-3">{option.description}</p>
-                  <span className="inline-block text-xs font-medium px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-primary/10 text-primary whitespace-nowrap">
+                  <p className="text-sm text-muted-foreground mb-2 sm:mb-3">{option.description}</p>
+                  <span className="inline-block text-xs font-semibold px-3 py-1.5 rounded-full bg-primary/10 text-primary whitespace-nowrap">
                     🍕 {option.promo}
                   </span>
                 </div>
@@ -155,7 +155,7 @@ export function HeroOrderSelector({
         <Button
           onClick={handleScheduleClick}
           variant="outline"
-          className="gap-2 px-6 py-3 bg-purple-600/90 hover:bg-purple-700 border-purple-500 text-white"
+          className="gap-2 px-5 sm:px-6 py-3 h-12 sm:h-auto bg-purple-600/90 hover:bg-purple-700 border-purple-500 text-white text-sm sm:text-base"
         >
           <CalendarClock className="w-5 h-5" />
           Commander pour plus tard
@@ -164,7 +164,7 @@ export function HeroOrderSelector({
 
       {/* Schedule Dialog */}
       <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto mx-2 sm:mx-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               <CalendarClock className="w-6 h-6 text-purple-500" />
