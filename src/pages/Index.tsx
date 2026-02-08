@@ -176,7 +176,7 @@ function MainApp() {
       </section>
 
       {/* Call Now Section */}
-      <section className="py-4 sm:py-6 bg-primary/10">
+      <section className="py-4 sm:py-6 bg-primary/10 pizza-pattern-subtle">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
             <div className="flex items-center gap-2 text-lg font-semibold">
@@ -211,7 +211,7 @@ function MainApp() {
       </section>
 
       {/* Features Section */}
-      <section className="py-8 sm:py-12 bg-background">
+      <section className="py-8 sm:py-12 bg-background pizza-pattern-subtle pizza-pattern-light">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 text-center">
             <div className="group p-6 rounded-2xl bg-card hover:bg-primary/5 transition-all duration-300 hover:-translate-y-2">
@@ -238,7 +238,7 @@ function MainApp() {
       <ReviewSection />
 
       {/* Contact Section */}
-      <section className="py-16 bg-gradient-to-b from-background to-muted/30">
+      <section className="py-16 bg-gradient-to-b from-background to-muted/30 pizza-pattern-fade">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-display font-bold mb-8">
             <span className="text-amber-500">Contact</span> & Horaires
@@ -264,8 +264,8 @@ function MainApp() {
               <span className="text-3xl mb-3 block">🕐</span>
               <h3 className="font-semibold mb-2 text-lg">Horaires</h3>
               <p className="text-muted-foreground">
-                Mar - Dim: 11h30 - 14h30 / 18h - 22h30<br />
-                Lundi: Fermé
+                Lun - Sam: 11h00 - 15h00 / 17h30 - 00h00<br />
+                Dimanche: Fermé
               </p>
             </Card>
           </div>

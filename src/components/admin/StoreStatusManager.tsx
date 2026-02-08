@@ -127,22 +127,34 @@ export function StoreStatusManager() {
             { key: 'hours_enforcement_enabled', value: String(status.hours_enforcement_enabled), category: 'store' },
         ];
 
+        let hasError = false;
         for (const setting of statusSettings) {
-            await supabase
+            const { error } = await supabase
                 .from('site_settings' as any)
                 .upsert(setting, { onConflict: 'key' });
+
+            if (error) {
+                console.error('Error saving setting:', setting.key, error);
+                hasError = true;
+            }
         }
 
-        toast.success('Statut sauvegardé!');
+        if (hasError) {
+            toast.error('Erreur lors de la sauvegarde! Vérifiez la console.');
+        } else {
+            toast.success('Statut sauvegardé!');
+        }
         setSaving(false);
     };
 
     const handleSaveHours = async () => {
         setSaving(true);
 
+        let hasError = false;
         for (const day of hours) {
+            let result;
             if (day.id) {
-                await supabase
+                result = await supabase
                     .from('opening_hours' as any)
                     .update({
                         is_open: day.is_open,
@@ -154,7 +166,7 @@ export function StoreStatusManager() {
                     })
                     .eq('id', day.id);
             } else {
-                await supabase
+                result = await supabase
                     .from('opening_hours' as any)
                     .upsert({
                         day_of_week: day.day_of_week,
@@ -166,9 +178,18 @@ export function StoreStatusManager() {
                         is_continuous: day.is_continuous,
                     });
             }
+
+            if (result.error) {
+                console.error('Error saving hours for day:', day.day_of_week, result.error);
+                hasError = true;
+            }
         }
 
-        toast.success('Horaires sauvegardés!');
+        if (hasError) {
+            toast.error('Erreur lors de la sauvegarde des horaires! Vérifiez la console.');
+        } else {
+            toast.success('Horaires sauvegardés!');
+        }
         setSaving(false);
     };
 

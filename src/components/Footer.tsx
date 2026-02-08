@@ -6,13 +6,14 @@ import logoImage from '@/assets/logo.png';
 
 interface OpeningHour {
   day_of_week: number;
-  day_name: string;
   is_open: boolean;
-  morning_open: string | null;
-  morning_close: string | null;
-  evening_open: string | null;
-  evening_close: string | null;
+  open_time: string | null;
+  close_time: string | null;
+  open_time_evening: string | null;
+  close_time_evening: string | null;
 }
+
+const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
 export function Footer() {
   const [hours, setHours] = useState<OpeningHour[]>([]);
@@ -40,9 +41,9 @@ export function Footer() {
   const formatHours = (day: OpeningHour) => {
     if (!day.is_open) return 'Fermé';
 
-    let result = `${formatTime(day.morning_open)}-${formatTime(day.morning_close)}`;
-    if (day.evening_open) {
-      result += ` / ${formatTime(day.evening_open)}-${formatTime(day.evening_close)}`;
+    let result = `${formatTime(day.open_time)}-${formatTime(day.close_time)}`;
+    if (day.open_time_evening) {
+      result += ` / ${formatTime(day.open_time_evening)}-${formatTime(day.close_time_evening)}`;
     }
     return result;
   };
@@ -87,13 +88,13 @@ export function Footer() {
                     key={day.day_of_week}
                     className={`flex justify-between gap-4 max-w-xs mx-auto ${day.day_of_week === new Date().getDay() ? 'text-primary font-bold' : 'text-background/70'}`}
                   >
-                    <span>{day.day_name}</span>
+                    <span>{DAY_NAMES[day.day_of_week]}</span>
                     <span>{formatHours(day)}</span>
                   </div>
                 ))
               ) : (
                 <>
-                  <div className="text-background/70">Lun-Sam: 11:00-15:00 / 17:30-00:00</div>
+                  <div className="text-background/70">Lun - Sam: 11h00-15h00 / 17h30-00h00</div>
                   <div className="text-background/70">Dimanche: Fermé</div>
                 </>
               )}

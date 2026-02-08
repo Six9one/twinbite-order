@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twin Pizza Hub</title>
+    <!-- Use Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <style>
+        :root {
+            --primary: #f39c12;
+            --secondary: #e74c3c;
+            --dark: #1a1a2e;
+            --dark-lighter: #16213e;
+            --text: #ecf0f1;
+            --text-dim: #bdc3c7;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f1c40f;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 260px;
+            background-color: var(--dark-lighter);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 20px 0;
+        }
+
+        .logo {
+            text-align: center;
+            padding: 0 20px 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .logo h1 {
+            color: var(--primary);
+            font-size: 24px;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .logo p {
+            color: var(--text-dim);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .nav-menu {
+            margin-top: 20px;
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 30px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-size: 15px;
+            border-left: 4px solid transparent;
+        }
+
+        .nav-item:hover {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+            background: rgba(243, 156, 18, 0.1);
+            border-left-color: var(--primary);
+        }
+
+        .nav-item .icon {
+            margin-right: 15px;
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        /* Main Content Styles */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--dark);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Quick Stats Bar */
+        .quick-stats {
+            height: 70px;
+            background: var(--dark-lighter);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-group {
+            display: flex;
+            gap: 30px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .stat-value.highlight {
+            color: var(--primary);
+        }
+
+        .date-display {
+            font-weight: 600;
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        /* View Containers */
+        .views-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .view-section {
+            display: none;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Orders Grid */
+        .orders-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .order-card {
+            background: #232336;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s ease;
+        }
+
+        .order-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .order-number {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .order-type-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .order-type-badge.livraison {
+            background: rgba(46, 204, 113, 0.15);
+            color: #2ecc71;
+        }
+
+        .order-type-badge.emporter {
+            background: rgba(52, 152, 219, 0.15);
+            color: #3498db;
+        }
+
+        .order-type-badge.surplace {
+            background: rgba(243, 156, 18, 0.15);
+            color: #f39c12;
+        }
+
+        .order-customer {
+            font-size: 14px;
+            color: var(--text);
+            line-height: 1.4;
+        }
+
+        .order-items {
+            flex: 1;
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .order-footer {
+            margin-top: auto;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .order-total {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            border: none;
+            border-radius: 6px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .action-btn.print {
+            background: #2c3e50;
+            color: var(--text);
+        }
+
+        .action-btn.print:hover {
+            background: #34495e;
+        }
+
+        .action-btn.whatsapp {
+            background: rgba(46, 204, 113, 0.15);
+            color: #2ecc71;
+        }
+
+        .action-btn.whatsapp:hover {
+            background: rgba(46, 204, 113, 0.25);
+        }
+
+        .action-btn.loyalty {
+            background: rgba(243, 156, 18, 0.15);
+            color: #f39c12;
+        }
+
+        .action-btn.loyalty:hover {
+            background: rgba(243, 156, 18, 0.25);
+        }
+
+        /* Admin/Webview Styles */
+        .webview-container {
+            width: 100%;
+            height: 100%;
+            background: #fff;
+        }
+
+        webview {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* WhatsApp View Styles */
+        .whatsapp-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .qr-code-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        #whatsapp-qr-image {
+            /* Handled by QRious canvas */
+        }
+
+        .whatsapp-status-large {
+            font-size: 24px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .whatsapp-status-disconnected {
+            color: var(--danger);
+        }
+
+        .whatsapp-status-connecting {
+            color: var(--warning);
+        }
+
+        .whatsapp-status-connected {
+            color: var(--success);
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 30px;
+            background: var(--dark-lighter);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 20px;
+            gap: 20px;
+            font-size: 11px;
+            color: var(--text-dim);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #7f8c8d;
+        }
+
+        .status-dot.ok {
+            background: var(--success);
+        }
+
+        .status-dot.error {
+            background: var(--danger);
+            box-shadow: 0 0 5px var(--danger);
+        }
+
+        .status-dot.warn {
+            background: var(--warning);
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .loyalty-stamps {
+            display: flex;
+            gap: 8px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .stamp {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid #f39c12;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .stamp.filled {
+            background: #f39c12;
+        }
+
+        .modal-close {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <h1>🍕 TWIN PIZZA</h1>
+                <p>Hub - All in One</p>
+            </div>
+
+            <div class="nav-menu">
+                <div class="nav-item active" data-view="orders">
+                    <span class="icon">📦</span>
+                    <span>Commandes</span>
+                </div>
+                <div class="nav-item" data-view="admin">
+                    <span class="icon">⚙️</span>
+                    <span>Admin Panel</span>
+                </div>
+                <div class="nav-item" data-view="whatsapp">
+                    <span class="icon">💬</span>
+                    <span>WhatsApp</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Bar -->
+            <div class="quick-stats">
+                <div class="date-display" id="dateDisplay"></div>
+                <div class="stat-group">
+                    <div class="stat-item">
+                        <span class="stat-label">Chiffre d'affaire (J)</span>
+                        <span class="stat-value highlight" id="todayTotal">0.00€</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Commandes</span>
+                        <span class="stat-value" id="orderCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">En attente</span>
+                        <span class="stat-value" id="pendingCount">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Views Container -->
+            <div class="views-container">
+                <!-- VIEW: ORDERS -->
+                <div id="view-orders" class="view-section active">
+                    <div class="orders-grid" id="ordersGrid"></div>
+                </div>
+
+                <!-- VIEW: ADMIN PANEL -->
+                <div id="view-admin" class="view-section">
+                    <div class="webview-container">
+                        <!-- Production: loads from Vercel deployed site -->
+                        <webview id="adminWebview" src="https://twinpizza.fr/admin" style="width:100%; height:100%;">
+                        </webview>
+                    </div>
+                </div>
+
+                <!-- VIEW: WHATSAPP -->
+                <div id="view-whatsapp" class="view-section">
+                    <div class="whatsapp-view">
+                        <!-- Baileys Connection Status & QR Code -->
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <h2 style="margin-bottom: 10px;">📱 WhatsApp Auto-Message</h2>
+                            <p style="color: var(--text-dim); margin-bottom: 20px;">
+                                Scannez ce QR code pour activer l'envoi automatique des confirmations de commande
+                            </p>
+
+                            <p id="whatsappMainStatus" class="whatsapp-status-large whatsapp-status-disconnected">
+                                ❌ Déconnecté
+                            </p>
+
+                            <div id="qrContainer" class="qr-code-container" style="display: none; margin: 20px auto;">
+                                <canvas id="whatsapp-qr-image"></canvas>
+                            </div>
+
+                            <div id="connectedInfo"
+                                style="display: none; padding: 20px; background: rgba(46, 204, 113, 0.1); border-radius: 10px; margin: 20px 0;">
+                                <p style="font-size: 18px; color: var(--success);">✅ WhatsApp connecté!</p>
+                                <p style="color: var(--text-dim); margin-top: 10px;">Les confirmations seront envoyées
+                                    automatiquement aux clients</p>
+                            </div>
+                        </div>
+
+                        <!-- Optional: WhatsApp Web for manual messages -->
+                        <div
+                            style="width: 100%; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; margin-top: 20px;">
+                            <p style="color: var(--text-dim); font-size: 12px; margin-bottom: 10px;">📋 WhatsApp Web
+                                (manuel)</p>
+                            <div class="webview-container"
+                                style="height: 400px; border-radius: 10px; overflow: hidden;">
+                                <webview id="whatsappWebview" src="https://web.whatsapp.com"
+                                    style="width:100%; height:100%;"
+                                    useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36">
+                                </webview>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-dot ok" id="whatsappDot"></span>
+                    <span>WhatsApp: <span id="whatsappStatus">Déconnecté</span></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot ok" id="printerDot"></span>
+                    <span>Imprimante: <span id="printerStatus">OK</span></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot ok" id="internetDot"></span>
+                    <span>Internet: <span id="internetStatus">Connecté</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loyalty Modal -->
+    <div class="modal-overlay" id="loyaltyModal">
+        <div class="modal-content">
+            <h3 class="modal-title">⭐ Fidélité Client</h3>
+            <p>📞 <span id="loyaltyPhone">-</span></p>
+            <p>👤 <span id="loyaltyName">-</span></p>
+
+            <div class="loyalty-stamps" id="loyaltyStamps"></div>
+
+            <p>🍕 Tampons: <span id="stampCount">0</span>/10</p>
+            <p>🎁 Crédits pizza: <span id="pizzaCredits">0</span></p>
+
+            <button class="modal-close" onclick="closeLoyaltyModal()">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Audio for notifications -->
+    <audio id="notificationSound"
+        src="https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/sound/shop-notification-355746.mp3"></audio>
+
+    <script>
+        // Store orders data
+        let ordersData = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            setupDateDisplay();
+            setupEventListeners();
+            await loadOrders();
+            await loadStats();
+
+            setInterval(async () => {
+                await loadOrders();
+                await loadStats();
+            }, 30000);
+        });
+
+        function setupDateDisplay() {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('fr-FR', options);
+        }
+
+        function setupEventListeners() {
+            // Navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const viewId = item.getAttribute('data-view');
+                    if (!viewId) return;
+
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+
+                    document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+                    const viewEl = document.getElementById(`view-${viewId}`);
+                    if (viewEl) viewEl.classList.add('active');
+                });
+            });
+
+            // Electron API
+            if (window.electronAPI) {
+                window.electronAPI.onPlaySound(() => document.getElementById('notificationSound').play().catch(e => console.log(e)));
+
+                window.electronAPI.onWhatsAppStatus((status) => {
+                    console.log('📱 WhatsApp status received:', status);
+                    updateWhatsAppUI(status);
+                });
+
+                window.electronAPI.onWhatsAppQR((qrCodeString) => {
+                    console.log('📱 QR CODE RECEIVED! Length:', qrCodeString?.length);
+                    updateWhatsAppUI('connecting', qrCodeString);
+                });
+
+                window.electronAPI.onNewOrder((newOrder) => {
+                    ordersData.unshift(newOrder);
+                    // Unique
+                    ordersData = ordersData.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
+                    renderOrders(ordersData);
+                    loadStats();
+                });
+
+                // Request initial status
+                console.log('📱 Requesting initial WhatsApp status...');
+            }
+        }
+
+        function updateWhatsAppUI(status, qrData = null) {
+            const dot = document.getElementById('whatsappDot');
+            const smallStatus = document.getElementById('whatsappStatus');
+            const mainStatus = document.getElementById('whatsappMainStatus');
+            const qrContainer = document.getElementById('qrContainer');
+            const connectedInfo = document.getElementById('connectedInfo');
+
+            if (status === 'connected') {
+                dot.className = 'status-dot ok';
+                smallStatus.textContent = 'Connecté';
+                if (mainStatus) {
+                    mainStatus.textContent = '✅ WhatsApp Connecté';
+                    mainStatus.className = 'whatsapp-status-large whatsapp-status-connected';
+                }
+                if (qrContainer) qrContainer.style.display = 'none';
+                if (connectedInfo) connectedInfo.style.display = 'block';
+            } else if (status === 'connecting') {
+                dot.className = 'status-dot warn';
+                smallStatus.textContent = 'Connexion...';
+                if (mainStatus) {
+                    mainStatus.textContent = '⚠️ Scannez le QR Code';
+                    mainStatus.className = 'whatsapp-status-large whatsapp-status-connecting';
+                }
+                if (connectedInfo) connectedInfo.style.display = 'none';
+
+                if (qrData && qrContainer) {
+                    qrContainer.style.display = 'block';
+                    new QRious({
+                        element: document.getElementById('whatsapp-qr-image'),
+                        value: qrData,
+                        size: 250
+                    });
+                }
+            } else {
+                dot.className = 'status-dot error';
+                smallStatus.textContent = 'Déconnecté';
+                if (mainStatus) {
+                    mainStatus.textContent = '❌ Déconnecté';
+                    mainStatus.className = 'whatsapp-status-large whatsapp-status-disconnected';
+                }
+                if (qrContainer) qrContainer.style.display = 'none';
+                if (connectedInfo) connectedInfo.style.display = 'none';
+            }
+        }
+
+
+        async function loadOrders() {
+            if (!window.electronAPI) return;
+            try {
+                ordersData = await window.electronAPI.getOrders();
+                renderOrders(ordersData);
+            } catch (error) { console.error(error); }
+        }
+
+        async function loadStats() {
+            if (!window.electronAPI) return;
+            try {
+                const stats = await window.electronAPI.getStats();
+                document.getElementById('todayTotal').textContent = stats.total.toFixed(2) + '€';
+                document.getElementById('orderCount').textContent = stats.orderCount;
+                document.getElementById('pendingCount').textContent = stats.pendingCount;
+            } catch (error) { console.error(error); }
+        }
+
+        function renderOrders(orders) {
+            const grid = document.getElementById('ordersGrid');
+            if (orders.length === 0) {
+                grid.innerHTML = '<div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.5); grid-column: 1/-1;">Aucune commande aujourd\'hui</div>';
+                return;
+            }
+
+            grid.innerHTML = orders.map(order => {
+                const items = Array.isArray(order.items) ? order.items : [];
+                const itemsText = items.map(item => `${item.quantity}x ${item.item?.name || item.name || 'Produit'}`).join(' • ');
+                const typeIcons = { livraison: '🚗 LIVRAISON', emporter: '🛍️ A EMPORTER', surplace: '🍽️ SUR PLACE' };
+
+                return `
+                    <div class="order-card" data-order-id="${order.id}">
+                        <div class="order-header">
+                            <span class="order-number">#${order.order_number}</span>
+                            <span class="order-type-badge ${order.order_type}">${typeIcons[order.order_type] || order.order_type}</span>
+                        </div>
+                        <div class="order-customer">
+                            👤 ${order.customer_name || 'Client'} • 📞 ${order.customer_phone || '-'}
+                            ${order.customer_address ? `<br>📍 ${order.customer_address}` : ''}
+                        </div>
+                        <div class="order-items">
+                            ${itemsText || 'Aucun article'}
+                        </div>
+                        <div class="order-footer">
+                            <span class="order-total">${(order.total || 0).toFixed(2)}€</span>
+                            <div class="order-actions">
+                                <button class="action-btn print" onclick="printOrderTicket('${order.id}')" title="Imprimer">🖨️</button>
+                                <button class="action-btn loyalty" onclick="showLoyalty('${order.customer_phone || ''}')" title="Fidélité">⭐</button>
+                                <button class="action-btn whatsapp" onclick="resendWhatsAppOrder('${order.id}')" title="WhatsApp">💬</button>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        async function printOrderTicket(orderId) {
+            const order = ordersData.find(o => o.id === orderId);
+            if (!order) return;
+            const btn = event.currentTarget;
+            btn.style.opacity = '0.5';
+            try {
+                if (window.electronAPI) await window.electronAPI.printTicket(order);
+            } finally { setTimeout(() => btn.style.opacity = '1', 1000); }
+        }
+
+        async function resendWhatsAppOrder(orderId) {
+            const order = ordersData.find(o => o.id === orderId);
+            if (!order) return;
+            try {
+                if (window.electronAPI) await window.electronAPI.sendWhatsApp(order.customer_phone, 'Votre commande est prête!');
+            } catch (error) { alert('Erreur WhatsApp'); }
+        }
+
+        async function showLoyalty(phone) {
+            if (!phone) { alert('Pas de téléphone'); return; }
+            document.getElementById('loyaltyPhone').textContent = phone;
+            document.getElementById('loyaltyModal').classList.add('active');
+
+            if (window.electronAPI) {
+                try {
+                    const data = await window.electronAPI.getLoyalty(phone);
+                    const stampsContainer = document.getElementById('loyaltyStamps');
+                    stampsContainer.innerHTML = '';
+                    for (let i = 0; i < 10; i++) {
+                        const el = document.createElement('div');
+                        el.className = `stamp ${i < (data.stamps || 0) ? 'filled' : ''}`;
+                        el.innerText = i < (data.stamps || 0) ? '🍕' : '';
+                        stampsContainer.appendChild(el);
+                    }
+                    document.getElementById('stampCount').textContent = data.stamps || 0;
+                    document.getElementById('pizzaCredits').textContent = data.credits?.length || 0;
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        function closeLoyaltyModal() {
+            document.getElementById('loyaltyModal').classList.remove('active');
+        }
+    </script>
+</body>
+
+</html>

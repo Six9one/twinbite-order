@@ -23,6 +23,7 @@ interface DeliveryZone {
   min_order: number;
   radius: number | null;
   color: string | null;
+  geojson?: GeoJSON.Polygon | null;
 }
 
 export function DeliveryMapSection() {
@@ -35,8 +36,8 @@ export function DeliveryMapSection() {
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [mapboxToken, setMapboxToken] = useState<string>('');
 
-  // Precompute zones with valid coordinates for map display
-  const zonesWithCoords = zones.filter((z) => z.latitude && z.longitude);
+  // Precompute zones with valid geometry for map display
+  const zonesWithCoords = zones.filter((z) => z.geojson || (z.latitude && z.longitude));
   const hasValidToken = mapboxToken.length > 20;
 
   // Fetch Mapbox token from edge function
@@ -155,20 +156,39 @@ export function DeliveryMapSection() {
             `))
             .addTo(map.current);
 
-          // Filter zones with valid coordinates for map display
-          const validZones = zones.filter(z => z.latitude && z.longitude);
+          // Filter zones - either has geojson OR has coordinates
+          const validZones = zones.filter(z => z.geojson || (z.latitude && z.longitude));
 
-          // Add circle zones from database
+          // Add zones from database (polygon or circle based on data)
           validZones.forEach((zone, index) => {
-            if (!map.current || !zone.latitude || !zone.longitude) return;
+            if (!map.current) return;
 
-            const radius = zone.radius || (zone.zone_type === 'main' ? 1000 : zone.zone_type === 'near' ? 800 : 600);
             const color = zone.color || (zone.zone_type === 'main' ? '#f59e0b' : zone.zone_type === 'near' ? '#fbbf24' : '#fcd34d');
+
+            // Determine zone geometry - use geojson polygon if available, otherwise create circle
+            let zoneData: GeoJSON.FeatureCollection;
+            if (zone.geojson) {
+              // Use custom polygon from database
+              zoneData = {
+                type: 'FeatureCollection',
+                features: [{
+                  type: 'Feature',
+                  properties: { name: zone.name },
+                  geometry: zone.geojson
+                }]
+              };
+            } else if (zone.latitude && zone.longitude) {
+              // Fallback to circle
+              const radius = zone.radius || (zone.zone_type === 'main' ? 1000 : zone.zone_type === 'near' ? 800 : 600);
+              zoneData = createCircle([zone.longitude, zone.latitude], radius);
+            } else {
+              return; // Skip if no valid geometry
+            }
 
             // Add zone source
             map.current.addSource(`zone-${index}`, {
               type: 'geojson',
-              data: createCircle([zone.longitude, zone.latitude], radius)
+              data: zoneData
             });
 
             // Add zone fill

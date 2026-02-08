@@ -1,0 +1,11 @@
+{
+    "name": "electron-test",
+    "version": "1.0.0",
+    "main": "test-electron.js",
+    "scripts": {
+        "test": "electron ."
+    },
+    "devDependencies": {
+        "electron": "^33.2.0"
+    }
+}

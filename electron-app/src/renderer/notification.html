@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouvelle Commande - Twin Pizza Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .notification-container {
+            text-align: center;
+            animation: slideIn 0.5s ease-out;
+            max-width: 800px;
+            padding: 40px;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(-50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: 800;
+            color: #f39c12;
+            text-shadow: 0 4px 20px rgba(243, 156, 18, 0.4);
+            margin-bottom: 30px;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .order-number {
+            font-size: 120px;
+            font-weight: 900;
+            color: white;
+            text-shadow: 0 6px 30px rgba(255, 255, 255, 0.3);
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+
+        .order-type {
+            font-size: 42px;
+            font-weight: 700;
+            padding: 15px 40px;
+            border-radius: 50px;
+            display: inline-block;
+            margin-bottom: 30px;
+        }
+
+        .order-type.livraison {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .order-type.emporter {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+
+        .order-type.surplace {
+            background: linear-gradient(135deg, #27ae60, #1e8449);
+        }
+
+        .customer-info {
+            font-size: 28px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .customer-info .icon {
+            margin-right: 10px;
+        }
+
+        .items-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 25px 40px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .items-list {
+            font-size: 24px;
+            line-height: 1.8;
+        }
+
+        .total {
+            font-size: 56px;
+            font-weight: 800;
+            color: #2ecc71;
+            text-shadow: 0 4px 20px rgba(46, 204, 113, 0.4);
+            margin-bottom: 20px;
+        }
+
+        .payment-method {
+            font-size: 24px;
+            padding: 10px 30px;
+            border-radius: 30px;
+            display: inline-block;
+            margin-bottom: 30px;
+        }
+
+        .payment-method.cb {
+            background: #3498db;
+        }
+
+        .payment-method.especes {
+            background: #27ae60;
+        }
+
+        .payment-method.en_ligne {
+            background: #9b59b6;
+        }
+
+        .countdown {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 20px;
+        }
+
+        .click-hint {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body onclick="window.close()">
+    <div class="notification-container">
+        <div class="title">🍕 NOUVELLE COMMANDE! 🍕</div>
+
+        <div class="order-number" id="orderNumber">#--</div>
+
+        <div class="order-type livraison" id="orderType">🚗 LIVRAISON</div>
+
+        <div class="customer-info">
+            <div><span class="icon">👤</span><span id="customerName">Client</span></div>
+            <div><span class="icon">📞</span><span id="customerPhone">-</span></div>
+            <div id="addressLine" style="display: none;"><span class="icon">📍</span><span id="customerAddress">-</span>
+            </div>
+        </div>
+
+        <div class="items-container">
+            <div class="items-list" id="itemsList">
+                Chargement...
+            </div>
+        </div>
+
+        <div class="total">💰 <span id="totalAmount">0.00</span>€</div>
+
+        <div class="payment-method cb" id="paymentMethod">💳 CB</div>
+
+        <div class="countdown">⏱️ Fermeture automatique dans <span id="countdown">5</span> secondes...</div>
+        <div class="click-hint">Cliquez n'importe où pour fermer</div>
+    </div>
+
+    <script>
+        // Handle order data from main process
+        if (window.electronAPI) {
+            window.electronAPI.onOrderData((orderData) => {
+                displayOrder(orderData);
+            });
+        }
+
+        function displayOrder(order) {
+            // Order number
+            document.getElementById('orderNumber').textContent = '#' + order.order_number;
+
+            // Order type
+            const typeEl = document.getElementById('orderType');
+            typeEl.className = 'order-type ' + order.order_type;
+            const typeLabels = {
+                livraison: '🚗 LIVRAISON',
+                emporter: '🛍️ A EMPORTER',
+                surplace: '🍽️ SUR PLACE'
+            };
+            typeEl.textContent = typeLabels[order.order_type] || order.order_type.toUpperCase();
+
+            // Customer info
+            document.getElementById('customerName').textContent = order.customer_name || 'Client';
+            document.getElementById('customerPhone').textContent = order.customer_phone || '-';
+
+            if (order.customer_address) {
+                document.getElementById('addressLine').style.display = 'block';
+                document.getElementById('customerAddress').textContent = order.customer_address;
+            }
+
+            // Items
+            const items = Array.isArray(order.items) ? order.items : [];
+            const itemsHtml = items.map(item => {
+                const name = item.item?.name || item.name || 'Produit';
+                return `${item.quantity}x ${name}`;
+            }).join(' • ');
+            document.getElementById('itemsList').textContent = itemsHtml || 'Aucun article';
+
+            // Total
+            document.getElementById('totalAmount').textContent = (order.total || 0).toFixed(2);
+
+            // Payment method
+            const paymentEl = document.getElementById('paymentMethod');
+            const paymentLabels = {
+                cb: '💳 CB - A PAYER',
+                especes: '💵 ESPÈCES - A PAYER',
+                en_ligne: '✅ PAYÉ EN LIGNE'
+            };
+            paymentEl.textContent = paymentLabels[order.payment_method] || order.payment_method;
+            paymentEl.className = 'payment-method ' + order.payment_method;
+        }
+
+        // Countdown timer
+        let seconds = 5;
+        const countdownEl = document.getElementById('countdown');
+        const timer = setInterval(() => {
+            seconds--;
+            countdownEl.textContent = seconds;
+            if (seconds <= 0) {
+                clearInterval(timer);
+            }
+        }, 1000);
+    </script>
+</body>
+
+</html>
