@@ -120,27 +120,27 @@ export function HeroOrderSelector({
 
   return (
     <div className="max-w-4xl mx-auto px-2 sm:px-0">
-      <p className="text-center text-white/80 mb-4 sm:mb-6 text-base sm:text-lg">
+      <p className="text-center text-white/80 mb-4 sm:mb-6 text-lg sm:text-lg font-medium">
         Comment souhaitez-vous commander ?
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-4 mb-5 sm:mb-6">
         {orderOptions.map(option => {
           const Icon = option.icon;
           return (
             <Card
               key={option.type}
-              className="p-4 sm:p-5 cursor-pointer transition-all duration-300 bg-background/95 hover:bg-primary/10 hover:scale-[1.02] hover:ring-2 hover:ring-primary active:scale-[0.98] touch-target border-2 border-transparent"
+              className="p-5 sm:p-5 cursor-pointer transition-all duration-300 bg-background/95 hover:bg-primary/10 hover:scale-[1.02] active:scale-[0.97] active:bg-primary/20 border-2 border-transparent shadow-lg"
               onClick={() => handleSelect(option.type)}
             >
-              <div className="flex sm:flex-col items-center sm:text-center gap-4 sm:gap-0">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 sm:mx-auto rounded-full flex items-center justify-center sm:mb-4 transition-colors bg-primary flex-shrink-0">
-                  <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+              <div className="flex items-center gap-5 sm:flex-col sm:text-center sm:gap-0">
+                <div className="w-16 h-16 sm:w-16 sm:h-16 sm:mx-auto rounded-full flex items-center justify-center sm:mb-4 transition-colors bg-primary flex-shrink-0 shadow-md">
+                  <Icon className="w-8 h-8 sm:w-8 sm:h-8 text-white" />
                 </div>
                 <div className="flex-1 sm:flex-none">
-                  <h3 className="font-display font-bold text-lg sm:text-xl mb-0.5 sm:mb-1">{option.label}</h3>
-                  <p className="text-sm text-muted-foreground mb-2 sm:mb-3">{option.description}</p>
-                  <span className="inline-block text-xs font-semibold px-3 py-1.5 rounded-full bg-primary/10 text-primary whitespace-nowrap">
+                  <h3 className="font-display font-bold text-xl sm:text-xl mb-1 sm:mb-1">{option.label}</h3>
+                  <p className="text-base sm:text-sm text-muted-foreground mb-2 sm:mb-3">{option.description}</p>
+                  <span className="inline-block text-sm sm:text-xs font-semibold px-4 py-2 sm:px-3 sm:py-1.5 rounded-full bg-primary/10 text-primary whitespace-nowrap">
                     🍕 {option.promo}
                   </span>
                 </div>
@@ -155,9 +155,9 @@ export function HeroOrderSelector({
         <Button
           onClick={handleScheduleClick}
           variant="outline"
-          className="gap-2 px-5 sm:px-6 py-3 h-12 sm:h-auto bg-purple-600/90 hover:bg-purple-700 border-purple-500 text-white text-sm sm:text-base"
+          className="gap-2 px-6 sm:px-6 py-4 sm:py-3 h-14 sm:h-auto bg-purple-600/90 hover:bg-purple-700 border-purple-500 text-white text-base sm:text-base font-semibold rounded-xl"
         >
-          <CalendarClock className="w-5 h-5" />
+          <CalendarClock className="w-6 h-6 sm:w-5 sm:h-5" />
           Commander pour plus tard
         </Button>
       </div>

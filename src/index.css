@@ -1065,3 +1065,154 @@
   left: 10px;
   transform: rotate(-15deg);
 }
+
+/* ====================================
+   MOBILE APP-LIKE EXPERIENCE
+   ====================================
+   Make the site feel like a native app on phones
+*/
+
+/* Increase base font size on mobile for better readability */
+@media (max-width: 640px) {
+  html {
+    font-size: 18px;
+    /* Larger base font for mobile */
+  }
+
+  /* App-like container padding */
+  .container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Bigger, tappable buttons throughout */
+  button,
+  .btn,
+  [role="button"] {
+    min-height: 48px;
+    /* Minimum touch target */
+    font-size: 1rem;
+  }
+
+  /* Full-width order type cards on mobile */
+  .order-type-card,
+  [data-order-card] {
+    padding: 1.25rem !important;
+  }
+
+  /* Make header more compact */
+  header .container {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  /* Larger cart button on mobile */
+  header button[class*="bg-primary"] {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+    height: 3rem !important;
+  }
+
+  /* Hero section fills more of the viewport */
+  section[class*="min-h-"] {
+    min-height: 55vh !important;
+  }
+
+  /* Hero title - bigger and bolder */
+  h1[class*="text-3xl"] {
+    font-size: 2.5rem !important;
+    line-height: 1.1;
+  }
+
+  /* Cards should have less internal padding */
+  .card,
+  [class*="rounded-xl"] {
+    padding: 1rem;
+  }
+
+  /* Input fields taller for easier tapping */
+  input,
+  select,
+  textarea {
+    min-height: 48px !important;
+    font-size: 16px !important;
+    /* Prevents iOS zoom on focus */
+  }
+
+  /* Footer more compact */
+  footer {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+  }
+
+  /* Dialogs take full width on mobile */
+  [role="dialog"]>div {
+    max-width: 100% !important;
+    margin: 0.5rem !important;
+    border-radius: 1rem !important;
+  }
+
+  /* Bottom padding for mobile browsers with bottom bars */
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+/* Very small phones (iPhone SE, etc) */
+@media (max-width: 375px) {
+  html {
+    font-size: 16px;
+  }
+
+  h1[class*="text-3xl"] {
+    font-size: 2rem !important;
+  }
+
+  .container {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+}
+
+/* Touch-friendly interactive states */
+@media (hover: none) and (pointer: coarse) {
+
+  /* Remove hover effects on touch devices - use active instead */
+  button:active,
+  a:active,
+  [role="button"]:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+  }
+
+  /* Bigger touch targets for links */
+  a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Larger checkboxes and radios */
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 24px !important;
+    height: 24px !important;
+  }
+}
+
+/* Smooth scrolling and momentum on iOS */
+.overflow-y-auto,
+.overflow-auto,
+[class*="overflow-y-scroll"] {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fix for iOS input zoom */
+@supports (-webkit-touch-callout: none) {
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
