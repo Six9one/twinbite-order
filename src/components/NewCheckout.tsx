@@ -816,48 +816,49 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         )}
 
         {step === 'info' && (
-          <div className="space-y-4 sm:space-y-5">
+          <div className="space-y-5 sm:space-y-5">
             <div>
-              <Label htmlFor="name" className="text-sm sm:text-base font-semibold">Nom *</Label>
+              <Label htmlFor="name" className="text-base sm:text-base font-semibold">Nom *</Label>
               <Input
                 id="name"
                 value={customerInfo.name}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
                 placeholder="Votre nom"
-                className="mt-1.5 sm:mt-2"
+                className="mt-2 h-14 text-base rounded-xl"
               />
             </div>
             <div>
-              <Label htmlFor="phone" className="text-sm sm:text-base font-semibold">Téléphone *</Label>
+              <Label htmlFor="phone" className="text-base sm:text-base font-semibold">Téléphone *</Label>
               <Input
                 id="phone"
                 type="tel"
+                inputMode="numeric"
                 value={customerInfo.phone}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
                 placeholder="06 XX XX XX XX"
-                className="mt-1.5 sm:mt-2"
+                className="mt-2 h-14 text-base rounded-xl"
               />
             </div>
             {orderType === 'livraison' && (
               <div>
-                <Label htmlFor="address">Adresse de livraison *</Label>
+                <Label htmlFor="address" className="text-base font-semibold">Adresse de livraison *</Label>
                 <Textarea
                   id="address"
                   value={customerInfo.address}
                   onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
                   placeholder="Votre adresse complète"
-                  className="mt-1"
+                  className="mt-2 text-base min-h-[80px] rounded-xl"
                 />
               </div>
             )}
             <div>
-              <Label htmlFor="notes">Notes (optionnel)</Label>
+              <Label htmlFor="notes" className="text-base font-semibold">Notes (optionnel)</Label>
               <Textarea
                 id="notes"
                 value={customerInfo.notes}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, notes: e.target.value })}
                 placeholder="Instructions spéciales..."
-                className="mt-1"
+                className="mt-2 text-base min-h-[60px] rounded-xl"
               />
             </div>
 
@@ -1381,12 +1382,12 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         )}
       </div>
 
-      {/* Bottom Action */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
-        <div className="container mx-auto">
+      {/* Bottom Action - FIXED for mobile */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t-2 border-primary/20 p-4 pb-6 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+        <div className="container mx-auto max-w-lg">
           {step === 'info' && (
             <Button
-              className="w-full h-14 text-lg"
+              className="w-full h-16 text-xl font-bold rounded-2xl shadow-lg active:scale-[0.98]"
               onClick={() => validateInfo() && setStep('payment')}
               disabled={!isCartValid}
             >
@@ -1395,7 +1396,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           )}
           {step === 'payment' && (
             <Button
-              className="w-full h-14 text-lg"
+              className="w-full h-16 text-xl font-bold rounded-2xl shadow-lg active:scale-[0.98]"
               onClick={() => {
                 // If not already scheduled, go to schedule-confirm step first
                 if (!scheduledInfo.isScheduled && !scheduleAsked) {
@@ -1413,7 +1414,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                className="flex-1 h-14 text-lg"
+                className="flex-1 h-14 text-sm sm:text-lg font-bold rounded-xl border-2 active:scale-[0.98]"
                 onClick={() => {
                   setScheduleAsked(true);
                   setStep('confirm');
@@ -1422,7 +1423,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 Commander maintenant
               </Button>
               <Button
-                className="flex-1 h-14 text-lg bg-purple-600 hover:bg-purple-700"
+                className="flex-1 h-14 text-sm sm:text-lg font-bold bg-purple-600 hover:bg-purple-700 rounded-xl shadow-md active:scale-[0.98]"
                 onClick={() => {
                   // User wants to schedule - they'll pick date in the step view
                   setScheduleAsked(true);
@@ -1434,13 +1435,13 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           )}
           {step === 'confirm' && (
             <Button
-              className="w-full h-14 text-lg"
+              className="w-full h-16 text-xl font-bold rounded-2xl shadow-lg active:scale-[0.98] bg-green-600 hover:bg-green-700"
               onClick={handleConfirmOrder}
               disabled={isProcessing || orderSubmitted || !isCartValid}
             >
               {isProcessing ? (
                 <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  <Loader2 className="w-6 h-6 mr-2 animate-spin" />
                   {paymentMethod === 'en_ligne' ? 'Redirection...' : 'Envoi en cours...'}
                 </>
               ) : (
