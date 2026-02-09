@@ -23,6 +23,9 @@ import TicketPortal from "./pages/TicketPortal";
 import CrewDashboard from "./pages/CrewDashboard";
 import KitchenDashboard from "./pages/KitchenDashboard";
 import NotFound from "./pages/NotFound";
+import MentionsLegales from "./pages/MentionsLegales";
+import Confidentialite from "./pages/Confidentialite";
+import CGV from "./pages/CGV";
 
 // Components
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -51,6 +54,10 @@ const App = () => (
                 <Route path="/tickets" element={<TicketPortal />} />
                 <Route path="/ticket" element={<TicketPortal />} />
                 <Route path="/kitchen" element={<KitchenDashboard />} />
+                {/* Legal pages */}
+                <Route path="/mentions-legales" element={<MentionsLegales />} />
+                <Route path="/confidentialite" element={<Confidentialite />} />
+                <Route path="/cgv" element={<CGV />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

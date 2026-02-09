@@ -125,8 +125,18 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-background/20 pt-6 text-center text-sm text-background/50">
-          © 2025 Twin Pizza Grand-Couronne. Tous droits réservés.
+        {/* Legal Links */}
+        <div className="border-t border-background/20 pt-6">
+          <div className="flex flex-wrap justify-center gap-4 text-xs text-background/60 mb-4">
+            <Link to="/mentions-legales" className="hover:text-primary transition-colors">Mentions Légales</Link>
+            <span className="text-background/30">•</span>
+            <Link to="/confidentialite" className="hover:text-primary transition-colors">Confidentialité</Link>
+            <span className="text-background/30">•</span>
+            <Link to="/cgv" className="hover:text-primary transition-colors">CGV</Link>
+          </div>
+          <div className="text-center text-sm text-background/50">
+            © 2026 Twin Pizza Grand-Couronne. Tous droits réservés.
+          </div>
         </div>
       </div>
     </footer>
