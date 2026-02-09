@@ -263,6 +263,22 @@ function startPrinter() {
 
     emitStatus();
     syncStatusToSupabase('printer', true);
+
+    // Trigger recovery after printer starts (wait for it to stabilize)
+    setTimeout(async () => {
+        try {
+            addLog('printer', 'info', '🔄 Déclenchement de la récupération des impressions manquées...');
+            const response = await fetch('http://localhost:3001/recover-prints', { method: 'POST' });
+            const result = await response.json();
+            if (result.recovered > 0) {
+                addLog('printer', 'highlight', `✅ Récupération: ${result.recovered} commande(s) imprimée(s)`);
+            } else {
+                addLog('printer', 'success', '✅ Aucune impression manquée');
+            }
+        } catch (err) {
+            addLog('printer', 'warning', `⚠️ Récupération échouée: ${err.message}`);
+        }
+    }, 8000);
 }
 
 function stopPrinter() {

@@ -617,7 +617,156 @@ async function handleNewOrder(order) {
         printedOrders.set(order.id, Date.now());
         // Save to file for persistence
         savePrintedOrders();
-        console.log(`✅ Order ${order.order_number} saved to printed cache`);
+        // Mark as printed in database
+        await markOrderPrinted(order.id);
+        console.log(`✅ Order ${order.order_number} saved to printed cache + DB`);
+    } else {
+        // Mark failed attempt in database
+        await markPrintAttempt(order.id, 'Print failed after retries');
+    }
+}
+
+// ============================================
+// ORDER PROCESSING STATUS TRACKING
+// ============================================
+
+// Mark order as printed in database
+async function markOrderPrinted(orderId) {
+    try {
+        const { error } = await supabase
+            .from('order_processing_status')
+            .upsert({
+                order_id: orderId,
+                printed: true,
+                print_attempts: 1,
+                last_print_attempt: new Date().toISOString()
+            }, { onConflict: 'order_id' });
+
+        if (error) {
+            console.log('⚠️ Could not update print status in DB:', error.message);
+        }
+    } catch (err) {
+        console.log('⚠️ DB update error:', err.message);
+    }
+}
+
+// Mark failed print attempt
+async function markPrintAttempt(orderId, errorMsg) {
+    try {
+        // First check if record exists
+        const { data: existing } = await supabase
+            .from('order_processing_status')
+            .select('print_attempts')
+            .eq('order_id', orderId)
+            .single();
+
+        const attempts = (existing?.print_attempts || 0) + 1;
+
+        const { error } = await supabase
+            .from('order_processing_status')
+            .upsert({
+                order_id: orderId,
+                printed: false,
+                print_attempts: attempts,
+                last_print_attempt: new Date().toISOString(),
+                print_error: errorMsg
+            }, { onConflict: 'order_id' });
+
+        if (error) {
+            console.log('⚠️ Could not update print attempt in DB:', error.message);
+        }
+    } catch (err) {
+        console.log('⚠️ DB update error:', err.message);
+    }
+}
+
+// Recover and print all missed orders
+async function recoverMissedPrints() {
+    console.log('\n🔄 ===== CHECKING FOR MISSED PRINTS =====');
+
+    try {
+        // Get orders from last 24 hours that haven't been printed
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+        // First, get all recent orders
+        const { data: recentOrders, error: ordersError } = await supabase
+            .from('orders')
+            .select('id, order_number, created_at')
+            .gte('created_at', twentyFourHoursAgo)
+            .order('created_at', { ascending: true });
+
+        if (ordersError) {
+            console.error('❌ Error fetching recent orders:', ordersError.message);
+            return { recovered: 0, failed: 0 };
+        }
+
+        if (!recentOrders || recentOrders.length === 0) {
+            console.log('✅ No recent orders to check');
+            return { recovered: 0, failed: 0 };
+        }
+
+        // Get processing status for these orders
+        const orderIds = recentOrders.map(o => o.id);
+        const { data: statusData, error: statusError } = await supabase
+            .from('order_processing_status')
+            .select('order_id, printed')
+            .in('order_id', orderIds);
+
+        // Create a map of printed status
+        const printedMap = new Map();
+        if (statusData) {
+            statusData.forEach(s => printedMap.set(s.order_id, s.printed));
+        }
+
+        // Find orders that are NOT printed
+        const missedOrders = recentOrders.filter(order => {
+            // Check DB status
+            const dbPrinted = printedMap.get(order.id);
+            // Check local cache
+            const localPrinted = printedOrders.has(order.id);
+
+            // If neither DB nor local says printed, it's missed
+            return !dbPrinted && !localPrinted;
+        });
+
+        if (missedOrders.length === 0) {
+            console.log('✅ All orders from last 24h have been printed!');
+            return { recovered: 0, failed: 0 };
+        }
+
+        console.log(`\n⚠️ Found ${missedOrders.length} MISSED order(s)! Recovering...\n`);
+
+        let recovered = 0;
+        let failed = 0;
+
+        for (const missedOrder of missedOrders) {
+            // Fetch full order data
+            const { data: fullOrder, error: fetchError } = await supabase
+                .from('orders')
+                .select('*')
+                .eq('id', missedOrder.id)
+                .single();
+
+            if (fetchError || !fullOrder) {
+                console.error(`❌ Could not fetch order ${missedOrder.order_number}:`, fetchError?.message);
+                failed++;
+                continue;
+            }
+
+            console.log(`🔄 RECOVERING order #${fullOrder.order_number}...`);
+            await handleNewOrder(fullOrder);
+            recovered++;
+
+            // Small delay between prints
+            await new Promise(r => setTimeout(r, 2000));
+        }
+
+        console.log(`\n✅ RECOVERY COMPLETE: ${recovered} printed, ${failed} failed\n`);
+        return { recovered, failed };
+
+    } catch (err) {
+        console.error('❌ Recovery error:', err.message);
+        return { recovered: 0, failed: 0 };
     }
 }
 
@@ -905,10 +1054,27 @@ function setupHttpServer() {
         }
     });
 
+    // Recovery endpoint - print all missed orders
+    app.post('/recover-prints', async (req, res) => {
+        console.log('\n📥 Recovery request received');
+        try {
+            const result = await recoverMissedPrints();
+            res.json({
+                success: true,
+                message: `Recovered ${result.recovered} orders, ${result.failed} failed`,
+                ...result
+            });
+        } catch (error) {
+            console.error('❌ Recovery endpoint error:', error.message);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     app.listen(HTTP_PORT, '0.0.0.0', () => {
         console.log(`🌐 HTTP server listening on port ${HTTP_PORT}`);
         console.log(`   HACCP endpoint: http://localhost:${HTTP_PORT}/print-haccp`);
         console.log(`   Reprint endpoint: POST http://localhost:${HTTP_PORT}/reprint/:orderNumber`);
+        console.log(`   Recovery endpoint: POST http://localhost:${HTTP_PORT}/recover-prints`);
     });
 }
 
@@ -943,6 +1109,12 @@ async function startServer() {
 
     // Start HTTP server for HACCP printing
     setupHttpServer();
+
+    // 🔄 RECOVERY: Check for missed prints on startup
+    console.log('\n🔄 Running startup recovery check...');
+    setTimeout(async () => {
+        await recoverMissedPrints();
+    }, 5000); // Wait 5s for system to stabilize
 
     // Handle graceful shutdown
     process.on('SIGINT', async () => {

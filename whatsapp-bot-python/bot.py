@@ -731,8 +731,13 @@ Merci pour votre confiance !
 *TWIN PIZZA*"""
     
     # Send the message
-    send_whatsapp_message(phone, message)
-    safe_print("[OK] Message complet envoye!")
+    success = send_whatsapp_message(phone, message)
+    if success:
+        mark_whatsapp_sent(order.get('id'), get_api_headers())
+        safe_print("[OK] Message complet envoye!")
+    else:
+        mark_whatsapp_attempt(order.get('id'), "Failed to send message", get_api_headers())
+        safe_print("[WARN] Echec envoi message")
 
 def send_ready_notification(order: dict):
     """Send order ready notification"""
@@ -760,7 +765,203 @@ Votre commande *{order_number}* est *PRETE* !
 
 A tres vite !"""
     
-    send_whatsapp_message(phone, message)
+    success = send_whatsapp_message(phone, message)
+    return success
+
+# ===========================================
+# ORDER PROCESSING STATUS TRACKING
+# ===========================================
+
+def get_api_headers():
+    """Get Supabase API headers"""
+    return {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+    }
+
+def mark_whatsapp_sent(order_id: str, headers: dict = None):
+    """Mark order as WhatsApp sent in database"""
+    if not order_id:
+        return
+    
+    if not headers:
+        headers = get_api_headers()
+    
+    try:
+        data = {
+            "order_id": order_id,
+            "whatsapp_sent": True,
+            "whatsapp_attempts": 1,
+            "last_whatsapp_attempt": datetime.now().isoformat()
+        }
+        
+        response = httpx.post(
+            f"{SUPABASE_URL}/rest/v1/order_processing_status",
+            headers={**headers, "Prefer": "resolution=merge-duplicates"},
+            json=data,
+            timeout=10.0
+        )
+        
+        if response.status_code not in [200, 201, 204]:
+            safe_print(f"[WARN] Could not update WhatsApp status: {response.status_code}")
+    except Exception as e:
+        safe_print(f"[WARN] DB update error: {e}")
+
+def mark_whatsapp_attempt(order_id: str, error_msg: str, headers: dict = None):
+    """Mark failed WhatsApp attempt in database"""
+    if not order_id:
+        return
+    
+    if not headers:
+        headers = get_api_headers()
+    
+    try:
+        # Get current attempts
+        attempts = 1
+        try:
+            response = httpx.get(
+                f"{SUPABASE_URL}/rest/v1/order_processing_status",
+                headers=headers,
+                params={"select": "whatsapp_attempts", "order_id": f"eq.{order_id}"},
+                timeout=10.0
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data and len(data) > 0:
+                    attempts = (data[0].get('whatsapp_attempts') or 0) + 1
+        except:
+            pass
+        
+        data = {
+            "order_id": order_id,
+            "whatsapp_sent": False,
+            "whatsapp_attempts": attempts,
+            "last_whatsapp_attempt": datetime.now().isoformat(),
+            "whatsapp_error": error_msg
+        }
+        
+        response = httpx.post(
+            f"{SUPABASE_URL}/rest/v1/order_processing_status",
+            headers={**headers, "Prefer": "resolution=merge-duplicates"},
+            json=data,
+            timeout=10.0
+        )
+    except Exception as e:
+        safe_print(f"[WARN] DB update error: {e}")
+
+def recover_missed_messages(headers: dict):
+    """Recover and send all missed WhatsApp confirmations"""
+    safe_print("\n" + "="*50)
+    safe_print("[RECOVERY] VERIFICATION DES MESSAGES MANQUES...")
+    safe_print("="*50)
+    
+    try:
+        # Get orders from last 24 hours
+        from datetime import timedelta
+        twenty_four_hours_ago = (datetime.now() - timedelta(hours=24)).isoformat()
+        
+        # Fetch recent orders
+        response = httpx.get(
+            f"{SUPABASE_URL}/rest/v1/orders",
+            headers=headers,
+            params={
+                "select": "id,order_number,customer_phone,customer_name,created_at",
+                "created_at": f"gte.{twenty_four_hours_ago}",
+                "order": "created_at.asc"
+            },
+            timeout=30.0
+        )
+        
+        if response.status_code != 200:
+            safe_print(f"[ERROR] Could not fetch recent orders: {response.status_code}")
+            return 0, 0
+        
+        recent_orders = response.json()
+        
+        if not recent_orders:
+            safe_print("[OK] Aucune commande recente a verifier")
+            return 0, 0
+        
+        # Get processing status for these orders
+        order_ids = [o['id'] for o in recent_orders]
+        
+        # Fetch WhatsApp status
+        response = httpx.get(
+            f"{SUPABASE_URL}/rest/v1/order_processing_status",
+            headers=headers,
+            params={
+                "select": "order_id,whatsapp_sent",
+                "order_id": f"in.({','.join(order_ids)})"
+            },
+            timeout=30.0
+        )
+        
+        sent_map = {}
+        if response.status_code == 200:
+            for status in response.json():
+                sent_map[status['order_id']] = status.get('whatsapp_sent', False)
+        
+        # Find missed orders (not sent)
+        missed_orders = []
+        for order in recent_orders:
+            order_id = order['id']
+            if not sent_map.get(order_id, False):
+                # Check if order has phone number
+                if order.get('customer_phone'):
+                    missed_orders.append(order)
+        
+        if not missed_orders:
+            safe_print("[OK] Tous les messages des 24h ont ete envoyes!")
+            return 0, 0
+        
+        safe_print(f"\n[!] {len(missed_orders)} commande(s) sans confirmation WhatsApp!")
+        safe_print("[*] Recuperation en cours...\n")
+        
+        recovered = 0
+        failed = 0
+        
+        for missed in missed_orders:
+            order_num = missed.get('order_number', 'N/A')
+            phone = missed.get('customer_phone', '')
+            customer = missed.get('customer_name', 'Client')
+            
+            safe_print(f"[RECOVERY] Envoi a {customer} (N{order_num})...")
+            
+            # Fetch full order
+            try:
+                response = httpx.get(
+                    f"{SUPABASE_URL}/rest/v1/orders",
+                    headers=headers,
+                    params={"select": "*", "id": f"eq.{missed['id']}"},
+                    timeout=30.0
+                )
+                
+                if response.status_code == 200:
+                    full_orders = response.json()
+                    if full_orders:
+                        send_order_confirmation(full_orders[0])
+                        recovered += 1
+                    else:
+                        failed += 1
+                else:
+                    failed += 1
+            except Exception as e:
+                safe_print(f"[ERROR] {e}")
+                failed += 1
+            
+            # Delay between messages to avoid rate limiting
+            time.sleep(5)
+        
+        safe_print(f"\n[RECOVERY COMPLETE] {recovered} envoyes, {failed} echecs")
+        safe_print("-" * 50 + "\n")
+        
+        return recovered, failed
+        
+    except Exception as e:
+        safe_print(f"[ERROR] Recovery error: {e}")
+        return 0, 0
 
 # ===========================================
 # SUPABASE REALTIME LISTENER
@@ -831,6 +1032,12 @@ def listen_for_orders():
         
         # Show Windows notification that bot is ready
         show_notification("WhatsApp Bot ✅", "Bot connecte et pret! En attente de commandes...")
+        
+        # RECOVERY: Send missed messages
+        safe_print("\n[*] Verification des messages manques...")
+        recovered, failed = recover_missed_messages(headers)
+        if recovered > 0:
+            show_notification("WhatsApp Bot Recovery", f"{recovered} message(s) de recuperation envoye(s)!")
         
         poll_count = 0
         while True:
