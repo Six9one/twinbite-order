@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Edit2, Save, X, ExternalLink, RefreshCw, Trash2, Plus, User, Phone, Ticket } from 'lucide-react';
+import { Search, Edit2, Save, X, ExternalLink, RefreshCw, Trash2, Plus, User, Phone, Ticket, Printer, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
     Dialog,
@@ -58,6 +58,7 @@ export function TicketManager() {
     const [editTotal, setEditTotal] = useState(0);
     const [editStatus, setEditStatus] = useState('');
     const [editItems, setEditItems] = useState<OrderItem[]>([]);
+    const [printing, setPrinting] = useState(false);
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -135,6 +136,26 @@ export function TicketManager() {
 
     const addItem = () => {
         setEditItems([...editItems, { name: 'Nouvel Article', quantity: 1, price: 0 }]);
+    };
+
+    const handleDirectPrint = async (order: Order) => {
+        setPrinting(true);
+        try {
+            const response = await fetch(`http://localhost:3001/reprint/${order.order_number}`, {
+                method: 'POST',
+            });
+            const result = await response.json();
+            if (result.success) {
+                toast.success(`Ticket #${order.order_number} envoyé à l'imprimante !`);
+            } else {
+                toast.error(result.error || 'Erreur lors de l\'impression');
+            }
+        } catch (error) {
+            console.error('Print error:', error);
+            toast.error('Impossible de contacter le serveur d\'impression. Vérifiez qu\'il est en marche.');
+        } finally {
+            setPrinting(false);
+        }
     };
 
     return (
@@ -292,6 +313,21 @@ export function TicketManager() {
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    <div className="p-4 border-t bg-muted/30 flex justify-end">
+                        <Button
+                            className="gap-2 bg-amber-500 hover:bg-amber-600 text-black border-none font-bold"
+                            onClick={() => viewingOrder && handleDirectPrint(viewingOrder)}
+                            disabled={printing}
+                        >
+                            {printing ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Printer className="h-4 w-4" />
+                            )}
+                            {printing ? 'Impression...' : 'Imprimer le Ticket'}
+                        </Button>
                     </div>
                 </DialogContent>
             </Dialog>
