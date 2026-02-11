@@ -852,96 +852,62 @@ def mark_whatsapp_attempt(order_id: str, error_msg: str, headers: dict = None):
         safe_print(f"[WARN] DB update error: {e}")
 
 def recover_missed_messages(headers: dict):
-    """Recover and send all missed WhatsApp confirmations"""
+    """Recover and send ONLY orders explicitly marked as whatsapp_sent=false in DB.
+    Orders without a tracking record are assumed to have been sent already (pre-tracking).
+    """
     safe_print("\n" + "="*50)
     safe_print("[RECOVERY] VERIFICATION DES MESSAGES MANQUES...")
     safe_print("="*50)
     
     try:
-        # Get orders from last 24 hours
         from datetime import timedelta
-        twenty_four_hours_ago = (datetime.now() - timedelta(hours=24)).isoformat()
+        one_hour_ago = (datetime.now() - timedelta(hours=1)).isoformat()
         
-        # Fetch recent orders
+        # ONLY get orders explicitly marked as NOT sent in the tracking table
         response = httpx.get(
-            f"{SUPABASE_URL}/rest/v1/orders",
+            f"{SUPABASE_URL}/rest/v1/order_processing_status",
             headers=headers,
             params={
-                "select": "id,order_number,customer_phone,customer_name,created_at",
-                "created_at": f"gte.{twenty_four_hours_ago}",
-                "order": "created_at.asc"
+                "select": "order_id",
+                "whatsapp_sent": "eq.false",
+                "whatsapp_attempts": "gt.0",
+                "last_whatsapp_attempt": f"gte.{one_hour_ago}"
             },
             timeout=30.0
         )
         
         if response.status_code != 200:
-            safe_print(f"[ERROR] Could not fetch recent orders: {response.status_code}")
+            safe_print(f"[OK] Pas de table de suivi ou erreur ({response.status_code}), skip recovery")
             return 0, 0
         
-        recent_orders = response.json()
+        failed_records = response.json()
         
-        if not recent_orders:
-            safe_print("[OK] Aucune commande recente a verifier")
+        if not failed_records:
+            safe_print("[OK] Aucun message en echec a renvoyer!")
             return 0, 0
         
-        # Get processing status for these orders
-        order_ids = [o['id'] for o in recent_orders]
-        
-        # Fetch WhatsApp status
-        response = httpx.get(
-            f"{SUPABASE_URL}/rest/v1/order_processing_status",
-            headers=headers,
-            params={
-                "select": "order_id,whatsapp_sent",
-                "order_id": f"in.({','.join(order_ids)})"
-            },
-            timeout=30.0
-        )
-        
-        sent_map = {}
-        if response.status_code == 200:
-            for status in response.json():
-                sent_map[status['order_id']] = status.get('whatsapp_sent', False)
-        
-        # Find missed orders (not sent)
-        missed_orders = []
-        for order in recent_orders:
-            order_id = order['id']
-            if not sent_map.get(order_id, False):
-                # Check if order has phone number
-                if order.get('customer_phone'):
-                    missed_orders.append(order)
-        
-        if not missed_orders:
-            safe_print("[OK] Tous les messages des 24h ont ete envoyes!")
-            return 0, 0
-        
-        safe_print(f"\n[!] {len(missed_orders)} commande(s) sans confirmation WhatsApp!")
+        order_ids = [r['order_id'] for r in failed_records]
+        safe_print(f"\n[!] {len(order_ids)} commande(s) avec envoi WhatsApp echoue")
         safe_print("[*] Recuperation en cours...\n")
         
         recovered = 0
         failed = 0
         
-        for missed in missed_orders:
-            order_num = missed.get('order_number', 'N/A')
-            phone = missed.get('customer_phone', '')
-            customer = missed.get('customer_name', 'Client')
-            
-            safe_print(f"[RECOVERY] Envoi a {customer} (N{order_num})...")
-            
-            # Fetch full order
+        for order_id in order_ids:
             try:
                 response = httpx.get(
                     f"{SUPABASE_URL}/rest/v1/orders",
                     headers=headers,
-                    params={"select": "*", "id": f"eq.{missed['id']}"},
+                    params={"select": "*", "id": f"eq.{order_id}"},
                     timeout=30.0
                 )
                 
                 if response.status_code == 200:
                     full_orders = response.json()
-                    if full_orders:
-                        send_order_confirmation(full_orders[0])
+                    if full_orders and full_orders[0].get('customer_phone'):
+                        order = full_orders[0]
+                        safe_print(f"[RECOVERY] Envoi a {order.get('customer_name', 'Client')} (N{order.get('order_number', '?')})...")
+                        send_order_confirmation(order)
                         recovered += 1
                     else:
                         failed += 1
@@ -951,7 +917,6 @@ def recover_missed_messages(headers: dict):
                 safe_print(f"[ERROR] {e}")
                 failed += 1
             
-            # Delay between messages to avoid rate limiting
             time.sleep(5)
         
         safe_print(f"\n[RECOVERY COMPLETE] {recovered} envoyes, {failed} echecs")

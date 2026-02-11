@@ -680,75 +680,47 @@ async function markPrintAttempt(orderId, errorMsg) {
     }
 }
 
-// Recover and print all missed orders
+// Recover and print ONLY orders explicitly marked as failed in the tracking table
+// Orders without a tracking record are assumed to have been printed already (pre-tracking)
 async function recoverMissedPrints() {
     console.log('\n🔄 ===== CHECKING FOR MISSED PRINTS =====');
 
     try {
-        // Get orders from last 24 hours that haven't been printed
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-        // First, get all recent orders
-        const { data: recentOrders, error: ordersError } = await supabase
-            .from('orders')
-            .select('id, order_number, created_at')
-            .gte('created_at', twentyFourHoursAgo)
-            .order('created_at', { ascending: true });
-
-        if (ordersError) {
-            console.error('❌ Error fetching recent orders:', ordersError.message);
-            return { recovered: 0, failed: 0 };
-        }
-
-        if (!recentOrders || recentOrders.length === 0) {
-            console.log('✅ No recent orders to check');
-            return { recovered: 0, failed: 0 };
-        }
-
-        // Get processing status for these orders
-        const orderIds = recentOrders.map(o => o.id);
-        const { data: statusData, error: statusError } = await supabase
+        // ONLY get orders explicitly marked as NOT printed in the tracking table
+        const { data: failedRecords, error: statusError } = await supabase
             .from('order_processing_status')
-            .select('order_id, printed')
-            .in('order_id', orderIds);
+            .select('order_id')
+            .eq('printed', false)
+            .gt('print_attempts', 0)
+            .gte('last_print_attempt', oneHourAgo);
 
-        // Create a map of printed status
-        const printedMap = new Map();
-        if (statusData) {
-            statusData.forEach(s => printedMap.set(s.order_id, s.printed));
-        }
-
-        // Find orders that are NOT printed
-        const missedOrders = recentOrders.filter(order => {
-            // Check DB status
-            const dbPrinted = printedMap.get(order.id);
-            // Check local cache
-            const localPrinted = printedOrders.has(order.id);
-
-            // If neither DB nor local says printed, it's missed
-            return !dbPrinted && !localPrinted;
-        });
-
-        if (missedOrders.length === 0) {
-            console.log('✅ All orders from last 24h have been printed!');
+        if (statusError) {
+            console.log('✅ No tracking table or error, skip recovery:', statusError.message);
             return { recovered: 0, failed: 0 };
         }
 
-        console.log(`\n⚠️ Found ${missedOrders.length} MISSED order(s)! Recovering...\n`);
+        if (!failedRecords || failedRecords.length === 0) {
+            console.log('✅ No failed print attempts to recover!');
+            return { recovered: 0, failed: 0 };
+        }
+
+        const orderIds = failedRecords.map(r => r.order_id);
+        console.log(`\n⚠️ Found ${orderIds.length} order(s) with failed print attempts! Recovering...\n`);
 
         let recovered = 0;
         let failed = 0;
 
-        for (const missedOrder of missedOrders) {
-            // Fetch full order data
+        for (const orderId of orderIds) {
             const { data: fullOrder, error: fetchError } = await supabase
                 .from('orders')
                 .select('*')
-                .eq('id', missedOrder.id)
+                .eq('id', orderId)
                 .single();
 
             if (fetchError || !fullOrder) {
-                console.error(`❌ Could not fetch order ${missedOrder.order_number}:`, fetchError?.message);
+                console.error(`❌ Could not fetch order:`, fetchError?.message);
                 failed++;
                 continue;
             }
