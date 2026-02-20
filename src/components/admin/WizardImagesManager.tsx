@@ -34,28 +34,19 @@ export function WizardImagesManager() {
         setUploading(productType);
 
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `wizard-${productType}-${Date.now()}.${fileExt}`;
+            const { uploadToCloudinary } = await import('@/utils/cloudinary');
+            const imageUrl = await uploadToCloudinary(file);
 
-            const { error: uploadError } = await supabase.storage
-                .from('product-images')
-                .upload(fileName, file);
-
-            if (uploadError) {
+            if (!imageUrl) {
                 toast.error('Erreur upload image');
-                console.error(uploadError);
                 setUploading(null);
                 return;
             }
 
-            const { data: urlData } = supabase.storage
-                .from('product-images')
-                .getPublicUrl(fileName);
-
             // Save image URL to admin_settings
             await updateSetting.mutateAsync({
                 key: `wizard_image_${productType}`,
-                value: { image_url: urlData.publicUrl },
+                value: { image_url: imageUrl },
             });
 
             // Invalidate wizard images cache

@@ -112,32 +112,29 @@ export function TexMexManager() {
     };
 
     const handleImageUpload = async (productId: string, file: File) => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `texmex-${productId}-${Date.now()}.${fileExt}`;
+        try {
+            const { uploadToCloudinary } = await import('@/utils/cloudinary');
+            const imageUrl = await uploadToCloudinary(file);
 
-        const { error: uploadError } = await supabase.storage
-            .from('product-images')
-            .upload(fileName, file);
+            if (!imageUrl) {
+                toast.error('Erreur upload image');
+                return;
+            }
 
-        if (uploadError) {
+            const { error: updateError } = await supabase
+                .from('texmex_products' as any)
+                .update({ image_url: imageUrl })
+                .eq('id', productId);
+
+            if (updateError) {
+                toast.error('Erreur mise à jour image');
+            } else {
+                toast.success('Image mise à jour');
+                fetchData();
+            }
+        } catch (error) {
+            console.error('Error uploading image:', error);
             toast.error('Erreur upload image');
-            return;
-        }
-
-        const { data: urlData } = supabase.storage
-            .from('product-images')
-            .getPublicUrl(fileName);
-
-        const { error: updateError } = await supabase
-            .from('texmex_products' as any)
-            .update({ image_url: urlData.publicUrl })
-            .eq('id', productId);
-
-        if (updateError) {
-            toast.error('Erreur mise à jour image');
-        } else {
-            toast.success('Image mise à jour');
-            fetchData();
         }
     };
 

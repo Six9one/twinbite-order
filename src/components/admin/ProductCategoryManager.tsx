@@ -34,7 +34,7 @@ export function ProductCategoryManager({ categorySlug, title }: ProductCategoryM
 
     if (categoryData) {
       setCategoryId(categoryData.id);
-      
+
       // Then get products for this category
       const { data: productsData } = await supabase
         .from('products')
@@ -42,7 +42,7 @@ export function ProductCategoryManager({ categorySlug, title }: ProductCategoryM
         .eq('category_id', categoryData.id)
         .eq('is_active', true)
         .order('display_order', { ascending: true });
-      
+
       setProducts(productsData || []);
     }
     setLoading(false);
@@ -55,25 +55,17 @@ export function ProductCategoryManager({ categorySlug, title }: ProductCategoryM
   const handleImageUpload = async (productId: string, file: File) => {
     setUploading(productId);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `products/${productId}-${Date.now()}.${fileExt}`;
+      const { uploadToCloudinary } = await import('@/utils/cloudinary');
+      const imageUrl = await uploadToCloudinary(file);
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, file, { upsert: true });
-
-      if (uploadError) {
-        toast.error('Erreur upload: ' + uploadError.message);
+      if (!imageUrl) {
+        toast.error('Erreur upload image');
         return;
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(fileName);
-
       const { error } = await supabase
         .from('products')
-        .update({ image_url: publicUrl })
+        .update({ image_url: imageUrl })
         .eq('id', productId);
 
       if (!error) {
@@ -108,7 +100,7 @@ export function ProductCategoryManager({ categorySlug, title }: ProductCategoryM
         base_price: product.base_price,
       })
       .eq('id', product.id);
-    
+
     if (!error) {
       toast.success('Mis à jour!');
       setEditingId(null);
@@ -121,7 +113,7 @@ export function ProductCategoryManager({ categorySlug, title }: ProductCategoryM
       .from('products')
       .update({ is_active: false })
       .eq('id', id);
-    
+
     if (!error) {
       toast.success('Supprimé!');
       fetchCategoryAndProducts();
@@ -144,7 +136,7 @@ export function ProductCategoryManager({ categorySlug, title }: ProductCategoryM
         is_active: true,
         display_order: products.length,
       });
-    
+
     if (!error) {
       toast.success('Produit ajouté!');
       fetchCategoryAndProducts();
@@ -171,7 +163,7 @@ export function ProductCategoryManager({ categorySlug, title }: ProductCategoryM
           </Button>
         </div>
       </div>
-      
+
       <input
         type="file"
         ref={fileInputRef}
@@ -185,7 +177,7 @@ export function ProductCategoryManager({ categorySlug, title }: ProductCategoryM
           e.target.value = '';
         }}
       />
-      
+
       {/* Add Form */}
       {showAddForm && (
         <Card className="p-4">
@@ -269,14 +261,14 @@ export function ProductCategoryManager({ categorySlug, title }: ProductCategoryM
                 <>
                   <Input
                     value={product.name}
-                    onChange={(e) => setProducts(products.map(p => 
+                    onChange={(e) => setProducts(products.map(p =>
                       p.id === product.id ? { ...p, name: e.target.value } : p
                     ))}
                     placeholder="Nom"
                   />
                   <Textarea
                     value={product.description || ''}
-                    onChange={(e) => setProducts(products.map(p => 
+                    onChange={(e) => setProducts(products.map(p =>
                       p.id === product.id ? { ...p, description: e.target.value } : p
                     ))}
                     placeholder="Description"
@@ -286,7 +278,7 @@ export function ProductCategoryManager({ categorySlug, title }: ProductCategoryM
                     type="number"
                     step="0.01"
                     value={product.base_price}
-                    onChange={(e) => setProducts(products.map(p => 
+                    onChange={(e) => setProducts(products.map(p =>
                       p.id === product.id ? { ...p, base_price: parseFloat(e.target.value) || 0 } : p
                     ))}
                     placeholder="Prix"

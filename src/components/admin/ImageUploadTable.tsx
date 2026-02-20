@@ -36,25 +36,17 @@ export function ImageUploadTable({ tableName, title, hasImage = false }: ImageUp
   const handleImageUpload = async (itemId: string, file: File) => {
     setUploading(itemId);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${tableName}/${itemId}-${Date.now()}.${fileExt}`;
+      const { uploadToCloudinary } = await import('@/utils/cloudinary');
+      const imageUrl = await uploadToCloudinary(file);
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, file, { upsert: true });
-
-      if (uploadError) {
-        toast.error('Erreur upload: ' + uploadError.message);
+      if (!imageUrl) {
+        toast.error('Erreur upload image');
         return;
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(fileName);
-
       const { error } = await supabase
         .from(tableName as any)
-        .update({ image_url: publicUrl })
+        .update({ image_url: imageUrl })
         .eq('id', itemId);
 
       if (!error) {

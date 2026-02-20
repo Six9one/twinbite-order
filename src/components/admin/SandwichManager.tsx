@@ -13,7 +13,7 @@ export function SandwichManager() {
   const updateSandwich = useUpdateSandwichType();
   const createSandwich = useCreateSandwichType();
   const deleteSandwich = useDeleteSandwichType();
-  
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: '', description: '', base_price: 0 });
   const [showNewForm, setShowNewForm] = useState(false);
@@ -24,22 +24,13 @@ export function SandwichManager() {
   const handleImageUpload = async (sandwichId: string, file: File) => {
     try {
       setUploadingId(sandwichId);
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `sandwich-${sandwichId}-${Date.now()}.${fileExt}`;
-      const filePath = `sandwiches/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, file);
+      const { uploadToCloudinary } = await import('@/utils/cloudinary');
+      const imageUrl = await uploadToCloudinary(file);
 
-      if (uploadError) throw uploadError;
+      if (!imageUrl) throw new Error('Upload failed');
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
-
-      await updateSandwich.mutateAsync({ id: sandwichId, image_url: publicUrl });
+      await updateSandwich.mutateAsync({ id: sandwichId, image_url: imageUrl });
       toast.success('Image mise à jour');
     } catch (error) {
       toast.error('Erreur lors du téléchargement');

@@ -177,22 +177,12 @@ export function PizzaManager() {
   const handleNewPizzaImageUpload = async (file: File) => {
     setUploading('new');
     try {
-      // Upload to temp location
-      const fileExt = file.name.split('.').pop();
-      const fileName = `temp-${Date.now()}.${fileExt}`;
-      const filePath = `products/${fileName}`;
+      const { uploadToCloudinary } = await import('@/utils/cloudinary');
+      const imageUrl = await uploadToCloudinary(file);
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, file, { upsert: true });
+      if (!imageUrl) throw new Error('Upload failed');
 
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
-
-      setNewPizza(prev => ({ ...prev, image_url: publicUrl }));
+      setNewPizza(prev => ({ ...prev, image_url: imageUrl }));
       toast.success('Image téléchargée!');
     } catch (error) {
       toast.error('Erreur lors du téléchargement');
