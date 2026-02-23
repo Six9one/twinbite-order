@@ -483,7 +483,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             // After addStamps, the customer context is updated with fresh DB values
             // We need to calculate based on the customer's previous total + this order's stamps
             totalStampsAfter = loyaltyCustomer.totalStamps + stampsEarned;
-            const STAMPS_FOR_FREE = 10;
+            const STAMPS_FOR_FREE = 9;
             freeItemsAfter = Math.floor(totalStampsAfter / STAMPS_FOR_FREE);
           }
 
@@ -873,7 +873,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   {/* Stamps display */}
                   <div className="flex justify-between items-center">
                     <span>Vos tampons:</span>
-                    <span className="font-bold text-amber-600">{customer.stamps || 0} / 10</span>
+                    <span className="font-bold text-amber-600">{customer.stamps || 0} / 9</span>
                   </div>
 
                   {/* Show stamps to earn from this order */}
@@ -896,8 +896,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                     </div>
                   )}
 
-                  {/* Almost there - 9 stamps! */}
-                  {(customer.stamps || 0) % 10 === 9 && (customer.freeItemsAvailable || 0) === 0 && (
+                  {/* Almost there - 8 stamps! */}
+                  {(customer.stamps || 0) % 9 === 8 && (customer.freeItemsAvailable || 0) === 0 && (
                     <div className="mt-2 bg-amber-100 border-2 border-amber-400 rounded-lg p-3 text-center">
                       <p className="text-amber-700 font-bold">
                         🎉 Plus qu'1 achat pour un produit OFFERT!
@@ -906,9 +906,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   )}
 
                   {/* Progress to next free item */}
-                  {(customer.stamps || 0) % 10 < 9 && (customer.freeItemsAvailable || 0) === 0 && (
+                  {(customer.stamps || 0) % 9 < 8 && (customer.freeItemsAvailable || 0) === 0 && (
                     <p className="text-xs text-muted-foreground text-center">
-                      Encore {10 - ((customer.stamps || 0) % 10)} tampon(s) pour un produit gratuit!
+                      Encore {9 - ((customer.stamps || 0) % 9)} tampon(s) pour un produit gratuit!
                     </p>
                   )}
                 </div>
@@ -953,7 +953,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                     <>Commandez des pizzas, tacos, soufflets... pour gagner des tampons!</>
                   )}
                   <br />
-                  <span className="text-xs">10 tampons = 1 produit GRATUIT (valeur 10€) 🎁</span>
+                  <span className="text-xs">9 tampons = 10ème OFFERT (valeur 10€) 🎁</span>
                 </p>
               </Card>
             )}

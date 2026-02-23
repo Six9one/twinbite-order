@@ -431,14 +431,14 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
                         <span>Vos tampons:</span>
-                        <span className="font-bold text-amber-600">{customer.stamps || 0} / 10</span>
+                        <span className="font-bold text-amber-600">{customer.stamps || 0} / 9</span>
                       </div>
                       {(customer.freeItemsAvailable || 0) > 0 && (
                         <div className="mt-2 p-2 bg-green-100 rounded text-green-700 text-center text-xs font-bold animate-pulse">
                           🎁 Vous avez {customer.freeItemsAvailable} produit(s) GRATUIT!
                         </div>
                       )}
-                      {(customer.stamps || 0) % 10 === 9 && (customer.freeItemsAvailable || 0) === 0 && (
+                      {(customer.stamps || 0) % 9 === 8 && (customer.freeItemsAvailable || 0) === 0 && (
                         <div className="mt-2 p-2 bg-amber-100 rounded text-amber-700 text-center text-xs font-bold">
                           🎉 Plus qu'1 achat pour un cadeau!
                         </div>
@@ -448,7 +448,7 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
                     <p className="text-xs text-muted-foreground">
                       Entrez votre numéro de téléphone au checkout pour accumuler des tampons!
                       <br />
-                      <span className="font-medium text-amber-600">10 tampons = 1 produit GRATUIT 🎁</span>
+                      <span className="font-medium text-amber-600">9 tampons = 10ème OFFERT (valeur 10€) 🎁</span>
                     </p>
                   )}
                 </Card>
