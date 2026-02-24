@@ -481,7 +481,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
             const currentFreeItems = freshRec.free_items_available || 0;
 
             const newTotalStamps = currentTotalStamps + stampCount;
-            const STAMPS_FOR_FREE = 9;
+            const STAMPS_FOR_FREE = 10;
 
             // Calculate new stamps (cycles after 10) and free items
             const previousCycles = Math.floor(currentTotalStamps / STAMPS_FOR_FREE);
@@ -557,7 +557,7 @@ export function LoyaltyProvider({ children }: { children: ReactNode }) {
                 .insert({
                     customer_id: customer.id,
                     type: 'redeem',
-                    points: -9, // Represents 9 stamps used
+                    points: -10, // Represents 10 stamps used
                     description: 'Produit offert réclamé (Carte de fidélité)'
                 });
 

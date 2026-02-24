@@ -153,7 +153,7 @@ export default function TicketPortal() {
             }
 
             // Process Loyalty
-            const STAMPS_FOR_FREE = 9;
+            const STAMPS_FOR_FREE = 10;
             let stampsFromDB = 0;
             let freeItemsFromDB = 0;
 

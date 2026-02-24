@@ -15,7 +15,7 @@ const QUALIFYING_CATEGORIES = [
 ];
 
 // Total stamps needed for a free item
-const STAMPS_FOR_FREE = 9;
+const STAMPS_FOR_FREE = 10;
 
 interface LoyaltyStampCardProps {
     currentStamps: number;
@@ -145,9 +145,9 @@ export function LoyaltyStampCard({
                     ) : (
                         <p className="text-sm text-muted-foreground">
                             <span className="font-semibold text-primary">{displayStamps}</span>
-                            <span> / 9 tampons</span>
+                            <span> / 10 tampons</span>
                             <span className="mx-2">•</span>
-                            <span className="font-medium">Plus que {9 - displayStamps} pour la 10ème OFFERTE!</span>
+                            <span className="font-medium">Plus que {10 - displayStamps} pour la 10ème OFFERTE!</span>
                         </p>
                     )}
                 </div>
