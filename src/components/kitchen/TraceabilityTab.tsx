@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Tag, Camera, Printer, Clock, Calendar, Check, X, RefreshCw, AlertTriangle, Snowflake, Leaf, Plus, ScanText, Edit3 } from 'lucide-react';
+import { Tag, Camera, Printer, Clock, Calendar, Check, X, RefreshCw, AlertTriangle, Snowflake, Leaf, Plus, ScanText, Edit3, Trash2 } from 'lucide-react';
 import { uploadToKitchenStorage, KITCHEN_BUCKETS } from '@/lib/kitchenStorage';
 import { printHACCPDirect, printFreezerLabel } from '@/config/printConfig';
 
@@ -57,6 +57,13 @@ export function TraceabilityTab() {
 
     const photoInputRef = useRef<HTMLInputElement>(null);
     const freezerPhotoInputRef = useRef<HTMLInputElement>(null);
+    const disposalPhotoInputRef = useRef<HTMLInputElement>(null);
+
+    // Disposal dialog state
+    const [showDisposalDialog, setShowDisposalDialog] = useState(false);
+    const [disposalRecord, setDisposalRecord] = useState<TraceabilityRecord | null>(null);
+    const [disposalPhoto, setDisposalPhoto] = useState<string | null>(null);
+    const [disposalUploading, setDisposalUploading] = useState(false);
 
     useEffect(() => { fetchData(); }, []);
 
@@ -119,7 +126,25 @@ export function TraceabilityTab() {
     };
 
     const resetForm = () => { setShowNewLabel(false); setSelectedProduct(null); setBatchNumber(''); setLabelPhoto(null); setCustomDlcHours(null); };
-    const markAsDisposed = async (record: TraceabilityRecord) => { await supabase.from('kitchen_traceability' as any).update({ is_disposed: true, disposed_at: new Date().toISOString(), disposed_reason: 'DLC dépassée' } as any).eq('id', record.id); setRecords(prev => prev.filter(r => r.id !== record.id)); toast.success('Produit jeté'); };
+    const openDisposalDialog = (record: TraceabilityRecord) => {
+        setDisposalRecord(record);
+        setDisposalPhoto(null);
+        setShowDisposalDialog(true);
+    };
+    const handleDisposalPhoto = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setDisposalPhoto(reader.result as string); reader.readAsDataURL(file); } };
+    const confirmDisposal = async () => {
+        if (!disposalRecord) return;
+        if (!disposalPhoto) { toast.error('📸 Prenez une photo avant de jeter !'); return; }
+        setDisposalUploading(true);
+        try {
+            const photoUrl = await uploadToKitchenStorage(KITCHEN_BUCKETS.WASTE_PHOTOS, disposalPhoto, `waste_trace_${disposalRecord.id}_${Date.now()}`);
+            await supabase.from('kitchen_traceability' as any).update({ is_disposed: true, disposed_at: new Date().toISOString(), disposed_reason: 'DLC dépassée', disposed_photo_url: photoUrl } as any).eq('id', disposalRecord.id);
+            setRecords(prev => prev.filter(r => r.id !== disposalRecord.id));
+            toast.success('🗑️ Produit jeté avec preuve photo');
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            setShowDisposalDialog(false); setDisposalRecord(null); setDisposalPhoto(null);
+        } catch { toast.error('Erreur'); } finally { setDisposalUploading(false); }
+    };
     const getCategoryIcon = (slug: string) => slug === 'congele-decongele' ? Snowflake : Leaf;
 
     // === FREEZER/CONGÉLATION FUNCTIONS ===
@@ -340,7 +365,7 @@ export function TraceabilityTab() {
                                     <Card key={record.id} className={`p-3 ${isExpired ? 'bg-red-600/20 border-red-500' : isExpiringSoon ? 'bg-amber-600/20 border-amber-500' : 'bg-slate-800/50 border-slate-700'}`}>
                                         <div className="flex items-center justify-between">
                                             <div><h4 className="text-white font-medium">{record.product_name}</h4><div className="flex items-center gap-2 text-sm text-slate-400 mt-1"><Calendar className="h-3 w-3" /><span>DLC: {dlcDate.toLocaleDateString('fr-FR')} {dlcDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span></div></div>
-                                            <div className="flex items-center gap-2">{isExpired ? <Badge variant="destructive">PÉRIMÉ</Badge> : isExpiringSoon ? <Badge className="bg-amber-600">{Math.round(hoursRemaining)}h</Badge> : <Badge variant="secondary">{Math.round(hoursRemaining)}h</Badge>}<Button variant="ghost" size="icon" onClick={() => markAsDisposed(record)} className="text-red-400 hover:text-red-300"><X className="h-5 w-5" /></Button></div>
+                                            <div className="flex items-center gap-2">{isExpired ? <Badge variant="destructive">PÉRIMÉ</Badge> : isExpiringSoon ? <Badge className="bg-amber-600">{Math.round(hoursRemaining)}h</Badge> : <Badge variant="secondary">{Math.round(hoursRemaining)}h</Badge>}<Button variant="ghost" size="icon" onClick={() => openDisposalDialog(record)} className="text-red-400 hover:text-red-300"><Trash2 className="h-5 w-5" /></Button></div>
                                         </div>
                                     </Card>
                                 );
@@ -550,6 +575,39 @@ export function TraceabilityTab() {
                     )}
                 </TabsContent>
             </Tabs>
+
+            {/* Disposal Photo Dialog */}
+            {showDisposalDialog && disposalRecord && (
+                <div className="fixed inset-0 bg-black/95 z-50 flex flex-col">
+                    <div className="flex items-center justify-between p-4 bg-red-900/50 border-b border-red-800">
+                        <div className="flex items-center gap-3"><Trash2 className="h-6 w-6 text-red-400" /><div><span className="text-lg font-bold text-white">Mise au rebut</span><p className="text-xs text-red-300">{disposalRecord.product_name}</p></div></div>
+                        <Button variant="ghost" size="icon" onClick={() => setShowDisposalDialog(false)} className="text-white hover:bg-red-800"><X className="h-6 w-6" /></Button>
+                    </div>
+                    <div className="flex-1 p-4 overflow-auto">
+                        <div className="max-w-md mx-auto space-y-5">
+                            <input ref={disposalPhotoInputRef} type="file" accept="image/*" capture="environment" onChange={handleDisposalPhoto} className="hidden" />
+                            {disposalPhoto ? (
+                                <div className="relative">
+                                    <img src={disposalPhoto} alt="Photo" className="w-full h-48 object-cover rounded-xl border-2 border-green-500" />
+                                    <Badge className="absolute top-2 left-2 bg-green-600"><Check className="w-3 h-3 mr-1" /> Photo prise</Badge>
+                                    <Button variant="destructive" size="icon" className="absolute top-2 right-2" onClick={() => setDisposalPhoto(null)}><X className="w-4 h-4" /></Button>
+                                </div>
+                            ) : (
+                                <Button onClick={() => disposalPhotoInputRef.current?.click()} className="w-full h-32 bg-gradient-to-br from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 rounded-xl border-2 border-dashed border-red-400">
+                                    <div className="flex flex-col items-center gap-3"><Camera className="w-10 h-10" /><span className="text-lg font-bold">📸 Photographier le produit</span></div>
+                                </Button>
+                            )}
+                            <Card className="bg-red-600/20 border-red-500/50 p-3"><div className="flex items-center gap-2 text-red-300 text-sm"><AlertTriangle className="w-4 h-4" /><span>Photo obligatoire pour la <strong>traçabilité HACCP</strong></span></div></Card>
+                        </div>
+                    </div>
+                    <div className="p-4 bg-slate-900/80 flex gap-3 border-t border-slate-800">
+                        <Button variant="outline" onClick={() => setShowDisposalDialog(false)} disabled={disposalUploading} className="flex-1 h-14 border-slate-600 text-slate-300">Annuler</Button>
+                        <Button onClick={confirmDisposal} disabled={!disposalPhoto || disposalUploading} className="flex-1 h-14 bg-red-600 hover:bg-red-700 text-white text-lg font-bold disabled:opacity-50">
+                            {disposalUploading ? <RefreshCw className="w-5 h-5 mr-2 animate-spin" /> : <Trash2 className="w-5 h-5 mr-2" />}Jeter
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {/* New Label Modal (existing) */}
             {showNewLabel && selectedProduct && (

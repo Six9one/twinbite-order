@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Thermometer, ClipboardList, Package, Tag, Sparkles, Home, FileSpreadsheet, Bell, History } from "lucide-react";
+import { Thermometer, ClipboardList, Package, Tag, Sparkles, Home, FileSpreadsheet, Bell, History, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemperatureRoundsTab } from "@/components/kitchen/TemperatureRoundsTab";
 import { ReceptionTab } from "@/components/kitchen/ReceptionTab";
@@ -8,6 +8,7 @@ import { CleaningPlanTab } from "@/components/kitchen/CleaningPlanTab";
 import { ExcelReportExport } from "@/components/kitchen/ExcelReportExport";
 import { NotificationSettings } from "@/components/kitchen/NotificationSettings";
 import { HistoryArchive } from "@/components/kitchen/HistoryArchive";
+import { WasteDisposalTab } from "@/components/kitchen/WasteDisposalTab";
 import { initializeNotifications, getNotificationPermission, checkExpiringMeat } from "@/lib/kitchenNotifications";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -65,7 +66,10 @@ const KitchenDashboard = () => {
                 </TabsList>
 
                 {/* Second row of tabs */}
-                <TabsList className="w-full grid grid-cols-3 bg-slate-900/50 rounded-none border-b border-slate-800 h-auto p-0">
+                <TabsList className="w-full grid grid-cols-4 bg-slate-900/50 rounded-none border-b border-slate-800 h-auto p-0">
+                    <TabsTrigger value="waste" className="py-2 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-red-400 text-slate-400 text-xs flex flex-col gap-1">
+                        <Trash2 className="h-4 w-4" /><span>Déchets</span>
+                    </TabsTrigger>
                     <TabsTrigger value="history" className="py-2 px-1 rounded-none data-[state=active]:bg-slate-800 data-[state=active]:text-cyan-400 text-slate-400 text-xs flex flex-col gap-1">
                         <History className="h-4 w-4" /><span>Historique</span>
                     </TabsTrigger>
@@ -81,6 +85,7 @@ const KitchenDashboard = () => {
                 <TabsContent value="reception" className="p-4 mt-0"><ReceptionTab /></TabsContent>
                 <TabsContent value="traceability" className="p-4 mt-0"><TraceabilityTab /></TabsContent>
                 <TabsContent value="cleaning" className="p-4 mt-0"><CleaningPlanTab /></TabsContent>
+                <TabsContent value="waste" className="p-4 mt-0"><WasteDisposalTab /></TabsContent>
                 <TabsContent value="history" className="p-4 mt-0"><HistoryArchive /></TabsContent>
                 <TabsContent value="rapport" className="p-4 mt-0"><ExcelReportExport /></TabsContent>
                 <TabsContent value="notifications" className="p-4 mt-0"><NotificationSettings /></TabsContent>

@@ -6,6 +6,7 @@ export const KITCHEN_BUCKETS = {
     INVOICES_FACTURES: 'invoices-factures',
     DELIVERY_PROOFS: 'delivery-proofs',
     CLEANING_PROOFS: 'cleaning-proofs',
+    WASTE_PHOTOS: 'waste-disposal-photos',
 } as const;
 
 export type KitchenBucket = typeof KITCHEN_BUCKETS[keyof typeof KITCHEN_BUCKETS];
