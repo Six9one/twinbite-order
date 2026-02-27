@@ -132,16 +132,18 @@ export function WasteDisposalTab() {
     };
 
     const handleQuickDispose = async () => {
-        if (!quickPhoto) { toast.error('📸 Prenez une photo !'); return; }
         if (!quickProductName.trim()) { toast.error('Entrez le nom du produit'); return; }
 
         setQuickUploading(true);
         try {
-            const photoUrl = await uploadToKitchenStorage(
-                KITCHEN_BUCKETS.WASTE_PHOTOS,
-                quickPhoto,
-                `waste_quick_${Date.now()}`
-            );
+            let photoUrl: string | null = null;
+            if (quickPhoto) {
+                photoUrl = await uploadToKitchenStorage(
+                    KITCHEN_BUCKETS.WASTE_PHOTOS,
+                    quickPhoto,
+                    `waste_quick_${Date.now()}`
+                );
+            }
 
             const reasonLabel = DISPOSAL_REASONS.find(r => r.value === quickReason)?.label || quickReason;
 
@@ -153,7 +155,7 @@ export function WasteDisposalTab() {
                 disposed_by: 'Staff',
             } as any);
 
-            toast.success(`🗑️ ${quickProductName} — jeté avec photo`);
+            toast.success(`🗑️ ${quickProductName} — jeté${photoUrl ? ' avec photo' : ''}`);
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
 
             resetQuickForm();
@@ -201,14 +203,16 @@ export function WasteDisposalTab() {
 
     const handleConfirmDisposal = async () => {
         if (!selectedItem) return;
-        if (!disposalPhoto) { toast.error('📸 Prenez une photo avant de jeter !'); return; }
 
         setUploading(true);
         try {
-            const photoUrl = await uploadToKitchenStorage(
-                KITCHEN_BUCKETS.WASTE_PHOTOS, disposalPhoto,
-                `waste_${selectedItem.source}_${selectedItem.id}_${Date.now()}`
-            );
+            let photoUrl: string | null = null;
+            if (disposalPhoto) {
+                photoUrl = await uploadToKitchenStorage(
+                    KITCHEN_BUCKETS.WASTE_PHOTOS, disposalPhoto,
+                    `waste_${selectedItem.source}_${selectedItem.id}_${Date.now()}`
+                );
+            }
             const reasonLabel = DISPOSAL_REASONS.find(r => r.value === selectedReason)?.label || selectedReason;
 
             if (selectedItem.source === 'traceability') {
@@ -232,7 +236,7 @@ export function WasteDisposalTab() {
                 disposed_by: 'Staff',
             } as any);
 
-            toast.success(`🗑️ ${selectedItem.product_name} — jeté avec preuve photo`);
+            toast.success(`🗑️ ${selectedItem.product_name} — jeté${photoUrl ? ' avec preuve photo' : ''}`);
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             setShowDisposal(false); setSelectedItem(null); setDisposalPhoto(null);
             fetchAll();
@@ -268,11 +272,11 @@ export function WasteDisposalTab() {
 
             {!showQuickDispose && (
                 <Button
-                    onClick={() => quickPhotoRef.current?.click()}
+                    onClick={() => setShowQuickDispose(true)}
                     className="w-full h-24 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 rounded-2xl text-xl font-bold shadow-lg shadow-red-900/30 active:scale-[0.98] transition-all"
                 >
-                    <Camera className="w-8 h-8 mr-3" />
-                    📸 Jeter un produit
+                    <Trash2 className="w-8 h-8 mr-3" />
+                    🗑️ Jeter un produit
                 </Button>
             )}
 
@@ -290,18 +294,27 @@ export function WasteDisposalTab() {
                             </Button>
                         </div>
 
-                        {/* Photo Preview */}
-                        {quickPhoto && (
+                        {/* Photo (Optional) */}
+                        {quickPhoto ? (
                             <div className="relative">
                                 <img src={quickPhoto} alt="Produit à jeter" className="w-full h-48 object-cover rounded-xl border-2 border-green-500" />
                                 <Badge className="absolute top-2 left-2 bg-green-600">
                                     <Check className="w-3 h-3 mr-1" /> Photo prise
                                 </Badge>
                                 <Button variant="destructive" size="icon" className="absolute top-2 right-2"
-                                    onClick={() => { setQuickPhoto(null); quickPhotoRef.current?.click(); }}>
-                                    <RefreshCw className="w-4 h-4" />
+                                    onClick={() => setQuickPhoto(null)}>
+                                    <X className="w-4 h-4" />
                                 </Button>
                             </div>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                onClick={() => quickPhotoRef.current?.click()}
+                                className="w-full h-20 border-slate-600 border-dashed text-slate-400 hover:text-white hover:border-slate-400"
+                            >
+                                <Camera className="w-6 h-6 mr-2" />
+                                📸 Ajouter une photo (optionnel)
+                            </Button>
                         )}
 
                         {/* Product Name */}
@@ -339,7 +352,7 @@ export function WasteDisposalTab() {
                         {/* Save Button */}
                         <Button
                             onClick={handleQuickDispose}
-                            disabled={!quickPhoto || !quickProductName.trim() || quickUploading}
+                            disabled={!quickProductName.trim() || quickUploading}
                             className="w-full h-14 bg-red-600 hover:bg-red-700 text-white text-lg font-bold disabled:opacity-50"
                         >
                             {quickUploading ? (
@@ -486,7 +499,7 @@ export function WasteDisposalTab() {
 
                             <div>
                                 <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                    <Camera className="w-4 h-4 text-red-400" /> Photo obligatoire
+                                    <Camera className="w-4 h-4 text-slate-400" /> Photo (optionnel)
                                 </label>
                                 <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoCapture} className="hidden" />
                                 {disposalPhoto ? (
@@ -496,8 +509,8 @@ export function WasteDisposalTab() {
                                         <Button variant="destructive" size="icon" className="absolute top-2 right-2" onClick={() => setDisposalPhoto(null)}><X className="w-4 h-4" /></Button>
                                     </div>
                                 ) : (
-                                    <Button onClick={() => photoInputRef.current?.click()} className="w-full h-32 bg-gradient-to-br from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 rounded-xl border-2 border-dashed border-red-400">
-                                        <div className="flex flex-col items-center gap-3"><Camera className="w-10 h-10" /><span className="text-lg font-bold">📸 Photographier le produit</span></div>
+                                    <Button variant="outline" onClick={() => photoInputRef.current?.click()} className="w-full h-20 border-slate-600 border-dashed text-slate-400 hover:text-white hover:border-slate-400 rounded-xl">
+                                        <Camera className="w-6 h-6 mr-2" /> 📸 Ajouter une photo (optionnel)
                                     </Button>
                                 )}
                             </div>
@@ -518,7 +531,7 @@ export function WasteDisposalTab() {
                     </div>
                     <div className="p-4 bg-slate-900/80 flex gap-3 border-t border-slate-800">
                         <Button variant="outline" onClick={() => setShowDisposal(false)} disabled={uploading} className="flex-1 h-14 border-slate-600 text-slate-300">Annuler</Button>
-                        <Button onClick={handleConfirmDisposal} disabled={!disposalPhoto || uploading} className="flex-1 h-14 bg-red-600 hover:bg-red-700 text-white text-lg font-bold disabled:opacity-50">
+                        <Button onClick={handleConfirmDisposal} disabled={uploading} className="flex-1 h-14 bg-red-600 hover:bg-red-700 text-white text-lg font-bold disabled:opacity-50">
                             {uploading ? <RefreshCw className="w-5 h-5 mr-2 animate-spin" /> : <Trash2 className="w-5 h-5 mr-2" />}Jeter
                         </Button>
                     </div>
