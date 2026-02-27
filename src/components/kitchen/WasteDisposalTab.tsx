@@ -147,13 +147,15 @@ export function WasteDisposalTab() {
 
             const reasonLabel = DISPOSAL_REASONS.find(r => r.value === quickReason)?.label || quickReason;
 
-            await supabase.from('kitchen_waste_log' as any).insert({
+            const { error: insertError } = await supabase.from('kitchen_waste_log' as any).insert({
                 product_name: quickProductName.trim(),
                 photo_url: photoUrl,
                 reason: reasonLabel,
                 disposed_at: new Date().toISOString(),
                 disposed_by: 'Staff',
             } as any);
+
+            if (insertError) throw insertError;
 
             toast.success(`🗑️ ${quickProductName} — jeté${photoUrl ? ' avec photo' : ''}`);
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
@@ -216,25 +218,28 @@ export function WasteDisposalTab() {
             const reasonLabel = DISPOSAL_REASONS.find(r => r.value === selectedReason)?.label || selectedReason;
 
             if (selectedItem.source === 'traceability') {
-                await supabase.from('kitchen_traceability' as any).update({
+                const { error: updateErr } = await supabase.from('kitchen_traceability' as any).update({
                     is_disposed: true, disposed_at: new Date().toISOString(),
                     disposed_reason: reasonLabel, disposed_photo_url: photoUrl,
                 } as any).eq('id', selectedItem.id);
+                if (updateErr) throw updateErr;
             } else {
-                await supabase.from('kitchen_freezer_entries' as any).update({
+                const { error: updateErr } = await supabase.from('kitchen_freezer_entries' as any).update({
                     is_removed: true, removed_at: new Date().toISOString(),
                     removed_reason: reasonLabel, disposed_photo_url: photoUrl,
                 } as any).eq('id', selectedItem.id);
+                if (updateErr) throw updateErr;
             }
 
             // Also log to waste log
-            await supabase.from('kitchen_waste_log' as any).insert({
+            const { error: logErr } = await supabase.from('kitchen_waste_log' as any).insert({
                 product_name: selectedItem.product_name,
                 photo_url: photoUrl,
                 reason: reasonLabel,
                 disposed_at: new Date().toISOString(),
                 disposed_by: 'Staff',
             } as any);
+            if (logErr) throw logErr;
 
             toast.success(`🗑️ ${selectedItem.product_name} — jeté${photoUrl ? ' avec preuve photo' : ''}`);
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);

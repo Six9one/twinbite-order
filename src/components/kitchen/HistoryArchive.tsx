@@ -6,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-    Search, Calendar, Thermometer, Package, Tag, Sparkles,
+    Search, Calendar, Thermometer, Package, Tag, Sparkles, Trash2,
     X, ChevronLeft, ChevronRight, RefreshCw, Eye, Clock,
     Filter, Sun, Moon, AlertTriangle, Check
 } from 'lucide-react';
 
-type RecordType = 'all' | 'temperature' | 'reception' | 'traceability' | 'cleaning';
+type RecordType = 'all' | 'temperature' | 'reception' | 'traceability' | 'cleaning' | 'waste';
 
 interface HistoryRecord {
     id: string;
@@ -45,6 +45,7 @@ export function HistoryArchive() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'kitchen_reception_logs' }, () => fetchAllRecords())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'kitchen_traceability' }, () => fetchAllRecords())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'kitchen_cleaning_tasks' }, () => fetchAllRecords())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'kitchen_waste_log' }, () => fetchAllRecords())
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
@@ -53,11 +54,12 @@ export function HistoryArchive() {
     const fetchAllRecords = async () => {
         setLoading(true);
 
-        const [temps, receptions, traces, cleaning] = await Promise.all([
+        const [temps, receptions, traces, cleaning, wasteLog] = await Promise.all([
             supabase.from('kitchen_temp_logs' as any).select('*').order('logged_at', { ascending: false }).limit(100),
             supabase.from('kitchen_reception_logs' as any).select('*').order('received_at', { ascending: false }).limit(50),
             supabase.from('kitchen_traceability' as any).select('*').order('opened_at', { ascending: false }).limit(50),
             supabase.from('kitchen_cleaning_tasks' as any).select('*').order('scheduled_date', { ascending: false }).limit(50),
+            supabase.from('kitchen_waste_log' as any).select('*').order('disposed_at', { ascending: false }).limit(50),
         ]);
 
         const allRecords: HistoryRecord[] = [];
@@ -125,6 +127,21 @@ export function HistoryArchive() {
             });
         });
 
+        // Waste log
+        (wasteLog.data || []).forEach((w: any) => {
+            const photos = w.photo_url ? [w.photo_url] : [];
+            allRecords.push({
+                id: w.id,
+                type: 'waste',
+                date: w.disposed_at,
+                title: w.product_name,
+                subtitle: w.reason || 'Jeté',
+                status: 'warning',
+                photos,
+                details: w,
+            });
+        });
+
         // Sort by date
         allRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setRecords(allRecords);
@@ -137,6 +154,7 @@ export function HistoryArchive() {
             case 'reception': return <Package className="h-4 w-4" />;
             case 'traceability': return <Tag className="h-4 w-4" />;
             case 'cleaning': return <Sparkles className="h-4 w-4" />;
+            case 'waste': return <Trash2 className="h-4 w-4" />;
             default: return <Clock className="h-4 w-4" />;
         }
     };
@@ -147,6 +165,7 @@ export function HistoryArchive() {
             case 'reception': return 'bg-green-500/20 text-green-400 border-green-500/30';
             case 'traceability': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
             case 'cleaning': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+            case 'waste': return 'bg-red-500/20 text-red-400 border-red-500/30';
             default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
         }
     };
@@ -197,7 +216,7 @@ export function HistoryArchive() {
                 </div>
 
                 <div className="flex gap-2 overflow-x-auto pb-2">
-                    {(['all', 'temperature', 'reception', 'traceability', 'cleaning'] as RecordType[]).map(t => (
+                    {(['all', 'temperature', 'reception', 'traceability', 'cleaning', 'waste'] as RecordType[]).map(t => (
                         <Button
                             key={t}
                             variant={filterType === t ? 'default' : 'outline'}
@@ -210,7 +229,8 @@ export function HistoryArchive() {
                             {t === 'reception' && <Package className="h-3 w-3 mr-1" />}
                             {t === 'traceability' && <Tag className="h-3 w-3 mr-1" />}
                             {t === 'cleaning' && <Sparkles className="h-3 w-3 mr-1" />}
-                            {t === 'all' ? 'Tout' : t === 'temperature' ? 'Temp' : t === 'traceability' ? 'DLC' : t.charAt(0).toUpperCase() + t.slice(1)}
+                            {t === 'waste' && <Trash2 className="h-3 w-3 mr-1" />}
+                            {t === 'all' ? 'Tout' : t === 'temperature' ? 'Temp' : t === 'traceability' ? 'DLC' : t === 'waste' ? 'Déchets' : t.charAt(0).toUpperCase() + t.slice(1)}
                         </Button>
                     ))}
                 </div>
@@ -246,7 +266,7 @@ export function HistoryArchive() {
                         <Card
                             key={`${record.type}-${record.id}`}
                             className={`bg-slate-800/50 border-l-4 cursor-pointer hover:bg-slate-800 transition-all ${record.status === 'ok' ? 'border-l-green-500' :
-                                    record.status === 'warning' ? 'border-l-red-500' : 'border-l-amber-500'
+                                record.status === 'warning' ? 'border-l-red-500' : 'border-l-amber-500'
                                 }`}
                             onClick={() => setSelectedRecord(record)}
                         >
@@ -287,7 +307,7 @@ export function HistoryArchive() {
                                         </div>
                                     )}
                                     <div className={`p-1 rounded-full ${record.status === 'ok' ? 'bg-green-500/20' :
-                                            record.status === 'warning' ? 'bg-red-500/20' : 'bg-amber-500/20'
+                                        record.status === 'warning' ? 'bg-red-500/20' : 'bg-amber-500/20'
                                         }`}>
                                         {record.status === 'ok' ? <Check className="h-4 w-4 text-green-400" /> :
                                             record.status === 'warning' ? <AlertTriangle className="h-4 w-4 text-red-400" /> :
