@@ -26,6 +26,7 @@ import NotFound from "./pages/NotFound";
 import MentionsLegales from "./pages/MentionsLegales";
 import Confidentialite from "./pages/Confidentialite";
 import CGV from "./pages/CGV";
+import SpinWheel from "./pages/SpinWheel";
 
 // Components
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -58,6 +59,7 @@ const App = () => (
                 <Route path="/mentions-legales" element={<MentionsLegales />} />
                 <Route path="/confidentialite" element={<Confidentialite />} />
                 <Route path="/cgv" element={<CGV />} />
+                <Route path="/avis" element={<SpinWheel />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
