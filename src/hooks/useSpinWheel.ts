@@ -74,8 +74,16 @@ export function useSpinWheel() {
     const [expiresAt, setExpiresAt] = useState<Date | null>(null);
     const [rotation, setRotation] = useState(0);
 
-    // Check anti-cheat on mount
+    // ?test in URL = bypass anti-cheat for testing
+    const isTestMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('test');
+
+    // Check anti-cheat on mount (skipped in test mode)
     useEffect(() => {
+        if (isTestMode) {
+            localStorage.removeItem('twinpizza_spin_last');
+            setState('name-input');
+            return;
+        }
         const lastPlayed = localStorage.getItem('twinpizza_spin_last');
         if (lastPlayed) {
             const diffHours = (Date.now() - new Date(lastPlayed).getTime()) / (1000 * 60 * 60);
@@ -106,18 +114,20 @@ export function useSpinWheel() {
         if (state !== 'ready') return;
         const fingerprint = generateFingerprint();
 
-        // Anti-cheat check in DB
-        try {
-            const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-            const { data: recent } = await (supabase as any)
-                .from('spin_wheel_entries').select('id')
-                .eq('device_fingerprint', fingerprint).gte('created_at', cutoff);
-            if (recent && recent.length > 0) {
-                localStorage.setItem('twinpizza_spin_last', new Date().toISOString());
-                setState('already-played');
-                return;
-            }
-        } catch (e) { console.error(e); }
+        // Anti-cheat check in DB (skipped in test mode)
+        if (!isTestMode) {
+            try {
+                const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+                const { data: recent } = await (supabase as any)
+                    .from('spin_wheel_entries').select('id')
+                    .eq('device_fingerprint', fingerprint).gte('created_at', cutoff);
+                if (recent && recent.length > 0) {
+                    localStorage.setItem('twinpizza_spin_last', new Date().toISOString());
+                    setState('already-played');
+                    return;
+                }
+            } catch (e) { console.error(e); }
+        }
 
         const prize = selectPrize();
         const prizeIndex = PRIZES.indexOf(prize);
