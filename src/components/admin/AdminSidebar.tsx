@@ -35,7 +35,8 @@ import {
   LogOut,
   ExternalLink,
   Ticket,
-  FileText
+  FileText,
+  History
 } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -50,6 +51,14 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  {
+    label: 'Commandes',
+    icon: Package,
+    children: [
+      { label: 'Commandes du Jour', icon: Package, value: 'orders' },
+      { label: 'Historique Commandes', icon: History, value: 'order-history' },
+    ]
+  },
   {
     label: 'Outils Rapides',
     icon: TrendingUp,

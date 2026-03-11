@@ -1026,6 +1026,155 @@ function setupHttpServer() {
         }
     });
 
+    // Print invoice/facture endpoint
+    app.post('/print-invoice', async (req, res) => {
+        console.log('\n📥 Invoice print request received');
+
+        try {
+            const { order, invoiceDate, invoiceNumber } = req.body;
+
+            if (!order || !invoiceNumber) {
+                return res.status(400).json({ error: 'Missing required fields (order, invoiceNumber)' });
+            }
+
+            console.log(`   Invoice: ${invoiceNumber}`);
+            console.log(`   Order: ${order.order_number}`);
+            console.log(`   Date: ${invoiceDate}`);
+
+            // Format invoice for thermal printer
+            const LINE = ESCPOS.LINE_42;
+            const TVA_RATE = 10;
+
+            let ticket = '';
+            ticket += ESCPOS.INIT;
+            ticket += ESCPOS.SET_CODEPAGE_1252;
+
+            // Header
+            ticket += ESCPOS.CENTER;
+            ticket += ESCPOS.DOUBLE_SIZE;
+            ticket += ESCPOS.BOLD_ON;
+            ticket += 'FACTURE\n';
+            ticket += ESCPOS.NORMAL_SIZE;
+            ticket += ESCPOS.BOLD_OFF;
+            ticket += '\n';
+
+            // Company info
+            ticket += ESCPOS.BOLD_ON;
+            ticket += 'TWIN PIZZA\n';
+            ticket += ESCPOS.BOLD_OFF;
+            ticket += '60 Rue Georges Clemenceau\n';
+            ticket += '76530 Grand-Couronne\n';
+            ticket += 'Tel: 02 32 11 26 13\n';
+            ticket += LINE;
+
+            // Legal numbers
+            ticket += ESCPOS.LEFT;
+            ticket += ESCPOS.BOLD_ON;
+            ticket += 'SIRET: ';
+            ticket += ESCPOS.BOLD_OFF;
+            ticket += '942 617 358 00018\n';
+            ticket += ESCPOS.BOLD_ON;
+            ticket += 'N° TVA: ';
+            ticket += ESCPOS.BOLD_OFF;
+            ticket += 'FR28942617358\n';
+            ticket += LINE;
+
+            // Invoice info
+            ticket += ESCPOS.BOLD_ON;
+            ticket += `Facture: ${invoiceNumber}\n`;
+            ticket += ESCPOS.BOLD_OFF;
+
+            // Format the invoice date
+            const dateStr = invoiceDate
+                ? new Date(invoiceDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                : new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            ticket += `Date: ${dateStr}\n`;
+            ticket += `Commande: ${order.order_number}\n`;
+            ticket += LINE;
+
+            // Client info
+            ticket += ESCPOS.BOLD_ON;
+            ticket += 'CLIENT:\n';
+            ticket += ESCPOS.BOLD_OFF;
+            ticket += `${order.customer_name}\n`;
+            if (order.customer_phone) ticket += `Tel: ${order.customer_phone}\n`;
+            if (order.customer_address) ticket += `${order.customer_address}\n`;
+            ticket += LINE;
+
+            // Items
+            ticket += ESCPOS.BOLD_ON;
+            ticket += 'ARTICLES:\n';
+            ticket += ESCPOS.BOLD_OFF;
+
+            const items = Array.isArray(order.items) ? order.items : [];
+            items.forEach((cartItem) => {
+                const productName = cartItem.item?.name || cartItem.name || 'Produit';
+                const quantity = cartItem.quantity || 1;
+                const price = cartItem.totalPrice || cartItem.calculatedPrice || cartItem.price || 0;
+
+                ticket += `${quantity}x ${productName}`;
+                ticket += ` - ${Number(price).toFixed(2)}€\n`;
+            });
+
+            if (order.delivery_fee > 0) {
+                ticket += `Frais de livraison - ${order.delivery_fee.toFixed(2)}€\n`;
+            }
+
+            ticket += LINE;
+
+            // Totals
+            ticket += ESCPOS.RIGHT;
+            const totalHT = (order.subtotal / (1 + TVA_RATE / 100));
+            const tva = order.subtotal - totalHT;
+
+            ticket += `Total HT: ${totalHT.toFixed(2)}€\n`;
+            ticket += `TVA (${TVA_RATE}%): ${tva.toFixed(2)}€\n`;
+
+            ticket += ESCPOS.DOUBLE_HEIGHT;
+            ticket += ESCPOS.BOLD_ON;
+            ticket += `TOTAL TTC: ${order.total.toFixed(2)}€\n`;
+            ticket += ESCPOS.NORMAL_SIZE;
+            ticket += ESCPOS.BOLD_OFF;
+
+            ticket += ESCPOS.CENTER;
+            ticket += '\n';
+
+            // Payment method
+            const paymentLabels = {
+                'en_ligne': 'Carte bancaire (en ligne) - PAYE',
+                'cb': 'Carte bancaire',
+                'especes': 'Especes'
+            };
+            ticket += `Paiement: ${paymentLabels[order.payment_method] || order.payment_method}\n`;
+            ticket += LINE;
+
+            // Footer
+            ticket += ESCPOS.CENTER;
+            ticket += '\n';
+            ticket += 'Twin Pizza - Entreprise individuelle\n';
+            ticket += 'SIRET: 942 617 358 00018\n';
+            ticket += 'TVA: FR28942617358\n';
+            ticket += '\n';
+
+            ticket += ESCPOS.FEED;
+            ticket += ESCPOS.PARTIAL_CUT;
+
+            const ticketData = convertToCP1252(ticket);
+            const success = await printWithRetry(ticketData, `INVOICE-${invoiceNumber}`);
+
+            if (success) {
+                console.log(`✅ Invoice ${invoiceNumber} printed successfully`);
+                res.json({ success: true, message: 'Invoice printed' });
+            } else {
+                console.error(`❌ Failed to print invoice ${invoiceNumber}`);
+                res.status(500).json({ error: 'Print failed after retries' });
+            }
+        } catch (error) {
+            console.error('❌ Invoice print error:', error.message);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     // Recovery endpoint - print all missed orders
     app.post('/recover-prints', async (req, res) => {
         console.log('\n📥 Recovery request received');
@@ -1046,6 +1195,7 @@ function setupHttpServer() {
         console.log(`🌐 HTTP server listening on port ${HTTP_PORT}`);
         console.log(`   HACCP endpoint: http://localhost:${HTTP_PORT}/print-haccp`);
         console.log(`   Reprint endpoint: POST http://localhost:${HTTP_PORT}/reprint/:orderNumber`);
+        console.log(`   Invoice endpoint: POST http://localhost:${HTTP_PORT}/print-invoice`);
         console.log(`   Recovery endpoint: POST http://localhost:${HTTP_PORT}/recover-prints`);
     });
 }
