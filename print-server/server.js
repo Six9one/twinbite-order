@@ -807,17 +807,38 @@ async function handleHACCPPrint(job) {
     console.log(`   DLC: ${job.dlc_date}`);
     console.log(`${'='.repeat(50)}\n`);
 
-    const ticketData = formatHACCPTicket({
-        productName: job.product_name,
-        categoryName: job.category_name,
-        categoryColor: job.category_color,
-        actionDate: job.action_date,
-        dlcDate: job.dlc_date,
-        storageTemp: job.storage_temp,
-        operator: job.operator,
-        dlcHours: job.dlc_hours,
-        actionLabel: job.action_label,
-    });
+    // Detect date_label type from notes field
+    let isDateLabel = false;
+    try {
+        if (job.notes) {
+            const notes = JSON.parse(job.notes);
+            isDateLabel = notes.type === 'date_label';
+        }
+    } catch (e) { /* notes not JSON, use default format */ }
+
+    let ticketData;
+    if (isDateLabel) {
+        console.log('📋 Routing to date label format');
+        ticketData = formatDateLabel({
+            productName: job.product_name,
+            actionLabel: job.action_label || 'Fait le',
+            actionDate: job.action_date,
+            useByDate: job.dlc_date,
+            operator: job.operator,
+        });
+    } else {
+        ticketData = formatHACCPTicket({
+            productName: job.product_name,
+            categoryName: job.category_name,
+            categoryColor: job.category_color,
+            actionDate: job.action_date,
+            dlcDate: job.dlc_date,
+            storageTemp: job.storage_temp,
+            operator: job.operator,
+            dlcHours: job.dlc_hours,
+            actionLabel: job.action_label,
+        });
+    }
 
     const success = await printWithRetry(ticketData, `HACCP-${job.product_name}`);
 
@@ -869,6 +890,63 @@ function startHeartbeat() {
 // HTTP SERVER FOR HACCP DIRECT PRINTING
 // ============================================
 const HTTP_PORT = process.env.HTTP_PORT || 3001;
+
+// Format compact date label for ESC/POS printing
+// Used for sticking on sauces, bottles, and kitchen items
+function formatDateLabel(data) {
+    const { productName, actionLabel, actionDate, useByDate, operator } = data;
+
+    let ticket = '';
+
+    // Initialize printer and set code page for French characters
+    ticket += ESCPOS.INIT;
+    ticket += ESCPOS.SET_CODEPAGE_1252;
+
+    // Header
+    ticket += ESCPOS.CENTER;
+    ticket += ESCPOS.BOLD_ON;
+    ticket += 'TWIN PIZZA\n';
+    ticket += ESCPOS.BOLD_OFF;
+    ticket += ESCPOS.LINE_42;
+
+    // Product name (large, bold)
+    ticket += ESCPOS.DOUBLE_SIZE;
+    ticket += ESCPOS.BOLD_ON;
+    ticket += productName + '\n';
+    ticket += ESCPOS.NORMAL_SIZE;
+    ticket += ESCPOS.BOLD_OFF;
+    ticket += '\n';
+
+    // Action date ("Fait le" or "Ouvert le")
+    ticket += ESCPOS.LEFT;
+    ticket += ESCPOS.BOLD_ON;
+    ticket += actionLabel + ': ';
+    ticket += ESCPOS.BOLD_OFF;
+    ticket += actionDate + '\n';
+    ticket += '\n';
+
+    // Use-by date (highlighted, large)
+    ticket += ESCPOS.CENTER;
+    ticket += ESCPOS.LINE_42;
+    ticket += ESCPOS.BOLD_ON;
+    ticket += ESCPOS.DOUBLE_HEIGHT;
+    ticket += 'A CONSOMMER AVANT LE\n';
+    ticket += useByDate + '\n';
+    ticket += ESCPOS.NORMAL_SIZE;
+    ticket += ESCPOS.BOLD_OFF;
+    ticket += ESCPOS.LINE_42;
+
+    // Footer with operator
+    ticket += ESCPOS.CENTER;
+    ticket += 'Par: ' + operator + '\n';
+    ticket += '\n';
+
+    // Cut
+    ticket += ESCPOS.FEED;
+    ticket += ESCPOS.PARTIAL_CUT;
+
+    return convertToCP1252(ticket);
+}
 
 // Format HACCP ticket for ESC/POS printing
 function formatHACCPTicket(data) {
@@ -986,7 +1064,81 @@ function setupHttpServer() {
         }
     });
 
-    // Reprint an order by order number
+    // Date label print via GET (from HTTPS pages using window.open)
+    app.get('/print-date-label', async (req, res) => {
+        const { product, madeDate, useByDate, action, copies } = req.query;
+        console.log(`\n📥 Date label GET request: ${product}`);
+
+        if (!product || !madeDate || !useByDate) {
+            return res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>❌ Paramètres manquants</h2><script>setTimeout(()=>window.close(),2000)</script></body></html>`);
+        }
+
+        try {
+            const numCopies = Math.min(parseInt(copies) || 1, 10);
+            const actionLabel = action === 'ouvert' ? 'Ouvert le' : 'Fait le';
+
+            const ticketData = formatDateLabel({
+                productName: decodeURIComponent(String(product)),
+                actionLabel,
+                actionDate: decodeURIComponent(String(madeDate)),
+                useByDate: decodeURIComponent(String(useByDate)),
+                operator: 'Staff',
+            });
+
+            let printed = 0;
+            for (let i = 0; i < numCopies; i++) {
+                const ok = await printWithRetry(ticketData, `LABEL-${product}-${i + 1}`);
+                if (ok) printed++;
+                if (i < numCopies - 1) await new Promise(r => setTimeout(r, 500));
+            }
+
+            if (printed > 0) {
+                console.log(`✅ ${printed}/${numCopies} date label(s) printed`);
+                res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>✅ ${printed}x étiquette${printed > 1 ? 's' : ''} imprimée${printed > 1 ? 's' : ''}!</h2><p>${decodeURIComponent(String(product))}</p><script>setTimeout(()=>window.close(),2000)</script></body></html>`);
+            } else {
+                res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>❌ Erreur d'impression</h2><script>setTimeout(()=>window.close(),3000)</script></body></html>`);
+            }
+        } catch (error) {
+            console.error('❌ Date label GET error:', error.message);
+            res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>❌ Erreur</h2><p>${error.message}</p><script>setTimeout(()=>window.close(),3000)</script></body></html>`);
+        }
+    });
+
+    // Reprint an order by order number (GET - used from HTTPS pages via window.open)
+    app.get('/reprint/:orderNumber', async (req, res) => {
+        const orderNumber = req.params.orderNumber;
+        console.log(`\n📥 Reprint GET request for order #${orderNumber}`);
+
+        try {
+            const { data: orders, error } = await supabaseClient
+                .from('orders')
+                .select('*')
+                .eq('order_number', orderNumber)
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            const order = orders?.[0];
+
+            if (error || !order) {
+                return res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>❌ Commande ${orderNumber} non trouvée</h2><script>setTimeout(()=>window.close(),2000)</script></body></html>`);
+            }
+
+            const ticketData = formatOrderForPrint(order);
+            const success = await printWithRetry(ticketData, orderNumber);
+
+            if (success) {
+                console.log(`✅ Order #${orderNumber} reprinted`);
+                res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>✅ Commande ${orderNumber} imprimée!</h2><script>setTimeout(()=>window.close(),2000)</script></body></html>`);
+            } else {
+                res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>❌ Erreur d'impression</h2><script>setTimeout(()=>window.close(),3000)</script></body></html>`);
+            }
+        } catch (error) {
+            console.error('❌ Reprint GET error:', error.message);
+            res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>❌ Erreur</h2><p>${error.message}</p><script>setTimeout(()=>window.close(),3000)</script></body></html>`);
+        }
+    });
+
+    // Reprint an order by order number (POST)
     app.post('/reprint/:orderNumber', async (req, res) => {
         const orderNumber = req.params.orderNumber;
         console.log(`\n📥 Reprint request for order #${orderNumber}`);
@@ -1026,7 +1178,119 @@ function setupHttpServer() {
         }
     });
 
-    // Print invoice/facture endpoint
+    // Print invoice via GET (used from HTTPS pages via window.open to bypass mixed content)
+    app.get('/print-invoice/:orderNumber', async (req, res) => {
+        const { orderNumber } = req.params;
+        const invoiceDate = req.query.date || new Date().toISOString().slice(0, 10);
+        console.log(`\n📥 Invoice GET request for order ${orderNumber}`);
+
+        try {
+            // Fetch order from Supabase
+            const { data: order, error } = await supabaseClient
+                .from('orders')
+                .select('*')
+                .eq('order_number', orderNumber)
+                .single();
+
+            if (error || !order) {
+                console.error('❌ Order not found:', orderNumber);
+                return res.send(`<html><body><h2>❌ Commande ${orderNumber} non trouvée</h2><script>setTimeout(()=>window.close(),2000)</script></body></html>`);
+            }
+
+            const invoiceNumber = `FA-${orderNumber}`;
+
+            // Format and print (reuse the same logic)
+            const LINE = ESCPOS.LINE_42;
+            const TVA_RATE = 10;
+
+            let ticket = '';
+            ticket += ESCPOS.INIT;
+            ticket += ESCPOS.SET_CODEPAGE_1252;
+
+            ticket += ESCPOS.CENTER;
+            ticket += ESCPOS.DOUBLE_SIZE;
+            ticket += ESCPOS.BOLD_ON;
+            ticket += 'FACTURE\n';
+            ticket += ESCPOS.NORMAL_SIZE;
+            ticket += ESCPOS.BOLD_OFF;
+            ticket += '\n';
+
+            ticket += ESCPOS.BOLD_ON;
+            ticket += 'TWIN PIZZA\n';
+            ticket += ESCPOS.BOLD_OFF;
+            ticket += '60 Rue Georges Clemenceau\n';
+            ticket += '76530 Grand-Couronne\n';
+            ticket += 'Tel: 02 32 11 26 13\n';
+            ticket += LINE;
+
+            ticket += ESCPOS.LEFT;
+            ticket += ESCPOS.BOLD_ON + 'SIRET: ' + ESCPOS.BOLD_OFF + '942 617 358 00018\n';
+            ticket += ESCPOS.BOLD_ON + 'N° TVA: ' + ESCPOS.BOLD_OFF + 'FR28942617358\n';
+            ticket += LINE;
+
+            ticket += ESCPOS.BOLD_ON;
+            ticket += `Facture: ${invoiceNumber}\n`;
+            ticket += ESCPOS.BOLD_OFF;
+
+            const dateStr = new Date(invoiceDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            ticket += `Date: ${dateStr}\n`;
+            ticket += `Commande: ${orderNumber}\n`;
+            ticket += LINE;
+
+            ticket += ESCPOS.BOLD_ON + 'CLIENT:\n' + ESCPOS.BOLD_OFF;
+            ticket += `${order.customer_name}\n`;
+            if (order.customer_phone) ticket += `Tel: ${order.customer_phone}\n`;
+            if (order.customer_address) ticket += `${order.customer_address}\n`;
+            ticket += LINE;
+
+            ticket += ESCPOS.BOLD_ON + 'ARTICLES:\n' + ESCPOS.BOLD_OFF;
+            const items = Array.isArray(order.items) ? order.items : [];
+            items.forEach((cartItem) => {
+                const productName = cartItem.item?.name || cartItem.name || 'Produit';
+                const quantity = cartItem.quantity || 1;
+                const price = cartItem.totalPrice || cartItem.calculatedPrice || cartItem.price || 0;
+                ticket += `${quantity}x ${productName} - ${Number(price).toFixed(2)}€\n`;
+            });
+            if (order.delivery_fee > 0) {
+                ticket += `Frais de livraison - ${order.delivery_fee.toFixed(2)}€\n`;
+            }
+            ticket += LINE;
+
+            ticket += ESCPOS.RIGHT;
+            const totalHT = (order.subtotal / (1 + TVA_RATE / 100));
+            const tva = order.subtotal - totalHT;
+            ticket += `Total HT: ${totalHT.toFixed(2)}€\n`;
+            ticket += `TVA (${TVA_RATE}%): ${tva.toFixed(2)}€\n`;
+            ticket += ESCPOS.DOUBLE_HEIGHT + ESCPOS.BOLD_ON;
+            ticket += `TOTAL TTC: ${order.total.toFixed(2)}€\n`;
+            ticket += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+
+            ticket += ESCPOS.CENTER + '\n';
+            const paymentLabels = { 'en_ligne': 'CB en ligne - PAYE', 'cb': 'Carte bancaire', 'especes': 'Especes' };
+            ticket += `Paiement: ${paymentLabels[order.payment_method] || order.payment_method}\n`;
+            ticket += LINE;
+            ticket += ESCPOS.CENTER + '\n';
+            ticket += 'Twin Pizza - Entreprise individuelle\n';
+            ticket += 'SIRET: 942 617 358 00018\n';
+            ticket += 'TVA: FR28942617358\n\n';
+            ticket += ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
+
+            const ticketData = convertToCP1252(ticket);
+            const success = await printWithRetry(ticketData, `INVOICE-${invoiceNumber}`);
+
+            if (success) {
+                console.log(`✅ Invoice ${invoiceNumber} printed`);
+                res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>✅ Facture ${invoiceNumber} imprimée!</h2><p>Vous pouvez fermer cette fenêtre.</p><script>setTimeout(()=>window.close(),2000)</script></body></html>`);
+            } else {
+                res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>❌ Erreur d'impression</h2><p>Vérifiez l'imprimante.</p><script>setTimeout(()=>window.close(),3000)</script></body></html>`);
+            }
+        } catch (error) {
+            console.error('❌ Invoice GET error:', error.message);
+            res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>❌ Erreur</h2><p>${error.message}</p><script>setTimeout(()=>window.close(),3000)</script></body></html>`);
+        }
+    });
+
+    // Print invoice/facture endpoint (POST - for local use)
     app.post('/print-invoice', async (req, res) => {
         console.log('\n📥 Invoice print request received');
 
@@ -1194,6 +1458,7 @@ function setupHttpServer() {
     app.listen(HTTP_PORT, '0.0.0.0', () => {
         console.log(`🌐 HTTP server listening on port ${HTTP_PORT}`);
         console.log(`   HACCP endpoint: http://localhost:${HTTP_PORT}/print-haccp`);
+        console.log(`   Date labels: http://localhost:${HTTP_PORT}/print-date-label`);
         console.log(`   Reprint endpoint: POST http://localhost:${HTTP_PORT}/reprint/:orderNumber`);
         console.log(`   Invoice endpoint: POST http://localhost:${HTTP_PORT}/print-invoice`);
         console.log(`   Recovery endpoint: POST http://localhost:${HTTP_PORT}/recover-prints`);

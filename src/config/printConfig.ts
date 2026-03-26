@@ -86,3 +86,44 @@ export async function printFreezerLabel(data: {
         return false;
     }
 }
+
+// Print a simple date label ("Fait le / À consommer avant le")
+// For sticking on sauces, bottles, and other kitchen items
+export async function printDateLabel(data: {
+    productName: string;
+    madeDate: string;       // "Fait le" or "Ouvert le" date string
+    useByDate: string;      // "À consommer avant le" date string
+    actionType: 'fait' | 'ouvert'; // "Fait le" or "Ouvert le"
+    operator: string;
+    copies: number;
+}): Promise<boolean> {
+    try {
+        // Insert one row per copy — each triggers a print via realtime
+        const rows = Array.from({ length: data.copies }, () => ({
+            product_name: data.productName,
+            category_name: 'Étiquette Date',
+            category_color: '#f59e0b', // amber
+            action_date: data.madeDate,
+            dlc_date: data.useByDate,
+            storage_temp: '',
+            operator: data.operator,
+            dlc_hours: 0,
+            action_label: data.actionType === 'fait' ? 'Fait le' : 'Ouvert le',
+            notes: JSON.stringify({ type: 'date_label', actionType: data.actionType }),
+        }));
+
+        const { error } = await supabase
+            .from('haccp_print_queue' as any)
+            .insert(rows as any);
+
+        if (error) {
+            console.error('Failed to queue date label print:', error);
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Failed to queue date label print:', error);
+        return false;
+    }
+}

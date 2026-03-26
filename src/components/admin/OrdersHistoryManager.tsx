@@ -103,30 +103,13 @@ export function OrdersHistoryManager() {
         (o) => o.status === 'completed'
     ).length;
 
-    // Direct print to thermal printer
-    const handleDirectPrint = async (order: Order) => {
+    // Direct print to thermal printer (via window.open to bypass HTTPS mixed content)
+    const handleDirectPrint = (order: Order) => {
         setPrintingOrderId(order.id);
-        try {
-            const response = await fetch(
-                `http://localhost:3001/reprint/${order.order_number}`,
-                { method: 'POST' }
-            );
-
-            if (response.ok) {
-                toast.success(`🖨️ Commande ${order.order_number} envoyée à l'imprimante`);
-            } else {
-                const data = await response.json();
-                toast.error(
-                    `Erreur d'impression: ${data.error || 'Erreur inconnue'}`
-                );
-            }
-        } catch (error) {
-            toast.error(
-                "Impossible de contacter le serveur d'impression. Vérifiez qu'il est démarré."
-            );
-        } finally {
-            setPrintingOrderId(null);
-        }
+        const url = `http://localhost:3001/reprint/${encodeURIComponent(order.order_number)}`;
+        window.open(url, '_blank', 'width=400,height=300');
+        toast.success(`🖨️ Commande ${order.order_number} envoyée à l'imprimante`);
+        setTimeout(() => setPrintingOrderId(null), 2000);
     };
 
     // Export CSV

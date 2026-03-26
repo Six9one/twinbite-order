@@ -373,27 +373,10 @@ export function InvoiceModal({ order, onClose }: InvoiceModalProps) {
     }, 300);
   };
 
-  const printInvoiceThermal = async () => {
-    try {
-      const response = await fetch('http://localhost:3001/print-invoice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          order,
-          invoiceDate,
-          invoiceNumber,
-        }),
-      });
-
-      if (response.ok) {
-        toast.success('🖨️ Facture envoyée à l\'imprimante thermique');
-      } else {
-        const data = await response.json();
-        toast.error(`Erreur d'impression: ${data.error || 'Erreur inconnue'}`);
-      }
-    } catch (error) {
-      toast.error('Impossible de contacter le serveur d\'impression. Vérifiez qu\'il est démarré.');
-    }
+  const printInvoiceThermal = () => {
+    const url = `http://localhost:3001/print-invoice/${encodeURIComponent(order.order_number)}?date=${encodeURIComponent(invoiceDate)}`;
+    window.open(url, '_blank', 'width=400,height=300');
+    toast.success('🖨️ Envoi de la facture à l\'imprimante...');
   };
 
   return (
