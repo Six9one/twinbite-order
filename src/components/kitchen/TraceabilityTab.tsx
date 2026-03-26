@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Tag, Camera, Printer, Clock, Calendar, Check, X, RefreshCw, AlertTriangle, Snowflake, Leaf, Plus, ScanText, Edit3, Trash2 } from 'lucide-react';
 import { uploadToKitchenStorage, KITCHEN_BUCKETS } from '@/lib/kitchenStorage';
 import { printHACCPDirect, printFreezerLabel } from '@/config/printConfig';
+import { DateLabelTab } from '@/components/kitchen/DateLabelTab';
 
 interface HACCPCategory { id: string; name: string; slug: string; color: string; dlc_hours: number; storage_temp_min: number; storage_temp_max: number; }
 interface HACCPProduct { id: string; category_id: string; name: string; dlc_hours_override: number | null; }
@@ -34,7 +35,7 @@ export function TraceabilityTab() {
     const [loading, setLoading] = useState(true);
     const [printing, setPrinting] = useState<string | null>(null);
     const [activeCategory, setActiveCategory] = useState('');
-    const [mainTab, setMainTab] = useState('etiquettes'); // 'etiquettes' or 'congelation'
+    const [mainTab, setMainTab] = useState('imprimer');
 
     // Étiquettes form state
     const [showNewLabel, setShowNewLabel] = useState(false);
@@ -322,7 +323,10 @@ export function TraceabilityTab() {
 
             {/* Main Tab Selector */}
             <Tabs value={mainTab} onValueChange={setMainTab}>
-                <TabsList className="grid w-full grid-cols-2 h-auto bg-slate-800">
+                <TabsList className="grid w-full grid-cols-3 h-auto bg-slate-800">
+                    <TabsTrigger value="imprimer" className="py-3 data-[state=active]:bg-orange-600 data-[state=active]:text-white">
+                        <Printer className="w-4 h-4 mr-2" />Imprimer
+                    </TabsTrigger>
                     <TabsTrigger value="etiquettes" className="py-3 data-[state=active]:bg-amber-600 data-[state=active]:text-white">
                         <Tag className="w-4 h-4 mr-2" />Étiquettes
                     </TabsTrigger>
@@ -330,6 +334,11 @@ export function TraceabilityTab() {
                         <Snowflake className="w-4 h-4 mr-2" />Congélation
                     </TabsTrigger>
                 </TabsList>
+
+                {/* === IMPRIMER ÉTIQUETTES DATE === */}
+                <TabsContent value="imprimer" className="mt-4">
+                    <DateLabelTab />
+                </TabsContent>
 
                 {/* === ÉTIQUETTES TAB === */}
                 <TabsContent value="etiquettes" className="mt-4 space-y-4">

@@ -91,20 +91,19 @@ export async function printFreezerLabel(data: {
 // For sticking on sauces, bottles, and other kitchen items
 export async function printDateLabel(data: {
     productName: string;
-    madeDate: string;       // "Fait le" or "Ouvert le" date string
-    useByDate: string;      // "À consommer avant le" date string
-    actionType: 'fait' | 'ouvert'; // "Fait le" or "Ouvert le"
+    madeDate: string;        // "Fait le" or "Ouvert le" date string
+    useByDate?: string;      // "À consommer avant le" — optional
+    actionType: 'fait' | 'ouvert';
     operator: string;
     copies: number;
 }): Promise<boolean> {
     try {
-        // Insert one row per copy — each triggers a print via realtime
         const rows = Array.from({ length: data.copies }, () => ({
             product_name: data.productName,
             category_name: 'Étiquette Date',
-            category_color: '#f59e0b', // amber
+            category_color: '#f59e0b',
             action_date: data.madeDate,
-            dlc_date: data.useByDate,
+            dlc_date: data.useByDate || '',
             storage_temp: '',
             operator: data.operator,
             dlc_hours: 0,

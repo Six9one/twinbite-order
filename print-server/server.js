@@ -925,16 +925,20 @@ function formatDateLabel(data) {
     ticket += actionDate + '\n';
     ticket += '\n';
 
-    // Use-by date (highlighted, large)
-    ticket += ESCPOS.CENTER;
-    ticket += ESCPOS.LINE_42;
-    ticket += ESCPOS.BOLD_ON;
-    ticket += ESCPOS.DOUBLE_HEIGHT;
-    ticket += 'A CONSOMMER AVANT LE\n';
-    ticket += useByDate + '\n';
-    ticket += ESCPOS.NORMAL_SIZE;
-    ticket += ESCPOS.BOLD_OFF;
-    ticket += ESCPOS.LINE_42;
+    // Use-by date (only if provided)
+    if (useByDate) {
+        ticket += ESCPOS.CENTER;
+        ticket += ESCPOS.LINE_42;
+        ticket += ESCPOS.BOLD_ON;
+        ticket += ESCPOS.DOUBLE_HEIGHT;
+        ticket += 'A CONSOMMER AVANT LE\n';
+        ticket += useByDate + '\n';
+        ticket += ESCPOS.NORMAL_SIZE;
+        ticket += ESCPOS.BOLD_OFF;
+        ticket += ESCPOS.LINE_42;
+    } else {
+        ticket += ESCPOS.LINE_42;
+    }
 
     // Footer with operator
     ticket += ESCPOS.CENTER;
