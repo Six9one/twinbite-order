@@ -807,23 +807,19 @@ async function handleHACCPPrint(job) {
     console.log(`   DLC: ${job.dlc_date}`);
     console.log(`${'='.repeat(50)}\n`);
 
-    // Detect date_label type from notes field
-    let isDateLabel = false;
-    try {
-        if (job.notes) {
-            const notes = JSON.parse(job.notes);
-            isDateLabel = notes.type === 'date_label';
-        }
-    } catch (e) { /* notes not JSON, use default format */ }
+    // Detect date_label type by category_name
+    const isDateLabel = job.category_name === 'ETIQUETTE_DATE';
 
     let ticketData;
     if (isDateLabel) {
         console.log('📋 Routing to date label format');
+        // If dlc_date equals action_date, no DLC was selected
+        const useByDate = (job.dlc_date && job.dlc_date !== job.action_date) ? job.dlc_date : '';
         ticketData = formatDateLabel({
             productName: job.product_name,
             actionLabel: job.action_label || 'Fait le',
             actionDate: job.action_date,
-            useByDate: job.dlc_date,
+            useByDate,
             operator: job.operator,
         });
     } else {

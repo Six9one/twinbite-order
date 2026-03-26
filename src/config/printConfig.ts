@@ -91,8 +91,8 @@ export async function printFreezerLabel(data: {
 // For sticking on sauces, bottles, and other kitchen items
 export async function printDateLabel(data: {
     productName: string;
-    madeDate: string;        // "Fait le" or "Ouvert le" date string
-    useByDate?: string;      // "À consommer avant le" — optional
+    madeDate: string;
+    useByDate?: string;
     actionType: 'fait' | 'ouvert';
     operator: string;
     copies: number;
@@ -100,15 +100,14 @@ export async function printDateLabel(data: {
     try {
         const rows = Array.from({ length: data.copies }, () => ({
             product_name: data.productName,
-            category_name: 'Étiquette Date',
+            category_name: 'ETIQUETTE_DATE',
             category_color: '#f59e0b',
             action_date: data.madeDate,
-            dlc_date: data.useByDate || '',
-            storage_temp: '',
+            dlc_date: data.useByDate || data.madeDate,
+            storage_temp: '-',
             operator: data.operator,
             dlc_hours: 0,
             action_label: data.actionType === 'fait' ? 'Fait le' : 'Ouvert le',
-            notes: JSON.stringify({ type: 'date_label', actionType: data.actionType }),
         }));
 
         const { error } = await supabase
@@ -126,3 +125,4 @@ export async function printDateLabel(data: {
         return false;
     }
 }
+

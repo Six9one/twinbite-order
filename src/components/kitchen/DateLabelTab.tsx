@@ -66,7 +66,7 @@ export function DateLabelTab() {
                 .from('haccp_print_queue' as any)
                 .select('id, product_name, action_date, dlc_date, created_at')
                 .gte('created_at', todayStart.toISOString())
-                .like('notes', '%date_label%')
+                .eq('category_name', 'ETIQUETTE_DATE')
                 .order('created_at', { ascending: false })
                 .limit(10);
             if (data) {
