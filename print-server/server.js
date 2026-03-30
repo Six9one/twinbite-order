@@ -1110,7 +1110,7 @@ function setupHttpServer() {
         console.log(`\n📥 Reprint GET request for order #${orderNumber}`);
 
         try {
-            const { data: orders, error } = await supabaseClient
+            const { data: orders, error } = await supabase
                 .from('orders')
                 .select('*')
                 .eq('order_number', orderNumber)
@@ -1186,7 +1186,7 @@ function setupHttpServer() {
 
         try {
             // Fetch order from Supabase
-            const { data: order, error } = await supabaseClient
+            const { data: order, error } = await supabase
                 .from('orders')
                 .select('*')
                 .eq('order_number', orderNumber)
