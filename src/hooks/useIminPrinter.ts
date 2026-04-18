@@ -1,7 +1,9 @@
 /**
  * iMin Printer SDK hook for the D4-503 POS terminal.
  * Uses the IminPrintInstance JS API available in the iMin browser.
- * Falls back to window.print() when not on an iMin device.
+ * 
+ * IMPORTANT: NO window.print() fallback — that opens a dialog and breaks kiosk fullscreen.
+ * If not on iMin device, printing is handled silently by the print server via Supabase realtime.
  */
 
 declare global {
@@ -52,6 +54,8 @@ export function useIminPrinter() {
             } catch (e) {
                 console.error('Failed to init iMin printer:', e);
             }
+        } else {
+            console.log('🖨️ Not on iMin device — printing will be handled by print server via Supabase');
         }
     };
 
@@ -59,7 +63,9 @@ export function useIminPrinter() {
         if (isIminDevice) {
             printViaiMin(order);
         } else {
-            printViaBrowser(order);
+            // NO browser print dialog — the print server handles it silently
+            // via Supabase realtime subscription (order INSERT triggers auto-print)
+            console.log('🖨️ [KIOSK] Not iMin device — skipping local print. Print server will handle via Supabase realtime.');
         }
     };
 
@@ -93,7 +99,7 @@ export function useIminPrinter() {
             // Order type
             p.setTextSize(26);
             p.setTextStyle(1);
-            const typeLabel = order.orderType === 'surplace' ? '🍽️ SUR PLACE' : '🛍️ A EMPORTER';
+            const typeLabel = order.orderType === 'surplace' ? 'SUR PLACE' : 'A EMPORTER';
             p.printText(`${typeLabel}\n`);
             p.setTextSize(22);
             p.printText(`Client: ${order.customerName.toUpperCase()}\n`);
@@ -110,7 +116,7 @@ export function useIminPrinter() {
 
                 // Price on right
                 p.setAlignment(2);
-                p.printText(`${(item.price * item.quantity).toFixed(2)}€\n`);
+                p.printText(`${(item.price * item.quantity).toFixed(2)}E\n`);
                 p.setAlignment(0);
 
                 // Customizations
@@ -137,11 +143,11 @@ export function useIminPrinter() {
             p.printText("--------------------------------\n");
             p.setAlignment(2);
             p.setTextSize(22);
-            p.printText(`Sous-total: ${order.subtotal.toFixed(2)}€\n`);
-            p.printText(`TVA (10%): ${order.tva.toFixed(2)}€\n`);
+            p.printText(`Sous-total: ${order.subtotal.toFixed(2)}E\n`);
+            p.printText(`TVA (10%): ${order.tva.toFixed(2)}E\n`);
             p.setTextSize(28);
             p.setTextStyle(1);
-            p.printText(`TOTAL: ${order.total.toFixed(2)}€\n`);
+            p.printText(`TOTAL: ${order.total.toFixed(2)}E\n`);
             p.setTextStyle(0);
 
             // Loyalty info
@@ -150,7 +156,7 @@ export function useIminPrinter() {
                 p.setTextSize(20);
                 p.printText("================================\n");
                 p.setTextSize(22);
-                p.printText(`🎁 FIDÉLITÉ: +${order.stampsEarned} tampon${order.stampsEarned > 1 ? 's' : ''}\n`);
+                p.printText(`FIDELITE: +${order.stampsEarned} tampon${order.stampsEarned > 1 ? 's' : ''}\n`);
                 if (order.totalStamps !== undefined) {
                     p.printText(`Total tampons: ${order.totalStamps}/10\n`);
                 }
@@ -162,103 +168,23 @@ export function useIminPrinter() {
             p.printText("================================\n");
             p.setTextSize(24);
             p.setTextStyle(1);
-            p.printText("Présentez ce ticket à la\n");
+            p.printText("Presentez ce ticket a la\n");
             p.printText("caisse pour payer\n");
             p.setTextSize(22);
             p.setTextStyle(0);
-            p.printText(`Merci ${order.customerName}! 🍕\n`);
+            p.printText(`Merci ${order.customerName}!\n`);
             p.printText("\n\n\n");
 
             // Cut paper
             p.partialCut();
 
-            console.log('✅ Ticket printed via iMin printer');
+            console.log('✅ Ticket printed via iMin built-in printer (silent, no dialog)');
         } catch (e) {
             console.error('iMin print error:', e);
-            // Fallback to browser print
-            printViaBrowser(order);
+            // Do NOT fallback to window.print() — it opens a dialog and breaks kiosk fullscreen
+            // The print server will handle it via Supabase realtime
+            console.log('🖨️ iMin print failed — print server will handle via Supabase realtime');
         }
-    };
-
-    const printViaBrowser = (order: KioskOrderData) => {
-        const typeLabel = order.orderType === 'surplace' ? '🍽️ SUR PLACE' : '🛍️ A EMPORTER';
-
-        let itemsHtml = '';
-        order.items.forEach(item => {
-            const details: string[] = [];
-            if (item.customization) {
-                if (item.customization.size) details.push(item.customization.size.toUpperCase());
-                if (item.customization.meats?.length) details.push(item.customization.meats.join(', '));
-                if (item.customization.meat) details.push(item.customization.meat);
-                if (item.customization.sauces?.length) details.push(item.customization.sauces.join(', '));
-                if (item.customization.garnitures?.length) details.push(item.customization.garnitures.join(', '));
-                if (item.customization.supplements?.length) details.push(item.customization.supplements.join(', '));
-                if (item.customization.menuOption && item.customization.menuOption !== 'none') {
-                    details.push(item.customization.menuOption);
-                }
-            }
-            itemsHtml += `<div class="item"><span>${item.quantity}x ${item.name}</span><span>${(item.price * item.quantity).toFixed(2)}€</span></div>`;
-            if (details.length > 0) {
-                itemsHtml += `<div class="details">${details.join(' | ')}</div>`;
-            }
-        });
-
-        let loyaltyHtml = '';
-        if (order.stampsEarned && order.stampsEarned > 0) {
-            loyaltyHtml = `
-                <div class="sep">================================</div>
-                <div class="loyalty">🎁 FIDÉLITÉ: +${order.stampsEarned} tampon${order.stampsEarned > 1 ? 's' : ''}</div>
-                ${order.totalStamps !== undefined ? `<div class="loyalty">Total tampons: ${order.totalStamps}/10</div>` : ''}
-            `;
-        }
-
-        const html = `<!DOCTYPE html><html><head><title>Ticket ${order.orderNumber}</title>
-<style>
-@page{size:80mm auto;margin:0}
-body{font-family:'Courier New',monospace;width:80mm;margin:0;padding:3mm;font-size:13px;color:#000}
-.center{text-align:center}
-.bold{font-weight:bold}
-.big{font-size:18px}
-.item{display:flex;justify-content:space-between;margin:3px 0;font-weight:bold}
-.details{font-size:10px;color:#666;margin-left:10px;margin-bottom:4px}
-.total{font-size:18px;font-weight:bold;text-align:right;margin-top:8px}
-.sep{text-align:center;color:#999}
-.loyalty{text-align:center;font-size:13px}
-</style></head><body>
-<div class="center bold big">TWIN PIZZA</div>
-<div class="center">Grand-Couronne</div>
-<div class="sep">================================</div>
-<div class="center bold big">TICKET N° ${order.orderNumber}</div>
-<div class="center">${new Date().toLocaleString('fr-FR')}</div>
-<div class="sep">================================</div>
-<div class="center bold">${typeLabel}</div>
-<div class="center bold">Client: ${order.customerName.toUpperCase()}</div>
-<div class="sep">--------------------------------</div>
-${itemsHtml}
-<div class="sep">--------------------------------</div>
-<div style="text-align:right">Sous-total: ${order.subtotal.toFixed(2)}€</div>
-<div style="text-align:right">TVA (10%): ${order.tva.toFixed(2)}€</div>
-<div class="total">TOTAL: ${order.total.toFixed(2)}€</div>
-${loyaltyHtml}
-<div class="sep">================================</div>
-<div class="center bold">Présentez ce ticket à la caisse pour payer</div>
-<div class="center">Merci ${order.customerName}! 🍕</div>
-</body></html>`;
-
-        const iframe = document.createElement('iframe');
-        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
-        document.body.appendChild(iframe);
-        const doc = iframe.contentWindow?.document;
-        if (doc) {
-            doc.open();
-            doc.write(html);
-            doc.close();
-            setTimeout(() => {
-                iframe.contentWindow?.print();
-                setTimeout(() => iframe.remove(), 3000);
-            }, 300);
-        }
-        console.log('✅ Ticket printed via browser fallback');
     };
 
     return { initPrinter, printKioskTicket, isIminDevice };
