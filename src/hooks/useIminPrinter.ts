@@ -3,12 +3,9 @@
  * 
  * Printing strategy (in order):
  * 1. IminPrintInstance JS SDK (native iMin browser only)
- * 2. Silent HTML print via hidden iframe (works when Chrome launched with --kiosk-printing)
- * 3. Print server via Supabase realtime (always works as backup)
- * 
- * IMPORTANT: On the iMin, launch Chrome with --kiosk-printing flag to enable 
- * silent printing without dialog. The iMin's built-in printer must be set as 
- * the default Android printer.
+ * 2. Fully Kiosk Browser API — fully.print() (if using Fully Kiosk Browser)
+ * 3. Silent HTML print via hidden iframe (Chrome with --kiosk-printing)
+ * 4. Print server via Supabase realtime (always works as backup)
  */
 
 declare global {
@@ -19,12 +16,18 @@ declare global {
             printText: (text: string) => void;
             printAndLineFeed: () => void;
             printAndFeedPaper: (height: number) => void;
-            setAlignment: (alignment: number) => void; // 0=left, 1=center, 2=right
+            setAlignment: (alignment: number) => void;
             setTextSize: (size: number) => void;
-            setTextStyle: (style: number) => void; // 0=normal, 1=bold
+            setTextStyle: (style: number) => void;
             setTextWidth: (width: number) => void;
             partialCut: () => void;
             fullCut: () => void;
+        };
+        fully?: {
+            print: () => void;
+            getDeviceId: () => string;
+            getCurrentUrl: () => string;
+            loadUrl: (url: string) => void;
         };
     }
 }
@@ -49,6 +52,7 @@ interface KioskOrderData {
 
 export function useIminPrinter() {
     const isIminDevice = typeof window !== 'undefined' && !!window.IminPrintInstance;
+    const isFullyKiosk = typeof window !== 'undefined' && !!window.fully;
 
     const initPrinter = () => {
         if (isIminDevice) {
@@ -58,8 +62,10 @@ export function useIminPrinter() {
             } catch (e) {
                 console.error('Failed to init iMin printer:', e);
             }
+        } else if (isFullyKiosk) {
+            console.log('🖨️ Fully Kiosk Browser detected — will use fully.print()');
         } else {
-            console.log('🖨️ iMin JS SDK not found — will use silent iframe print (requires --kiosk-printing)');
+            console.log('🖨️ Standard browser — will use iframe silent print');
         }
     };
 
@@ -67,8 +73,9 @@ export function useIminPrinter() {
         if (isIminDevice) {
             printViaiMin(order);
         } else {
-            // Use silent iframe print — works when Chrome is launched with --kiosk-printing
-            // This prints to the system default printer WITHOUT showing a dialog
+            // For both Fully Kiosk and standard Chrome: use HTML print
+            // Fully Kiosk intercepts window.print() and routes to system printer
+            // Chrome with --kiosk-printing also prints silently
             printSilentHTML(order);
         }
     };
@@ -256,34 +263,96 @@ ${loyaltyHtml}
 <div class="center">Merci ${order.customerName}!</div>
 </body></html>`;
 
-        // Create a hidden iframe, write the ticket, and trigger silent print
-        const iframe = document.createElement('iframe');
-        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;';
-        document.body.appendChild(iframe);
+        if (isFullyKiosk && window.fully) {
+            // ===== FULLY KIOSK BROWSER =====
+            // Create a print-only div overlay, print it, then remove it
+            const printContainer = document.createElement('div');
+            printContainer.id = 'kiosk-print-container';
+            printContainer.innerHTML = `
+                <style>
+                    @media screen { #kiosk-print-container { display: none !important; } }
+                    @media print {
+                        body > *:not(#kiosk-print-container) { display: none !important; }
+                        #kiosk-print-container { display: block !important; }
+                        @page { size: 80mm auto; margin: 0; }
+                        #kiosk-print-container {
+                            font-family: 'Courier New', monospace;
+                            width: 72mm; margin: 0 auto; padding: 2mm;
+                            font-size: 12px; color: #000;
+                        }
+                        #kiosk-print-container .center { text-align: center; }
+                        #kiosk-print-container .bold { font-weight: bold; }
+                        #kiosk-print-container .big { font-size: 16px; }
+                        #kiosk-print-container .item { display: flex; justify-content: space-between; margin: 2px 0; font-weight: bold; }
+                        #kiosk-print-container .details { font-size: 10px; color: #333; margin-left: 8px; margin-bottom: 3px; }
+                        #kiosk-print-container .total { font-size: 16px; font-weight: bold; text-align: right; margin-top: 6px; }
+                        #kiosk-print-container .sep { text-align: center; color: #666; font-size: 11px; }
+                        #kiosk-print-container .loyalty { text-align: center; font-size: 12px; }
+                    }
+                </style>
+                <div class="center bold big">TWIN PIZZA</div>
+                <div class="center">Grand-Couronne</div>
+                <div class="center">02 32 11 26 13</div>
+                <div class="sep">================================</div>
+                <div class="center bold big">TICKET N* ${order.orderNumber}</div>
+                <div class="center">${new Date().toLocaleString('fr-FR')}</div>
+                <div class="sep">================================</div>
+                <div class="center bold">${typeLabel}</div>
+                <div class="center bold">Client: ${order.customerName.toUpperCase()}</div>
+                <div class="sep">--------------------------------</div>
+                ${itemsHtml}
+                <div class="sep">--------------------------------</div>
+                <div style="text-align:right">Sous-total: ${order.subtotal.toFixed(2)}E</div>
+                <div style="text-align:right">TVA (10%): ${order.tva.toFixed(2)}E</div>
+                <div class="total">TOTAL: ${order.total.toFixed(2)}E</div>
+                ${loyaltyHtml}
+                <div class="sep">================================</div>
+                <div class="center bold">Presentez ce ticket a la caisse pour payer</div>
+                <div class="center">Merci ${order.customerName}!</div>
+            `;
+            document.body.appendChild(printContainer);
 
-        const doc = iframe.contentWindow?.document;
-        if (doc) {
-            doc.open();
-            doc.write(html);
-            doc.close();
-
-            // Wait for content to render, then trigger print
+            // Call Fully Kiosk print
             setTimeout(() => {
                 try {
-                    iframe.contentWindow?.print();
-                    console.log('✅ Silent print triggered (requires --kiosk-printing flag on Chrome)');
+                    window.fully!.print();
+                    console.log('✅ Ticket printed via Fully Kiosk Browser fully.print()');
                 } catch (e) {
-                    console.error('Silent print failed:', e);
+                    console.error('Fully Kiosk print failed:', e);
                 }
-                // Clean up after print
+                // Clean up the print container after printing
                 setTimeout(() => {
-                    iframe.remove();
-                }, 5000);
-            }, 500);
+                    printContainer.remove();
+                }, 3000);
+            }, 300);
+        } else {
+            // ===== STANDARD BROWSER (Chrome with --kiosk-printing) =====
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;';
+            document.body.appendChild(iframe);
+
+            const doc = iframe.contentWindow?.document;
+            if (doc) {
+                doc.open();
+                doc.write(html);
+                doc.close();
+
+                setTimeout(() => {
+                    try {
+                        iframe.contentWindow?.print();
+                        console.log('✅ Silent print triggered via iframe');
+                    } catch (e) {
+                        console.error('Iframe print failed:', e);
+                    }
+                    setTimeout(() => {
+                        iframe.remove();
+                    }, 5000);
+                }, 500);
+            }
         }
     };
 
-    return { initPrinter, printKioskTicket, isIminDevice };
+    return { initPrinter, printKioskTicket, isIminDevice, isFullyKiosk };
 }
 
 export type { KioskOrderData };
