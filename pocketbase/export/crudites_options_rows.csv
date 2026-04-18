@@ -1,0 +1,4 @@
+id,name,price,image_url,display_order,is_active,created_at
+0fcc2174-93e2-42e2-a44d-d6b83d1d1f3c,Oignon,0,,3,true,2026-01-24 16:19:03.607765+00
+13ae19f5-368c-490f-a3e8-9b5f7c293323,Tomate,0,,2,true,2026-01-24 16:19:03.607765+00
+f10299af-1b44-4655-be84-e987150297fe,Salade,0,,1,true,2026-01-24 16:19:03.607765+00

@@ -15,7 +15,7 @@ import { SettingsManager } from '@/components/admin/SettingsManager';
 import { ImageUploadTable } from '@/components/admin/ImageUploadTable';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { PromotionsManager } from '@/components/admin/PromotionsManager';
-import { SimpleLoyaltyManager } from '@/components/admin/SimpleLoyaltyManager';
+import { StampCenter } from '@/components/admin/StampCenter';
 import { OpeningHoursManager } from '@/components/admin/OpeningHoursManager';
 import { StatisticsSection } from '@/components/admin/StatisticsSection';
 import { PaymentSettingsManager } from '@/components/admin/PaymentSettingsManager';
@@ -31,6 +31,7 @@ import { PriceManager } from '@/components/admin/PriceManager';
 import { HACCPManager } from '@/components/admin/HACCPManager';
 import { TicketManager } from '@/components/admin/TicketManager';
 import { OrdersHistoryManager } from '@/components/admin/OrdersHistoryManager';
+import { AvailabilityManager } from '@/components/admin/AvailabilityManager';
 import {
   LogOut, Home, Search, RefreshCw, Download, Printer,
   Clock, CheckCircle, XCircle, ChefHat, Package,
@@ -40,7 +41,7 @@ import {
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'loyalty' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp';
+type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'loyalty' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability';
 
 
 
@@ -885,6 +886,9 @@ export default function AdminDashboard() {
           {/* Pizzas */}
           {activeTab === 'pizzas' && <PizzaManager />}
 
+          {/* Product Availability */}
+          {activeTab === 'availability' && <AvailabilityManager />}
+
           {/* Sandwiches */}
           {activeTab === 'sandwiches' && <SandwichManager />}
 
@@ -930,7 +934,7 @@ export default function AdminDashboard() {
           {/* New Sections */}
           {activeTab === 'promotions' && <PromotionsManager />}
           {activeTab === 'carousel' && <CarouselManager />}
-          {activeTab === 'loyalty' && <SimpleLoyaltyManager />}
+          {activeTab === 'loyalty' && <StampCenter />}
           {activeTab === 'reviews' && <ReviewsManager />}
           {activeTab === 'hours' && <OpeningHoursManager />}
           {activeTab === 'store-status' && <StoreStatusManager />}

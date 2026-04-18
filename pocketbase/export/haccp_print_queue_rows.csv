@@ -1,0 +1,298 @@
+id,product_name,category_name,category_color,action_date,dlc_date,storage_temp,operator,dlc_hours,action_label,printed,created_at
+017b29a4-9904-466b-8f49-8eac607873ce,Creme fraiche,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:22,27/03/2026 11:22,-,Staff,0,Ouvert le,true,2026-03-27 10:22:17.799074+00
+01ed7f21-80bd-44b7-ba9b-5a095cce0505,Jambon,Produits Frais,#22c55e,23/01/2026 12:22,26/01/2026 12:22,0°C à +3°C,Staff,72,Ouverture,true,2026-01-23 11:22:46.026781+00
+022738ac-c07f-4b02-b2c6-4b396fdce3af,Viande hachée,Congelé → Décongelé,#ef4444,10/03/2026 14:01,13/03/2026 14:01,0°C à +3°C,Staff,72,Décongélation,true,2026-03-10 13:01:14.33282+00
+03f47c04-b229-4000-ab5d-422e67912bc1,Poivrons,Congelé → Décongelé,#ef4444,25/03/2026 23:40,28/03/2026 23:40,0°C à +3°C,Staff,72,Décongélation,true,2026-03-25 22:40:42.996223+00
+042a5ddc-4015-4067-8f9c-d862eca07b62,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:20,26/04/2026 01:20,-,Staff,0,Fait le,true,2026-03-26 23:20:56.407167+00
+053af48f-42a7-4671-86ab-37f4b152f023,Steak haché,Congelé → Décongelé,#ef4444,27/02/2026 15:01,02/03/2026 15:01,0°C à +3°C,Staff,72,Décongélation,true,2026-02-27 14:02:58.949062+00
+070eecb5-e0b7-443a-8444-7986c3d2d63a,Escalope,Produits Frais,#22c55e,11/03/2026 15:06,13/03/2026 15:06,0°C à +3°C,Staff,48,Ouverture,true,2026-03-11 14:06:39.695912+00
+0718199f-c6d4-43cf-a449-6940392dad0e,Salade,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:29,08/04/2026 18:29,-,Staff,0,Fait le,true,2026-04-06 22:17:20.4618+00
+07825535-77dd-4353-86ba-99091b67e9a8,Merguez,Congelé → Décongelé,#ef4444,11/03/2026 20:06,14/03/2026 20:06,0°C à +3°C,Staff,72,Décongélation,true,2026-03-11 19:05:59.67728+00
+08380736-ebdd-493c-8200-c727d5c336bd,Œuf,Produits Frais,#22c55e,04/03/2026 20:59,05/03/2026 20:59,0°C à +3°C,Staff,24,Ouverture,false,2026-03-04 19:59:54.117111+00
+083ae382-0821-4c9c-8f0a-fbce441d1aff,Escalope,Produits Frais,#22c55e,19/02/2026 17:39,21/02/2026 17:39,0°C à +3°C,Staff,48,Ouverture,true,2026-02-19 16:39:05.665277+00
+096df687-392b-4e6b-8c72-a416153e8042,Crème fraîche,Produits Frais,#22c55e,25/03/2026 23:06,27/03/2026 23:06,0°C à +3°C,Safouane B,48,Ouverture,false,2026-03-25 22:06:52.836914+00
+0afad317-826b-4cd0-96bb-857b0b9e254b,"oeufs ",Produits Frais,#22c55e,28/02/2026 19:01,04/03/2026 19:01,0°C à +3°C,Staff,96,Ouverture,true,2026-02-28 18:01:27.10406+00
+0def26d5-17a2-47e3-97de-0067d5175b85,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,false,2026-04-06 22:17:32.986193+00
+0e53b87c-0141-4a6f-b097-d333b1965788,Escalope,Produits Frais,#22c55e,06/02/2026 21:58,08/02/2026 21:58,0°C à +3°C,Staff,48,Ouverture,true,2026-02-06 20:58:56.52287+00
+0e7983d4-d6f9-4815-bbf1-7548b6ea0dc7,Biggy Burger,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:14,27/03/2026 11:14,-,Staff,0,Fait le,true,2026-03-27 10:14:32.768714+00
+1337b3ae-0be8-4fe5-992b-f5c11d020cb5,Jambon,Produits Frais,#22c55e,23/01/2026 12:22,26/01/2026 12:22,0°C à +3°C,Staff,72,Ouverture,true,2026-01-23 11:22:17.870545+00
+13c219f6-d209-4990-a83f-cbe6776ccea6,Crepe maison,Produits Frais,#22c55e,27/02/2026 23:31,03/03/2026 23:31,0°C à +3°C,Staff,96,Ouverture,true,2026-02-27 22:31:54.185759+00
+13e93154-8513-4ed6-b01a-4249f9dfc3a6,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,true,2026-04-06 16:55:38.948606+00
+14268493-629c-498f-8633-fd62caa65f7f,Viande hachée,Congelé → Décongelé,#ef4444,31/03/2026 11:15,03/04/2026 11:15,0°C à +3°C,Staff,72,Décongélation,false,2026-03-31 09:15:12.675669+00
+14a5d41a-68f9-4af4-87f7-a9e0a2865612,Steak haché,Congelé → Décongelé,#ef4444,20/01/2026 14:49,23/01/2026 14:49,0°C à +3°C,Safouane B,72,Décongélation,true,2026-01-20 13:49:14.899704+00
+14b30201-19af-4338-9adb-9d5978d84278,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:21,26/04/2026 01:21,-,Staff,0,Fait le,true,2026-03-26 23:21:03.018454+00
+1623c8a8-7ac2-4b7f-8100-203cc13b21a7,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:39,08/04/2026 18:39,-,Staff,0,Fait le,false,2026-04-06 22:17:23.505932+00
+18da6f28-b899-49f9-bacb-ef74003a4c5b,"filet de poulet ",Produits Frais,#22c55e,28/01/2026 11:30,30/01/2026 11:30,0°C à +3°C,Staff,48,Ouverture,false,2026-01-28 10:30:18.376063+00
+18daf72c-0f24-4311-84b7-64582fcf2596,Oignons,ETIQUETTE_DATE,#f59e0b,06/04/2026 12:38,09/04/2026 12:38,-,Staff,0,Fait le,true,2026-04-06 10:38:22.649685+00
+1a1804d0-27ef-42c2-985f-dd5c0ae81f7f,Escalope,Produits Frais,#22c55e,22/01/2026 23:02,24/01/2026 23:02,0°C à +3°C,Staff,48,Ouverture,true,2026-01-22 22:02:54.001444+00
+1a8ca8eb-a58d-4f7f-b6da-ad2a9ae7342c,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,false,2026-04-06 22:17:25.855055+00
+1a9c0582-e835-4b12-9a54-0687f67b5347,Jambon,Produits Frais,#22c55e,31/03/2026 11:19,03/04/2026 11:19,0°C à +3°C,Staff,72,Ouverture,true,2026-03-31 09:19:32.599063+00
+1b9169c8-e5d4-49d2-b1ec-b6c94f416ac2,Escalope,Produits Frais,#22c55e,06/04/2026 11:39,08/04/2026 11:39,0°C à +3°C,Staff,48,Ouverture,true,2026-04-06 09:39:32.710136+00
+1e4d2d90-1529-480b-b472-aca1678454e3,Steak haché,Congelé → Décongelé,#ef4444,25/03/2026 22:45,28/03/2026 22:45,0°C à +3°C,Safouane B,72,Décongélation,true,2026-03-25 21:45:44.000658+00
+1f69dcec-049c-4492-a25e-d3d5b9c70c13,Oignons,ETIQUETTE_DATE,#f59e0b,07/04/2026 13:48,10/04/2026 13:48,-,Staff,0,Fait le,false,2026-04-07 11:48:12.890367+00
+207bad38-1254-4545-ba8c-45833e736289,Jambon,ETIQUETTE_DATE,#f59e0b,30/03/2026 20:00,04/04/2026 20:00,-,Staff,0,Fait le,false,2026-03-30 18:00:02.775958+00
+208376dc-8643-4f33-b9ed-cfb53f841856,Pomme De Terre,ETIQUETTE_DATE,#f59e0b,06/04/2026 12:33,09/04/2026 12:33,-,Staff,0,Fait le,true,2026-04-06 10:33:33.292511+00
+20cc362d-9e4f-421d-a21c-1c86a953acb9,Crème fraîche,Produits Frais,#22c55e,25/03/2026 23:06,27/03/2026 23:06,0°C à +3°C,Safouane B,48,Ouverture,false,2026-03-25 22:06:55.240097+00
+22318323-3aa8-4aed-8251-24299f1d18ce,Viande hachée,Congelé → Décongelé,#ef4444,28/02/2026 14:50,03/03/2026 14:50,0°C à +3°C,Staff,72,Décongélation,true,2026-02-28 13:51:33.1502+00
+24da4e9f-5316-4e2b-9bfc-8fa5dc7d4820,Viande hachée,Congelé → Décongelé,#ef4444,03/02/2026 13:40,06/02/2026 13:40,0°C à +3°C,Staff,72,Décongélation,true,2026-02-03 12:40:59.368546+00
+2527f34c-9a93-4c9a-93e7-87cc01816f2b,Oreo,Produits Frais,#22c55e,26/02/2026 11:23,02/03/2026 11:23,0°C à +3°C,Staff,96,Ouverture,false,2026-02-26 10:23:08.911102+00
+255bc50a-b715-41de-b4da-5d77f2f4f2e4,Samouraï,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:22,27/03/2026 00:22,-,Staff,0,Fait le,true,2026-03-26 23:22:21.243674+00
+25894c9e-2f86-475b-9496-9d751182eebf,Escalope,Produits Frais,#22c55e,26/03/2026 23:39,28/03/2026 23:39,0°C à +3°C,Staff,48,Ouverture,true,2026-03-26 22:39:42.303343+00
+25bd4748-9f25-42a9-800b-2f2f27702806,Ketchup,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:14,27/03/2026 11:14,-,Staff,0,Fait le,true,2026-03-27 10:14:27.620611+00
+26aaec6d-c8b6-4161-9928-cd13acd0001e,Oignons,ETIQUETTE_DATE,#f59e0b,07/04/2026 13:48,10/04/2026 13:48,-,Staff,0,Fait le,false,2026-04-07 11:48:19.221946+00
+273e5e86-71bc-4091-a2b0-d22c77d51916,Escalope,Produits Frais,#22c55e,10/03/2026 14:01,12/03/2026 14:01,0°C à +3°C,Staff,48,Ouverture,true,2026-03-10 13:01:07.256261+00
+27c29fca-fc3a-47bc-9de1-7e3cacb439a1,Ketchup,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:12,30/03/2026 01:12,-,Staff,0,Fait le,false,2026-03-26 23:12:16.420791+00
+29309226-f112-4834-8171-0f9adfb74424,Tenders,Congelé → Décongelé,#ef4444,27/02/2026 14:50,02/03/2026 14:50,0°C à +3°C,Staff,72,Décongélation,true,2026-02-27 13:51:39.091347+00
+2af76ab3-79c4-40fd-9edb-baa51bf7d4ae,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:10,27/03/2026 00:10,-,Staff,0,Fait le,false,2026-03-26 23:10:44.071658+00
+2b047ebc-a2ca-4490-9603-0cfc4059e167,Crème fraîche,Produits Frais,#22c55e,25/03/2026 23:06,27/03/2026 23:06,0°C à +3°C,Safouane B,48,Ouverture,true,2026-03-25 22:06:56.691623+00
+2e276a5a-3519-4dea-bae2-cae0304b5105,Escalope,Produits Frais,#22c55e,23/01/2026 12:21,25/01/2026 12:21,0°C à +3°C,Staff,48,Ouverture,false,2026-01-23 11:21:52.824409+00
+2eae3e1d-cb15-4c5a-99fd-04fe369849df,Pommes de terre,Produits Frais,#22c55e,26/03/2026 19:46,29/03/2026 20:46,0°C à +3°C,Staff,72,Ouverture,true,2026-03-26 18:46:38.40847+00
+320f4735-f704-4098-9647-c0e6fb91238e,Escalope,Produits Frais,#22c55e,05/02/2026 23:41,07/02/2026 23:41,0°C à +3°C,Staff,48,Ouverture,true,2026-02-05 22:41:45.905777+00
+322aca99-7b3c-498c-814d-73b47674c091,Jambon,Produits Frais,#22c55e,25/02/2026 22:50,28/02/2026 22:50,0°C à +3°C,Staff,72,Ouverture,true,2026-02-25 21:50:46.486847+00
+32620b8a-a1cb-407e-961d-1954621dd3d8,Œuf,Produits Frais,#22c55e,10/03/2026 14:58,11/03/2026 14:58,0°C à +3°C,Safouane B,24,Ouverture,true,2026-03-10 13:58:14.233911+00
+34836176-fc5f-4b02-961c-2709df59b88f,Thon,Congelé → Décongelé,#ef4444,23/01/2026 02:03,26/01/2026 02:03,0°C à +3°C,Staff,72,Décongélation,false,2026-01-23 01:03:24.848083+00
+34dc7ac6-0754-4b76-8f19-459d8d8f673a,Steak haché,Congelé → Décongelé,#ef4444,02/02/2026 12:07,05/02/2026 12:07,0°C à +3°C,Staff,72,Décongélation,true,2026-02-02 11:07:03.18769+00
+358910a0-1223-4cbc-804b-550f7d8e6dab,Mozzarella,Produits Frais,#22c55e,25/03/2026 23:23,27/03/2026 23:23,0°C à +3°C,Safouane B,48,Ouverture,false,2026-03-25 22:23:15.093419+00
+35f4f864-569c-4c52-b069-82b3d8c0dc1e,Crepe maison,Produits Frais,#22c55e,27/02/2026 23:30,03/03/2026 23:30,0°C à +3°C,Staff,96,Ouverture,false,2026-02-27 22:30:16.346348+00
+369336a1-8a4c-42aa-add9-bed75f53fdd1,Sauce tomate,Produits Frais,#22c55e,21/01/2026 13:54,24/01/2026 13:54,0°C à +3°C,Safouane B,72,Ouverture,true,2026-01-21 12:54:39.824975+00
+377a1a42-d498-4b58-85bb-33e0d8c0f8fa,Jambon,Produits Frais,#22c55e,24/03/2026 11:19,27/03/2026 11:19,0°C à +3°C,Safouane B,72,Ouverture,false,2026-03-24 10:19:01.348627+00
+398b9f75-5258-4ebb-b078-b718bd929baf,Escalope,Produits Frais,#22c55e,28/02/2026 12:39,02/03/2026 12:39,0°C à +3°C,Staff,48,Ouverture,true,2026-02-28 11:39:44.10121+00
+3a7a7ed7-610f-44f1-a379-377d0efae2e4,Thon,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:22,27/03/2026 11:22,-,Staff,0,Ouvert le,true,2026-03-27 10:22:59.135385+00
+3a827f17-fd99-400f-84a4-01abbc89a802,Champignon,Produits Frais,#22c55e,26/03/2026 14:46,29/03/2026 15:46,0°C à +3°C,Staff,72,Ouverture,false,2026-03-26 13:46:40.098548+00
+3b950e8b-61f4-49dc-9499-f4acaedaf2d0,Ketchup,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:19,27/03/2026 00:19,-,Staff,0,Fait le,true,2026-03-26 23:19:35.717032+00
+3bd9acde-a635-4c89-963c-a02e28ea8256,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,false,2026-04-06 22:17:25.171136+00
+3c2bd748-acf9-4daf-a486-98441f93ae79,Escalope,Produits Frais,#22c55e,23/03/2026 11:59,25/03/2026 11:59,0°C à +3°C,Safouane B,48,Ouverture,true,2026-03-23 10:59:26.786837+00
+3c77565a-0715-4b45-b9f8-693a6acb6f1d,Escalope,Produits Frais,#22c55e,17/02/2026 19:19,19/02/2026 19:19,0°C à +3°C,Staff,48,Ouverture,true,2026-02-17 18:19:39.039789+00
+3cd27619-deae-4022-a221-b437d3735738,Lardons,ETIQUETTE_DATE,#f59e0b,06/04/2026 12:09,09/04/2026 12:09,-,Staff,0,Fait le,true,2026-04-06 10:09:58.188772+00
+3d3a7171-27c2-41ee-a7ee-854bf1c3e4c5,Pommes de terre,Produits Frais,#22c55e,04/03/2026 21:00,07/03/2026 21:00,0°C à +3°C,Staff,72,Ouverture,false,2026-03-04 20:00:16.248699+00
+3d7a1396-5842-4727-b7a4-6c8172359dfb,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:17,27/03/2026 00:17,-,Staff,0,Fait le,true,2026-03-26 23:17:18.006484+00
+4014eea3-77ef-45e0-b39d-7ffdf2267768,Viande hachée,Congelé → Décongelé,#ef4444,14/02/2026 23:58,17/02/2026 23:58,0°C à +3°C,Staff,72,Décongélation,false,2026-02-14 22:58:29.810877+00
+41086a0a-bd4b-4459-8072-87c6e4d3ed1a,Œuf,Produits Frais,#22c55e,25/03/2026 22:51,26/03/2026 22:51,0°C à +3°C,Safouane B,24,Ouverture,true,2026-03-25 21:51:54.07722+00
+4168f36c-3702-40ac-acfc-f7c2699c1d77,Oignons,ETIQUETTE_DATE,#f59e0b,07/04/2026 13:48,10/04/2026 13:48,-,Staff,0,Fait le,true,2026-04-07 11:48:28.981955+00
+41bd8dbf-e346-422a-9de7-593b894a20ec,Barbecue,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:14,27/03/2026 11:14,-,Staff,0,Fait le,true,2026-03-27 10:14:38.314528+00
+41c393ee-9e96-488d-ab2e-a7597570e2f1,Pommes de terre,Produits Frais,#22c55e,31/01/2026 12:28,03/02/2026 12:28,0°C à +3°C,Staff,72,Ouverture,true,2026-01-31 11:28:41.7933+00
+429e386b-3d9d-489a-9bb6-28af45a43d59,Olives,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:21,27/03/2026 11:21,-,Staff,0,Ouvert le,true,2026-03-27 10:21:38.334103+00
+4323229c-bdfc-492d-8ed2-51eb34349f3c,Nuggets,Congelé → Décongelé,#ef4444,31/03/2026 11:15,03/04/2026 11:15,0°C à +3°C,Staff,72,Décongélation,false,2026-03-31 09:15:25.774735+00
+43926910-78bb-4ac1-a1d0-aed0d4788bf4,Jambon,ETIQUETTE_DATE,#f59e0b,30/03/2026 20:00,04/04/2026 20:00,-,Staff,0,Fait le,false,2026-03-30 18:00:17.995694+00
+459c28c7-8b51-4097-a67f-0293492f8cf7,Escalope,Produits Frais,#22c55e,18/02/2026 12:52,20/02/2026 12:52,0°C à +3°C,Staff,48,Ouverture,true,2026-02-18 11:52:09.391183+00
+45adb293-d7fe-416c-97f6-245ba4d84d99,Viande hachée,Congelé → Décongelé,#ef4444,06/04/2026 11:38,09/04/2026 11:38,0°C à +3°C,Staff,72,Décongélation,true,2026-04-06 09:38:14.098918+00
+471ba073-5c5d-476c-ab99-4ba460446a5d,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,true,2026-04-06 22:17:26.903957+00
+47223d0c-04cf-4978-97cd-075fd867974b,Merguez,Congelé → Décongelé,#ef4444,11/03/2026 20:05,14/03/2026 20:05,0°C à +3°C,Staff,72,Décongélation,false,2026-03-11 19:05:32.054255+00
+479e123a-81fe-4ab7-9e6e-09291500857f,Escalope,Produits Frais,#22c55e,25/02/2026 11:48,27/02/2026 11:48,0°C à +3°C,Staff,48,Ouverture,false,2026-02-25 10:48:25.798299+00
+47c445e5-8c8f-4478-812c-39fe74b9d629,Harissaa,Produits Frais,#22c55e,30/01/2026 14:38,03/02/2026 14:38,0°C à +3°C,Staff,96,Ouverture,true,2026-01-30 13:38:33.696808+00
+48d9fa38-ad2e-4d68-87ba-8f8955208205,Sauce tomate,ETIQUETTE_DATE,#f59e0b,06/04/2026 12:12,09/04/2026 12:12,-,Staff,0,Fait le,true,2026-04-06 10:12:13.717525+00
+4aa51da0-49d5-49fd-8064-1df28114e585,Viande hachée,Congelé → Décongelé,#ef4444,14/03/2026 12:15,17/03/2026 12:15,0°C à +3°C,Staff,72,Décongélation,true,2026-03-14 11:15:26.151115+00
+4b11a23f-aba9-4f82-aa1c-f6b7aaccda17,Escalope,Produits Frais,#22c55e,27/02/2026 11:30,01/03/2026 11:30,0°C à +3°C,Staff,48,Ouverture,true,2026-02-27 10:30:53.366224+00
+4b71b4a3-ae82-4ad0-99a6-b3ce942d1ca8,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:17,27/03/2026 00:17,-,Staff,0,Fait le,true,2026-03-26 23:17:18.006484+00
+4d097849-5273-4ee0-8692-be16f3567121,crepe,Produits Frais,#22c55e,11/02/2026 23:02,15/02/2026 23:02,0°C à +3°C,Staff,96,Ouverture,true,2026-02-11 22:02:35.135502+00
+4d423327-1403-4d8c-b412-0283002f2eda,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,true,2026-04-06 22:17:26.7177+00
+4f7961a1-3238-4966-86cc-e35ccd634e8e,Champignons,Produits Frais,#22c55e,26/03/2026 14:46,28/03/2026 14:46,0°C à +3°C,Staff,48,Ouverture,false,2026-03-26 13:46:06.503589+00
+4f8978f2-9aa0-49cb-b1e3-65b2bddcf451,Salade,ETIQUETTE_DATE,#f59e0b,06/04/2026 12:38,09/04/2026 12:38,-,Staff,0,Fait le,true,2026-04-06 10:38:51.090648+00
+4fcde93b-8a21-4e73-b61c-61c1e972332c,Ognions,Produits Frais,#22c55e,26/03/2026 13:35,29/03/2026 14:35,0°C à +3°C,Staff,72,Ouverture,true,2026-03-26 12:35:59.385713+00
+4fdaff00-c989-44c7-bb4c-b79d870f3953,Sauce tomate,ETIQUETTE_DATE,#f59e0b,27/03/2026 19:23,27/03/2026 19:23,-,Staff,0,Fait le,true,2026-03-27 18:23:03.862196+00
+4ff05ae8-b608-4bdc-bf41-e48b5f1a419b,Escalope,Produits Frais,#22c55e,25/02/2026 12:44,27/02/2026 12:44,0°C à +3°C,Staff,48,Ouverture,true,2026-02-25 11:44:19.212821+00
+502240d4-dbea-493b-a7aa-6a380e63afc3,Viande hachée,Congelé → Décongelé,#ef4444,25/01/2026 00:30,28/01/2026 00:30,0°C à +3°C,Staff,72,Décongélation,false,2026-01-24 23:30:43.41251+00
+5149b886-939a-4798-a086-6e31753eb9be,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:18,27/03/2026 00:18,-,Staff,0,Fait le,true,2026-03-26 23:18:11.60541+00
+5172f92a-d285-4d5a-9fb1-88560b91c4ec,Jambon,ETIQUETTE_DATE,#f59e0b,30/03/2026 20:00,02/04/2026 20:00,-,Staff,0,Fait le,false,2026-03-30 18:00:33.784794+00
+52d187d6-0262-4e3e-ba77-f9945fe9d7d7,Escalope,Produits Frais,#22c55e,10/03/2026 14:02,12/03/2026 14:02,0°C à +3°C,Staff,48,Ouverture,true,2026-03-10 13:02:01.598057+00
+535ccd68-8b21-4426-8f02-6d8d38eb885e,Ketchup,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:11,27/03/2026 00:11,-,Staff,0,Fait le,false,2026-03-26 23:12:03.889061+00
+53b770d6-7342-495e-81bc-6b77779b11ff,Jambon,Produits Frais,#22c55e,23/01/2026 12:21,26/01/2026 12:21,0°C à +3°C,Staff,72,Ouverture,false,2026-01-23 11:21:56.589919+00
+551895b1-1ba0-4895-a5d4-7380ad4b693e,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:14,27/03/2026 11:14,-,Staff,0,Fait le,true,2026-03-27 10:14:11.206732+00
+554c943d-d98b-45af-92c8-3ebde9c50800,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:39,08/04/2026 18:39,-,Staff,0,Fait le,false,2026-04-06 16:39:24.695514+00
+55563765-4b17-45fe-a29c-977f8c950e0c,Samouraï,ETIQUETTE_DATE,#f59e0b,28/03/2026 11:36,28/03/2026 11:36,-,Staff,0,Fait le,false,2026-03-28 10:36:04.39177+00
+567d19e3-4100-4a29-9ca4-fd89fee58d63,"Olives coupé ",Produits Frais,#22c55e,26/03/2026 14:26,30/03/2026 15:26,0°C à +3°C,Staff,96,Ouverture,true,2026-03-26 13:26:20.936417+00
+569b6af1-b8b9-47dd-a5c5-87fc64b37937,Lardons,Congelé → Décongelé,#ef4444,20/01/2026 21:57,23/01/2026 21:57,0°C à +3°C,Safouane B,72,Décongélation,true,2026-01-20 20:57:15.207224+00
+56a4b048-fb1c-4955-bb03-e28aef4a00df,Merguez,ETIQUETTE_DATE,#f59e0b,28/03/2026 12:00,28/03/2026 12:00,-,Staff,0,Fait le,true,2026-03-28 11:00:15.99827+00
+5747b0cb-ffed-44fd-8b8d-c6bccc1f561c,Salade,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:29,08/04/2026 18:29,-,Staff,0,Fait le,false,2026-04-06 16:29:32.127155+00
+578341c8-94c1-43a1-b1a7-f9ef1f2bae17,Cordon bleu,Congelé → Décongelé,#ef4444,26/03/2026 23:39,30/03/2026 00:39,0°C à +3°C,Staff,72,Décongélation,true,2026-03-26 22:39:47.671802+00
+580c367c-9616-4239-97f0-e41894bfd411,Viande hachée,Congelé → Décongelé,#ef4444,06/03/2026 22:55,09/03/2026 22:55,0°C à +3°C,Staff,72,Décongélation,true,2026-03-06 21:56:33.128174+00
+58f265cb-c1c7-4670-814e-2d906095ad7b,Salade,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:29,08/04/2026 18:29,-,Staff,0,Fait le,true,2026-04-06 16:29:35.602601+00
+59f3623f-f0bb-4092-bbd7-bb96bc751dc8,Mayonnaise,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:14,27/03/2026 11:14,-,Staff,0,Fait le,true,2026-03-27 10:14:30.03166+00
+5a101742-1afc-461d-8c67-7ad209ee62e0,Escalope,Produits Frais,#22c55e,31/03/2026 11:16,02/04/2026 11:16,0°C à +3°C,Staff,48,Ouverture,true,2026-03-31 09:16:39.229749+00
+5b1ffeea-8abd-4123-8bae-adca6ece9b7c,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,false,2026-04-06 22:17:26.382802+00
+5dec0bbd-b620-4ce9-9b81-490ddc2a8ba0,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:40,08/04/2026 18:40,-,Staff,0,Fait le,false,2026-04-06 22:17:13.900719+00
+5dee26db-63f5-44e5-9af2-d0ea0ff367a6,Merguez,ETIQUETTE_DATE,#f59e0b,06/04/2026 11:45,08/04/2026 11:45,-,Staff,0,Fait le,true,2026-04-06 09:45:28.547481+00
+5fc132d4-5c37-46bc-9e11-14714d8d2f70,Oignons,ETIQUETTE_DATE,#f59e0b,07/04/2026 13:48,10/04/2026 13:48,-,Staff,0,Fait le,false,2026-04-07 11:48:10.133108+00
+5fe0e6ca-0ad1-4aa6-bac7-44b1d8eff7b6,Poulet,Congelé → Décongelé,#ef4444,23/01/2026 12:59,26/01/2026 12:59,0°C à +3°C,Staff,72,Décongélation,true,2026-01-23 11:59:56.582944+00
+60169530-a652-4240-9935-971c5f50e995,Pommes de terre,Produits Frais,#22c55e,04/03/2026 21:00,07/03/2026 21:00,0°C à +3°C,Staff,72,Ouverture,false,2026-03-04 20:00:05.547979+00
+602bbf53-c24b-42bb-8a1b-4c5c607d532a,Escalope,Produits Frais,#22c55e,28/01/2026 11:30,30/01/2026 11:30,0°C à +3°C,Staff,48,Ouverture,true,2026-01-28 10:30:51.276361+00
+604c8989-4daf-47aa-bb38-47761312a89f,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:10,27/03/2026 00:10,-,Staff,0,Fait le,false,2026-03-26 23:10:45.152353+00
+626ce9d4-9cb8-48bc-a1a4-39c7bf80c8ad,Olives,ETIQUETTE_DATE,#f59e0b,06/04/2026 11:45,09/04/2026 11:45,-,Staff,0,Fait le,true,2026-04-06 09:45:03.713201+00
+62e4e593-0db3-4f7e-8202-8c1c589b18e3,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:39,08/04/2026 18:39,-,Staff,0,Fait le,false,2026-04-06 16:39:33.155848+00
+630cf292-e324-4950-bb70-cb6a3f077d4b,Escalope,ETIQUETTE_DATE,#f59e0b,07/04/2026 12:16,09/04/2026 12:16,-,Staff,0,Fait le,true,2026-04-07 10:16:29.926907+00
+6484400e-5d93-4f47-ad30-f7d5fc9e3f34,Crème fraîche,Produits Frais,#22c55e,28/03/2026 12:01,30/03/2026 13:01,0°C à +3°C,Staff,48,Ouverture,true,2026-03-28 11:01:06.671213+00
+648cf014-3bcd-4bef-abe9-43b9001c2032,Escalope,Produits Frais,#22c55e,03/02/2026 13:38,05/02/2026 13:38,0°C à +3°C,Staff,48,Ouverture,true,2026-02-03 12:38:57.571776+00
+6553e418-1307-44d0-9c2e-a1bcdf9f0672,Blanche,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:14,27/03/2026 11:14,-,Staff,0,Fait le,true,2026-03-27 10:14:35.12385+00
+657e1261-564b-4a50-9b55-854479d251dd,Escalope,Produits Frais,#22c55e,05/02/2026 23:38,07/02/2026 23:38,0°C à +3°C,Staff,48,Ouverture,true,2026-02-05 22:38:25.881779+00
+65ede744-c63e-4e6c-8f24-b5447730d80f,Viande hachée,Congelé → Décongelé,#ef4444,23/03/2026 00:42,26/03/2026 00:42,0°C à +3°C,Staff,72,Décongélation,false,2026-03-22 23:42:38.671634+00
+665b9ce0-3ace-4b86-92de-c0b7a23d61c8,Jambon,ETIQUETTE_DATE,#f59e0b,28/03/2026 23:34,01/04/2026 00:34,-,Staff,0,Fait le,true,2026-03-28 22:34:54.413688+00
+6985a266-7e1c-4f8d-bb92-854143de751f,"poulet ",Produits Frais,#22c55e,23/01/2026 12:10,26/01/2026 12:10,0°C à +3°C,Staff,72,Ouverture,false,2026-01-23 11:10:11.144069+00
+69d5f0d5-fdf6-40c3-81d3-1affda432617,Viande hachée,Congelé → Décongelé,#ef4444,20/02/2026 23:35,23/02/2026 23:35,0°C à +3°C,Staff,72,Décongélation,true,2026-02-20 22:35:49.860794+00
+6adc66fb-38f9-4bdb-9b02-788c3def325a,Vh,ETIQUETTE_DATE,#f59e0b,28/03/2026 23:50,31/03/2026 00:50,-,Staff,0,Fait le,true,2026-03-28 22:50:00.824002+00
+6bfef41a-5667-4988-a41a-4652158e8c83,Escalope,Produits Frais,#22c55e,24/02/2026 13:58,26/02/2026 13:58,0°C à +3°C,Staff,48,Ouverture,false,2026-02-24 12:58:07.415612+00
+6c2e4b07-7cda-443a-ac91-89ef1dae0ecc,Escalope,Produits Frais,#22c55e,09/02/2026 18:31,11/02/2026 18:31,0°C à +3°C,Staff,48,Ouverture,false,2026-02-09 17:31:14.877745+00
+6c59164e-0374-4fe6-83f8-b2c5fe7a39e4,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:14,27/03/2026 11:14,-,Staff,0,Fait le,true,2026-03-27 10:14:21.118309+00
+6c9ed7e9-d72d-443c-85c8-f1ba65241a48,Jambon,ETIQUETTE_DATE,#f59e0b,30/03/2026 20:00,04/04/2026 20:00,-,Staff,0,Fait le,false,2026-03-30 18:00:32.042653+00
+6d2466f5-15ce-4301-b0f7-32f6955ac0d1,Escalope,Produits Frais,#22c55e,25/02/2026 11:48,27/02/2026 11:48,0°C à +3°C,Staff,48,Ouverture,true,2026-02-25 10:48:44.566582+00
+6d6d6fe6-6571-4797-94d6-945c0de549f5,Viande hachée,Congelé → Décongelé,#ef4444,06/04/2026 11:43,09/04/2026 11:43,0°C à +3°C,Staff,72,Décongélation,true,2026-04-06 09:43:57.662985+00
+6d87fcd3-7976-4189-9c19-a6479f1955f1,Pommes de terre,Produits Frais,#22c55e,31/03/2026 11:17,03/04/2026 11:17,0°C à +3°C,Staff,72,Ouverture,true,2026-03-31 09:17:16.827891+00
+6d94f1d1-9b0b-46e1-adc8-9b3b474ff6c9,Steak haché,Congelé → Décongelé,#ef4444,25/01/2026 00:30,28/01/2026 00:30,0°C à +3°C,Staff,72,Décongélation,false,2026-01-24 23:30:49.370676+00
+6ee6a94e-1fc3-4e1f-b8a5-2dc911ba2288,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:17,27/03/2026 00:17,-,Staff,0,Fait le,true,2026-03-26 23:17:32.668437+00
+71b31949-e4ca-4f8a-903f-5aad69f038b4,Escalope,Produits Frais,#22c55e,16/02/2026 12:37,18/02/2026 12:37,0°C à +3°C,Staff,48,Ouverture,true,2026-02-16 11:37:57.838185+00
+71e2135b-698c-4b26-a283-aa54b9a8b191,Escalope,Produits Frais,#22c55e,20/02/2026 23:30,22/02/2026 23:30,0°C à +3°C,Staff,48,Ouverture,true,2026-02-20 22:30:11.544028+00
+7282fbc6-1190-46eb-8d5f-84dc10bbab77,Crème fraîche,Produits Frais,#22c55e,31/03/2026 11:17,02/04/2026 11:17,0°C à +3°C,Staff,48,Ouverture,true,2026-03-31 09:17:12.402049+00
+72ad0d9a-b315-4510-b882-122f9638be6b,Poivrons,Produits Frais,#22c55e,24/02/2026 23:19,27/02/2026 23:19,0°C à +3°C,Staff,72,Ouverture,true,2026-02-24 22:19:07.387815+00
+741f213c-cf6a-45e6-a36d-88910e5aed40,Jambon,Produits Frais,#22c55e,23/01/2026 12:21,26/01/2026 12:21,0°C à +3°C,Staff,72,Ouverture,false,2026-01-23 11:21:37.32965+00
+7750ca75-421e-4901-aaca-58aac4b8c769,Champignons,Produits Frais,#22c55e,26/03/2026 14:47,29/03/2026 15:47,0°C à +3°C,Staff,72,Ouverture,true,2026-03-26 13:47:14.262521+00
+793e7b7a-09de-4e1a-936b-9ea898f1bb46,Poulet,ETIQUETTE_DATE,#f59e0b,28/03/2026 23:49,30/03/2026 00:49,-,Staff,0,Fait le,true,2026-03-28 22:49:43.168359+00
+7999e58f-e532-46d2-b6d6-a4fdb5e59281,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:39,08/04/2026 18:39,-,Staff,0,Fait le,true,2026-04-06 22:17:47.693505+00
+7b0d4387-55ab-402d-814a-0354cf0e7740,Escalope,Produits Frais,#22c55e,24/02/2026 23:18,26/02/2026 23:18,0°C à +3°C,Staff,48,Ouverture,true,2026-02-24 22:18:53.168723+00
+7b28f3bf-60db-4c9b-b8d0-06357b7c5891,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:39,08/04/2026 18:39,-,Staff,0,Fait le,false,2026-04-06 16:39:43.315315+00
+7b5b38f9-20fb-4cd8-8b50-638b99722eb4,Steak haché,Congelé → Décongelé,#ef4444,07/04/2026 13:26,10/04/2026 13:26,0°C à +3°C,Staff,72,Décongélation,true,2026-04-07 11:26:33.370389+00
+7ca3dcce-2264-4e64-8798-96aa8326b46f,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:29,08/04/2026 18:29,-,Staff,0,Fait le,true,2026-04-06 16:29:56.187369+00
+7e38cc9a-b13c-4621-9a92-83ff160f2e7c,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:29,08/04/2026 18:29,-,Staff,0,Fait le,false,2026-04-06 22:17:21.77683+00
+8001c540-07b0-49fc-9f9b-4d3621df3fee,Champignons,ETIQUETTE_DATE,#f59e0b,06/04/2026 12:38,09/04/2026 12:38,-,Staff,0,Fait le,true,2026-04-06 10:38:04.132576+00
+807ac3f6-ded2-4f56-9155-a3a4716670f7,Merguez,Congelé → Décongelé,#ef4444,25/03/2026 23:33,28/03/2026 23:33,0°C à +3°C,Safouane B,72,Décongélation,true,2026-03-25 22:33:34.70296+00
+80889f80-8991-4b12-92e7-2f755a3affd8,Crepe,Produits Frais,#22c55e,13/02/2026 15:01,16/02/2026 15:01,0°C à +3°C,Staff,72,Ouverture,false,2026-02-13 14:01:03.902639+00
+80e72e86-54b1-4bba-a795-c012f8dc3191,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,false,2026-04-06 22:17:26.032687+00
+8105d6d2-ac6b-4312-84a3-8097baf18cc2,Viande hachée,Congelé → Décongelé,#ef4444,06/02/2026 21:22,09/02/2026 21:22,0°C à +3°C,Staff,72,Décongélation,true,2026-02-06 20:22:13.29844+00
+823dc0bc-92fa-4647-a925-4a976e823d7d,Tenders,Congelé → Décongelé,#ef4444,27/03/2026 00:22,30/03/2026 01:22,0°C à +3°C,Staff,72,Décongélation,true,2026-03-26 23:22:31.163577+00
+82cd92f5-ee7e-4033-847d-5bc8b5eac716,viandes hachee,Congelé → Décongelé,#ef4444,27/01/2026 11:14,30/01/2026 11:14,0°C à +3°C,Staff,72,Décongélation,false,2026-01-27 10:14:06.042111+00
+836a01ea-ac3a-4a1f-8f16-59074a7e5d42,Merguez,Congelé → Décongelé,#ef4444,23/01/2026 00:45,26/01/2026 00:45,0°C à +3°C,Staff,72,Décongélation,false,2026-01-22 23:45:37.361031+00
+8450418a-58ac-4ac3-bfbf-894a7ab048f9,Jambon,Produits Frais,#22c55e,23/03/2026 12:05,26/03/2026 12:05,0°C à +3°C,Safouane B,72,Ouverture,true,2026-03-23 11:05:43.975105+00
+8688301b-c9b6-4351-9aab-92ac45bf8131,Viande hachée,Congelé → Décongelé,#ef4444,20/02/2026 23:35,23/02/2026 23:35,0°C à +3°C,Staff,72,Décongélation,false,2026-02-20 22:35:48.05182+00
+89278730-05c4-40b8-ae12-97cf8c5293b3,Jambon,Produits Frais,#22c55e,30/03/2026 20:01,02/04/2026 20:01,0°C à +3°C,Staff,72,Ouverture,false,2026-03-30 18:01:17.160837+00
+8981ebd2-bcb0-4523-9262-1bcf4554c7c3,Poivrons,Produits Frais,#22c55e,31/03/2026 11:16,03/04/2026 11:16,0°C à +3°C,Staff,72,Ouverture,true,2026-03-31 09:16:48.97816+00
+8a76b3b2-4d55-4b8f-ac61-3130f19bad6c,Mozzarella,Produits Frais,#22c55e,25/03/2026 23:23,27/03/2026 23:23,0°C à +3°C,Safouane B,48,Ouverture,false,2026-03-25 22:23:16.839731+00
+8a842ede-0457-450c-9018-ef460553fd54,Escalope,Produits Frais,#22c55e,14/03/2026 12:15,16/03/2026 12:15,0°C à +3°C,Staff,48,Ouverture,true,2026-03-14 11:14:59.317216+00
+8b070982-08eb-4054-911d-a7f554880e15,Poivrons,ETIQUETTE_DATE,#f59e0b,28/03/2026 11:56,28/03/2026 11:56,-,Staff,0,Fait le,true,2026-03-28 10:56:12.644718+00
+8b96b4f2-0be5-4c57-b028-aa2c18de23c9,Mozzarella,ETIQUETTE_DATE,#f59e0b,06/04/2026 11:58,09/04/2026 11:58,-,Staff,0,Fait le,true,2026-04-06 09:58:36.96245+00
+8ce403a7-de69-4f02-af16-7c9e1799e1cd,Ketchup,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:12,30/03/2026 01:12,-,Staff,0,Fait le,false,2026-03-26 23:12:28.75379+00
+8d4bbef9-a009-444d-9691-77af2ce152f2,Tarte daim,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:25,27/03/2026 11:25,-,Staff,0,Ouvert le,true,2026-03-27 10:25:27.481756+00
+8ddb1791-363a-47b8-a392-2af578d73125,Vh,ETIQUETTE_DATE,#f59e0b,28/03/2026 23:49,30/03/2026 00:49,-,Staff,0,Fait le,true,2026-03-28 22:49:57.377452+00
+8ee749a0-a412-4c87-afa1-85bd33529ec5,Jambon,Produits Frais,#22c55e,30/03/2026 20:01,02/04/2026 20:01,0°C à +3°C,Staff,72,Ouverture,false,2026-03-30 18:01:20.723013+00
+8fda0b56-1c4d-4b39-9507-e0b31bd8cc62,Steak haché,Congelé → Décongelé,#ef4444,21/01/2026 13:53,24/01/2026 13:53,0°C à +3°C,Safouane B,72,Décongélation,true,2026-01-21 12:53:15.491178+00
+905790c1-6938-4740-9482-389595c8d212,Jambon,ETIQUETTE_DATE,#f59e0b,06/04/2026 12:09,09/04/2026 12:09,-,Staff,0,Fait le,true,2026-04-06 10:09:44.769898+00
+90851822-2eb6-4ad5-bf02-2dc5307354e6,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,false,2026-04-06 22:17:25.472716+00
+91090d44-cdf3-416e-bfd8-3ad271c7f393,Nuggets,Congelé → Décongelé,#ef4444,26/03/2026 23:39,30/03/2026 00:39,0°C à +3°C,Staff,72,Décongélation,true,2026-03-26 22:39:44.89135+00
+913ce247-4a69-4b91-bfc3-f9a016c7226b,Viande hachée,Congelé → Décongelé,#ef4444,31/03/2026 11:15,03/04/2026 11:15,0°C à +3°C,Staff,72,Décongélation,false,2026-03-31 09:15:17.302743+00
+916e76cd-eb95-4522-a3e3-fe5fd8d81d47,Steak haché,Congelé → Décongelé,#ef4444,14/02/2026 23:58,17/02/2026 23:58,0°C à +3°C,Staff,72,Décongélation,false,2026-02-14 22:58:27.405544+00
+92115150-9370-493b-b73e-e8e04fb8cf82,Jambon,Produits Frais,#22c55e,10/03/2026 14:30,13/03/2026 14:30,0°C à +3°C,Staff,72,Ouverture,false,2026-03-10 13:30:35.080216+00
+921764ce-d906-42a0-9715-938e4a2d73d5,Poulet,ETIQUETTE_DATE,#f59e0b,28/03/2026 18:30,30/03/2026 19:30,-,Staff,0,Fait le,true,2026-03-28 17:30:01.045837+00
+9229b02a-49b5-4a0c-bee8-dac3f8dc8079,Salade,Produits Frais,#22c55e,26/03/2026 13:14,29/03/2026 14:14,0°C à +3°C,Staff,72,Ouverture,true,2026-03-26 12:14:29.945037+00
+93d2b8aa-ef33-4b77-b6f8-52a96364f10e,Vh,ETIQUETTE_DATE,#f59e0b,28/03/2026 12:10,29/03/2026 13:10,-,Staff,0,Fait le,true,2026-03-28 11:10:28.485849+00
+9427f88e-8e3d-4e4e-bd4b-fa18ad90c1fc,"Crepe ",Produits Frais,#22c55e,13/02/2026 15:01,16/02/2026 15:01,0°C à +3°C,Staff,72,Ouverture,true,2026-02-13 14:01:27.089132+00
+9446dca6-4bdd-4378-80b9-eeeb89e14f7b,Jambon,ETIQUETTE_DATE,#f59e0b,30/03/2026 20:00,04/04/2026 20:00,-,Staff,0,Fait le,false,2026-03-30 18:00:05.03+00
+962c9d00-1dbe-4853-902b-c2c3019c5a8b,Poivrons,ETIQUETTE_DATE,#f59e0b,06/04/2026 11:49,09/04/2026 11:49,-,Staff,0,Fait le,true,2026-04-06 09:49:13.858798+00
+96bb9ca0-f2cf-464e-8956-ac73f054300c,Merguez,Congelé → Décongelé,#ef4444,31/01/2026 15:01,03/02/2026 15:01,0°C à +3°C,Staff,72,Décongélation,true,2026-01-31 14:01:47.935057+00
+970fc4c2-524d-4b6d-b503-e0794585a247,Escalope,Produits Frais,#22c55e,23/02/2026 13:08,25/02/2026 13:08,0°C à +3°C,Staff,48,Ouverture,true,2026-02-23 12:08:46.6159+00
+9787cd03-a183-47f6-b7d5-c56397710781,Jambon,Produits Frais,#22c55e,23/02/2026 19:17,26/02/2026 19:17,0°C à +3°C,Staff,72,Ouverture,true,2026-02-23 18:17:59.414553+00
+97ab59c6-8698-41ab-8cef-41ce8e5d16ae,Salade,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:29,08/04/2026 18:29,-,Staff,0,Fait le,false,2026-04-06 22:17:45.802894+00
+982baa92-7093-4790-b413-c46e6497f0fb,Ketchup,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:11,27/03/2026 00:11,-,Staff,0,Fait le,false,2026-03-26 23:11:59.677473+00
+98343955-c40e-4817-b14d-6ff19c2cd16b,Merguez,Congelé → Décongelé,#ef4444,20/01/2026 14:49,23/01/2026 14:49,0°C à +3°C,Safouane B,72,Décongélation,true,2026-01-20 13:49:31.568357+00
+990eb7eb-6398-4a0a-a537-ad74ed3b3eb5,Samouraï,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:14,27/03/2026 11:14,-,Staff,0,Fait le,true,2026-03-27 10:14:24.622397+00
+99a19169-7bc9-459f-8ee8-67fab7c63934,Escalope,Produits Frais,#22c55e,12/02/2026 19:22,14/02/2026 19:22,0°C à +3°C,Staff,48,Ouverture,true,2026-02-12 18:22:51.029021+00
+9a20a01e-0f64-4b8a-8241-2c8e45fa262b,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:10,27/03/2026 00:10,-,Staff,0,Fait le,false,2026-03-26 23:10:41.56154+00
+9b432743-a032-49a2-9581-b4db9d25bfa8,Escalope,Produits Frais,#22c55e,11/03/2026 11:44,13/03/2026 11:44,0°C à +3°C,Staff,48,Ouverture,false,2026-03-11 10:44:42.98439+00
+9b9c55ad-35c5-4120-b9d0-a2c98b42c882,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,false,2026-04-06 22:17:25.665125+00
+9d434001-9d8e-42fa-a2a3-ef09b37410eb,Jambon,ETIQUETTE_DATE,#f59e0b,30/03/2026 20:00,04/04/2026 20:00,-,Staff,0,Fait le,false,2026-03-30 18:00:12.024586+00
+9e042140-74f1-4de7-bd55-74464a9ad5f9,Saumon,Produits Frais,#22c55e,24/02/2026 23:19,25/02/2026 23:19,0°C à +3°C,Staff,24,Ouverture,true,2026-02-24 22:19:13.761344+00
+9e405a6c-13f3-4dcb-9f7a-0909c39d44d7,Jambon,Produits Frais,#22c55e,25/02/2026 22:50,28/02/2026 22:50,0°C à +3°C,Staff,72,Ouverture,false,2026-02-25 21:50:40.488685+00
+9e63455e-2913-45cf-b2ed-dcc063656e6b,Adil. Joker nule,Congelé → Décongelé,#ef4444,26/03/2026 13:56,29/03/2026 14:56,0°C à +3°C,Staff,72,Décongélation,true,2026-03-26 12:56:11.991701+00
+a347b5e0-bb98-4708-aaa1-593b343a9ed1,Samouraï,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:22,10/04/2026 01:22,-,Staff,0,Fait le,true,2026-03-26 23:22:09.532949+00
+a4ba2019-e4b2-46fb-9fb2-54f9e11f330f,Œuf,Produits Frais,#22c55e,19/02/2026 17:39,20/02/2026 17:39,0°C à +3°C,Staff,24,Ouverture,false,2026-02-19 16:39:12.032243+00
+a6124e0d-e934-46c8-84b6-746c3b60697d,Escalope,Produits Frais,#22c55e,14/03/2026 12:14,16/03/2026 12:14,0°C à +3°C,Staff,48,Ouverture,false,2026-03-14 11:14:44.70629+00
+a808aada-e056-4242-9715-21ea167d238e,Saumon,Produits Frais,#22c55e,24/03/2026 11:19,25/03/2026 11:19,0°C à +3°C,Safouane B,24,Ouverture,true,2026-03-24 10:19:25.347422+00
+aa2d07c3-e302-4eaa-be27-4ff7fc505661,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:17,27/03/2026 00:17,-,Staff,0,Fait le,true,2026-03-26 23:17:32.668437+00
+abf43df3-64f5-4b09-926a-e0d426d2fee3,Jambon,Produits Frais,#22c55e,31/03/2026 11:16,03/04/2026 11:16,0°C à +3°C,Staff,72,Ouverture,true,2026-03-31 09:16:42.672468+00
+ac09f3f2-3119-48e8-be78-0766bd9fea92,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:17,27/03/2026 00:17,-,Staff,0,Fait le,true,2026-03-26 23:17:18.006484+00
+ac416001-bedf-4f98-801b-90c429b2f944,Jambon,Produits Frais,#22c55e,24/03/2026 11:19,27/03/2026 11:19,0°C à +3°C,Safouane B,72,Ouverture,true,2026-03-24 10:19:18.371959+00
+af5e8c89-c05c-4273-9cec-e245811a3409,poulet,Produits Frais,#22c55e,06/02/2026 14:57,08/02/2026 14:57,0°C à +3°C,Staff,48,Ouverture,true,2026-02-06 13:57:56.90092+00
+af9dcb3a-76a0-4bb2-8014-f0118b4038fd,"viandes hachées ",Congelé → Décongelé,#ef4444,27/01/2026 11:15,30/01/2026 11:15,0°C à +3°C,Staff,72,Décongélation,true,2026-01-27 10:15:26.480315+00
+b25b8c4e-016e-404f-b868-9be80a0db4c1,Escalope,Produits Frais,#22c55e,23/03/2026 11:54,25/03/2026 11:54,0°C à +3°C,Safouane B,48,Ouverture,true,2026-03-23 10:54:36.429788+00
+b2e6f972-b181-4599-90d3-3d44dac619e8,Cordon bleu,Congelé → Décongelé,#ef4444,27/02/2026 14:50,02/03/2026 14:50,0°C à +3°C,Staff,72,Décongélation,true,2026-02-27 13:51:49.382058+00
+b498d0bb-fbc7-476c-a3fc-2188f37d758a,Escalope,Produits Frais,#22c55e,25/02/2026 11:48,27/02/2026 11:48,0°C à +3°C,Staff,48,Ouverture,false,2026-02-25 10:48:19.989973+00
+b640c901-53d4-46d3-88fa-49461a04a89a,Pommes de terre,Produits Frais,#22c55e,31/03/2026 11:16,03/04/2026 11:16,0°C à +3°C,Staff,72,Ouverture,true,2026-03-31 09:16:59.345032+00
+b68ee11c-7979-4659-aecd-60266e97afbf,Tomates,Produits Frais,#22c55e,26/03/2026 14:07,29/03/2026 15:07,0°C à +3°C,Staff,72,Ouverture,true,2026-03-26 13:07:55.477195+00
+b6bc555f-411e-49d3-8ea7-efdcd8306d1a,Œuf Cassé,Produits Frais,#22c55e,06/02/2026 20:31,07/02/2026 20:31,0°C à +3°C,Staff,24,Ouverture,true,2026-02-06 19:31:09.976025+00
+b71ec915-b1b1-4069-b2bd-669a993505e1,Œuf,Produits Frais,#22c55e,24/02/2026 23:18,25/02/2026 23:18,0°C à +3°C,Staff,24,Ouverture,true,2026-02-24 22:18:58.40445+00
+b8729a17-b023-4477-a907-9ebd6033b034,Steak haché,Congelé → Décongelé,#ef4444,31/03/2026 11:16,03/04/2026 11:16,0°C à +3°C,Staff,72,Décongélation,true,2026-03-31 09:16:26.723448+00
+ba6a3235-eaea-44e7-a0d1-3eecc8e6df44,Pommes de terre,Produits Frais,#22c55e,24/03/2026 11:19,27/03/2026 11:19,0°C à +3°C,Safouane B,72,Ouverture,true,2026-03-24 10:19:22.570219+00
+bb3044de-1e7d-40e3-a6e3-89a00b59e049,Samouraï,ETIQUETTE_DATE,#f59e0b,28/03/2026 11:36,28/03/2026 11:36,-,Staff,0,Fait le,true,2026-03-28 10:36:46.229551+00
+bb3f48f3-baa4-4b4b-9aa2-70d751668e1f,"merguez ",Congelé → Décongelé,#ef4444,24/01/2026 13:17,27/01/2026 13:17,0°C à +3°C,Staff,72,Décongélation,true,2026-01-24 12:17:38.817187+00
+bc825ba1-45f5-4b9b-a252-4249001ee2e1,Escalope,Produits Frais,#22c55e,07/02/2026 18:30,09/02/2026 18:30,0°C à +3°C,Staff,48,Ouverture,true,2026-02-07 17:30:46.322781+00
+bc9ad031-c616-4c22-8a0f-87db4386fd10,Pomme De Terre,ETIQUETTE_DATE,#f59e0b,06/04/2026 12:33,06/04/2026 12:33,-,Staff,0,Fait le,true,2026-04-06 10:33:22.96977+00
+bd4ff1dd-a1bf-4ea8-a365-74db61119371,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:29,08/04/2026 18:29,-,Staff,0,Fait le,false,2026-04-06 22:17:15.242474+00
+be858550-da02-43cc-956d-4211344baf11,"Crepe ",Produits Frais,#22c55e,21/02/2026 14:09,25/02/2026 14:09,0°C à +3°C,Staff,96,Ouverture,true,2026-02-21 13:09:06.230073+00
+bf643bd2-9e14-4895-9cba-64481f06135f,Steak haché,Congelé → Décongelé,#ef4444,23/01/2026 00:14,26/01/2026 00:14,0°C à +3°C,Staff,72,Décongélation,false,2026-01-22 23:14:54.728592+00
+bf8e3b6e-557c-4f1f-a14d-dc335cb4c680,Merguez,ETIQUETTE_DATE,#f59e0b,06/04/2026 11:45,08/04/2026 11:45,-,Staff,0,Ouvert le,true,2026-04-06 09:45:35.296806+00
+c0b34022-4afd-4d59-976a-5011f716c3e5,Jambon,ETIQUETTE_DATE,#f59e0b,30/03/2026 20:00,01/04/2026 20:00,-,Staff,0,Fait le,false,2026-03-30 18:00:35.179013+00
+c1429516-9a0c-45b2-879a-ba70a373a40c,Mozzarella,Produits Frais,#22c55e,25/03/2026 23:23,27/03/2026 23:23,0°C à +3°C,Safouane B,48,Ouverture,true,2026-03-25 22:23:18.882097+00
+c19643d7-5cba-4f85-9a78-3268890333ad,Chorizo,Congelé → Décongelé,#ef4444,02/02/2026 13:29,05/02/2026 13:29,0°C à +3°C,Staff,72,Décongélation,true,2026-02-02 12:29:19.11186+00
+c31c50d2-a93b-4533-b5a7-70d6747e4f93,Escalope,Produits Frais,#22c55e,04/03/2026 20:59,06/03/2026 20:59,0°C à +3°C,Staff,48,Ouverture,true,2026-03-04 19:59:48.567561+00
+c4e49f2b-c790-4429-b8e8-c0fcc60a567d,Jambon,ETIQUETTE_DATE,#f59e0b,30/03/2026 20:00,31/03/2026 20:00,-,Staff,0,Fait le,false,2026-03-30 18:00:36.499182+00
+c85f0a10-e46b-478e-83d5-e876e4d716ea,Escalope,Produits Frais,#22c55e,14/03/2026 12:14,16/03/2026 12:14,0°C à +3°C,Staff,48,Ouverture,false,2026-03-14 11:14:35.615276+00
+c8b03ff7-b5b8-40e3-9f5c-b0f3a5ee2dc3,Tomates,ETIQUETTE_DATE,#f59e0b,06/04/2026 12:32,06/04/2026 12:32,-,Staff,0,Fait le,true,2026-04-06 10:32:58.435342+00
+c98faeaa-2f46-4a06-95a8-82287be1c8a7,Viande hachée,Congelé → Décongelé,#ef4444,04/03/2026 20:59,07/03/2026 20:59,0°C à +3°C,Staff,72,Décongélation,true,2026-03-04 20:00:00.271373+00
+c9d34a69-993d-420c-a4b9-c9ad6411b418,Samouraï,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:17,29/03/2026 00:17,-,Staff,0,Fait le,true,2026-03-26 23:17:01.315027+00
+c9f445d5-43ca-426a-952e-ac633e6324e6,Jambon,ETIQUETTE_DATE,#f59e0b,28/03/2026 21:58,31/03/2026 22:58,-,Staff,0,Fait le,true,2026-03-28 20:58:23.310066+00
+ca93db2f-5817-4284-9d64-7adaf988f480,Jambon,Produits Frais,#22c55e,13/03/2026 21:12,16/03/2026 21:12,0°C à +3°C,Staff,72,Ouverture,true,2026-03-13 20:12:39.956744+00
+cd243737-691f-473c-b2bb-ec75e175bfe4,Œuf,Produits Frais,#22c55e,19/02/2026 17:39,20/02/2026 17:39,0°C à +3°C,Staff,24,Ouverture,true,2026-02-19 16:39:17.024364+00
+cd8cee94-fc61-4581-9b1f-e0775b5d5191,Steak haché,Congelé → Décongelé,#ef4444,03/02/2026 13:40,06/02/2026 13:40,0°C à +3°C,Staff,72,Décongélation,true,2026-02-03 12:40:57.220637+00
+ce8a7acd-235c-45f6-8893-f6ab868bb610,Jambon,Produits Frais,#22c55e,06/03/2026 22:55,09/03/2026 22:55,0°C à +3°C,Staff,72,Ouverture,true,2026-03-06 21:56:57.490267+00
+cf4ec2a1-e1e4-4301-8f54-ba767a759994,Salade,ETIQUETTE_DATE,#f59e0b,06/04/2026 12:38,09/04/2026 12:38,-,Staff,0,Fait le,true,2026-04-06 22:17:19.116939+00
+d00ba423-8337-4066-890b-de83e9cb599c,Œuf Non cassé,Produits Frais,#22c55e,21/01/2026 13:54,18/02/2026 13:54,0°C à +3°C,Safouane B,672,Ouverture,true,2026-01-21 12:54:25.531529+00
+d136b125-fff6-4415-815f-347663798866,Mozza,ETIQUETTE_DATE,#f59e0b,28/03/2026 12:00,28/03/2026 12:00,-,Staff,0,Fait le,true,2026-03-28 11:00:40.226071+00
+d1652e1a-6325-43ee-b0bb-90706f48450f,Champignons,ETIQUETTE_DATE,#f59e0b,07/04/2026 13:29,10/04/2026 13:29,-,Staff,0,Fait le,true,2026-04-07 11:29:13.40213+00
+d1d02fe5-15cf-4ac4-8924-95ec1629fa11,Pommes de terre,Produits Frais,#22c55e,20/01/2026 19:17,23/01/2026 19:17,0°C à +3°C,Safouane B,72,Ouverture,true,2026-01-20 18:17:41.581565+00
+d2b3c47b-ed49-4035-99c7-163be9497207,Mozzarella,Produits Frais,#22c55e,31/03/2026 11:16,02/04/2026 11:16,0°C à +3°C,Staff,48,Ouverture,true,2026-03-31 09:17:02.99543+00
+d2c2ac75-6429-408d-b18f-f6cee631f52d,Escalope,Produits Frais,#22c55e,07/03/2026 14:32,09/03/2026 14:32,0°C à +3°C,Staff,48,Ouverture,true,2026-03-07 13:32:14.789936+00
+d43f8791-0d2d-4e55-bd08-2b988f1e8fdc,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:10,27/03/2026 00:10,-,Staff,0,Fait le,false,2026-03-26 23:10:47.907263+00
+d4cccbca-36b7-4c60-9291-8061afe085c3,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:40,08/04/2026 18:40,-,Staff,0,Fait le,true,2026-04-06 16:40:16.348023+00
+d4e721ab-46ec-4c77-b5ec-ff3c880fa2c3,Escalope,Produits Frais,#22c55e,09/02/2026 18:32,11/02/2026 18:32,0°C à +3°C,Staff,48,Ouverture,true,2026-02-09 17:32:53.845889+00
+d4eb49c1-083d-4028-b451-4f719758466d,Poivrons,Produits Frais,#22c55e,19/02/2026 17:39,22/02/2026 17:39,0°C à +3°C,Staff,72,Ouverture,true,2026-02-19 16:39:27.342261+00
+d672d7b3-6453-401f-9a70-df819f651b18,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:17,27/03/2026 00:17,-,Staff,0,Fait le,true,2026-03-26 23:17:38.197396+00
+d72665b8-65fc-45f3-8245-c5f5b772242f,Tenders,Congelé → Décongelé,#ef4444,27/02/2026 14:50,02/03/2026 14:50,0°C à +3°C,Staff,72,Décongélation,false,2026-02-27 13:51:34.413685+00
+d7c658e5-3dc3-445d-943b-e962a5dc822d,Viande hachée,Congelé → Décongelé,#ef4444,23/03/2026 11:57,26/03/2026 11:57,0°C à +3°C,Safouane B,72,Décongélation,true,2026-03-23 10:57:58.274343+00
+d8264991-1c7f-49fd-8ac1-b08f6241e525,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,false,2026-04-06 22:17:26.200363+00
+d9bbe28f-3ff9-4a69-988b-32d47b25217e,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,true,2026-04-06 22:17:26.553205+00
+da349d24-c003-41f7-abf9-c5a4fd72f555,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:17,27/03/2026 00:17,-,Staff,0,Fait le,true,2026-03-26 23:17:18.006484+00
+dbd1ee72-c009-4704-a8bf-db5edecd65b6,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:17,27/03/2026 00:17,-,Staff,0,Fait le,true,2026-03-26 23:17:18.006484+00
+dc793539-2d4e-4e76-be95-5b238e2f5337,Escalope,Produits Frais,#22c55e,11/03/2026 11:46,13/03/2026 11:46,0°C à +3°C,Staff,48,Ouverture,true,2026-03-11 10:46:11.217581+00
+ddbd3a6a-0fa1-4dd6-8f48-a5fa22f9759a,Steak haché,Congelé → Décongelé,#ef4444,31/03/2026 11:15,03/04/2026 11:15,0°C à +3°C,Staff,72,Décongélation,false,2026-03-31 09:15:23.782023+00
+df709650-1452-4c40-96ea-0e4ff223fbb0,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:40,08/04/2026 18:40,-,Staff,0,Fait le,true,2026-04-06 22:17:39.393066+00
+e04d072d-124d-4d42-afda-042680d950e7,Ketchup,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:12,30/03/2026 01:12,-,Staff,0,Fait le,false,2026-03-26 23:12:35.536364+00
+e2725265-c7d8-49eb-83f3-33c4a282a745,Chorizo,Congelé → Décongelé,#ef4444,23/01/2026 12:22,26/01/2026 12:22,0°C à +3°C,Staff,72,Décongélation,true,2026-01-23 11:22:41.708947+00
+e27cabe4-aade-4187-9ec9-25f5f7e1a28c,Algérienne,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:17,27/03/2026 00:17,-,Staff,0,Fait le,true,2026-03-26 23:17:32.668437+00
+e31e3f78-460c-447d-b1e2-6520e4514f96,Pommes de terre,Produits Frais,#22c55e,31/03/2026 11:16,03/04/2026 11:16,0°C à +3°C,Staff,72,Ouverture,true,2026-03-31 09:16:52.125066+00
+e3cf5038-26d3-4221-9e45-7de35f27fd33,Viande hachée,Congelé → Décongelé,#ef4444,20/02/2026 23:35,23/02/2026 23:35,0°C à +3°C,Staff,72,Décongélation,false,2026-02-20 22:35:46.293339+00
+e44389a0-6b40-44f3-ba19-655a40e94432,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:40,08/04/2026 18:40,-,Staff,0,Fait le,false,2026-04-06 22:17:24.442957+00
+e5443557-b24a-4f7b-ad2f-5db9c2e0816d,Creme fraiche,ETIQUETTE_DATE,#f59e0b,06/04/2026 12:08,06/04/2026 12:08,-,Staff,0,Fait le,true,2026-04-06 10:08:24.238413+00
+e6524827-cd2e-478e-9c9c-17c231b7e541,Œuf Non cassé,Produits Frais,#22c55e,24/03/2026 11:19,21/04/2026 12:19,0°C à +3°C,Safouane B,672,Ouverture,true,2026-03-24 10:19:31.216448+00
+e7d4419a-3f19-4033-bb53-5ae8c8c0af21,Mozzarella,Produits Frais,#22c55e,26/03/2026 23:39,28/03/2026 23:39,0°C à +3°C,Staff,48,Ouverture,true,2026-03-26 22:39:36.877307+00
+e925e3f1-a61a-4a8b-8a5d-5890edf3db4a,Escalope,ETIQUETTE_DATE,#f59e0b,07/04/2026 11:03,09/04/2026 11:03,-,Staff,0,Fait le,true,2026-04-07 09:03:38.571647+00
+ea1a9ffe-e6a8-4f81-a85f-b65f1781b3c1,Ketchup,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:12,30/03/2026 01:12,-,Staff,0,Fait le,false,2026-03-26 23:12:10.83202+00
+eafddbf2-269d-4787-abb1-f1397c49387a,Tomates,ETIQUETTE_DATE,#f59e0b,06/04/2026 12:23,06/04/2026 12:23,-,Staff,0,Fait le,true,2026-04-06 10:23:25.013267+00
+ed775a92-cff9-4d5a-a144-e54d56dee315,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:55,08/04/2026 18:55,-,Staff,0,Fait le,false,2026-04-06 22:17:12.210048+00
+ee1244b4-7baf-4eab-b0a7-2f2417f54859,Escalope,Produits Frais,#22c55e,13/03/2026 21:11,15/03/2026 21:11,0°C à +3°C,Safouane B,48,Ouverture,true,2026-03-13 20:11:42.673284+00
+eeddba54-0b23-42cf-9ef6-a471f45d562e,Poivrons,Produits Frais,#22c55e,19/02/2026 17:39,22/02/2026 17:39,0°C à +3°C,Staff,72,Ouverture,false,2026-02-19 16:39:23.261995+00
+ef1429fe-b13e-4f3e-913c-a992b931e9c5,Eggs,ETIQUETTE_DATE,#f59e0b,27/03/2026 11:17,27/03/2026 11:17,-,Staff,0,Fait le,true,2026-03-27 10:17:19.864586+00
+ef254597-550d-4123-b6ea-52034e03b91b,Jambon,Produits Frais,#22c55e,30/03/2026 20:00,02/04/2026 20:00,0°C à +3°C,Staff,72,Ouverture,false,2026-03-30 18:00:49.29599+00
+f022b494-1240-4aff-8a3f-4c2f8317fd5b,Sauce tomate,Produits Frais,#22c55e,31/03/2026 11:16,03/04/2026 11:16,0°C à +3°C,Staff,72,Ouverture,true,2026-03-31 09:17:07.931554+00
+f0d43080-169b-4da5-8ebb-321f67664445,Pdt,ETIQUETTE_DATE,#f59e0b,07/04/2026 13:58,10/04/2026 13:58,-,Staff,0,Ouvert le,true,2026-04-07 11:58:16.361657+00
+f1c38af8-401f-4290-b97f-d1f21320d6f0,Merguez,Congelé → Décongelé,#ef4444,31/03/2026 11:19,03/04/2026 11:19,0°C à +3°C,Staff,72,Décongélation,true,2026-03-31 09:19:23.33218+00
+f22dc447-4484-4957-8d76-1c3bf806b9c5,Escalope,Produits Frais,#22c55e,06/02/2026 14:48,08/02/2026 14:48,0°C à +3°C,Staff,48,Ouverture,true,2026-02-06 13:48:15.947065+00
+f2d67d85-363d-463a-a829-3ee3b3fd72b5,Jambon,Produits Frais,#22c55e,16/02/2026 22:06,19/02/2026 22:06,0°C à +3°C,Staff,72,Ouverture,true,2026-02-16 21:06:10.736805+00
+f2e86a7e-5c90-4953-b81a-80fe4d682dec,Escalope,Produits Frais,#22c55e,20/02/2026 23:30,22/02/2026 23:30,0°C à +3°C,Staff,48,Ouverture,false,2026-02-20 22:30:05.651382+00
+f31c1a6b-a5df-448b-8b3a-811f641f27b5,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:39,08/04/2026 18:39,-,Staff,0,Fait le,false,2026-04-06 22:17:14.69998+00
+f32cbed8-f863-40ce-a409-2b69339d5b79,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:29,08/04/2026 18:29,-,Staff,0,Fait le,false,2026-04-06 22:17:43.083533+00
+f3594fcc-7d20-4902-bfe2-a9d93b1d2310,Mozzarella,Produits Frais,#22c55e,25/03/2026 23:23,27/03/2026 23:23,0°C à +3°C,Safouane B,48,Ouverture,false,2026-03-25 22:23:17.902631+00
+f45d0ac6-f0a3-4c43-a96b-612e9d53a2f6,Jambon,Produits Frais,#22c55e,20/01/2026 17:53,23/01/2026 17:53,0°C à +3°C,Safouane B,72,Ouverture,true,2026-01-20 16:53:28.158528+00
+f5e21a3d-0ef8-4892-81c7-4ea3cf6cbd01,Steak haché,Congelé → Décongelé,#ef4444,23/02/2026 14:52,26/02/2026 14:52,0°C à +3°C,Staff,72,Décongélation,true,2026-02-23 13:52:41.246866+00
+f7785cdb-cebb-4bc6-8189-6225b23e4676,Pommes de terre,Produits Frais,#22c55e,10/03/2026 14:58,13/03/2026 14:58,0°C à +3°C,Safouane B,72,Ouverture,true,2026-03-10 13:58:22.196342+00
+f812aa43-928d-4ff7-bdf4-74607b26330e,Poivrons,Produits Frais,#22c55e,24/03/2026 11:19,27/03/2026 11:19,0°C à +3°C,Safouane B,72,Ouverture,true,2026-03-24 10:19:27.935934+00
+f8d05dbb-16fb-48e8-970a-d746748d6379,poulet,Produits Frais,#22c55e,06/02/2026 21:57,09/02/2026 21:57,0°C à +3°C,Staff,72,Ouverture,true,2026-02-06 20:57:58.41137+00
+f90ccd53-e356-4cea-93b9-51877a9dbf7d,Œuf,Produits Frais,#22c55e,09/02/2026 15:09,10/02/2026 15:09,0°C à +3°C,Staff,24,Ouverture,true,2026-02-09 14:09:57.096675+00
+fa884cb9-4b65-456e-b8cf-401b2be17b4f,Ketchup,ETIQUETTE_DATE,#f59e0b,27/03/2026 00:16,27/03/2026 00:16,-,Staff,0,Fait le,true,2026-03-26 23:16:52.983418+00
+fbdc4cd9-240f-4722-9ced-aa57b8726f1d,Escalope,Produits Frais,#22c55e,28/01/2026 12:38,30/01/2026 12:38,0°C à +3°C,Staff,48,Ouverture,true,2026-01-28 11:38:27.32974+00
+fdc9a21a-61ec-4a97-8fc1-2d871ee5954a,Escalope,ETIQUETTE_DATE,#f59e0b,06/04/2026 18:39,08/04/2026 18:39,-,Staff,0,Fait le,false,2026-04-06 16:39:20.533364+00

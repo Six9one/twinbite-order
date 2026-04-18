@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twin Pizza Hub - POS</title>
+    <link rel="stylesheet" href="./styles/pos.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        #root {
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script>
+        // Play notification sound
+        window.electronAPI.onPlaySound(() => {
+            const audio = new Audio('data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAAA=');
+            audio.play().catch(e => console.log('Sound play error:', e));
+        });
+    </script>
+    
+    <script type="module">
+        import React from 'https://esm.sh/react@18.2.0';
+        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+        
+        // Import POS app
+        const { default: POSApp } = await import('./pos-app.jsx');
+        
+        // Render app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(POSApp));
+    </script>
+</body>
+</html>

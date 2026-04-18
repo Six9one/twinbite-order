@@ -1,0 +1,5 @@
+id,name,description,points_cost,type,value,is_active,created_at
+discount-10-percent,-10% sur la commande,10% de réduction (non cumulable avec codes promo),100,percentage,10.00,true,2025-12-28 15:29:38.637973+00
+free-drink,Boisson Gratuite,Une boisson au choix offerte,50,free_item,0.00,true,2025-12-28 15:29:38.637973+00
+free-pizza,Pizza Gratuite,Une pizza classique offerte (sans extras),200,free_item,0.00,true,2025-12-28 15:29:38.637973+00
+free-side,Accompagnement Gratuit,"Frites, pain à l'ail ou wings au choix",150,free_item,0.00,true,2025-12-28 15:29:38.637973+00

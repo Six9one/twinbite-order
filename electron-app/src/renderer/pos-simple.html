@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twin Pizza Hub - POS</title>
+    <link rel="stylesheet" href="./styles/pos.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        #root {
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script>
+        // API bridge for Electron
+        window.API = window.electronAPI || {};
+        
+        // Global state
+        window.appState = {
+            cart: [],
+            currentStep: 'catalog',
+            products: [],
+            categories: [],
+            selectedCategory: null,
+            status: { whatsapp: 'disconnected', printer: 'unknown', internet: 'connected' },
+            isLoading: true
+        };
+        
+        // Play notification sound
+        if (window.API.onPlaySound) {
+            window.API.onPlaySound(() => {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBg==');
+                audio.volume = 1;
+                audio.play().catch(e => console.log('Sound play error:', e));
+            });
+        }
+        
+        // Load initial data
+        async function loadInitialData() {
+            try {
+                // Load status
+                if (window.API.getStatus) {
+                    const status = await window.API.getStatus();
+                    window.appState.status = status;
+                }
+                
+                // Load categories
+                if (window.API.getCategories) {
+                    const categories = await window.API.getCategories();
+                    window.appState.categories = categories;
+                    if (categories.length > 0) {
+                        window.appState.selectedCategory = categories[0].id;
+                    }
+                }
+                
+                // Load products
+                if (window.API.getProducts) {
+                    const products = await window.API.getProducts();
+                    window.appState.products = products;
+                }
+            } catch (error) {
+                console.error('Error loading initial data:', error);
+            } finally {
+                window.appState.isLoading = false;
+                renderApp();
+            }
+        }
+        
+        // Render the app
+        function renderApp() {
+            const root = document.getElementById('root');
+            const state = window.appState;
+            
+            if (state.isLoading) {
+                root.innerHTML = `
+                    <div class="pos-loading">
+                        <div class="spinner"></div>
+                        <p>Chargement du POS...</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            switch (state.currentStep) {
+                case 'catalog':
+                    renderCatalog();
+                    break;
+                case 'cart':
+                    renderCart();
+                    break;
+                case 'checkout':
+                    renderCheckout();
+                    break;
+            }
+        }
+        
+        // Render catalog
+        function renderCatalog() {
+            const state = window.appState;
+            const filteredProducts = state.selectedCategory
+                ? state.products.filter(p => p.category_id === state.selectedCategory)
+                : state.products;
+            
+            let html = `
+                <div class="pos-app">
+                    <header class="pos-header">
+                        <div class="pos-header-left">
+                            <h1>🍕 Twin Pizza POS</h1>
+                        </div>
+                        <div class="pos-header-right">
+                            ${renderStatus()}
+                        </div>
+                    </header>
+                    
+                    <main class="pos-main">
+                        <div class="pos-catalog">
+                            <aside class="pos-categories">
+                                <div class="categories-header">
+                                    <h2>Catégories</h2>
+                                </div>
+                                <div class="categories-list">
+                                    ${state.categories.map(cat => `
+                                        <button class="category-btn ${state.selectedCategory === cat.id ? 'active' : ''}"
+                                                onclick="selectCategory('${cat.id}')">
+                                            <span class="cat-emoji">${cat.emoji || '📦'}</span>
+                                            <span class="cat-name">${cat.name}</span>
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </aside>
+                            
+                            <section class="pos-products">
+                                <div class="products-header">
+                                    <h2>${state.categories.find(c => c.id === state.selectedCategory)?.name || 'Produits'}</h2>
+                                    ${state.cart.length > 0 ? `
+                                        <button class="cart-floating-btn" onclick="goToCart()">
+                                            🛒 Panier (${state.cart.length})
+                                        </button>
+                                    ` : ''}
+                                </div>
+                                
+                                ${filteredProducts.length === 0 ? `
+                                    <div class="no-products">
+                                        <p>Aucun produit dans cette catégorie</p>
+                                    </div>
+                                ` : `
+                                    <div class="products-grid">
+                                        ${filteredProducts.map(product => `
+                                            <div class="product-card" onclick="addToCart(${product.id}, '${product.name}', ${product.price})">
+                                                <div class="product-image">
+                                                    ${product.image_url ? `
+                                                        <img src="${product.image_url}" alt="${product.name}">
+                                                    ` : `
+                                                        <div class="product-placeholder">📦</div>
+                                                    `}
+                                                </div>
+                                                <div class="product-info">
+                                                    <h3 class="product-name">${product.name}</h3>
+                                                    ${product.description ? `
+                                                        <p class="product-desc">${product.description}</p>
+                                                    ` : ''}
+                                                    <div class="product-footer">
+                                                        <span class="product-price">${parseFloat(product.price).toFixed(2)}€</span>
+                                                        <button class="add-btn">+ Ajouter</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </section>
+                        </div>
+                    </main>
+                </div>
+            `;
+            
+            document.getElementById('root').innerHTML = html;
+        }
+        
+        // Render cart
+        function renderCart() {
+            const state = window.appState;
+            const total = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const itemCount = state.cart.reduce((sum, item) => sum + item.quantity, 0);
+            
+            if (state.cart.length === 0) {
+                document.getElementById('root').innerHTML = `
+                    <div class="pos-app">
+                        <header class="pos-header">
+                            <div class="pos-header-left"><h1>🍕 Twin Pizza POS</h1></div>
+                            <div class="pos-header-right">${renderStatus()}</div>
+                        </header>
+                        <main class="pos-main">
+                            <div class="pos-cart empty">
+                                <div class="empty-state">
+                                    <div class="empty-icon">🛒</div>
+                                    <h2>Panier vide</h2>
+                                    <p>Ajoutez des produits depuis le catalogue</p>
+                                    <button class="btn-primary" onclick="goToCatalog()">← Retour au catalogue</button>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                `;
+                return;
+            }
+            
+            document.getElementById('root').innerHTML = `
+                <div class="pos-app">
+                    <header class="pos-header">
+                        <div class="pos-header-left"><h1>🍕 Twin Pizza POS</h1></div>
+                        <div class="pos-header-right">${renderStatus()}</div>
+                    </header>
+                    <main class="pos-main">
+                        <div class="pos-cart">
+                            <div class="cart-header">
+                                <button class="btn-back" onclick="goToCatalog()">← Retour</button>
+                                <h2>Panier (${itemCount} articles)</h2>
+                                <div class="placeholder"></div>
+                            </div>
+                            
+                            <div class="cart-items">
+                                ${state.cart.map(item => `
+                                    <div class="cart-item">
+                                        <div class="item-image">
+                                            ${item.image_url ? `
+                                                <img src="${item.image_url}" alt="${item.name}">
+                                            ` : `
+                                                <div class="item-placeholder">📦</div>
+                                            `}
+                                        </div>
+                                        
+                                        <div class="item-details">
+                                            <h3>${item.name}</h3>
+                                            <p class="item-price">${item.price.toFixed(2)}€ x ${item.quantity}</p>
+                                        </div>
+                                        
+                                        <div class="item-quantity">
+                                            <button onclick="updateQuantity(${item.id}, ${item.quantity - 1})" class="qty-btn">−</button>
+                                            <span class="qty-display">${item.quantity}</span>
+                                            <button onclick="updateQuantity(${item.id}, ${item.quantity + 1})" class="qty-btn">+</button>
+                                        </div>
+                                        
+                                        <div class="item-total">
+                                            <span class="total-price">${(item.price * item.quantity).toFixed(2)}€</span>
+                                        </div>
+                                        
+                                        <button onclick="removeFromCart(${item.id})" class="btn-remove" title="Supprimer">✕</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            
+                            <div class="cart-summary">
+                                <div class="summary-row">
+                                    <span>Sous-total:</span>
+                                    <span>${total.toFixed(2)}€</span>
+                                </div>
+                                <div class="summary-row total">
+                                    <span>Total:</span>
+                                    <span class="total-amount">${total.toFixed(2)}€</span>
+                                </div>
+                                <button class="btn-checkout" onclick="goToCheckout()">
+                                    Procéder au paiement →
+                                </button>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            `;
+        }
+        
+        // Render checkout
+        function renderCheckout() {
+            const state = window.appState;
+            const total = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            document.getElementById('root').innerHTML = `
+                <div class="pos-app">
+                    <header class="pos-header">
+                        <div class="pos-header-left"><h1>🍕 Twin Pizza POS</h1></div>
+                        <div class="pos-header-right">${renderStatus()}</div>
+                    </header>
+                    <main class="pos-main">
+                        <div class="pos-checkout">
+                            <div class="checkout-header">
+                                <button class="btn-back" onclick="goToCart()">← Retour</button>
+                                <h2>Finaliser la commande</h2>
+                                <div class="placeholder"></div>
+                            </div>
+                            
+                            <div class="checkout-container">
+                                <form class="checkout-form" onsubmit="submitCheckout(event)">
+                                    <div class="form-section">
+                                        <h3>Informations client</h3>
+                                        
+                                        <div class="form-group">
+                                            <label for="name">Nom du client</label>
+                                            <input id="name" type="text" placeholder="Ex: Jean Dupont" required>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="phone">Téléphone</label>
+                                            <input id="phone" type="tel" placeholder="Ex: 06 12 34 56 78" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-section">
+                                        <h3>Mode de paiement</h3>
+                                        
+                                        <div class="payment-options">
+                                            <label class="payment-option active">
+                                                <input type="radio" name="payment" value="especes" checked>
+                                                <span class="payment-label">
+                                                    <span class="payment-emoji">💵</span>
+                                                    <span class="payment-text">Espèces</span>
+                                                </span>
+                                            </label>
+                                            
+                                            <label class="payment-option">
+                                                <input type="radio" name="payment" value="cb">
+                                                <span class="payment-label">
+                                                    <span class="payment-emoji">💳</span>
+                                                    <span class="payment-text">Carte Bancaire</span>
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="order-summary">
+                                        <h3>Résumé</h3>
+                                        <div class="summary-items">
+                                            ${state.cart.map(item => `
+                                                <div class="summary-item">
+                                                    <span>${item.quantity}x ${item.name}</span>
+                                                    <span>${(item.price * item.quantity).toFixed(2)}€</span>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                        <div class="summary-total">
+                                            <span class="label">Total à payer:</span>
+                                            <span class="amount">${total.toFixed(2)}€</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="checkout-error" class="error-message" style="display: none;"></div>
+                                    
+                                    <button type="submit" class="btn-submit">
+                                        Valider la commande (${total.toFixed(2)}€)
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            `;
+            
+            // Add event listeners to payment options
+            document.querySelectorAll('input[name="payment"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('active'));
+                    e.target.parentElement.classList.add('active');
+                });
+            });
+        }
+        
+        // Render status bar
+        function renderStatus() {
+            const status = window.appState.status;
+            const icons = { 
+                connected: '🟢', 
+                connecting: '🟡', 
+                disconnected: '🔴', 
+                ready: '🟢',
+                error: '🔴',
+                unknown: '⚪'
+            };
+            
+            return `
+                <div class="pos-status">
+                    <div class="status-item">
+                        <span class="status-icon">${icons[status.whatsapp] || '⚪'}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-icon">${icons[status.printer] || '⚪'}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-icon">${icons[status.internet] || '⚪'}</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // App functions
+        function selectCategory(catId) {
+            window.appState.selectedCategory = catId;
+            renderApp();
+        }
+        
+        function addToCart(id, name, price) {
+            const product = window.appState.products.find(p => p.id === id);
+            const type = product?.category_id || 'unknown';
+            
+            // Customizable products that need wizard
+            const customizableTypes = ['pizzas', 'soufflets', 'makloubs', 'mlawi'];
+            
+            if (customizableTypes.includes(type)) {
+                // Open wizard for customizable products
+                window.POSWizard.open({ id, name, price, type }, type.slice(0, -1));
+            } else {
+                // Direct add for simple products
+                const existing = window.appState.cart.find(item => item.id === id);
+                if (existing) {
+                    existing.quantity++;
+                } else {
+                    window.appState.cart.push({ id, name, price, quantity: 1, options: [] });
+                }
+                renderApp();
+            }
+        }
+        
+        function removeFromCart(id) {
+            window.appState.cart = window.appState.cart.filter(item => item.id !== id);
+            renderApp();
+        }
+        
+        function updateQuantity(id, quantity) {
+            if (quantity <= 0) {
+                removeFromCart(id);
+            } else {
+                const item = window.appState.cart.find(i => i.id === id);
+                if (item) item.quantity = quantity;
+                renderApp();
+            }
+        }
+        
+        function goToCatalog() {
+            window.appState.currentStep = 'catalog';
+            renderApp();
+        }
+        
+        function goToCart() {
+            window.appState.currentStep = 'cart';
+            renderApp();
+        }
+        
+        function goToCheckout() {
+            window.appState.currentStep = 'checkout';
+            renderApp();
+        }
+        
+        async function submitCheckout(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('checkout-error');
+            errorEl.style.display = 'none';
+            
+            const form = e.target;
+            const name = form.elements['name'].value;
+            const phone = form.elements['phone'].value;
+            const payment = form.elements['payment'].value;
+            
+            if (!name.trim() || !phone.trim()) {
+                errorEl.textContent = '⚠️ Veuillez remplir tous les champs';
+                errorEl.style.display = 'block';
+                return;
+            }
+            
+            try {
+                form.querySelector('button[type="submit"]').disabled = true;
+                form.querySelector('button[type="submit"]').textContent = 'Traitement...';
+                
+                const total = window.appState.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                
+                const orderData = {
+                    customer_name: name,
+                    customer_phone: phone.replace(/\s/g, ''),
+                    order_type: 'surplace',
+                    payment_method: payment,
+                    items: window.appState.cart.map(item => ({
+                        product_id: item.id,
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.quantity
+                    })),
+                    total: total
+                };
+                
+                if (window.API.createOrder) {
+                    const order = await window.API.createOrder(orderData);
+                    console.log('Order created:', order);
+                    
+                    // Try WhatsApp
+                    if (window.appState.status.whatsapp === 'connected' && window.API.sendWhatsApp) {
+                        try {
+                            const msg = `🍕 Commande #${order.order_number}\nTotal: ${total.toFixed(2)}€\nMerci!`;
+                            await window.API.sendWhatsApp(phone, msg);
+                        } catch (e) { console.warn('WhatsApp failed:', e); }
+                    }
+                    
+                    // Try cash drawer
+                    if (payment === 'especes' && window.API.openCashDrawer) {
+                        try { await window.API.openCashDrawer(); } catch (e) { console.warn('Drawer failed:', e); }
+                    }
+                    
+                    // Success
+                    window.appState.cart = [];
+                    window.appState.currentStep = 'catalog';
+                    renderApp();
+                    alert('✓ Commande créée avec succès!');
+                }
+            } catch (err) {
+                errorEl.textContent = '⚠️ ' + (err.message || 'Erreur lors de la création');
+                errorEl.style.display = 'block';
+                form.querySelector('button[type="submit"]').disabled = false;
+                form.querySelector('button[type="submit"]').textContent = 'Valider la commande';
+            }
+        }
+        
+        // Load data and render on startup
+        loadInitialData();
+    </script>
+    
+    <script src="./js/pos-wizard.js"></script>
+</body>
+</html>

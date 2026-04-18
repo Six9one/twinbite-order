@@ -1,0 +1,26 @@
+# robots.txt for Twin Pizza
+
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: *
+Allow: /
+Crawl-delay: 2
+
+# Sitemap location
+Sitemap: https://twinpizza.fr/sitemap.xml
+
+# Disallow admin pages from indexing
+Disallow: /admin
+Disallow: /tv-dashboard

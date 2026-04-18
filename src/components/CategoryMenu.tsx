@@ -24,6 +24,7 @@ import { isMenuMidiTime } from '@/utils/promotions';
 import { MenuItem, MenuCategory } from '@/types/order';
 import { useProductsByCategory, Product } from '@/hooks/useProducts';
 import { useCategoryImages } from '@/hooks/useCategoryImages';
+import { useDisabledCategories } from '@/hooks/useDisabledCategories';
 
 interface CategoryMenuProps {
   onBack: () => void;
@@ -106,6 +107,11 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const itemCount = getItemCount();
   const { getImageOrEmoji, getDisplayName } = useCategoryImages();
+  const { isCategoryDisabled } = useDisabledCategories();
+
+  // Filter out disabled (unavailable) categories
+  const availableProductCategories = productCategoryOrder.filter(c => !isCategoryDisabled(c));
+  const availableDessertCategories = dessertCategoryOrder.filter(c => !isCategoryDisabled(c));
 
   // Auto-redirect to pizzas if coming from checkout to pick a free pizza
   useEffect(() => {
@@ -302,7 +308,7 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <h2 className="text-lg sm:text-xl font-display font-bold mb-3 sm:mb-4 text-foreground">🍽️ Nos Produits</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          {productCategoryOrder.map((category) => {
+          {availableProductCategories.map((category) => {
             const imageData = getImageOrEmoji(category);
             const displayName = getDisplayName(category) || allCategoryLabels[category]?.split(' ').slice(1).join(' ');
 
@@ -342,7 +348,7 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
         {/* Desserts Grid */}
         <h2 className="text-lg sm:text-xl font-display font-bold mb-3 sm:mb-4 text-foreground">🍨 Desserts & Boissons</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          {dessertCategoryOrder.map((category) => {
+          {availableDessertCategories.map((category) => {
             const imageData = getImageOrEmoji(category);
             const displayName = getDisplayName(category) || allCategoryLabels[category]?.split(' ').slice(1).join(' ');
 

@@ -1,0 +1,4 @@
+id,name,price,image_url,is_active,display_order,created_at
+c79b56ce-85c0-48cc-92bb-fe40a41ec9cd,Coca Zero,1.50,https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/product-images/drinks/c79b56ce-85c0-48cc-92bb-fe40a41ec9cd-1770594256497.webp,true,2,2026-02-08 23:44:08.027764+00
+d2d16249-3422-4763-9a80-21a3c235535a,Fanta Orange,1.50,,true,3,2026-02-08 23:44:34.902913+00
+f2a538f4-4a55-496a-bac4-f5b6e64480b6,Coca,1.50,https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/product-images/drinks/f2a538f4-4a55-496a-bac4-f5b6e64480b6-1770594191070.webp,true,1,2026-02-08 23:40:51.746726+00

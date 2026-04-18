@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fidélité Twin Pizza</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Roboto:wght@400;500;700&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .card {
+            width: 1050px;
+            /* High res width */
+            height: 600px;
+            background: #121212;
+            /* Very dark grey/black */
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            border: 4px solid #FBBF24;
+            display: flex;
+            flex-direction: column;
+            padding: 40px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-placeholder {
+            width: 100px;
+            height: 100px;
+            background-color: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .logo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .title {
+            font-family: 'Oswald', sans-serif;
+            font-size: 60px;
+            color: #FBBF24;
+            /* Amber-400 */
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0;
+        }
+
+        .subtitle {
+            font-family: 'Oswald', sans-serif;
+            font-size: 30px;
+            color: white;
+            opacity: 0.9;
+            margin: 0;
+            text-align: right;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 30px;
+            justify-items: center;
+            flex-grow: 1;
+            align-items: center;
+        }
+
+        .stamp-slot {
+            width: 110px;
+            height: 110px;
+            border: 3px dashed #555;
+            background: #1a1a1a;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            color: #333;
+            font-weight: bold;
+            position: relative;
+        }
+
+        .stamp-slot.free {
+            border: 3px solid #FBBF24;
+            background: linear-gradient(135deg, #F59E0B, #B45309);
+            color: white;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+            transform: scale(1.1);
+            text-align: center;
+            flex-direction: column;
+            line-height: 1.1;
+        }
+
+        .free-text {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .free-sub {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .footer {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-top: 20px;
+            border-top: 1px solid #333;
+        }
+
+        .terms {
+            color: #999;
+            font-size: 20px;
+        }
+
+        .promo {
+            color: #FBBF24;
+            font-size: 28px;
+            font-weight: bold;
+            font-family: 'Oswald', sans-serif;
+        }
+
+        .italian-flag {
+            position: absolute;
+            bottom: 0px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 8px;
+            background: linear-gradient(to right, #009246 33.33%, #ffffff 33.33%, #ffffff 66.66%, #ce2b37 66.66%);
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+
+        /* Your logo colors */
+        .twin-text {
+            color: #FBBF24;
+        }
+
+        .pizza-text {
+            color: white;
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .card {
+                box-shadow: none;
+                border: 1px solid #ccc;
+                /* Light border for cutting guide if needed, or keep gold */
+                page-break-inside: avoid;
+                margin: 0 auto;
+                transform: scale(1);
+                /* Ensure 1:1 scale if possible */
+            }
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background: #FBBF24;
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: 'Roboto', sans-serif;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="controls no-print">
+        <button class="btn" onclick="window.print()">🖨️ IMPRIMER / PDF</button>
+    </div>
+
+    <div class="card" id="card-capture">
+        <div class="italian-flag"></div>
+
+        <div class="header">
+            <div class="logo-section">
+                <!-- Using the absolute path might fail due to browser security restrictions on local files.
+                     We will try to use a relative path if served, or just inline SVG or similar if possible.
+                     For now, let's assume we can load the local image or standard text fallback. -->
+                <div class="logo-placeholder">
+                    <img src="src/assets/logo.png" alt="Logo" class="logo-img" onerror="this.style.display='none'">
+                </div>
+                <div>
+                    <h1 class="title">TWIN PIZZA</h1>
+                    <div style="height: 4px; background: #ce2b37; width: 60px; margin-top: 5px;"></div>
+                </div>
+            </div>
+            <div>
+                <h2 class="subtitle">CARTE DE FIDÉLITÉ</h2>
+            </div>
+        </div>
+
+        <div class="grid-container">
+            <!-- 9 slots -->
+            <div class="stamp-slot">1</div>
+            <div class="stamp-slot">2</div>
+            <div class="stamp-slot">3</div>
+            <div class="stamp-slot">4</div>
+            <div class="stamp-slot">5</div>
+            <div class="stamp-slot">6</div>
+            <div class="stamp-slot">7</div>
+            <div class="stamp-slot">8</div>
+            <div class="stamp-slot">9</div>
+
+            <!-- 10th slot is special -->
+            <div class="stamp-slot free">
+                <div class="free-text">10€</div>
+                <div class="free-sub">OFFERTS</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="terms">Valable sur Pizzas, Tacos, Menus...</div>
+            <div class="promo">10 TAMPONS = 10€ OFFERTS</div>
+        </div>
+    </div>
+
+</body>
+
+</html>

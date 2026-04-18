@@ -1,0 +1,15 @@
+id,product_type,size_id,size_label,max_meats,price,display_order,is_active,created_at
+0e4869bb-bce5-43cc-8d7e-bde623370e9b,tacos,solo,Solo,1,7.50,1,true,2025-12-20 01:34:13.261703+00
+118c2fcf-5e0e-4abc-9762-0d2e86aec314,panini,duo,Duo,2,6.50,2,true,2025-12-20 01:34:13.261703+00
+1b2f096f-13ae-48f2-b4b5-eb1446146c9e,soufflet,double,Double,2,9.00,2,true,2025-12-20 01:34:13.261703+00
+2fcb0803-da36-44be-b1e2-958156c22719,mlawi,triple,Triple,3,10.50,3,true,2025-12-20 01:34:13.261703+00
+58bfc95a-bc0f-4a4b-9b92-0108fc1f2e30,panini,solo,Solo,2,5.00,1,true,2025-12-20 01:34:13.261703+00
+6a1e0571-c4ec-4643-a100-18c80f65b8db,makloub,double,Double,2,9.00,2,true,2025-12-20 01:34:13.261703+00
+768ea7b1-53bf-42dc-be55-578881260509,soufflet,solo,Solo,1,7.50,1,true,2025-12-20 01:34:13.261703+00
+9a3807ea-d9c6-46c3-916d-da0b962d0033,mlawi,solo,Solo,1,7.50,1,true,2025-12-20 01:34:13.261703+00
+9c566425-1c44-410a-ae7f-7a4f4ae6d610,tacos,triple,Triple,3,10.50,3,true,2025-12-20 01:34:13.261703+00
+9cc72fe3-2fd2-45b5-b6e2-3f21ccbe3a6b,makloub,triple,Triple,3,10.50,3,true,2025-12-20 01:34:13.261703+00
+9dce317d-1e98-4045-8a7c-72221b4b2331,soufflet,triple,Triple,3,10.50,3,true,2025-12-20 01:34:13.261703+00
+b4634554-5cb3-49e3-819c-c7fc087d393a,tacos,double,Double,2,9.00,2,true,2025-12-20 01:34:13.261703+00
+cfe2d1a6-e968-43d1-9aa6-fa99b4ea254b,mlawi,double,Double,2,9.00,2,true,2025-12-20 01:34:13.261703+00
+edfec96e-e471-483c-a9be-5af73d5109d1,makloub,solo,Solo,1,7.50,1,true,2025-12-20 01:34:13.261703+00

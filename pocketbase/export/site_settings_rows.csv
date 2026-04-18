@@ -1,0 +1,32 @@
+id,key,value,category,created_at,updated_at
+028b31b3-e508-4fa2-b8b9-3539f0055e33,hours_enforcement_enabled,true,store,2026-02-06 00:18:15.079716+00,2026-02-06 00:18:15.079716+00
+043d8ca5-7e19-4150-a10f-463830dcbcaa,store_show_banner,false,store,2025-12-16 22:46:42.013443+00,2025-12-16 22:46:42.013443+00
+0d0ef8bc-c9f3-420f-9870-7e872e72c4ab,store_is_open,true,store,2025-12-16 22:46:42.013443+00,2025-12-16 22:46:42.013443+00
+1c96fe61-845d-4c0c-974c-5669ec07904b,delivery_time,20 min,delivery,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+2ac28528-b857-474b-8131-f27cb53b3936,store_pause_message,Nous sommes en pause. Retour dans quelques minutes!,store,2025-12-16 22:46:42.013443+00,2025-12-16 22:46:42.013443+00
+3019cb37-c20d-4831-b71a-ce52050a11e6,instagram_url,,social,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+3b8a8883-0c1f-4ca5-9f88-77f3ed90191c,facebook_url,https://www.facebook.com/profile.php?id=61581799437320,social,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+4e9d769b-2393-485d-985c-33b8380c80e1,hero_title,Les Meilleures Pizzas de Grand-Couronne,hero,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+5820a115-da55-483c-ac7f-b879b0ee4440,store_temp_closed_message,Fermé exceptionnellement a cause de probleme technique : Réouverture bientôt!,store,2025-12-16 22:46:42.013443+00,2025-12-16 22:46:42.013443+00
+6e310ddd-127c-48ef-a9fd-40aeb3e9f14f,free_delivery_min,25,delivery,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+70d042ac-7941-4770-a4ed-daf0b6e37432,address,"60 Rue Georges Clemenceau, 76530 Grand-Couronne",contact,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+73e3b888-8a8a-481a-aeb9-f07959e43b90,store_banner_message,"Nous faisons une petite pause pour les congés de fin d'année!
+
+Votre restaurant sera fermé du 26 décembre au 4 janvier 2026 inclus.
+
+😋On se retrouve le 5 janvier 2026 avec de nouvelles saveurs et de nouveaux sandwichs dans notre menu 😋
+
+===== Merci à toutes et tous pour votre fidélité =====",store,2025-12-16 22:46:42.013443+00,2025-12-16 22:46:42.013443+00
+85443605-d657-4e05-b3f0-01fed5b6e25b,store_banner_type,error,store,2025-12-16 22:46:42.013443+00,2025-12-16 22:46:42.013443+00
+85514380-d5a7-4704-81bb-c5d1cb7b9203,closed_message,Nous sommes actuellement fermés. Revenez pendant nos heures d'ouverture!,messages,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+87cf9e33-ef78-4540-a774-8824128cdf68,store_is_pause,false,store,2025-12-16 22:46:42.013443+00,2025-12-16 22:46:42.013443+00
+9bd2359b-b485-4600-b98b-3c8b265c69dc,hero_subtitle,"Pizzas artisanales, tacos, soufflés et bien plus encore. Livraison rapide et gratuite!",hero,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+a1d831fc-dde7-4763-bbb6-d441bc689ccb,order_success_message,Merci pour votre commande! Nous vous contacterons bientôt.,delivery,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+aac0b3fc-a966-4943-9620-37fb7aa1ecc4,store_is_temp_closed,false,store,2025-12-16 22:46:42.013443+00,2025-12-16 22:46:42.013443+00
+ab348932-a394-4bcc-adc6-5bff1ffa900a,email,twinpizza25@gmail.com,contact,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+ab494029-1f86-4f75-b2b8-c321122b6bfe,min_order_delivery,10,delivery,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+ade9ed8f-2f77-47ae-a14c-d2949701d6d3,phone_number,02 35 67 89 00,contact,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+c4a3319e-50e9-4b5b-840d-0fd3e6118473,whatsapp_number,33612345678,messages,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+c96b522b-1902-4088-9287-c3ed3fb25e1b,store_temp_closed_until,2026-03-10,store,2025-12-16 22:46:42.013443+00,2025-12-16 22:46:42.013443+00
+f79361c8-d0ea-4341-b621-ca5e846e4089,google_maps_url,https://maps.app.goo.gl/VBcf8QbBBLwRzP2i6,social,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00
+f910d3d4-551c-42a0-a6a7-50a45a43a87a,restaurant_name,Twin Pizza,contact,2025-12-16 22:32:23.027153+00,2025-12-16 22:32:23.027153+00

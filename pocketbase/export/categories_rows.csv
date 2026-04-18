@@ -1,0 +1,8 @@
+id,slug,name,display_order,is_active,created_at
+1665b78a-e7b4-4029-a9e3-cd1a641542ac,panini,Panini,4,true,2025-12-16 13:48:28.238866+00
+21c9a2f5-9550-403e-bdc5-7f198fcf23b7,pizzas,Pizzas,1,true,2025-12-16 13:48:28.238866+00
+4e4b0ef0-2d9b-469a-b32f-43712fc750eb,soufflets,Soufflets,3,true,2025-12-16 13:48:28.238866+00
+6c3382fb-c48c-46fc-8f1f-102ad67a60d1,tacos,Tacos,2,true,2025-12-16 13:48:28.238866+00
+91318d6d-75c5-4e61-8c75-0da20911ae2b,texmex,Tex-Mex,8,true,2025-12-16 20:25:09.680482+00
+e2fe373f-5572-4801-9de3-e651a04e8443,salades,Salades,15,true,2025-12-18 01:09:27.016484+00
+fa6bcd6a-194a-4473-a7ba-9ccf27a4cd72,boissons,Boissons,5,true,2025-12-16 13:48:28.238866+00

@@ -1,0 +1,6 @@
+id,rule_name,product_type,points_required,reward_type,reward_value,is_active,description,created_at,updated_at
+009ba54c-11fb-4b1d-a37a-e1dd125c2add,10 Pizzas = 1 Gratuite,pizza,10,free_item,1.00,true,"Après 10 pizzas achetées, recevez 1 pizza gratuite",2025-12-16 20:25:09.680482+00,2025-12-16 20:25:09.680482+00
+20663660-534d-48e3-89fe-a84ff1453a84,Nouvelle règlenouvell,general,10,free_item,1.00,true,hhk,2025-12-24 06:12:28.206564+00,2025-12-24 06:12:28.206564+00
+53505a6e-6be9-43fc-aabe-90ff271ca6d7,10 Soufflés = 1 Gratuit,soufflet,10,free_item,1.00,true,"Après 10 soufflés achetés, recevez 1 soufflet gratuit",2025-12-16 20:25:09.680482+00,2025-12-16 20:25:09.680482+00
+64a3e27b-2ce9-44fd-9771-f7cbc8c2fc8b,Points Généraux,general,10,discount_amount,5.00,true,"Pour 10 points, obtenez 5€ de réduction",2025-12-16 20:25:09.680482+00,2025-12-16 20:25:09.680482+00
+f1e6e0df-87d8-4543-952d-d7b3060dc001,Nouvelle règle,general,10,free_item,1.00,false,,2025-12-28 15:34:00.295347+00,2025-12-28 15:34:00.295347+00

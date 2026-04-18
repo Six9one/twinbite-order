@@ -1,0 +1,5 @@
+id,client_name,prize,prize_code,device_fingerprint,redeemed,reviewed,expires_at,created_at
+3d341fb5-21b4-4419-a54c-3c9aeb9e91a6,safouane,Eau + Sirop,737451,k6ln3j,false,true,2026-03-04 11:35:26.432+00,2026-03-04 11:20:26.478988+00
+db60168e-1838-4a49-b40f-2f9f5c58aac5,Saaf,,857204,go6uxj,false,true,2026-03-04 20:35:01.08+00,2026-03-04 20:20:01.135561+00
+f37ef728-4d65-4fad-93f7-5ac21c137a26,safouane,Supplément viande,225116,k6ln3j,false,true,2026-03-03 22:05:58.046+00,2026-03-03 21:50:58.073805+00
+fed36ad5-835f-45c9-a998-7cdb878d041d,Safouane,,120210,k6ln3j,false,true,2026-03-04 11:28:47.45+00,2026-03-04 11:13:47.538596+00

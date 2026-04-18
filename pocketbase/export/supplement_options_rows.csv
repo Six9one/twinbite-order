@@ -1,0 +1,10 @@
+id,name,price,is_active,display_order,created_at,image_url
+59d5b36c-9eeb-487b-a81c-aad42c71515c,Raclette,1.00,true,2,2025-12-16 13:48:28.238866+00,
+5d92b82c-3e24-40a6-a6f4-f0fc65a477ba,Lardon,1.00,true,5,2026-02-07 11:15:48.449821+00,
+88af02db-d97a-4304-9d25-54979ee8cc5b,Ouef,1.00,true,4,2026-02-07 11:14:14.21937+00,https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/product-images/supplement_options/88af02db-d97a-4304-9d25-54979ee8cc5b-1770462905882.jpg
+9537fe6b-15c8-4ecb-876c-3bc58fbe2bd7,Chèvre,1.00,true,1,2025-12-16 13:48:28.238866+00,
+a83ba98b-087b-4d70-9c66-caa5c0582c06,Cheddar,1.00,true,7,2026-02-07 11:17:33.061581+00,
+ab78f082-d656-4edf-aaf7-4e97177d01d7,Poivron,0.50,true,8,2026-02-07 11:18:45.127868+00,
+bcd62048-9716-44c7-b5c9-8ed6614aa5a9,Boursin,1.00,true,9,2026-02-07 11:19:06.260558+00,
+c9f4d78b-cab5-4021-9450-b0902821fd69,Mozzarella,1.00,true,3,2025-12-16 13:48:28.238866+00,
+de52add0-a47b-436f-a30f-dc53b611f864,Jambon,1.00,true,6,2026-02-07 11:15:58.105145+00,

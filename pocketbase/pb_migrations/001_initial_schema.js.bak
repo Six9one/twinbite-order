@@ -1,0 +1,602 @@
+/// PocketBase Migration: Initial Schema
+/// This creates all collections matching the existing Supabase database.
+/// Run it via: pocketbase.exe migrate
+
+/// NOTE: PocketBase auto-creates 'users' as an auth collection.
+/// We just need to ensure the admin user has the right role field.
+
+migrate((app) => {
+  // ============================================
+  // CATEGORIES
+  // ============================================
+  const categories = new Collection({
+    name: 'categories',
+    type: 'base',
+    schema: [
+      { name: 'name', type: 'text', required: true },
+      { name: 'slug', type: 'text', required: true },
+      { name: 'display_order', type: 'number', options: { min: 0 } },
+      { name: 'is_active', type: 'bool' },
+    ],
+    listRule: '',    // public read
+    viewRule: '',    // public read
+    createRule: '@request.auth.id != ""',
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(categories);
+
+  // ============================================
+  // PRODUCTS
+  // ============================================
+  const products = new Collection({
+    name: 'products',
+    type: 'base',
+    schema: [
+      { name: 'name', type: 'text', required: true },
+      { name: 'description', type: 'text' },
+      { name: 'base_price', type: 'number', required: true },
+      { name: 'pizza_base', type: 'text' },
+      { name: 'category_id', type: 'relation', options: { collectionId: categories.id, maxSelect: 1 } },
+      { name: 'image_url', type: 'text' },
+      { name: 'image_file', type: 'file', options: { maxSelect: 1, maxSize: 5242880, mimeTypes: ['image/jpeg', 'image/png', 'image/webp'] } },
+      { name: 'display_order', type: 'number', options: { min: 0 } },
+      { name: 'is_active', type: 'bool' },
+    ],
+    listRule: '',
+    viewRule: '',
+    createRule: '@request.auth.id != ""',
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(products);
+
+  // ============================================
+  // DELIVERY ZONES
+  // ============================================
+  const deliveryZones = new Collection({
+    name: 'delivery_zones',
+    type: 'base',
+    schema: [
+      { name: 'name', type: 'text', required: true },
+      { name: 'min_order', type: 'number' },
+      { name: 'delivery_fee', type: 'number' },
+      { name: 'estimated_time', type: 'text' },
+      { name: 'is_active', type: 'bool' },
+      { name: 'color', type: 'text' },
+      { name: 'latitude', type: 'number' },
+      { name: 'longitude', type: 'number' },
+      { name: 'radius', type: 'number' },
+      { name: 'zone_type', type: 'text' },
+    ],
+    listRule: '',
+    viewRule: '',
+    createRule: '@request.auth.id != ""',
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(deliveryZones);
+
+  // ============================================
+  // ORDERS
+  // ============================================
+  const orders = new Collection({
+    name: 'orders',
+    type: 'base',
+    schema: [
+      { name: 'order_number', type: 'text', required: true },
+      { name: 'order_type', type: 'select', required: true, options: { values: ['emporter', 'livraison', 'surplace'] } },
+      { name: 'status', type: 'select', required: true, options: { values: ['pending', 'preparing', 'ready', 'completed', 'cancelled'] } },
+      { name: 'customer_name', type: 'text', required: true },
+      { name: 'customer_phone', type: 'text', required: true },
+      { name: 'customer_address', type: 'text' },
+      { name: 'customer_notes', type: 'text' },
+      { name: 'delivery_zone_id', type: 'relation', options: { collectionId: deliveryZones.id, maxSelect: 1 } },
+      { name: 'items', type: 'json', required: true },
+      { name: 'subtotal', type: 'number', required: true },
+      { name: 'tva', type: 'number', required: true },
+      { name: 'delivery_fee', type: 'number' },
+      { name: 'total', type: 'number', required: true },
+      { name: 'payment_method', type: 'select', required: true, options: { values: ['cb', 'especes', 'en_ligne'] } },
+      { name: 'is_scheduled', type: 'bool' },
+      { name: 'scheduled_for', type: 'date' },
+    ],
+    listRule: '',      // public read (for TV dashboard, kitchen etc)
+    viewRule: '',
+    createRule: '',    // public create (customers place orders)
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(orders);
+
+  // ============================================
+  // CUSTOMIZATION OPTIONS (meats, sauces, garnitures, supplements, crudites)
+  // ============================================
+  const optionSchema = [
+    { name: 'name', type: 'text', required: true },
+    { name: 'price', type: 'number' },
+    { name: 'image_url', type: 'text' },
+    { name: 'display_order', type: 'number', options: { min: 0 } },
+    { name: 'is_active', type: 'bool' },
+  ];
+  const optionRules = { listRule: '', viewRule: '', createRule: '@request.auth.id != ""', updateRule: '@request.auth.id != ""', deleteRule: '@request.auth.id != ""' };
+
+  for (const name of ['meat_options', 'sauce_options', 'garniture_options', 'supplement_options', 'crudites_options']) {
+    const col = new Collection({ name, type: 'base', schema: [...optionSchema], ...optionRules });
+    app.save(col);
+  }
+
+  // ============================================
+  // DRINKS & DESSERTS
+  // ============================================
+  for (const name of ['drinks', 'desserts']) {
+    const col = new Collection({
+      name, type: 'base',
+      schema: [
+        { name: 'name', type: 'text', required: true },
+        { name: 'price', type: 'number', required: true },
+        { name: 'image_url', type: 'text' },
+        { name: 'display_order', type: 'number', options: { min: 0 } },
+        { name: 'is_active', type: 'bool' },
+      ],
+      ...optionRules,
+    });
+    app.save(col);
+  }
+
+  // ============================================
+  // SANDWICH TYPES
+  // ============================================
+  const sandwichTypes = new Collection({
+    name: 'sandwich_types', type: 'base',
+    schema: [
+      { name: 'name', type: 'text', required: true },
+      { name: 'description', type: 'text' },
+      { name: 'base_price', type: 'number' },
+      { name: 'image_url', type: 'text' },
+      { name: 'display_order', type: 'number', options: { min: 0 } },
+      { name: 'is_active', type: 'bool' },
+    ],
+    ...optionRules,
+  });
+  app.save(sandwichTypes);
+
+  // ============================================
+  // PRODUCT SIZE PRICES
+  // ============================================
+  const productSizePrices = new Collection({
+    name: 'product_size_prices', type: 'base',
+    schema: [
+      { name: 'product_type', type: 'text', required: true },
+      { name: 'size_id', type: 'text', required: true },
+      { name: 'size_label', type: 'text', required: true },
+      { name: 'max_meats', type: 'number' },
+      { name: 'price', type: 'number' },
+      { name: 'display_order', type: 'number', options: { min: 0 } },
+      { name: 'is_active', type: 'bool' },
+    ],
+    ...optionRules,
+  });
+  app.save(productSizePrices);
+
+  // ============================================
+  // PROMOTIONS
+  // ============================================
+  const promotions = new Collection({
+    name: 'promotions', type: 'base',
+    schema: [
+      { name: 'title', type: 'text', required: true },
+      { name: 'description', type: 'text' },
+      { name: 'promo_type', type: 'text' },
+      { name: 'discount_percent', type: 'number' },
+      { name: 'buy_quantity', type: 'number' },
+      { name: 'get_quantity', type: 'number' },
+      { name: 'free_item_name', type: 'text' },
+      { name: 'cart_min_amount', type: 'number' },
+      { name: 'start_date', type: 'date' },
+      { name: 'end_date', type: 'date' },
+      { name: 'is_active', type: 'bool' },
+    ],
+    listRule: '', viewRule: '',
+    createRule: '@request.auth.id != ""',
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(promotions);
+
+  // ============================================
+  // ADMIN SETTINGS
+  // ============================================
+  const adminSettings = new Collection({
+    name: 'admin_settings', type: 'base',
+    schema: [
+      { name: 'setting_key', type: 'text', required: true },
+      { name: 'setting_value', type: 'json' },
+    ],
+    indexes: ['CREATE UNIQUE INDEX idx_admin_settings_key ON admin_settings (setting_key)'],
+    listRule: '',    // public read (site needs these)
+    viewRule: '',
+    createRule: '@request.auth.id != ""',
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(adminSettings);
+
+  // ============================================
+  // SITE SETTINGS (key-value)
+  // ============================================
+  const siteSettings = new Collection({
+    name: 'site_settings', type: 'base',
+    schema: [
+      { name: 'key', type: 'text', required: true },
+      { name: 'value', type: 'text' },
+    ],
+    indexes: ['CREATE UNIQUE INDEX idx_site_settings_key ON site_settings (key)'],
+    listRule: '', viewRule: '',
+    createRule: '@request.auth.id != ""',
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(siteSettings);
+
+  // ============================================
+  // OPENING HOURS
+  // ============================================
+  const openingHours = new Collection({
+    name: 'opening_hours', type: 'base',
+    schema: [
+      { name: 'day_of_week', type: 'number', required: true },
+      { name: 'day_name', type: 'text', required: true },
+      { name: 'is_open', type: 'bool' },
+      { name: 'morning_open', type: 'text' },
+      { name: 'morning_close', type: 'text' },
+      { name: 'evening_open', type: 'text' },
+      { name: 'evening_close', type: 'text' },
+    ],
+    listRule: '', viewRule: '',
+    createRule: '@request.auth.id != ""',
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(openingHours);
+
+  // ============================================
+  // CAROUSEL IMAGES
+  // ============================================
+  const carouselImages = new Collection({
+    name: 'carousel_images', type: 'base',
+    schema: [
+      { name: 'title', type: 'text' },
+      { name: 'description', type: 'text' },
+      { name: 'image_url', type: 'text' },
+      { name: 'image_file', type: 'file', options: { maxSelect: 1, maxSize: 5242880 } },
+      { name: 'link_url', type: 'text' },
+      { name: 'display_order', type: 'number', options: { min: 0 } },
+      { name: 'is_active', type: 'bool' },
+    ],
+    listRule: '', viewRule: '',
+    createRule: '@request.auth.id != ""',
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(carouselImages);
+
+  // ============================================
+  // CATEGORY IMAGES
+  // ============================================
+  const categoryImages = new Collection({
+    name: 'category_images', type: 'base',
+    schema: [
+      { name: 'category_slug', type: 'text', required: true },
+      { name: 'image_url', type: 'text' },
+      { name: 'emoji_fallback', type: 'text' },
+      { name: 'display_name', type: 'text' },
+      { name: 'is_active', type: 'bool' },
+    ],
+    listRule: '', viewRule: '',
+    createRule: '@request.auth.id != ""',
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(categoryImages);
+
+  // ============================================
+  // PRODUCT ANALYTICS & VIEWS
+  // ============================================
+  const productAnalytics = new Collection({
+    name: 'product_analytics', type: 'base',
+    schema: [
+      { name: 'product_id', type: 'text' },
+      { name: 'product_name', type: 'text', required: true },
+      { name: 'category_slug', type: 'text' },
+      { name: 'action_type', type: 'text', required: true },
+      { name: 'session_id', type: 'text' },
+      { name: 'device_type', type: 'text' },
+    ],
+    listRule: '@request.auth.id != ""',
+    viewRule: '@request.auth.id != ""',
+    createRule: '',   // public create (tracking)
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(productAnalytics);
+
+  // ============================================
+  // LOYALTY SYSTEM
+  // ============================================
+  const loyaltyCustomers = new Collection({
+    name: 'loyalty_customers', type: 'base',
+    schema: [
+      { name: 'phone', type: 'text', required: true },
+      { name: 'name', type: 'text' },
+      { name: 'points', type: 'number' },
+      { name: 'stamps', type: 'number' },
+      { name: 'total_stamps', type: 'number' },
+      { name: 'free_items_available', type: 'number' },
+      { name: 'pizza_credits_available', type: 'number' },
+      { name: 'total_spent', type: 'number' },
+      { name: 'total_orders', type: 'number' },
+      { name: 'first_order_done', type: 'bool' },
+      { name: 'last_order_at', type: 'date' },
+    ],
+    indexes: ['CREATE UNIQUE INDEX idx_loyalty_phone ON loyalty_customers (phone)'],
+    listRule: '', viewRule: '',
+    createRule: '',   // public (auto-created on order)
+    updateRule: '',   // public (updated by phone match)
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(loyaltyCustomers);
+
+  const loyaltyTransactions = new Collection({
+    name: 'loyalty_transactions', type: 'base',
+    schema: [
+      { name: 'customer_id', type: 'relation', options: { collectionId: loyaltyCustomers.id, maxSelect: 1 } },
+      { name: 'type', type: 'select', options: { values: ['earn', 'redeem'] } },
+      { name: 'points', type: 'number' },
+      { name: 'description', type: 'text' },
+      { name: 'order_id', type: 'text' },
+    ],
+    listRule: '', viewRule: '',
+    createRule: '',
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(loyaltyTransactions);
+
+  const loyaltyRewards = new Collection({
+    name: 'loyalty_rewards', type: 'base',
+    schema: [
+      { name: 'name', type: 'text', required: true },
+      { name: 'description', type: 'text' },
+      { name: 'points_cost', type: 'number', required: true },
+      { name: 'type', type: 'select', options: { values: ['free_item', 'discount', 'percentage'] } },
+      { name: 'value', type: 'number' },
+      { name: 'is_active', type: 'bool' },
+    ],
+    listRule: '', viewRule: '',
+    createRule: '@request.auth.id != ""',
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(loyaltyRewards);
+
+  // Legacy loyalty tables
+  const loyaltyPoints = new Collection({
+    name: 'loyalty_points', type: 'base',
+    schema: [
+      { name: 'customer_phone', type: 'text', required: true },
+      { name: 'customer_name', type: 'text' },
+      { name: 'total_points', type: 'number' },
+      { name: 'total_purchases', type: 'number' },
+      { name: 'soufflet_count', type: 'number' },
+      { name: 'pizza_count', type: 'number' },
+      { name: 'texmex_count', type: 'number' },
+      { name: 'free_items_redeemed', type: 'number' },
+      { name: 'pending_rewards', type: 'json' },
+      { name: 'last_order_at', type: 'date' },
+    ],
+    listRule: '', viewRule: '',
+    createRule: '', updateRule: '',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(loyaltyPoints);
+
+  const loyaltyRules = new Collection({
+    name: 'loyalty_rules', type: 'base',
+    schema: [
+      { name: 'rule_name', type: 'text' },
+      { name: 'product_type', type: 'text' },
+      { name: 'points_required', type: 'number' },
+      { name: 'reward_type', type: 'text' },
+      { name: 'reward_value', type: 'number' },
+      { name: 'is_active', type: 'bool' },
+      { name: 'description', type: 'text' },
+    ],
+    listRule: '', viewRule: '',
+    createRule: '@request.auth.id != ""',
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(loyaltyRules);
+
+  // ============================================
+  // SPIN WHEEL
+  // ============================================
+  const spinWheelEntries = new Collection({
+    name: 'spin_wheel_entries', type: 'base',
+    schema: [
+      { name: 'client_name', type: 'text' },
+      { name: 'prize', type: 'text' },
+      { name: 'prize_code', type: 'text' },
+      { name: 'device_fingerprint', type: 'text' },
+      { name: 'expires_at', type: 'date' },
+      { name: 'reviewed', type: 'bool' },
+    ],
+    listRule: '@request.auth.id != ""',
+    viewRule: '@request.auth.id != ""',
+    createRule: '',  // public
+    updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(spinWheelEntries);
+
+  // ============================================
+  // INVENTORY
+  // ============================================
+  const inventoryCategories = new Collection({
+    name: 'inventory_categories', type: 'base',
+    schema: [
+      { name: 'name', type: 'text', required: true },
+      { name: 'slug', type: 'text', required: true },
+      { name: 'color', type: 'text' },
+      { name: 'icon', type: 'text' },
+      { name: 'display_order', type: 'number' },
+      { name: 'is_active', type: 'bool' },
+    ],
+    listRule: '@request.auth.id != ""', viewRule: '@request.auth.id != ""',
+    createRule: '@request.auth.id != ""', updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(inventoryCategories);
+
+  const inventoryItems = new Collection({
+    name: 'inventory_items', type: 'base',
+    schema: [
+      { name: 'category_id', type: 'relation', options: { collectionId: inventoryCategories.id, maxSelect: 1 } },
+      { name: 'name', type: 'text', required: true },
+      { name: 'unit', type: 'text' },
+      { name: 'current_stock', type: 'number' },
+      { name: 'min_stock', type: 'number' },
+      { name: 'max_stock', type: 'number' },
+      { name: 'last_price', type: 'number' },
+      { name: 'supplier_name', type: 'text' },
+      { name: 'is_active', type: 'bool' },
+      { name: 'display_order', type: 'number' },
+      { name: 'notes', type: 'text' },
+    ],
+    listRule: '@request.auth.id != ""', viewRule: '@request.auth.id != ""',
+    createRule: '@request.auth.id != ""', updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(inventoryItems);
+
+  const supplierOrders = new Collection({
+    name: 'supplier_orders', type: 'base',
+    schema: [
+      { name: 'items', type: 'json' },
+      { name: 'supplier_name', type: 'text' },
+      { name: 'supplier_phone', type: 'text' },
+      { name: 'total_items', type: 'number' },
+      { name: 'sent_via', type: 'text' },
+      { name: 'status', type: 'select', options: { values: ['draft', 'sent', 'received'] } },
+      { name: 'sent_at', type: 'date' },
+      { name: 'created_by', type: 'text' },
+      { name: 'notes', type: 'text' },
+    ],
+    listRule: '@request.auth.id != ""', viewRule: '@request.auth.id != ""',
+    createRule: '@request.auth.id != ""', updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(supplierOrders);
+
+  // ============================================
+  // SYSTEM & SERVICES
+  // ============================================
+  const systemStatus = new Collection({
+    name: 'system_status', type: 'base',
+    schema: [
+      { name: 'server_name', type: 'text', required: true },
+      { name: 'is_online', type: 'bool' },
+      { name: 'last_heartbeat', type: 'date' },
+    ],
+    listRule: '@request.auth.id != ""', viewRule: '@request.auth.id != ""',
+    createRule: '', updateRule: '', deleteRule: '@request.auth.id != ""',
+  });
+  app.save(systemStatus);
+
+  const pushSubscriptions = new Collection({
+    name: 'push_subscriptions', type: 'base',
+    schema: [
+      { name: 'endpoint', type: 'text', required: true },
+      { name: 'keys', type: 'json' },
+      { name: 'user_agent', type: 'text' },
+      { name: 'device_name', type: 'text' },
+      { name: 'is_active', type: 'bool' },
+      { name: 'last_used_at', type: 'date' },
+    ],
+    indexes: ['CREATE UNIQUE INDEX idx_push_endpoint ON push_subscriptions (endpoint)'],
+    listRule: '@request.auth.id != ""', viewRule: '@request.auth.id != ""',
+    createRule: '', updateRule: '',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(pushSubscriptions);
+
+  // ============================================
+  // HACCP / KITCHEN
+  // ============================================
+  const haccpPrintQueue = new Collection({
+    name: 'haccp_print_queue', type: 'base',
+    schema: [
+      { name: 'product_name', type: 'text' },
+      { name: 'category_name', type: 'text' },
+      { name: 'category_color', type: 'text' },
+      { name: 'action_date', type: 'text' },
+      { name: 'dlc_date', type: 'text' },
+      { name: 'storage_temp', type: 'text' },
+      { name: 'operator', type: 'text' },
+      { name: 'dlc_hours', type: 'number' },
+      { name: 'action_label', type: 'text' },
+      { name: 'notes', type: 'text' },
+      { name: 'status', type: 'select', options: { values: ['pending', 'printing', 'printed', 'error'] } },
+    ],
+    listRule: '@request.auth.id != ""', viewRule: '@request.auth.id != ""',
+    createRule: '@request.auth.id != ""', updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(haccpPrintQueue);
+
+  const printJobs = new Collection({
+    name: 'print_jobs', type: 'base',
+    schema: [
+      { name: 'order_id', type: 'text' },
+      { name: 'status', type: 'text' },
+      { name: 'attempts', type: 'number' },
+      { name: 'error', type: 'text' },
+    ],
+    listRule: '@request.auth.id != ""', viewRule: '@request.auth.id != ""',
+    createRule: '@request.auth.id != ""', updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(printJobs);
+
+  // ============================================
+  // USER ROLES (for backward compatibility)
+  // ============================================
+  const userRoles = new Collection({
+    name: 'user_roles', type: 'base',
+    schema: [
+      { name: 'user_id', type: 'text', required: true },
+      { name: 'role', type: 'select', required: true, options: { values: ['admin', 'staff'] } },
+    ],
+    listRule: '@request.auth.id != ""', viewRule: '@request.auth.id != ""',
+    createRule: '@request.auth.id != ""', updateRule: '@request.auth.id != ""',
+    deleteRule: '@request.auth.id != ""',
+  });
+  app.save(userRoles);
+
+}, (app) => {
+  // Revert: drop all collections
+  const names = [
+    'user_roles', 'print_jobs', 'haccp_print_queue', 'push_subscriptions', 'system_status',
+    'supplier_orders', 'inventory_items', 'inventory_categories', 'spin_wheel_entries',
+    'loyalty_rules', 'loyalty_points', 'loyalty_rewards', 'loyalty_transactions', 'loyalty_customers',
+    'product_analytics', 'category_images', 'carousel_images', 'opening_hours',
+    'site_settings', 'admin_settings', 'promotions', 'product_size_prices',
+    'sandwich_types', 'desserts', 'drinks',
+    'crudites_options', 'supplement_options', 'garniture_options', 'sauce_options', 'meat_options',
+    'orders', 'delivery_zones', 'products', 'categories',
+  ];
+  for (const name of names) {
+    try { app.delete(app.findCollectionByNameOrId(name)); } catch {}
+  }
+});

@@ -1,0 +1,4 @@
+id,name,price,is_active,display_order,created_at,image_url
+3a59506b-2c32-4986-a002-d9ed2f7394c7,Salade,0.00,true,1,2025-12-16 13:48:28.238866+00,https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/product-images/garniture_options/3a59506b-2c32-4986-a002-d9ed2f7394c7-1765938812611.png
+58570241-0d16-4656-8421-9153abee73ab,Tomate,0.00,true,2,2025-12-16 13:48:28.238866+00,
+bb542b63-5c95-4335-aaba-e24f942073a7,Oignon,0.00,true,3,2025-12-16 13:48:28.238866+00,

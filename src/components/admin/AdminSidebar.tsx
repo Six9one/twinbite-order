@@ -31,6 +31,7 @@ import {
   Globe,
   CreditCard,
   Power,
+  ShieldAlert,
   Euro,
   LogOut,
   ExternalLink,
@@ -78,6 +79,7 @@ const navItems: NavItem[] = [
     label: 'Menu Digital',
     icon: Pizza,
     children: [
+      { label: '⚡ Disponibilité', icon: ShieldAlert, value: 'availability' },
       { label: 'Pizzas', icon: Pizza, value: 'pizzas' },
       { label: 'Sandwiches', icon: Sandwich, value: 'sandwiches' },
       {
@@ -118,7 +120,7 @@ const navItems: NavItem[] = [
     icon: Gift,
     children: [
       { label: 'Promotions', icon: Gift, value: 'promotions' },
-      { label: 'Fidélité', icon: Star, value: 'loyalty' },
+      { label: 'Tampons Fidélité', icon: Star, value: 'loyalty' },
       { label: 'Carousel Media', icon: Image, value: 'carousel' },
       { label: 'Images Catégories', icon: Image, value: 'category-images' },
       { label: 'Images Wizard', icon: Image, value: 'wizard-images' },
