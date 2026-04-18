@@ -109,10 +109,6 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
   const { getImageOrEmoji, getDisplayName } = useCategoryImages();
   const { isCategoryDisabled } = useDisabledCategories();
 
-  // Filter out disabled (unavailable) categories
-  const availableProductCategories = productCategoryOrder.filter(c => !isCategoryDisabled(c));
-  const availableDessertCategories = dessertCategoryOrder.filter(c => !isCategoryDisabled(c));
-
   // Auto-redirect to pizzas if coming from checkout to pick a free pizza
   useEffect(() => {
     if (lockedPizzaSize && !selectedCategory) {
@@ -308,16 +304,29 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <h2 className="text-lg sm:text-xl font-display font-bold mb-3 sm:mb-4 text-foreground">🍽️ Nos Produits</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          {availableProductCategories.map((category) => {
+          {productCategoryOrder.map((category) => {
             const imageData = getImageOrEmoji(category);
             const displayName = getDisplayName(category) || allCategoryLabels[category]?.split(' ').slice(1).join(' ');
+            const isUnavailable = isCategoryDisabled(category);
 
             return (
               <Card
                 key={category}
-                className="p-3 sm:p-5 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] border-2 border-transparent hover:border-primary/30 text-center overflow-hidden relative"
-                onClick={() => handleCategoryClick(category)}
+                className={`p-3 sm:p-5 transition-all border-2 text-center overflow-hidden relative ${
+                  isUnavailable
+                    ? 'opacity-40 cursor-not-allowed border-transparent grayscale'
+                    : 'cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-transparent hover:border-primary/30'
+                }`}
+                onClick={() => !isUnavailable && handleCategoryClick(category)}
               >
+                {/* Unavailable overlay badge */}
+                {isUnavailable && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center">
+                    <span className="bg-red-500/90 text-white text-[10px] sm:text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                      Indisponible
+                    </span>
+                  </div>
+                )}
 
                 {/* Image or Emoji */}
                 <div className="w-14 h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 mx-auto mb-2 sm:mb-3 rounded-full overflow-hidden border-3 sm:border-4 border-amber-400/30 bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
@@ -337,7 +346,7 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
                 <h3 className="font-display font-semibold text-xs sm:text-sm md:text-base truncate">
                   {displayName}
                 </h3>
-                {category === 'pizzas' && promoText && (
+                {category === 'pizzas' && promoText && !isUnavailable && (
                   <p className="text-[10px] sm:text-xs text-primary mt-1 truncate">{promoText}</p>
                 )}
               </Card>
@@ -348,16 +357,30 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
         {/* Desserts Grid */}
         <h2 className="text-lg sm:text-xl font-display font-bold mb-3 sm:mb-4 text-foreground">🍨 Desserts & Boissons</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          {availableDessertCategories.map((category) => {
+          {dessertCategoryOrder.map((category) => {
             const imageData = getImageOrEmoji(category);
             const displayName = getDisplayName(category) || allCategoryLabels[category]?.split(' ').slice(1).join(' ');
+            const isUnavailable = isCategoryDisabled(category);
 
             return (
               <Card
                 key={category}
-                className="p-3 sm:p-5 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] border-2 border-transparent hover:border-primary/30 text-center overflow-hidden relative"
-                onClick={() => handleCategoryClick(category)}
+                className={`p-3 sm:p-5 transition-all border-2 text-center overflow-hidden relative ${
+                  isUnavailable
+                    ? 'opacity-40 cursor-not-allowed border-transparent grayscale'
+                    : 'cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-transparent hover:border-primary/30'
+                }`}
+                onClick={() => !isUnavailable && handleCategoryClick(category)}
               >
+                {/* Unavailable overlay badge */}
+                {isUnavailable && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center">
+                    <span className="bg-red-500/90 text-white text-[10px] sm:text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                      Indisponible
+                    </span>
+                  </div>
+                )}
+
                 {/* Image or Emoji */}
                 <div className="w-14 h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 mx-auto mb-2 sm:mb-3 rounded-full overflow-hidden border-3 sm:border-4 border-amber-400/30 bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
                   {imageData.type === 'image' ? (
