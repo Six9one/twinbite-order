@@ -72,9 +72,81 @@ function KioskContent() {
         return fallback;
     };
 
-    // Initialize printer on mount
+    // Initialize kiosk mode on mount: fullscreen, hide cursor, swap manifest, init printer
     useEffect(() => {
         initPrinter();
+
+        // Swap PWA manifest to kiosk-specific one (fullscreen + landscape)
+        const existingManifest = document.querySelector('link[rel="manifest"]');
+        if (existingManifest) {
+            existingManifest.setAttribute('href', '/kiosk-manifest.json');
+        } else {
+            const link = document.createElement('link');
+            link.rel = 'manifest';
+            link.href = '/kiosk-manifest.json';
+            document.head.appendChild(link);
+        }
+
+        // Set meta tags for fullscreen kiosk
+        const setMeta = (name: string, content: string) => {
+            let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
+            if (!meta) {
+                meta = document.createElement('meta');
+                meta.name = name;
+                document.head.appendChild(meta);
+            }
+            meta.content = content;
+        };
+        setMeta('apple-mobile-web-app-capable', 'yes');
+        setMeta('mobile-web-app-capable', 'yes');
+        setMeta('apple-mobile-web-app-status-bar-style', 'black');
+
+        // Hide cursor after 3 seconds of no movement (kiosk mode)
+        let cursorTimeout: NodeJS.Timeout;
+        const hideCursor = () => {
+            document.body.style.cursor = 'none';
+        };
+        const showCursor = () => {
+            document.body.style.cursor = 'default';
+            clearTimeout(cursorTimeout);
+            cursorTimeout = setTimeout(hideCursor, 3000);
+        };
+        window.addEventListener('mousemove', showCursor);
+        cursorTimeout = setTimeout(hideCursor, 3000);
+
+        // Request fullscreen automatically on first touch
+        const requestFullscreen = () => {
+            const el = document.documentElement;
+            if (el.requestFullscreen && !document.fullscreenElement) {
+                el.requestFullscreen().catch(() => {});
+            } else if ((el as any).webkitRequestFullscreen && !(document as any).webkitFullscreenElement) {
+                (el as any).webkitRequestFullscreen();
+            }
+            // Only try once
+            window.removeEventListener('touchstart', requestFullscreen);
+            window.removeEventListener('click', requestFullscreen);
+        };
+        window.addEventListener('touchstart', requestFullscreen, { once: true });
+        window.addEventListener('click', requestFullscreen, { once: true });
+
+        // Prevent pull-to-refresh and zoom gestures on mobile
+        document.body.style.overscrollBehavior = 'none';
+        document.body.style.touchAction = 'manipulation';
+
+        // Cleanup
+        return () => {
+            window.removeEventListener('mousemove', showCursor);
+            window.removeEventListener('touchstart', requestFullscreen);
+            window.removeEventListener('click', requestFullscreen);
+            clearTimeout(cursorTimeout);
+            document.body.style.cursor = 'default';
+            document.body.style.overscrollBehavior = '';
+            document.body.style.touchAction = '';
+            // Restore original manifest
+            if (existingManifest) {
+                existingManifest.setAttribute('href', '/manifest.json');
+            }
+        };
     }, []);
 
     // Inactivity timeout — reset to welcome after 90s of no interaction on menu/wizard screens
