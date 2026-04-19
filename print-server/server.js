@@ -3,7 +3,9 @@ import { Socket } from 'net';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
+import { execSync } from 'child_process';
+import { tmpdir } from 'os';
 import express from 'express';
 import cors from 'cors';
 
@@ -15,8 +17,9 @@ config({ path: join(__dirname, '.env') });
 // Configuration
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const PRINTER_IP = process.env.PRINTER_IP || '192.168.1.200';
+const PRINTER_IPS = (process.env.PRINTER_IPS || process.env.PRINTER_IP || '192.168.1.1,192.168.1.200').split(',').map(ip => ip.trim());
 const PRINTER_PORT = parseInt(process.env.PRINTER_PORT || '9100', 10);
+const USB_PRINTER_NAME = process.env.USB_PRINTER_NAME || '';
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 5000;
 const SETTINGS_REFRESH_INTERVAL = 60000; // Refresh settings every 60 seconds
@@ -491,7 +494,7 @@ function formatOrderForPrint(order) {
 }
 
 // Send data to printer via TCP
-function sendToPrinter(data) {
+function sendToPrinter(data, targetIp) {
     return new Promise((resolve, reject) => {
         const socket = new Socket();
 
@@ -506,8 +509,8 @@ function sendToPrinter(data) {
             reject(err);
         });
 
-        socket.connect(PRINTER_PORT, PRINTER_IP, () => {
-            console.log(`📡 Connected to printer at ${PRINTER_IP}:${PRINTER_PORT}`);
+        socket.connect(PRINTER_PORT, targetIp, () => {
+            console.log(`📡 Connected to printer at ${targetIp}:${PRINTER_PORT}`);
             socket.write(data, 'binary', () => {
                 socket.end();
                 resolve();
@@ -515,31 +518,75 @@ function sendToPrinter(data) {
         });
 
         socket.on('close', () => {
-            console.log('🔌 Printer connection closed');
+            console.log(`🔌 Printer connection closed for ${targetIp}`);
         });
     });
 }
 
-// Print with retry logic
-async function printWithRetry(data, orderNumber) {
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-            console.log(`🖨️  Print attempt ${attempt}/${MAX_RETRIES} for order ${orderNumber}...`);
-            await sendToPrinter(data);
-            console.log(`✅ Order ${orderNumber} printed successfully!`);
-            return true;
-        } catch (error) {
-            console.error(`❌ Attempt ${attempt} failed:`, error.message);
+// Send data to USB printer via PowerShell raw printing
+async function sendToUSBPrinter(data, printerName) {
+    const tempFile = join(tmpdir(), `ticket_${Date.now()}.bin`);
+    const scriptPath = join(__dirname, 'print-raw.ps1');
 
-            if (attempt < MAX_RETRIES) {
-                console.log(`⏳ Waiting ${RETRY_DELAY_MS / 1000}s before retry...`);
-                await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+    try {
+        writeFileSync(tempFile, data, 'binary');
+        execSync(
+            `powershell -ExecutionPolicy Bypass -File "${scriptPath}" -PrinterName "${printerName}" -FilePath "${tempFile}"`,
+            { windowsHide: true, timeout: 15000 }
+        );
+        console.log(`✅ Printed to USB printer: ${printerName}`);
+        return true;
+    } catch (err) {
+        console.error(`❌ USB print failed on ${printerName}:`, err.message);
+        return false;
+    } finally {
+        try { unlinkSync(tempFile); } catch(e) {}
+    }
+}
+
+// Print with retry logic - sends to ALL printers (network + USB)
+async function printWithRetry(data, orderNumber) {
+    let anyPrinted = false;
+
+    // === NETWORK PRINTERS ===
+    for (const ip of PRINTER_IPS) {
+        if (!ip) continue;
+        let printSuccess = false;
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                console.log(`🖨️  Print attempt ${attempt}/${MAX_RETRIES} for order ${orderNumber} to ${ip}...`);
+                await sendToPrinter(data, ip);
+                console.log(`✅ Order ${orderNumber} printed successfully on ${ip}!`);
+                printSuccess = true;
+                anyPrinted = true;
+                break;
+            } catch (error) {
+                console.error(`❌ Attempt ${attempt} failed on ${ip}:`, error.message);
+
+                if (attempt < MAX_RETRIES) {
+                    console.log(`⏳ Waiting ${RETRY_DELAY_MS / 1000}s before retry on ${ip}...`);
+                    await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+                }
             }
+        }
+        
+        if (!printSuccess) {
+            console.error(`❌ Failed to print order ${orderNumber} on ${ip} after ${MAX_RETRIES} attempts`);
         }
     }
 
-    console.error(`❌ Failed to print order ${orderNumber} after ${MAX_RETRIES} attempts`);
-    return false;
+    // === USB PRINTER (Star TSP) ===
+    if (USB_PRINTER_NAME) {
+        console.log(`🖨️  Printing order ${orderNumber} to USB printer: ${USB_PRINTER_NAME}...`);
+        const usbSuccess = await sendToUSBPrinter(data, USB_PRINTER_NAME);
+        if (usbSuccess) {
+            anyPrinted = true;
+        }
+    }
+
+    // Return true as long as AT LEAST ONE printer successfully printed
+    return anyPrinted;
 }
 
 // Handle new order
