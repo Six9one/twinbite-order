@@ -480,7 +480,7 @@ function KioskContent() {
                     />
                 );
             case 'croques':
-                return <UnifiedProductWizard productType="panini" onClose={wizardOnClose} />;
+                return <UnifiedProductWizard productType="croques" onClose={wizardOnClose} />;
             default:
                 // Fallback: go back to menu
                 setScreen('menu');
