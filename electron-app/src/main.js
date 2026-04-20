@@ -490,7 +490,7 @@ function generateOrderMessage(order) {
 const net = require('net');
 
 // Printer settings - Edit these for your printer
-const PRINTER_IP = '192.168.1.200';
+const PRINTER_IP = '192.168.1.70';
 const PRINTER_PORT = 9100;
 
 async function printTicket(orderData) {

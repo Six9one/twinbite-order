@@ -45,6 +45,7 @@ serve(async (req) => {
       Deno.env.get('TELEGRAM_ADMIN_CHAT_ID_2'),
       Deno.env.get('TELEGRAM_ADMIN_CHAT_ID_3'),
       Deno.env.get('TELEGRAM_ADMIN_CHAT_ID_4'),
+      Deno.env.get('TELEGRAM_ADMIN_CHAT_ID_5'),
     ].filter(Boolean);
 
     if (!botToken || chatIds.length === 0) {

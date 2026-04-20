@@ -48,10 +48,10 @@ export function KioskCategories({ onSelectCategory, onBack }: KioskCategoriesPro
         return (
             <Card
                 key={category}
-                className={`p-4 transition-all border-2 text-center overflow-hidden relative ${
+                className={`p-4 transition-all border-2 text-center overflow-hidden relative !bg-slate-800/80 !text-white ${
                     isUnavailable
                         ? 'opacity-30 cursor-not-allowed border-transparent grayscale'
-                        : 'cursor-pointer hover:shadow-xl hover:scale-[1.03] active:scale-[0.97] border-transparent hover:border-amber-400/50 bg-gradient-to-br from-white/5 to-white/10'
+                        : 'cursor-pointer hover:shadow-xl hover:scale-[1.03] active:scale-[0.97] border-transparent hover:border-amber-400/50 hover:!bg-slate-700/80'
                 }`}
                 onClick={() => !isUnavailable && onSelectCategory(category)}
             >

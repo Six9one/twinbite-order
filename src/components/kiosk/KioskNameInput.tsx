@@ -80,7 +80,7 @@ export function KioskNameInput({ onSubmit, onBack }: KioskNameInputProps) {
                                     key={key}
                                     variant="outline"
                                     onClick={() => handleKey(key)}
-                                    className="w-16 h-16 text-2xl font-bold bg-white/10 border-white/20 text-white hover:bg-white/20 hover:scale-105 active:scale-95 transition-all"
+                                    className="w-16 h-16 text-2xl font-bold !bg-white/10 !border-white/20 !text-white hover:!bg-white/20 hover:scale-105 active:scale-95 transition-all"
                                 >
                                     {key}
                                 </Button>
@@ -89,7 +89,7 @@ export function KioskNameInput({ onSubmit, onBack }: KioskNameInputProps) {
                                 <Button
                                     variant="outline"
                                     onClick={handleBackspace}
-                                    className="w-24 h-16 text-xl bg-red-500/20 border-red-500/30 text-red-300 hover:bg-red-500/30 hover:scale-105 active:scale-95 transition-all"
+                                    className="w-24 h-16 text-xl !bg-red-500/20 !border-red-500/30 !text-red-300 hover:!bg-red-500/30 hover:scale-105 active:scale-95 transition-all"
                                 >
                                     <Delete className="w-6 h-6" />
                                 </Button>
@@ -102,7 +102,7 @@ export function KioskNameInput({ onSubmit, onBack }: KioskNameInputProps) {
                         <Button
                             variant="outline"
                             onClick={handleSpace}
-                            className="w-64 h-14 text-xl bg-white/10 border-white/20 text-white hover:bg-white/20"
+                            className="w-64 h-14 text-xl !bg-white/10 !border-white/20 !text-white hover:!bg-white/20"
                         >
                             Espace
                         </Button>

@@ -12,7 +12,7 @@ export function KioskUpsell({ onAddItem, onSkip }: KioskUpsellProps) {
     const { data: boissonsProducts } = useProductsByCategory('boissons');
 
     return (
-        <div className="h-full flex flex-col items-center justify-center p-8">
+        <div className="h-full flex flex-col items-center justify-start pt-12 p-8">
             <h2 className="text-3xl font-bold text-white mb-2 text-center">
                 🎉 Ajouté au panier !
             </h2>
@@ -23,7 +23,7 @@ export function KioskUpsell({ onAddItem, onSkip }: KioskUpsellProps) {
             <div className="grid grid-cols-3 gap-6 max-w-3xl w-full mb-10">
                 {/* Frites */}
                 <Card
-                    className="p-6 cursor-pointer hover:scale-[1.03] active:scale-[0.97] transition-all border-2 border-transparent hover:border-amber-400/50 bg-gradient-to-br from-amber-500/10 to-yellow-500/10 text-center"
+                    className="p-6 cursor-pointer hover:scale-[1.03] active:scale-[0.97] transition-all border-2 border-transparent hover:border-amber-400/50 !bg-amber-500/10 !text-white text-center"
                     onClick={() => onAddItem('frites')}
                 >
                     <span className="text-6xl block mb-4">🍟</span>
@@ -35,7 +35,7 @@ export function KioskUpsell({ onAddItem, onSkip }: KioskUpsellProps) {
 
                 {/* Boisson */}
                 <Card
-                    className="p-6 cursor-pointer hover:scale-[1.03] active:scale-[0.97] transition-all border-2 border-transparent hover:border-blue-400/50 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-center"
+                    className="p-6 cursor-pointer hover:scale-[1.03] active:scale-[0.97] transition-all border-2 border-transparent hover:border-blue-400/50 !bg-blue-500/10 !text-white text-center"
                     onClick={() => onAddItem('boissons')}
                 >
                     <span className="text-6xl block mb-4">🥤</span>
@@ -47,7 +47,7 @@ export function KioskUpsell({ onAddItem, onSkip }: KioskUpsellProps) {
 
                 {/* Dessert */}
                 <Card
-                    className="p-6 cursor-pointer hover:scale-[1.03] active:scale-[0.97] transition-all border-2 border-transparent hover:border-pink-400/50 bg-gradient-to-br from-pink-500/10 to-rose-500/10 text-center"
+                    className="p-6 cursor-pointer hover:scale-[1.03] active:scale-[0.97] transition-all border-2 border-transparent hover:border-pink-400/50 !bg-pink-500/10 !text-white text-center"
                     onClick={() => onAddItem('crepes')}
                 >
                     <span className="text-6xl block mb-4">🍰</span>
@@ -60,7 +60,7 @@ export function KioskUpsell({ onAddItem, onSkip }: KioskUpsellProps) {
                 variant="outline"
                 size="lg"
                 onClick={onSkip}
-                className="h-14 px-12 text-xl border-white/20 text-white/70 hover:text-white hover:bg-white/10"
+                className="h-14 px-12 text-xl !bg-white/5 !border-white/20 !text-white/70 hover:!text-white hover:!bg-white/10"
             >
                 Non merci, continuer →
             </Button>

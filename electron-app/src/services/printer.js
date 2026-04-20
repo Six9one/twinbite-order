@@ -31,7 +31,7 @@ class PrinterManager {
         return {
             type: 'network', // 'network' or 'usb'
             network: {
-                ip: process.env.PRINTER_IP || '192.168.1.200',
+                ip: process.env.PRINTER_IP || '192.168.1.70',
                 port: parseInt(process.env.PRINTER_PORT || '9100', 10),
                 timeout: 5000
             },

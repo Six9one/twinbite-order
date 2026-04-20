@@ -30,7 +30,7 @@ export function KioskOrderType({ onSelect, onBack }: KioskOrderTypeProps) {
             <div className="flex gap-8 max-w-4xl w-full">
                 {/* Sur Place */}
                 <Card
-                    className="flex-1 p-12 cursor-pointer hover:scale-[1.03] active:scale-[0.98] transition-all border-2 border-transparent hover:border-amber-400/50 bg-gradient-to-br from-amber-500/20 to-orange-500/20 backdrop-blur group"
+                    className="flex-1 p-12 cursor-pointer hover:scale-[1.03] active:scale-[0.98] transition-all border-2 border-transparent hover:border-amber-400/50 !bg-amber-900/40 !text-white backdrop-blur group"
                     onClick={() => onSelect('surplace')}
                 >
                     <div className="text-center">
@@ -42,7 +42,7 @@ export function KioskOrderType({ onSelect, onBack }: KioskOrderTypeProps) {
 
                 {/* À Emporter */}
                 <Card
-                    className="flex-1 p-12 cursor-pointer hover:scale-[1.03] active:scale-[0.98] transition-all border-2 border-transparent hover:border-emerald-400/50 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 backdrop-blur group"
+                    className="flex-1 p-12 cursor-pointer hover:scale-[1.03] active:scale-[0.98] transition-all border-2 border-transparent hover:border-emerald-400/50 !bg-emerald-900/40 !text-white backdrop-blur group"
                     onClick={() => onSelect('emporter')}
                 >
                     <div className="text-center">

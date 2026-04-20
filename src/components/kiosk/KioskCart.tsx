@@ -79,7 +79,7 @@ export function KioskCart({ customerName, orderType, onConfirm }: KioskCartProps
                                         <Button
                                             variant="outline"
                                             size="icon"
-                                            className="w-8 h-8 bg-white/5 border-white/20 text-white hover:bg-white/10"
+                                            className="w-8 h-8 !bg-white/5 !border-white/20 !text-white hover:!bg-white/10"
                                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                         >
                                             <Minus className="w-3 h-3" />
@@ -90,7 +90,7 @@ export function KioskCart({ customerName, orderType, onConfirm }: KioskCartProps
                                         <Button
                                             variant="outline"
                                             size="icon"
-                                            className="w-8 h-8 bg-white/5 border-white/20 text-white hover:bg-white/10"
+                                            className="w-8 h-8 !bg-white/5 !border-white/20 !text-white hover:!bg-white/10"
                                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                         >
                                             <Plus className="w-3 h-3" />
