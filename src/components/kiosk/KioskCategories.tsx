@@ -48,10 +48,10 @@ export function KioskCategories({ onSelectCategory, onBack }: KioskCategoriesPro
         return (
             <Card
                 key={category}
-                className={`p-4 transition-all border-2 text-center overflow-hidden relative !bg-slate-800/80 !text-white ${
+                className={`p-4 transition-all border-2 text-center overflow-hidden relative ${
                     isUnavailable
                         ? 'opacity-30 cursor-not-allowed border-transparent grayscale'
-                        : 'cursor-pointer hover:shadow-xl hover:scale-[1.03] active:scale-[0.97] border-transparent hover:border-amber-400/50 hover:!bg-slate-700/80'
+                        : 'cursor-pointer hover:shadow-xl hover:scale-[1.03] active:scale-[0.97] border-transparent hover:border-amber-400/50'
                 }`}
                 onClick={() => !isUnavailable && onSelectCategory(category)}
             >
@@ -78,7 +78,7 @@ export function KioskCategories({ onSelectCategory, onBack }: KioskCategoriesPro
                     )}
                 </div>
 
-                <h3 className="font-bold text-white text-base truncate">
+                <h3 className="font-bold text-slate-900 text-base truncate">
                     {displayName}
                 </h3>
             </Card>

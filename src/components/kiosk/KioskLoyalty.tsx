@@ -120,7 +120,7 @@ export function KioskLoyalty({ onComplete, onSkip, cartItems }: KioskLoyaltyProp
                             key={key}
                             variant="outline"
                             onClick={() => handleKey(key)}
-                            className="h-16 text-3xl font-bold !bg-white/10 !border-white/20 !text-white hover:!bg-white/20 hover:scale-105 active:scale-95 transition-all"
+                            className="h-16 text-3xl font-bold text-slate-900 hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all"
                         >
                             {key}
                         </Button>
@@ -128,14 +128,14 @@ export function KioskLoyalty({ onComplete, onSkip, cartItems }: KioskLoyaltyProp
                     <Button
                         variant="outline"
                         onClick={handleBackspace}
-                        className="h-16 text-xl !bg-red-500/20 !border-red-500/30 !text-red-300 hover:!bg-red-500/30"
+                        className="h-16 text-xl bg-red-50 border-red-200 text-red-500 hover:bg-red-100"
                     >
                         <Delete className="w-6 h-6" />
                     </Button>
                     <Button
                         variant="outline"
                         onClick={() => handleKey('0')}
-                        className="h-16 text-3xl font-bold !bg-white/10 !border-white/20 !text-white hover:!bg-white/20"
+                        className="h-16 text-3xl font-bold text-slate-900 hover:bg-slate-100"
                     >
                         0
                     </Button>
@@ -153,7 +153,7 @@ export function KioskLoyalty({ onComplete, onSkip, cartItems }: KioskLoyaltyProp
                     variant="outline"
                     size="lg"
                     onClick={onSkip}
-                    className="w-full h-14 text-lg !bg-white/5 !border-white/20 !text-white/60 hover:!text-white hover:!bg-white/10"
+                    className="w-full h-14 text-lg text-slate-600 border-slate-300 hover:text-slate-900 hover:bg-slate-100"
                 >
                     Non merci, passer →
                 </Button>

@@ -64,9 +64,9 @@ export function KioskNameInput({ onSubmit, onBack }: KioskNameInputProps) {
                 <div className="w-full max-w-2xl mb-8">
                     <div className="bg-white/10 backdrop-blur rounded-2xl border-2 border-amber-400/30 px-8 py-6 text-center min-h-[80px] flex items-center justify-center">
                         {name ? (
-                            <span className="text-5xl font-bold text-white tracking-wider">{name}</span>
+                            <span className="text-5xl font-bold text-slate-900 tracking-wider">{name}</span>
                         ) : (
-                            <span className="text-3xl text-white/30">Tapez votre prénom...</span>
+                            <span className="text-3xl text-slate-400">Tapez votre prénom...</span>
                         )}
                     </div>
                 </div>
@@ -80,7 +80,7 @@ export function KioskNameInput({ onSubmit, onBack }: KioskNameInputProps) {
                                     key={key}
                                     variant="outline"
                                     onClick={() => handleKey(key)}
-                                    className="w-16 h-16 text-2xl font-bold !bg-white/10 !border-white/20 !text-white hover:!bg-white/20 hover:scale-105 active:scale-95 transition-all"
+                                    className="w-16 h-16 text-2xl font-bold text-slate-900 hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all"
                                 >
                                     {key}
                                 </Button>
@@ -89,7 +89,7 @@ export function KioskNameInput({ onSubmit, onBack }: KioskNameInputProps) {
                                 <Button
                                     variant="outline"
                                     onClick={handleBackspace}
-                                    className="w-24 h-16 text-xl !bg-red-500/20 !border-red-500/30 !text-red-300 hover:!bg-red-500/30 hover:scale-105 active:scale-95 transition-all"
+                                    className="w-24 h-16 text-xl bg-red-50 border-red-200 text-red-500 hover:bg-red-100 hover:scale-105 active:scale-95 transition-all"
                                 >
                                     <Delete className="w-6 h-6" />
                                 </Button>
@@ -102,7 +102,7 @@ export function KioskNameInput({ onSubmit, onBack }: KioskNameInputProps) {
                         <Button
                             variant="outline"
                             onClick={handleSpace}
-                            className="w-64 h-14 text-xl !bg-white/10 !border-white/20 !text-white hover:!bg-white/20"
+                            className="w-64 h-14 text-xl text-slate-900 hover:bg-slate-100"
                         >
                             Espace
                         </Button>
