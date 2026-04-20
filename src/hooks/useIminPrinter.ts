@@ -350,8 +350,9 @@ export function useIminPrinter() {
                         window.fully!.print();
                         console.log('✅ Ticket printed via Fully Kiosk Browser fully.print()');
                     } else {
-                        window.print();
-                        console.log('✅ Ticket printed via standard Android window.print()');
+                        // IMPORTANT: We do NOT call window.print() here because it triggers a popup dialog
+                        // that kicks the kiosk out of full-screen mode. The print server or RawBT will handle the print.
+                        console.log('⚠️ Skipped window.print() to avoid popup in kiosk mode');
                     }
                 } catch (e) {
                     console.error('Print failed:', e);
