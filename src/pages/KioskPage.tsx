@@ -27,7 +27,7 @@ import { SimpleProductWizard } from '@/components/wizards/SimpleProductWizard';
 import { MilkshakeWizard } from '@/components/wizards/MilkshakeWizard';
 
 // Data
-import { crepes, gaufres, boissons, frites as staticFrites } from '@/data/menu';
+import { crepes, gaufres, boissons, frites as staticFrites, croques as staticCroques } from '@/data/menu';
 import { useProductsByCategory } from '@/hooks/useProducts';
 import { calculateTVA } from '@/utils/promotions';
 
@@ -56,6 +56,7 @@ function KioskContent() {
     const { data: dbCrepes } = useProductsByCategory('crepes');
     const { data: dbGaufres } = useProductsByCategory('gaufres');
     const { data: dbBoissons } = useProductsByCategory('boissons');
+    const { data: dbCroques } = useProductsByCategory('croques');
 
     // Convert DB products to MenuItem format
     const toMenuItems = (products: any[] | undefined, fallback: any[]) => {
@@ -480,7 +481,13 @@ function KioskContent() {
                     />
                 );
             case 'croques':
-                return <UnifiedProductWizard productType="croques" onClose={wizardOnClose} />;
+                return (
+                    <SimpleProductWizard
+                        items={toMenuItems(dbCroques, staticCroques)}
+                        title="🧀 Croques"
+                        onClose={wizardOnClose}
+                    />
+                );
             default:
                 // Fallback: go back to menu
                 setScreen('menu');
