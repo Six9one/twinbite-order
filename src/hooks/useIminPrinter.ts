@@ -194,9 +194,44 @@ export function useIminPrinter() {
         }
     };
 
+    // ========== Method 2: Silent HTML print (browser fallback) ==========
+    const printSilentHTML = (order: KioskOrderData) => {
+        const typeLabel = order.orderType === 'surplace' ? 'SUR PLACE' : 'A EMPORTER';
+
+        // Build items HTML
+        const itemsHtml = order.items.map(item => {
+            let html = `<div class="item"><span>${item.quantity}x ${item.name}</span><span>${(item.price * item.quantity).toFixed(2)}E</span></div>`;
+            if (item.customization) {
+                const details: string[] = [];
+                if (item.customization.size) details.push(item.customization.size.toUpperCase());
+                if (item.customization.meats?.length) details.push(item.customization.meats.join(', '));
+                if (item.customization.meat) details.push(item.customization.meat);
+                if (item.customization.sauces?.length) details.push(item.customization.sauces.join(', '));
+                if (item.customization.garnitures?.length) details.push(item.customization.garnitures.join(', '));
+                if (item.customization.supplements?.length) details.push(item.customization.supplements.join(', '));
+                if (item.customization.menuOption && item.customization.menuOption !== 'none') {
+                    details.push(item.customization.menuOption);
+                }
+                if (details.length > 0) {
+                    html += `<div class="details">${details.join(' | ')}</div>`;
+                }
+            }
+            return html;
+        }).join('');
+
+        // Build loyalty HTML
+        let loyaltyHtml = '';
+        if (order.stampsEarned && order.stampsEarned > 0) {
+            loyaltyHtml = `
+                <div class="sep">================================</div>
+                <div class="loyalty">FIDELITE: +${order.stampsEarned} tampon${order.stampsEarned > 1 ? 's' : ''}</div>
+                ${order.totalStamps !== undefined ? `<div class="loyalty">Total tampons: ${order.totalStamps}/10</div>` : ''}
+            `;
+        }
+
+        // Try RawBT first (async), then fallback to browser print
         const tryRawBTHttp = async (): Promise<boolean> => {
             try {
-                // Generate simple ESC/POS text for RawBT
                 let rawbtText = "[C]<font size='big'>TWIN PIZZA</font>\n";
                 rawbtText += "[C]Grand-Couronne\n";
                 rawbtText += "[C]02 32 11 26 13\n";
@@ -244,11 +279,10 @@ export function useIminPrinter() {
                 rawbtText += "[C]<b>Presentez ce ticket a la caisse pour payer</b>\n";
                 rawbtText += `[C]Merci ${order.customerName}!\n\n\n`;
 
-                // Send to RawBT's hidden local server
-                const response = await fetch("http://127.0.0.1:40213/", {
+                await fetch("http://127.0.0.1:40213/", {
                     method: "POST",
                     body: rawbtText,
-                    mode: "no-cors" // Essential to bypass CORS on localhost
+                    mode: "no-cors"
                 });
                 console.log('✅ Sent silently to RawBT background service');
                 return true;
@@ -258,75 +292,75 @@ export function useIminPrinter() {
             }
         };
 
-        // First try RawBT if installed, otherwise fallback to standard Android Print dialog
-        const success = await tryRawBTHttp();
-        if (success) return;
+        // Try RawBT first, then fallback to standard browser print
+        (async () => {
+            const success = await tryRawBTHttp();
+            if (success) return;
 
-        // ===== STANDARD BROWSER FALLBACK (Chrome + AllPOS Printer or Fully Kiosk) =====
-        // Create a print-only div overlay, print it, then remove it
-        const printContainer = document.createElement('div');
-        printContainer.id = 'kiosk-print-container';
-        printContainer.innerHTML = `
-            <style>
-                @media screen { #kiosk-print-container { display: none !important; } }
-                @media print {
-                    body > *:not(#kiosk-print-container) { display: none !important; }
-                    #kiosk-print-container { display: block !important; }
-                    @page { size: 80mm auto; margin: 0; }
-                    #kiosk-print-container {
-                        font-family: 'Courier New', monospace;
-                        width: 72mm; margin: 0 auto; padding: 2mm;
-                        font-size: 12px; color: #000;
+            // ===== STANDARD BROWSER FALLBACK =====
+            const printContainer = document.createElement('div');
+            printContainer.id = 'kiosk-print-container';
+            printContainer.innerHTML = `
+                <style>
+                    @media screen { #kiosk-print-container { display: none !important; } }
+                    @media print {
+                        body > *:not(#kiosk-print-container) { display: none !important; }
+                        #kiosk-print-container { display: block !important; }
+                        @page { size: 80mm auto; margin: 0; }
+                        #kiosk-print-container {
+                            font-family: 'Courier New', monospace;
+                            width: 72mm; margin: 0 auto; padding: 2mm;
+                            font-size: 12px; color: #000;
+                        }
+                        #kiosk-print-container .center { text-align: center; }
+                        #kiosk-print-container .bold { font-weight: bold; }
+                        #kiosk-print-container .big { font-size: 16px; }
+                        #kiosk-print-container .item { display: flex; justify-content: space-between; margin: 2px 0; font-weight: bold; }
+                        #kiosk-print-container .details { font-size: 10px; color: #333; margin-left: 8px; margin-bottom: 3px; }
+                        #kiosk-print-container .total { font-size: 16px; font-weight: bold; text-align: right; margin-top: 6px; }
+                        #kiosk-print-container .sep { text-align: center; color: #666; font-size: 11px; }
+                        #kiosk-print-container .loyalty { text-align: center; font-size: 12px; }
                     }
-                    #kiosk-print-container .center { text-align: center; }
-                    #kiosk-print-container .bold { font-weight: bold; }
-                    #kiosk-print-container .big { font-size: 16px; }
-                    #kiosk-print-container .item { display: flex; justify-content: space-between; margin: 2px 0; font-weight: bold; }
-                    #kiosk-print-container .details { font-size: 10px; color: #333; margin-left: 8px; margin-bottom: 3px; }
-                    #kiosk-print-container .total { font-size: 16px; font-weight: bold; text-align: right; margin-top: 6px; }
-                    #kiosk-print-container .sep { text-align: center; color: #666; font-size: 11px; }
-                    #kiosk-print-container .loyalty { text-align: center; font-size: 12px; }
-                }
-            </style>
-            <div class="center bold big">TWIN PIZZA</div>
-            <div class="center">Grand-Couronne</div>
-            <div class="center">02 32 11 26 13</div>
-            <div class="sep">================================</div>
-            <div class="center bold big">TICKET N* ${order.orderNumber}</div>
-            <div class="center">${new Date().toLocaleString('fr-FR')}</div>
-            <div class="sep">================================</div>
-            <div class="center bold">${typeLabel}</div>
-            <div class="center bold">Client: ${order.customerName.toUpperCase()}</div>
-            <div class="sep">--------------------------------</div>
-            ${itemsHtml}
-            <div class="sep">--------------------------------</div>
-            <div style="text-align:right">Sous-total: ${order.subtotal.toFixed(2)}E</div>
-            <div style="text-align:right">TVA (10%): ${order.tva.toFixed(2)}E</div>
-            <div class="total">TOTAL: ${order.total.toFixed(2)}E</div>
-            ${loyaltyHtml}
-            <div class="sep">================================</div>
-            <div class="center bold">Presentez ce ticket a la caisse pour payer</div>
-            <div class="center">Merci ${order.customerName}!</div>
-        `;
-        document.body.appendChild(printContainer);
+                </style>
+                <div class="center bold big">TWIN PIZZA</div>
+                <div class="center">Grand-Couronne</div>
+                <div class="center">02 32 11 26 13</div>
+                <div class="sep">================================</div>
+                <div class="center bold big">TICKET N* ${order.orderNumber}</div>
+                <div class="center">${new Date().toLocaleString('fr-FR')}</div>
+                <div class="sep">================================</div>
+                <div class="center bold">${typeLabel}</div>
+                <div class="center bold">Client: ${order.customerName.toUpperCase()}</div>
+                <div class="sep">--------------------------------</div>
+                ${itemsHtml}
+                <div class="sep">--------------------------------</div>
+                <div style="text-align:right">Sous-total: ${order.subtotal.toFixed(2)}E</div>
+                <div style="text-align:right">TVA (10%): ${order.tva.toFixed(2)}E</div>
+                <div class="total">TOTAL: ${order.total.toFixed(2)}E</div>
+                ${loyaltyHtml}
+                <div class="sep">================================</div>
+                <div class="center bold">Presentez ce ticket a la caisse pour payer</div>
+                <div class="center">Merci ${order.customerName}!</div>
+            `;
+            document.body.appendChild(printContainer);
 
-        setTimeout(() => {
-            try {
-                if (isFullyKiosk && window.fully) {
-                    window.fully!.print();
-                    console.log('✅ Ticket printed via Fully Kiosk Browser fully.print()');
-                } else {
-                    window.print();
-                    console.log('✅ Ticket printed via standard Android window.print() (AllPOS Printer trigger)');
-                }
-            } catch (e) {
-                console.error('Print failed:', e);
-            }
-            // Clean up the print container
             setTimeout(() => {
-                printContainer.remove();
-            }, 3000);
-        }, 300);
+                try {
+                    if (isFullyKiosk && window.fully) {
+                        window.fully!.print();
+                        console.log('✅ Ticket printed via Fully Kiosk Browser fully.print()');
+                    } else {
+                        window.print();
+                        console.log('✅ Ticket printed via standard Android window.print()');
+                    }
+                } catch (e) {
+                    console.error('Print failed:', e);
+                }
+                setTimeout(() => {
+                    printContainer.remove();
+                }, 3000);
+            }, 300);
+        })();
     };
 
     return { initPrinter, printKioskTicket, isIminDevice, isFullyKiosk };
