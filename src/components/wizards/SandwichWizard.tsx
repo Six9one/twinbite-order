@@ -3,7 +3,8 @@ import { MenuItem } from '@/types/order';
 import { useOrder } from '@/context/OrderContext';
 import { useSandwichTypes, useCruditeOptions, SandwichType } from '@/hooks/useSandwiches';
 import { useSauceOptions, useSupplementOptions } from '@/hooks/useCustomizationOptions';
-import { menuOptionPrices } from '@/data/menu';
+import { useProductsByCategory } from '@/hooks/useProducts';
+import { menuOptionPrices, boissons as staticBoissons } from '@/data/menu';
 import { SandwichCustomization } from '@/types/order';
 import { trackProductView, trackAddToCart } from '@/hooks/useProductAnalytics';
 import { Button } from '@/components/ui/button';
@@ -30,9 +31,18 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
   const [selectedCrudites, setSelectedCrudites] = useState<string[]>([]);
   const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
   const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'menu'>('none');
+  const [selectedMenuDrink, setSelectedMenuDrink] = useState<string | null>(null);
+  const [selectedExtraDrinks, setSelectedExtraDrinks] = useState<string[]>([]);
   const [note, setNote] = useState('');
 
-  const totalSteps = 5;
+  const { data: dbBoissons } = useProductsByCategory('boissons');
+
+  const boissonOptions = dbBoissons && dbBoissons.length > 0
+    ? dbBoissons.filter(p => p.is_active).map(p => ({ id: p.id, name: p.name, price: Number(p.base_price || 0), image_url: p.image_url }))
+    : staticBoissons.map(p => ({ id: p.id, name: p.name, price: Number(p.price || 0), image_url: p.imageUrl || p.image }));
+
+  const requiresDrinkSelect = menuOption === 'boisson' || menuOption === 'menu';
+  const totalSteps = requiresDrinkSelect ? 6 : 5;
 
   const toggleSauce = (sauce: string) => {
     setSelectedSauces(prev =>
@@ -50,6 +60,14 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
     setSelectedSupplements(prev =>
       prev.includes(supplement) ? prev.filter(s => s !== supplement) : [...prev, supplement]
     );
+  };
+
+  const toggleExtraDrink = (id: string) => {
+    if (selectedExtraDrinks.includes(id)) {
+      setSelectedExtraDrinks(selectedExtraDrinks.filter(d => d !== id));
+    } else {
+      setSelectedExtraDrinks([...selectedExtraDrinks, id]);
+    }
   };
 
   const calculatePrice = () => {
@@ -70,6 +88,20 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
       price += menuOptionPrices.menu;
     }
 
+    // Drink supplement (if expensive drink chosen for menu)
+    if (requiresDrinkSelect && selectedMenuDrink) {
+      const d = boissonOptions.find(b => b.id === selectedMenuDrink);
+      if (d) {
+        price += Math.max(0, d.price - 1.5);
+      }
+    }
+
+    // Add extra drinks costs
+    selectedExtraDrinks.forEach(dId => {
+      const d = boissonOptions.find(b => b.id === dId);
+      if (d) price += d.price;
+    });
+
     return price;
   };
 
@@ -80,6 +112,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
       case 3: return true; // Crudités optional
       case 4: return true; // Supplements optional
       case 5: return true; // Menu option
+      case 6: return requiresDrinkSelect ? selectedMenuDrink !== null : true;
       default: return false;
     }
   };
@@ -87,11 +120,16 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
   const handleAddToCart = () => {
     if (!selectedSandwich) return;
 
+    const menuDrinkName = selectedMenuDrink ? boissonOptions.find(b => b.id === selectedMenuDrink)?.name : undefined;
+    const extraDrinkNames = selectedExtraDrinks.map(id => boissonOptions.find(b => b.id === id)?.name || id);
+
     const customization: SandwichCustomization = {
       sauces: selectedSauces,
       crudites: selectedCrudites,
       supplements: selectedSupplements,
       menuOption,
+      menuDrink: menuDrinkName,
+      extraDrinks: extraDrinkNames.length > 0 ? extraDrinkNames : undefined,
       note: note || undefined,
     };
 
@@ -120,6 +158,8 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
     setSelectedCrudites([]);
     setSelectedSupplements([]);
     setMenuOption('none');
+    setSelectedMenuDrink(null);
+    setSelectedExtraDrinks([]);
     setNote('');
     setStep(1);
   };
@@ -330,6 +370,63 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
               />
+            </div>
+          </div>
+        );
+
+      case 6:
+        if (!requiresDrinkSelect) return null;
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold">Votre Boisson Menu <span className="text-red-500">*</span></h2>
+              <p className="text-sm text-muted-foreground mb-3">Choisissez la boisson incluse dans votre formule.</p>
+              <div className="grid grid-cols-2 gap-3">
+                {boissonOptions.map((boisson) => {
+                  const supplement = Math.max(0, boisson.price - 1.5);
+                  return (
+                    <Card
+                      key={`menu-${boisson.id}`}
+                      className={`p-3 cursor-pointer transition-all ${selectedMenuDrink === boisson.id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                      onClick={() => setSelectedMenuDrink(boisson.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{boisson.name}</span>
+                        {selectedMenuDrink === boisson.id && <Check className="w-4 h-4 text-primary" />}
+                      </div>
+                      <div className="mt-1">
+                        {supplement > 0 ? (
+                          <span className="text-sm font-semibold text-primary">+{supplement.toFixed(2)}€</span>
+                        ) : (
+                          <span className="text-xs font-semibold text-green-600">Inclus</span>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="my-4 border-t border-border" />
+
+            <div>
+              <h2 className="text-lg font-semibold">Boissons Supplémentaires</h2>
+              <p className="text-sm text-muted-foreground mb-3">Envie d'une autre boisson ? (Prix normal)</p>
+              <div className="grid grid-cols-2 gap-3">
+                {boissonOptions.map((boisson) => (
+                  <Card
+                    key={`extra-${boisson.id}`}
+                    className={`p-3 cursor-pointer transition-all ${selectedExtraDrinks.includes(boisson.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                    onClick={() => toggleExtraDrink(boisson.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">{boisson.name}</span>
+                      {selectedExtraDrinks.includes(boisson.id) && <Check className="w-4 h-4 text-primary" />}
+                    </div>
+                    <span className="text-sm text-primary font-semibold">+{boisson.price.toFixed(2)}€</span>
+                  </Card>
+                ))}
+              </div>
             </div>
           </div>
         );

@@ -67,6 +67,15 @@ export function KioskCart({ customerName, orderType, onConfirm }: KioskCartProps
                                                 {item.customization.sauces?.length > 0 && (
                                                     <span> • {item.customization.sauces.join(', ')}</span>
                                                 )}
+                                                {item.customization.menuOption && item.customization.menuOption !== 'none' && (
+                                                    <span> • Option: {item.customization.menuOption}</span>
+                                                )}
+                                                {item.customization.menuDrink && (
+                                                    <span> • Boisson incluse: {item.customization.menuDrink}</span>
+                                                )}
+                                                {item.customization.extraDrinks?.length > 0 && (
+                                                    <span> • + Boissons extras: {item.customization.extraDrinks.join(', ')}</span>
+                                                )}
                                             </div>
                                         )}
                                     </div>

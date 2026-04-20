@@ -51,6 +51,8 @@ export interface TacosCustomization {
   meats: string[];
   sauces: string[];
   menuOption: 'none' | 'frites' | 'boisson' | 'menu';
+  menuDrink?: string;
+  extraDrinks?: string[];
   supplements: string[];
   note?: string;
 }
@@ -62,6 +64,8 @@ export interface SouffletCustomization {
   garnitures: string[];
   supplements: string[];
   menuOption: 'none' | 'frites' | 'boisson' | 'menu';
+  menuDrink?: string;
+  extraDrinks?: string[];
   cheeseSupplements?: string[];
   note?: string;
 }
@@ -73,6 +77,8 @@ export interface MakloubCustomization {
   garnitures: string[];
   supplements: string[];
   menuOption?: 'none' | 'frites' | 'boisson' | 'menu';
+  menuDrink?: string;
+  extraDrinks?: string[];
   cheeseSupplements?: string[];
   note?: string;
 }
@@ -84,6 +90,8 @@ export interface MlawiCustomization {
   garnitures: string[];
   supplements: string[];
   menuOption?: 'none' | 'frites' | 'boisson' | 'menu';
+  menuDrink?: string;
+  extraDrinks?: string[];
   note?: string;
 }
 
@@ -92,6 +100,8 @@ export interface PaniniCustomization {
   meats: string[];
   sauces: string[];
   menuOption: 'none' | 'frites' | 'boisson' | 'menu';
+  menuDrink?: string;
+  extraDrinks?: string[];
   supplements: string[];
   note?: string;
 }
@@ -101,6 +111,8 @@ export interface SandwichCustomization {
   crudites: string[];
   supplements: string[];
   menuOption: 'none' | 'frites' | 'boisson' | 'menu';
+  menuDrink?: string;
+  extraDrinks?: string[];
   note?: string;
 }
 

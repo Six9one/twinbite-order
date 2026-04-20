@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MenuItem, SouffletCustomization, MakloubCustomization, MlawiCustomization } from '@/types/order';
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
+import { useProductsByCategory } from '@/hooks/useProducts';
 import { useMeatOptions, useSauceOptions, useSupplementOptions } from '@/hooks/useCustomizationOptions';
 import { useWizardImage } from '@/hooks/useWizardImages';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import {
   meatOptions as staticMeatOptions,
   sauceOptions as staticSauceOptions,
   cheeseSupplementOptions as staticSupplements,
+  boissons as staticBoissons,
 } from '@/data/menu';
 import { wizardSizePrices, menuOptionPrices, oldPrices } from '@/data/pricing';
 
@@ -112,6 +114,8 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
   const [selectedGarnitures, setSelectedGarnitures] = useState<string[]>([]);
   const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
   const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'menu'>('none');
+  const [selectedMenuDrink, setSelectedMenuDrink] = useState<string | null>(null);
+  const [selectedExtraDrinks, setSelectedExtraDrinks] = useState<string[]>([]);
   const [note, setNote] = useState('');
 
   // Load wizard image
@@ -121,6 +125,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
   const { data: dbMeats } = useMeatOptions();
   const { data: dbSauces } = useSauceOptions();
   const { data: dbSupplements } = useSupplementOptions();
+  const { data: dbBoissons } = useProductsByCategory('boissons');
 
   // Use database options if available, otherwise fallback to static
   // Filter to only allowed meats
@@ -140,6 +145,10 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
     ? dbSupplements.map(s => ({ id: s.id, name: s.name, price: Number(s.price), image_url: s.image_url }))
     : staticSupplements;
 
+  const boissonOptions = dbBoissons && dbBoissons.length > 0
+    ? dbBoissons.filter(p => p.is_active).map(p => ({ id: p.id, name: p.name, price: Number(p.base_price || 0), image_url: p.image_url }))
+    : staticBoissons.map(p => ({ id: p.id, name: p.name, price: Number(p.price || 0), image_url: p.imageUrl || p.image }));
+
   // Garniture options - product-specific (not from database)
   const getGarnitureOptions = () => {
     switch (productType) {
@@ -157,7 +166,11 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
   const garnitureOptions = getGarnitureOptions();
   const currentSizeConfig = config.sizes.find(s => s.id === size) || config.sizes[0];
   const maxMeats = currentSizeConfig.maxMeats;
-  const totalSteps = config.showMenuOption ? 5 : 4;
+  
+  const requiresDrinkSelect = menuOption === 'boisson' || menuOption === 'menu';
+  const totalSteps = config.showMenuOption 
+    ? (requiresDrinkSelect ? 6 : 5) 
+    : 4;
 
   const toggleMeat = (meatId: string) => {
     if (selectedMeats.includes(meatId)) {
@@ -191,18 +204,40 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
     }
   };
 
+  const toggleExtraDrink = (id: string) => {
+    if (selectedExtraDrinks.includes(id)) {
+      setSelectedExtraDrinks(selectedExtraDrinks.filter(d => d !== id));
+    } else {
+      setSelectedExtraDrinks([...selectedExtraDrinks, id]);
+    }
+  };
+
   const calculatePrice = () => {
     let price = currentSizeConfig.price;
 
     // Add menu option price
     if (config.showMenuOption) {
       price += menuOptionPrices[menuOption];
+      
+      // Drink supplement (if expensive drink chosen for menu)
+      if (requiresDrinkSelect && selectedMenuDrink) {
+        const d = boissonOptions.find(b => b.id === selectedMenuDrink);
+        if (d) {
+          price += Math.max(0, d.price - 1.5);
+        }
+      }
     }
 
     // Add supplement costs
     selectedSupplements.forEach(supId => {
       const sup = supplementOptions.find(s => s.id === supId);
       if (sup) price += sup.price;
+    });
+
+    // Add extra drinks costs
+    selectedExtraDrinks.forEach(dId => {
+      const d = boissonOptions.find(b => b.id === dId);
+      if (d) price += d.price;
     });
 
     return price;
@@ -212,6 +247,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
     if (step === 1) return true; // Size selection always allowed
     if (step === 2) return selectedMeats.length > 0;
     if (step === 3) return selectedSauces.length > 0;
+    if (step === 6 && requiresDrinkSelect) return selectedMenuDrink !== null;
     return true; // Steps 4 and 5 are optional
   };
 
@@ -237,6 +273,9 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
       return sup?.name || id;
     });
 
+    const menuDrinkName = selectedMenuDrink ? boissonOptions.find(b => b.id === selectedMenuDrink)?.name : undefined;
+    const extraDrinkNames = selectedExtraDrinks.map(id => boissonOptions.find(b => b.id === id)?.name || id);
+
     const baseItem: MenuItem = {
       id: `${productType}-${size}`,
       name: `${config.title} ${currentSizeConfig.label}`,
@@ -256,6 +295,8 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
         garnitures: garnitureNames,
         supplements: supplementNames,
         menuOption,
+        menuDrink: menuDrinkName,
+        extraDrinks: extraDrinkNames.length > 0 ? extraDrinkNames : undefined,
         note: note || undefined,
       } as SouffletCustomization;
     } else if (productType === 'makloub') {
@@ -266,6 +307,8 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
         garnitures: garnitureNames,
         supplements: supplementNames,
         menuOption,
+        menuDrink: menuDrinkName,
+        extraDrinks: extraDrinkNames.length > 0 ? extraDrinkNames : undefined,
         note: note || undefined,
       } as MakloubCustomization;
     } else if (productType === 'mlawi') {
@@ -276,6 +319,8 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
         garnitures: garnitureNames,
         supplements: supplementNames,
         menuOption,
+        menuDrink: menuDrinkName,
+        extraDrinks: extraDrinkNames.length > 0 ? extraDrinkNames : undefined,
         note: note || undefined,
       } as MlawiCustomization;
     } else {
@@ -286,6 +331,8 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
         sauces: sauceNames,
         supplements: supplementNames,
         menuOption,
+        menuDrink: menuDrinkName,
+        extraDrinks: extraDrinkNames.length > 0 ? extraDrinkNames : undefined,
         note: note || undefined,
       } as any;
     }
@@ -492,6 +539,63 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
                 className="resize-none"
                 rows={3}
               />
+            </div>
+          </div>
+        );
+
+      case 6:
+        if (!requiresDrinkSelect) return null;
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold">Votre Boisson Menu <span className="text-red-500">*</span></h2>
+              <p className="text-sm text-muted-foreground mb-3">Choisissez la boisson incluse dans votre formule.</p>
+              <div className="grid grid-cols-2 gap-3">
+                {boissonOptions.map((boisson) => {
+                  const supplement = Math.max(0, boisson.price - 1.5);
+                  return (
+                    <Card
+                      key={`menu-${boisson.id}`}
+                      className={`p-3 cursor-pointer transition-all ${selectedMenuDrink === boisson.id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                      onClick={() => setSelectedMenuDrink(boisson.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{boisson.name}</span>
+                        {selectedMenuDrink === boisson.id && <Check className="w-4 h-4 text-primary" />}
+                      </div>
+                      <div className="mt-1">
+                        {supplement > 0 ? (
+                          <span className="text-sm font-semibold text-primary">+{supplement.toFixed(2)}€</span>
+                        ) : (
+                          <span className="text-xs font-semibold text-green-600">Inclus</span>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <h2 className="text-lg font-semibold">Boissons Supplémentaires</h2>
+              <p className="text-sm text-muted-foreground mb-3">Envie d'une autre boisson ? (Prix normal)</p>
+              <div className="grid grid-cols-2 gap-3">
+                {boissonOptions.map((boisson) => (
+                  <Card
+                    key={`extra-${boisson.id}`}
+                    className={`p-3 cursor-pointer transition-all ${selectedExtraDrinks.includes(boisson.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                    onClick={() => toggleExtraDrink(boisson.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">{boisson.name}</span>
+                      {selectedExtraDrinks.includes(boisson.id) && <Check className="w-4 h-4 text-primary" />}
+                    </div>
+                    <span className="text-sm text-primary font-semibold">+{boisson.price.toFixed(2)}€</span>
+                  </Card>
+                ))}
+              </div>
             </div>
           </div>
         );
