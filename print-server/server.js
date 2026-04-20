@@ -221,16 +221,9 @@ function getLine() {
     return ticketSettings.paperWidth === '58mm' ? ESCPOS.LINE_32 : ESCPOS.LINE_42;
 }
 
-// Get the active template
-function getActiveTemplate() {
-    return ticketSettings.activeTemplate === 'kitchen'
-        ? ticketSettings.kitchenTemplate
-        : ticketSettings.counterTemplate;
-}
-
 // Format order for ESC/POS printing using database settings
-function formatOrderForPrint(order) {
-    const template = getActiveTemplate();
+function formatOrderForPrint(order, isKitchen = false) {
+    const template = isKitchen ? ticketSettings.kitchenTemplate : ticketSettings.counterTemplate;
     const LINE = getLine();
     let ticket = '';
 
@@ -239,24 +232,37 @@ function formatOrderForPrint(order) {
     ticket += ESCPOS.SET_CODEPAGE_1252;
 
     // Header
-    ticket += ESCPOS.CENTER;
-    ticket += ESCPOS.DOUBLE_SIZE;
-    ticket += ESCPOS.BOLD_ON;
-    ticket += template.header + '\n';
-    ticket += ESCPOS.NORMAL_SIZE;
+    if (isKitchen) {
+        ticket += ESCPOS.CENTER;
+        ticket += ESCPOS.BOLD_ON;
+        ticket += template.header + '\n';
+        ticket += ESCPOS.BOLD_OFF;
+    } else {
+        ticket += ESCPOS.CENTER;
+        ticket += ESCPOS.DOUBLE_SIZE;
+        ticket += ESCPOS.BOLD_ON;
+        ticket += template.header + '\n';
+        ticket += ESCPOS.NORMAL_SIZE;
 
-    if (template.subheader) {
-        ticket += template.subheader.replace(/\\n/g, '\n') + '\n';
+        if (template.subheader) {
+            ticket += template.subheader.replace(/\\n/g, '\n') + '\n';
+        }
     }
-
-    ticket += ESCPOS.BOLD_OFF;
     ticket += LINE;
 
     // Order number (bold, centered)
     if (template.showOrderNumber) {
-        ticket += ESCPOS.BOLD_ON;
-        ticket += `N. ${order.order_number}\n`;
-        ticket += ESCPOS.BOLD_OFF;
+        if (isKitchen) {
+            ticket += ESCPOS.DOUBLE_HEIGHT;
+            ticket += ESCPOS.BOLD_ON;
+            ticket += `COMMANDE N. ${order.order_number}\n`;
+            ticket += ESCPOS.NORMAL_SIZE;
+            ticket += ESCPOS.BOLD_OFF;
+        } else {
+            ticket += ESCPOS.BOLD_ON;
+            ticket += `N. ${order.order_number}\n`;
+            ticket += ESCPOS.BOLD_OFF;
+        }
     }
 
     // Date/time
@@ -331,7 +337,9 @@ function formatOrderForPrint(order) {
 
     // Items
     ticket += ESCPOS.BOLD_ON;
+    if (isKitchen) ticket += ESCPOS.DOUBLE_HEIGHT;
     ticket += 'ARTICLES:\n';
+    if (isKitchen) ticket += ESCPOS.NORMAL_SIZE;
     ticket += ESCPOS.BOLD_OFF;
 
     const items = Array.isArray(order.items) ? order.items : [];
@@ -341,60 +349,66 @@ function formatOrderForPrint(order) {
         const price = cartItem.totalPrice || cartItem.calculatedPrice || cartItem.price || 0;
 
         ticket += ESCPOS.BOLD_ON;
-        ticket += `${quantity}x ${productName}`;
-        ticket += ESCPOS.BOLD_OFF;
-
-        if (template.showItemDetails) {
-            ticket += ` - ${price.toFixed(2)}€`;
+        if (isKitchen) {
+            ticket += ESCPOS.DOUBLE_HEIGHT;
+            ticket += `${quantity}x ${productName}\n`;
+            ticket += ESCPOS.NORMAL_SIZE;
+        } else {
+            ticket += `${quantity}x ${productName}`;
+            if (template.showItemDetails) {
+                ticket += ` - ${price.toFixed(2)}€`;
+            }
+            ticket += '\n';
         }
-        ticket += '\n';
+        ticket += ESCPOS.BOLD_OFF;
 
         // Customization details
         if (template.showItemDetails) {
             const customization = cartItem.customization;
             if (customization) {
-                const details = [];
-
-                // Size is NOT shown - it's already in product name
-                if (customization.base) {
-                    details.push(`Base ${customization.base}`);
-                }
-                if (customization.meats?.length) {
-                    details.push(`🥩 ${customization.meats.join(', ')}`);
-                }
-                if (customization.meat) {
-                    details.push(`🥩 ${customization.meat}`);
-                }
-                if (customization.sauces?.length) {
-                    details.push(`🍯 ${customization.sauces.join(', ')}`);
-                }
-                if (customization.sauce) {
-                    details.push(`🍯 ${customization.sauce}`);
-                }
-                if (customization.garnitures?.length) {
-                    details.push(`🥗 ${customization.garnitures.join(', ')}`);
-                }
-                if (customization.supplements?.length) {
-                    details.push(`➕ ${customization.supplements.join(', ')}`);
-                }
-                if (customization.menuOption && customization.menuOption !== 'none') {
-                    const menuLabels = {
-                        'frites': '+Frites',
-                        'boisson': '+Boisson',
-                        'menu': '+Menu'
-                    };
-                    details.push(menuLabels[customization.menuOption] || customization.menuOption);
-                }
-
-                if (details.length > 0) {
-                    ticket += `   ${details.join(' | ')}\n`;
+                if (isKitchen) {
+                    // Kitchen: Clean, indented, multi-line details without emojis
+                    if (customization.base) ticket += `  - Base: ${customization.base}\n`;
+                    if (customization.meats?.length) ticket += `  - Viande: ${customization.meats.join(', ')}\n`;
+                    if (customization.meat) ticket += `  - Viande: ${customization.meat}\n`;
+                    if (customization.sauces?.length) ticket += `  - Sauce: ${customization.sauces.join(', ')}\n`;
+                    if (customization.sauce) ticket += `  - Sauce: ${customization.sauce}\n`;
+                    if (customization.garnitures?.length) ticket += `  - Garniture: ${customization.garnitures.join(', ')}\n`;
+                    if (customization.supplements?.length) ticket += `  - Supp: ${customization.supplements.join(', ')}\n`;
+                    if (customization.menuOption && customization.menuOption !== 'none') {
+                        const menuLabels = { 'frites': 'Frites', 'boisson': 'Boisson', 'menu': 'Menu' };
+                        ticket += `  - Option: ${menuLabels[customization.menuOption] || customization.menuOption}\n`;
+                    }
+                } else {
+                    // Counter: Compact inline details
+                    const details = [];
+                    if (customization.base) details.push(`Base ${customization.base}`);
+                    if (customization.meats?.length) details.push(`🥩 ${customization.meats.join(', ')}`);
+                    if (customization.meat) details.push(`🥩 ${customization.meat}`);
+                    if (customization.sauces?.length) details.push(`🍯 ${customization.sauces.join(', ')}`);
+                    if (customization.sauce) details.push(`🍯 ${customization.sauce}`);
+                    if (customization.garnitures?.length) details.push(`🥗 ${customization.garnitures.join(', ')}`);
+                    if (customization.supplements?.length) details.push(`➕ ${customization.supplements.join(', ')}`);
+                    if (customization.menuOption && customization.menuOption !== 'none') {
+                        const menuLabels = { 'frites': '+Frites', 'boisson': '+Boisson', 'menu': '+Menu' };
+                        details.push(menuLabels[customization.menuOption] || customization.menuOption);
+                    }
+                    if (details.length > 0) {
+                        ticket += `   ${details.join(' | ')}\n`;
+                    }
                 }
             }
         }
 
         // Item notes
         if (template.showItemNotes && cartItem.customization?.note) {
-            ticket += `   📝 ${cartItem.customization.note}\n`;
+            ticket += isKitchen 
+                ? `  *** NOTE: ${cartItem.customization.note} ***\n` 
+                : `   📝 ${cartItem.customization.note}\n`;
+        }
+
+        if (isKitchen) {
+            ticket += '----------------\n';
         }
     });
 
@@ -545,41 +559,59 @@ async function sendToUSBPrinter(data, printerName) {
 }
 
 // Print with retry logic - sends to ALL printers (network + USB)
-async function printWithRetry(data, orderNumber) {
+async function printWithRetry(order, loyaltyText) {
     let anyPrinted = false;
 
-    // === NETWORK PRINTERS ===
-    for (const ip of PRINTER_IPS) {
-        if (!ip) continue;
-        let printSuccess = false;
+    // === NETWORK PRINTERS (KITCHEN) ===
+    if (PRINTER_IPS.length > 0) {
+        let kitchenData = formatOrderForPrint(order, true);
+        
+        for (const ip of PRINTER_IPS) {
+            if (!ip) continue;
+            let printSuccess = false;
 
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            try {
-                console.log(`🖨️  Print attempt ${attempt}/${MAX_RETRIES} for order ${orderNumber} to ${ip}...`);
-                await sendToPrinter(data, ip);
-                console.log(`✅ Order ${orderNumber} printed successfully on ${ip}!`);
-                printSuccess = true;
-                anyPrinted = true;
-                break;
-            } catch (error) {
-                console.error(`❌ Attempt ${attempt} failed on ${ip}:`, error.message);
+            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                try {
+                    console.log(`🖨️  Print attempt ${attempt}/${MAX_RETRIES} for order ${order.order_number} to ${ip} (Kitchen)...`);
+                    await sendToPrinter(kitchenData, ip);
+                    console.log(`✅ Order ${order.order_number} printed successfully on ${ip}!`);
+                    printSuccess = true;
+                    anyPrinted = true;
+                    break;
+                } catch (error) {
+                    console.error(`❌ Attempt ${attempt} failed on ${ip}:`, error.message);
 
-                if (attempt < MAX_RETRIES) {
-                    console.log(`⏳ Waiting ${RETRY_DELAY_MS / 1000}s before retry on ${ip}...`);
-                    await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+                    if (attempt < MAX_RETRIES) {
+                        console.log(`⏳ Waiting ${RETRY_DELAY_MS / 1000}s before retry on ${ip}...`);
+                        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+                    }
                 }
             }
-        }
-        
-        if (!printSuccess) {
-            console.error(`❌ Failed to print order ${orderNumber} on ${ip} after ${MAX_RETRIES} attempts`);
+            
+            if (!printSuccess) {
+                console.error(`❌ Failed to print order ${order.order_number} on ${ip} after ${MAX_RETRIES} attempts`);
+            }
         }
     }
 
-    // === USB PRINTER (Star TSP) ===
+    // === USB PRINTER (COUNTER - STAR TSP) ===
     if (USB_PRINTER_NAME) {
-        console.log(`🖨️  Printing order ${orderNumber} to USB printer: ${USB_PRINTER_NAME}...`);
-        const usbSuccess = await sendToUSBPrinter(data, USB_PRINTER_NAME);
+        let counterData = formatOrderForPrint(order, false);
+        
+        // Inject loyalty text before the cut/footer if we have it
+        if (loyaltyText) {
+            const cutIndex = counterData.lastIndexOf(ESCPOS.PARTIAL_CUT);
+            if (cutIndex !== -1) {
+                counterData = counterData.substring(0, cutIndex) +
+                    ESCPOS.CENTER + '--------------------------------\n' +
+                    loyaltyText +
+                    '\n\n' +
+                    ESCPOS.PARTIAL_CUT;
+            }
+        }
+
+        console.log(`🖨️  Printing order ${order.order_number} to USB printer: ${USB_PRINTER_NAME} (Counter)...`);
+        const usbSuccess = await sendToUSBPrinter(counterData, USB_PRINTER_NAME);
         if (usbSuccess) {
             anyPrinted = true;
         }
@@ -604,9 +636,7 @@ async function handleNewOrder(order) {
     console.log(`   Total: ${order.total}€`);
     console.log(`${'='.repeat(50)}\n`);
 
-    console.log(`${'='.repeat(50)}\n`);
-
-    // Fetch loyalty info
+    // Fetch loyalty info (Only used for counter printer)
     let loyaltyText = '';
     try {
         if (order.customer_phone) {
@@ -637,27 +667,7 @@ async function handleNewOrder(order) {
         console.error('Error fetching loyalty for ticket:', err.message);
     }
 
-    // Format and print
-    let ticketData = formatOrderForPrint(order);
-
-    // Inject loyalty text before the cut/footer if we have it
-    // We append it before the final cut command
-    if (loyaltyText) {
-        // Remove the final cut command from original ticket
-        // This is a bit hacky but avoids rewriting the whole format function immediately
-        // Better approach: Modify formatOrderForPrint to accept an optional footer text
-        // For now, let's just append it before the very end
-        const cutIndex = ticketData.lastIndexOf(ESCPOS.PARTIAL_CUT);
-        if (cutIndex !== -1) {
-            ticketData = ticketData.substring(0, cutIndex) +
-                ESCPOS.CENTER + '--------------------------------\n' +
-                loyaltyText +
-                '\n\n' +
-                ESCPOS.PARTIAL_CUT;
-        }
-    }
-
-    const success = await printWithRetry(ticketData, order.order_number);
+    const success = await printWithRetry(order, loyaltyText);
 
     if (success) {
         // Use Map.set() with timestamp
