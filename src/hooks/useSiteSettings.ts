@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface StoreStatus {
@@ -70,13 +70,14 @@ const defaultSettings: SiteSettings = {
 export function useStoreStatus() {
     const [status, setStatus] = useState<StoreStatus>(defaultStatus);
     const [loading, setLoading] = useState(true);
+    const channelId = useRef(`store-status-${Math.random().toString(36).slice(2, 8)}`);
 
     useEffect(() => {
         fetchStatus();
 
-        // Subscribe to realtime changes
+        // Subscribe to realtime changes (unique channel name per instance)
         const channel = supabase
-            .channel('store-status-changes')
+            .channel(channelId.current)
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'site_settings' },
                 () => {
@@ -156,13 +157,14 @@ export function useStoreStatus() {
 export function useSiteSettings() {
     const [settings, setSettings] = useState<SiteSettings>(defaultSettings);
     const [loading, setLoading] = useState(true);
+    const channelId = useRef(`site-settings-${Math.random().toString(36).slice(2, 8)}`);
 
     useEffect(() => {
         fetchSettings();
 
         // Subscribe to realtime changes
         const channel = supabase
-            .channel('site-settings-changes')
+            .channel(channelId.current)
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'site_settings' },
                 () => {
