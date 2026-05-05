@@ -11,6 +11,7 @@ import { Footer } from '@/components/Footer';
 import { DeliveryMapSection } from '@/components/DeliveryMapSection';
 import { Header } from '@/components/Header';
 import { AnnouncementBanner } from '@/components/AnnouncementBanner';
+import { ScrollingBanner } from '@/components/ScrollingBanner';
 import { ClosedBanner } from '@/components/ClosedBanner';
 import { ReviewSection } from '@/components/ReviewSection';
 import { Button } from '@/components/ui/button';
@@ -134,6 +135,7 @@ function MainApp() {
           </Button>
         </Link>
       )}
+      <ScrollingBanner />
       <AnnouncementBanner />
       <Header
         onCartClick={() => setIsCartOpen(true)}

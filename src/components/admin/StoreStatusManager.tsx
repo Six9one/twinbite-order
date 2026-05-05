@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { Clock, Calendar, AlertTriangle, Coffee, Save, RefreshCw, Power, Bell } from 'lucide-react';
+import { Clock, Calendar, AlertTriangle, Coffee, Save, RefreshCw, Power, Bell, Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface StoreStatus {
@@ -22,6 +22,9 @@ interface StoreStatus {
     banner_message: string;
     banner_type: 'info' | 'warning' | 'error';
     hours_enforcement_enabled: boolean;
+    scrolling_banner_enabled: boolean;
+    scrolling_banner_text: string;
+    scrolling_banner_color: string;
 }
 
 interface DayHours {
@@ -48,6 +51,9 @@ const defaultStatus: StoreStatus = {
     banner_message: '',
     banner_type: 'info',
     hours_enforcement_enabled: true,
+    scrolling_banner_enabled: false,
+    scrolling_banner_text: '',
+    scrolling_banner_color: '#dc2626',
 };
 
 const defaultHours: DayHours[] = [
@@ -93,6 +99,9 @@ export function StoreStatusManager() {
                 if (s.key === 'store_banner_message') statusFromDb.banner_message = s.value;
                 if (s.key === 'store_banner_type') statusFromDb.banner_type = s.value as any;
                 if (s.key === 'hours_enforcement_enabled') statusFromDb.hours_enforcement_enabled = s.value === 'true';
+                if (s.key === 'store_scrolling_banner_enabled') statusFromDb.scrolling_banner_enabled = s.value === 'true';
+                if (s.key === 'store_scrolling_banner_text') statusFromDb.scrolling_banner_text = s.value;
+                if (s.key === 'store_scrolling_banner_color') statusFromDb.scrolling_banner_color = s.value;
             });
 
             setStatus({ ...defaultStatus, ...statusFromDb });
@@ -125,6 +134,9 @@ export function StoreStatusManager() {
             { key: 'store_banner_message', value: status.banner_message, category: 'store' },
             { key: 'store_banner_type', value: status.banner_type, category: 'store' },
             { key: 'hours_enforcement_enabled', value: String(status.hours_enforcement_enabled), category: 'store' },
+            { key: 'store_scrolling_banner_enabled', value: String(status.scrolling_banner_enabled), category: 'store' },
+            { key: 'store_scrolling_banner_text', value: status.scrolling_banner_text, category: 'store' },
+            { key: 'store_scrolling_banner_color', value: status.scrolling_banner_color, category: 'store' },
         ];
 
         let hasError = false;
@@ -225,7 +237,7 @@ export function StoreStatusManager() {
             </div>
 
             <Tabs defaultValue="status" className="space-y-4">
-                <TabsList className="grid grid-cols-3 w-full max-w-md">
+                <TabsList className="grid grid-cols-4 w-full max-w-lg">
                     <TabsTrigger value="status">
                         <Power className="w-4 h-4 mr-2" />
                         Statut
@@ -237,6 +249,10 @@ export function StoreStatusManager() {
                     <TabsTrigger value="banner">
                         <Bell className="w-4 h-4 mr-2" />
                         Annonces
+                    </TabsTrigger>
+                    <TabsTrigger value="scrolling-banner">
+                        <Megaphone className="w-4 h-4 mr-2" />
+                        Bandeau
                     </TabsTrigger>
                 </TabsList>
 
@@ -519,6 +535,125 @@ export function StoreStatusManager() {
                     <Button onClick={handleSaveStatus} disabled={saving} className="w-full">
                         <Save className="w-4 h-4 mr-2" />
                         {saving ? 'Sauvegarde...' : 'Sauvegarder l\'annonce'}
+                    </Button>
+                </TabsContent>
+
+                {/* Scrolling Banner Tab */}
+                <TabsContent value="scrolling-banner" className="space-y-4">
+                    <Card className="p-4">
+                        <h3 className="font-semibold mb-4 flex items-center gap-2">
+                            <Megaphone className="w-5 h-5 text-red-500" />
+                            Bandeau défilant
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            Un bandeau rectangulaire en haut du site avec du texte qui défile en continu. Idéal pour les annonces importantes, promotions, ou informations.
+                        </p>
+
+                        <div className="space-y-4">
+                            {/* Enable/Disable Toggle */}
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-muted">
+                                <div>
+                                    <Label className="text-lg font-medium">Activer le bandeau</Label>
+                                    <p className="text-sm text-muted-foreground">Affiche un bandeau défilant en haut du site</p>
+                                </div>
+                                <Switch
+                                    checked={status.scrolling_banner_enabled}
+                                    onCheckedChange={(checked) => setStatus({ ...status, scrolling_banner_enabled: checked })}
+                                    className="scale-150"
+                                />
+                            </div>
+
+                            {/* Text Input */}
+                            <div className="space-y-2">
+                                <Label>Texte du bandeau</Label>
+                                <Textarea
+                                    value={status.scrolling_banner_text}
+                                    onChange={(e) => setStatus({ ...status, scrolling_banner_text: e.target.value })}
+                                    placeholder="Ex: 🎉 -20% sur toutes les pizzas ce weekend ! 🍕 Nouvelle recette disponible ! 📞 Commandez au 02 32 11 26 13"
+                                    rows={3}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Astuce: Utilisez des emojis pour rendre le bandeau plus attractif ! Le texte défilera en boucle.
+                                </p>
+                            </div>
+
+                            {/* Color Picker */}
+                            <div className="space-y-2">
+                                <Label>Couleur du bandeau</Label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="color"
+                                        value={status.scrolling_banner_color}
+                                        onChange={(e) => setStatus({ ...status, scrolling_banner_color: e.target.value })}
+                                        className="w-12 h-10 rounded cursor-pointer border-2 border-border"
+                                    />
+                                    <Input
+                                        value={status.scrolling_banner_color}
+                                        onChange={(e) => setStatus({ ...status, scrolling_banner_color: e.target.value })}
+                                        placeholder="#dc2626"
+                                        className="w-32"
+                                    />
+                                    <div className="flex gap-1">
+                                        {['#dc2626', '#ea580c', '#2563eb', '#16a34a', '#7c3aed', '#000000'].map(color => (
+                                            <button
+                                                key={color}
+                                                onClick={() => setStatus({ ...status, scrolling_banner_color: color })}
+                                                className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${
+                                                    status.scrolling_banner_color === color ? 'border-foreground scale-110' : 'border-transparent'
+                                                }`}
+                                                style={{ backgroundColor: color }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Live Preview */}
+                            {status.scrolling_banner_text && (
+                                <div className="space-y-2">
+                                    <Label>Aperçu en direct</Label>
+                                    <div
+                                        className="overflow-hidden rounded-lg py-2.5"
+                                        style={{ backgroundColor: status.scrolling_banner_color }}
+                                    >
+                                        <div
+                                            className="whitespace-nowrap text-white font-bold text-sm"
+                                            style={{
+                                                animation: 'scrollingBannerPreview 12s linear infinite',
+                                            }}
+                                        >
+                                            <span className="mx-16">{status.scrolling_banner_text}</span>
+                                            <span className="mx-16">✦</span>
+                                            <span className="mx-16">{status.scrolling_banner_text}</span>
+                                        </div>
+                                        <style>{`
+                                            @keyframes scrollingBannerPreview {
+                                                0% { transform: translateX(100%); }
+                                                100% { transform: translateX(-100%); }
+                                            }
+                                        `}</style>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Status indicator */}
+                            <div className={`p-3 rounded-lg text-sm font-medium ${
+                                status.scrolling_banner_enabled && status.scrolling_banner_text
+                                    ? 'bg-green-100 text-green-800 border border-green-200'
+                                    : 'bg-gray-100 text-gray-600 border border-gray-200'
+                            }`}>
+                                {status.scrolling_banner_enabled && status.scrolling_banner_text
+                                    ? '✅ Le bandeau défilant est ACTIF et visible sur le site'
+                                    : !status.scrolling_banner_enabled
+                                        ? '❌ Le bandeau défilant est désactivé'
+                                        : '⚠️ Ajoutez du texte pour afficher le bandeau'}
+                            </div>
+                        </div>
+                    </Card>
+
+                    <Button onClick={handleSaveStatus} disabled={saving} className="w-full">
+                        <Save className="w-4 h-4 mr-2" />
+                        {saving ? 'Sauvegarde...' : 'Sauvegarder le bandeau'}
                     </Button>
                 </TabsContent>
             </Tabs>

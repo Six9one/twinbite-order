@@ -11,6 +11,9 @@ interface StoreStatus {
     showBanner: boolean;
     bannerMessage: string;
     bannerType: 'info' | 'warning' | 'error';
+    scrollingBannerEnabled: boolean;
+    scrollingBannerText: string;
+    scrollingBannerColor: string;
 }
 
 interface SiteSettings {
@@ -41,6 +44,9 @@ const defaultStatus: StoreStatus = {
     showBanner: false,
     bannerMessage: '',
     bannerType: 'info',
+    scrollingBannerEnabled: false,
+    scrollingBannerText: '',
+    scrollingBannerColor: '#dc2626',
 };
 
 const defaultSettings: SiteSettings = {
@@ -105,6 +111,9 @@ export function useStoreStatus() {
                     if (s.key === 'store_show_banner') newStatus.showBanner = s.value === 'true';
                     if (s.key === 'store_banner_message') newStatus.bannerMessage = s.value;
                     if (s.key === 'store_banner_type') newStatus.bannerType = s.value as any;
+                    if (s.key === 'store_scrolling_banner_enabled') newStatus.scrollingBannerEnabled = s.value === 'true';
+                    if (s.key === 'store_scrolling_banner_text') newStatus.scrollingBannerText = s.value;
+                    if (s.key === 'store_scrolling_banner_color') newStatus.scrollingBannerColor = s.value;
                 });
 
                 setStatus({ ...defaultStatus, ...newStatus });
