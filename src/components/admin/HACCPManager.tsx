@@ -53,6 +53,7 @@ export function HACCPManager() {
     const [activeCategory, setActiveCategory] = useState<string>('');
     const [historyDate, setHistoryDate] = useState(new Date().toISOString().slice(0, 10));
     const [printing, setPrinting] = useState<string | null>(null);
+    const [printingLabels, setPrintingLabels] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
 
     // Ticket customization settings
@@ -503,6 +504,53 @@ export function HACCPManager() {
         toast.success('📊 Export Excel téléchargé!');
     };
 
+    // ── Batch print all ingredient labels ──
+    const INGREDIENT_LABELS = [
+        'Salade', 'Tomate', 'Oignon', 'Sauce Tomate',
+        'Crème Fraîche', 'Merguez', 'Poivrons', 'Jambon',
+        'Olives', 'Champignon', 'Lardons', 'Pommes de Terre',
+    ];
+
+    const printAllIngredientLabels = async () => {
+        setPrintingLabels(true);
+        try {
+            const now = new Date();
+            const dlcDate = new Date(now.getTime() + 72 * 60 * 60 * 1000); // +3 days
+            const dateStr = now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            const dlcStr = dlcDate.toLocaleDateString('fr-FR') + ' ' + dlcDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+            // Build one row per ingredient for batch insert
+            const rows = INGREDIENT_LABELS.map(name => ({
+                product_name: name,
+                category_name: 'ETIQUETTE_INGREDIENT',
+                category_color: '#16a34a', // green
+                action_date: dateStr,
+                dlc_date: dlcStr,
+                storage_temp: '0°C à +3°C',
+                operator: 'Safouane B',
+                dlc_hours: 72,
+                action_label: 'Préparé le',
+                notes: JSON.stringify({ type: 'ingredient_label', warning: 'Ne pas dépasser 3 jours' }),
+            }));
+
+            const { error } = await supabase
+                .from('haccp_print_queue' as any)
+                .insert(rows as any);
+
+            if (error) {
+                console.error('Failed to queue ingredient labels:', error);
+                toast.error('Erreur impression étiquettes');
+            } else {
+                toast.success(`✅ ${INGREDIENT_LABELS.length} étiquettes envoyées à l'imprimante !`);
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error('Erreur impression étiquettes');
+        } finally {
+            setPrintingLabels(false);
+        }
+    };
+
     const getCategoryIcon = (slug: string) => {
         return slug === 'congele-decongele' ? Snowflake : Leaf;
     };
@@ -531,6 +579,14 @@ export function HACCPManager() {
                     Module HACCP
                 </h2>
                 <div className="flex gap-2">
+                    <Button
+                        onClick={printAllIngredientLabels}
+                        disabled={printingLabels}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                        <Printer className={`w-4 h-4 mr-2 ${printingLabels ? 'animate-pulse' : ''}`} />
+                        {printingLabels ? 'Impression...' : '🏷️ Étiquettes Ingrédients'}
+                    </Button>
                     <Button variant="outline" onClick={() => setShowSettings(!showSettings)}>
                         <Sliders className="w-4 h-4 mr-2" />
                         Réglages Ticket

@@ -864,12 +864,13 @@ async function handleHACCPPrint(job) {
     console.log(`   DLC: ${job.dlc_date}`);
     console.log(`${'='.repeat(50)}\n`);
 
-    // Detect date_label type by category_name
+    // Detect label type by category_name
     const isDateLabel = job.category_name === 'ETIQUETTE_DATE';
+    const isIngredientLabel = job.category_name === 'ETIQUETTE_INGREDIENT';
 
     let ticketData;
-    if (isDateLabel) {
-        console.log('📋 Routing to date label format');
+    if (isDateLabel || isIngredientLabel) {
+        console.log(`📋 Routing to ${isIngredientLabel ? 'ingredient' : 'date'} label format`);
         // If dlc_date equals action_date, no DLC was selected
         const useByDate = (job.dlc_date && job.dlc_date !== job.action_date) ? job.dlc_date : '';
         ticketData = formatDateLabel({
@@ -878,6 +879,7 @@ async function handleHACCPPrint(job) {
             actionDate: job.action_date,
             useByDate,
             operator: job.operator,
+            warning: isIngredientLabel ? 'NE PAS DEPASSER 3 JOURS' : '',
         });
     } else {
         ticketData = formatHACCPTicket({
@@ -947,7 +949,7 @@ const HTTP_PORT = process.env.HTTP_PORT || 3001;
 // Format compact date label for ESC/POS printing
 // Used for sticking on sauces, bottles, and kitchen items
 function formatDateLabel(data) {
-    const { productName, actionLabel, actionDate, useByDate, operator } = data;
+    const { productName, actionLabel, actionDate, useByDate, operator, warning } = data;
 
     let ticket = '';
 
@@ -970,7 +972,7 @@ function formatDateLabel(data) {
     ticket += ESCPOS.BOLD_OFF;
     ticket += '\n';
 
-    // Action date ("Fait le" or "Ouvert le")
+    // Action date ("Fait le" or "Ouvert le" or "Préparé le")
     ticket += ESCPOS.LEFT;
     ticket += ESCPOS.BOLD_ON;
     ticket += actionLabel + ': ';
@@ -991,6 +993,15 @@ function formatDateLabel(data) {
         ticket += ESCPOS.LINE_42;
     } else {
         ticket += ESCPOS.LINE_42;
+    }
+
+    // Warning line (for ingredient labels)
+    if (warning) {
+        ticket += ESCPOS.CENTER;
+        ticket += ESCPOS.BOLD_ON;
+        ticket += '\n' + warning + '\n';
+        ticket += ESCPOS.BOLD_OFF;
+        ticket += '\n';
     }
 
     // Footer with operator
