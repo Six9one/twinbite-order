@@ -895,15 +895,36 @@ async function handleHACCPPrint(job) {
         });
     }
 
-    const success = await printWithRetry(ticketData, `HACCP-${job.product_name}`);
+    // Send pre-formatted ticket data directly to printers (not through printWithRetry which expects order objects)
+    let anyPrinted = false;
+
+    // Network printers
+    for (const ip of PRINTER_IPS) {
+        if (!ip) continue;
+        try {
+            await sendToPrinter(ticketData, ip);
+            console.log(`✅ HACCP ticket for ${job.product_name} printed on ${ip}`);
+            anyPrinted = true;
+        } catch (err) {
+            console.error(`❌ HACCP print failed on ${ip}:`, err.message);
+        }
+    }
+
+    // USB printer
+    if (USB_PRINTER_NAME) {
+        const usbOk = await sendToUSBPrinter(ticketData, USB_PRINTER_NAME);
+        if (usbOk) anyPrinted = true;
+    }
 
     // Mark as printed
-    if (success) {
+    if (anyPrinted) {
         await supabase
             .from('haccp_print_queue')
             .update({ printed: true })
             .eq('id', job.id);
         console.log('✅ HACCP ticket printed successfully');
+    } else {
+        console.error(`❌ Failed to print HACCP ticket for ${job.product_name} on all printers`);
     }
 }
 
@@ -1099,7 +1120,7 @@ function setupHttpServer() {
 
     // Health check endpoint
     app.get('/health', (req, res) => {
-        res.json({ status: 'ok', printer: PRINTER_IP });
+        res.json({ status: 'ok', printers: PRINTER_IPS });
     });
 
     // HACCP print endpoint
@@ -1117,7 +1138,15 @@ function setupHttpServer() {
             console.log(`   Category: ${data.categoryName}`);
 
             const ticketData = formatHACCPTicket(data);
-            const success = await printWithRetry(ticketData, `HACCP-${data.productName}`);
+            let success = false;
+            for (const ip of PRINTER_IPS) {
+                if (!ip) continue;
+                try { await sendToPrinter(ticketData, ip); success = true; } catch(e) {}
+            }
+            if (USB_PRINTER_NAME) {
+                const usbOk = await sendToUSBPrinter(ticketData, USB_PRINTER_NAME);
+                if (usbOk) success = true;
+            }
 
             if (success) {
                 console.log('✅ HACCP ticket printed successfully');
@@ -1155,7 +1184,15 @@ function setupHttpServer() {
 
             let printed = 0;
             for (let i = 0; i < numCopies; i++) {
-                const ok = await printWithRetry(ticketData, `LABEL-${product}-${i + 1}`);
+                let ok = false;
+                for (const ip of PRINTER_IPS) {
+                    if (!ip) continue;
+                    try { await sendToPrinter(ticketData, ip); ok = true; } catch(e) {}
+                }
+                if (USB_PRINTER_NAME) {
+                    const usbOk = await sendToUSBPrinter(ticketData, USB_PRINTER_NAME);
+                    if (usbOk) ok = true;
+                }
                 if (ok) printed++;
                 if (i < numCopies - 1) await new Promise(r => setTimeout(r, 500));
             }
