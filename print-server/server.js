@@ -1538,7 +1538,7 @@ async function startServer() {
 ╔════════════════════════════════════════════════════════╗
 ║           🍕 TWIN PIZZA PRINT SERVER 🍕               ║
 ╠════════════════════════════════════════════════════════╣
-║  Printer: ${PRINTER_IP.padEnd(15)} Port: ${PRINTER_PORT.toString().padEnd(6)}       ║
+║  Printers: ${PRINTER_IPS.join(', ').padEnd(14)} Port: ${PRINTER_PORT.toString().padEnd(6)}       ║
 ║  Loading settings from database...                     ║
 ║  Auto-reconnect: ENABLED                               ║
 ║  Heartbeat: Every ${HEARTBEAT_INTERVAL / 1000}s                                  ║

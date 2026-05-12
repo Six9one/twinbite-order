@@ -530,7 +530,6 @@ export function HACCPManager() {
                 operator: 'Safouane B',
                 dlc_hours: 72,
                 action_label: 'Préparé le',
-                notes: JSON.stringify({ type: 'ingredient_label', warning: 'Ne pas dépasser 3 jours' }),
             }));
 
             const { error } = await supabase
