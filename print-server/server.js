@@ -838,7 +838,7 @@ async function setupRealtimeSubscription() {
             (payload) => {
                 console.log('🧾 Received HACCP print job');
                 reconnectAttempts = 0;
-                handleHACCPPrint(payload.new);
+                enqueueHACCPPrint(payload.new);
             }
         )
         .subscribe((status) => {
@@ -856,7 +856,48 @@ async function setupRealtimeSubscription() {
         });
 }
 
-// Handle HACCP print job from queue
+// ============================================
+// HACCP PRINT QUEUE (sequential processing)
+// ============================================
+const haccpQueue = [];
+let haccpQueueProcessing = false;
+const HACCP_DELAY_BETWEEN_TICKETS = 2000; // 2s between each ticket
+const HACCP_RETRY_COUNT = 3;
+const HACCP_RETRY_DELAY = 3000; // 3s between retries
+
+// Add job to HACCP queue
+function enqueueHACCPPrint(job) {
+    haccpQueue.push(job);
+    console.log(`📥 HACCP queued: ${job.product_name} (queue size: ${haccpQueue.length})`);
+    // Start processing if not already running
+    if (!haccpQueueProcessing) {
+        processHACCPQueue();
+    }
+}
+
+// Process HACCP queue one ticket at a time
+async function processHACCPQueue() {
+    if (haccpQueueProcessing || haccpQueue.length === 0) return;
+    haccpQueueProcessing = true;
+
+    console.log(`\n🖨️  Starting HACCP queue processing (${haccpQueue.length} ticket(s))...\n`);
+
+    while (haccpQueue.length > 0) {
+        const job = haccpQueue.shift();
+        await handleHACCPPrint(job);
+
+        // Wait between tickets to let printer breathe
+        if (haccpQueue.length > 0) {
+            console.log(`⏳ Waiting ${HACCP_DELAY_BETWEEN_TICKETS / 1000}s before next ticket... (${haccpQueue.length} remaining)`);
+            await new Promise(r => setTimeout(r, HACCP_DELAY_BETWEEN_TICKETS));
+        }
+    }
+
+    console.log('✅ HACCP queue empty — all tickets processed.\n');
+    haccpQueueProcessing = false;
+}
+
+// Handle a single HACCP print job (with retries)
 async function handleHACCPPrint(job) {
     console.log(`\n${'='.repeat(50)}`);
     console.log(`🧾 HACCP PRINT: ${job.product_name}`);
@@ -871,7 +912,6 @@ async function handleHACCPPrint(job) {
     let ticketData;
     if (isDateLabel || isIngredientLabel) {
         console.log(`📋 Routing to ${isIngredientLabel ? 'ingredient' : 'date'} label format`);
-        // If dlc_date equals action_date, no DLC was selected
         const useByDate = (job.dlc_date && job.dlc_date !== job.action_date) ? job.dlc_date : '';
         ticketData = formatDateLabel({
             productName: job.product_name,
@@ -895,36 +935,50 @@ async function handleHACCPPrint(job) {
         });
     }
 
-    // Send pre-formatted ticket data directly to printers (not through printWithRetry which expects order objects)
+    // Try printing with retries
     let anyPrinted = false;
 
-    // Network printers
-    for (const ip of PRINTER_IPS) {
-        if (!ip) continue;
-        try {
-            await sendToPrinter(ticketData, ip);
-            console.log(`✅ HACCP ticket for ${job.product_name} printed on ${ip}`);
-            anyPrinted = true;
-        } catch (err) {
-            console.error(`❌ HACCP print failed on ${ip}:`, err.message);
+    for (let attempt = 1; attempt <= HACCP_RETRY_COUNT; attempt++) {
+        // Try network printers
+        for (const ip of PRINTER_IPS) {
+            if (!ip) continue;
+            try {
+                await sendToPrinter(ticketData, ip);
+                console.log(`✅ ${job.product_name} printed on ${ip} (attempt ${attempt})`);
+                anyPrinted = true;
+                break; // Stop trying other IPs once one works
+            } catch (err) {
+                console.error(`❌ ${job.product_name} failed on ${ip} (attempt ${attempt}): ${err.message}`);
+            }
+        }
+
+        if (anyPrinted) break;
+
+        // Try USB printer as fallback
+        if (USB_PRINTER_NAME) {
+            const usbOk = await sendToUSBPrinter(ticketData, USB_PRINTER_NAME);
+            if (usbOk) {
+                anyPrinted = true;
+                break;
+            }
+        }
+
+        // Wait before retrying
+        if (!anyPrinted && attempt < HACCP_RETRY_COUNT) {
+            console.log(`⏳ Retry ${attempt + 1}/${HACCP_RETRY_COUNT} in ${HACCP_RETRY_DELAY / 1000}s...`);
+            await new Promise(r => setTimeout(r, HACCP_RETRY_DELAY));
         }
     }
 
-    // USB printer
-    if (USB_PRINTER_NAME) {
-        const usbOk = await sendToUSBPrinter(ticketData, USB_PRINTER_NAME);
-        if (usbOk) anyPrinted = true;
-    }
-
-    // Mark as printed
+    // Mark as printed in DB
     if (anyPrinted) {
         await supabase
             .from('haccp_print_queue')
             .update({ printed: true })
             .eq('id', job.id);
-        console.log('✅ HACCP ticket printed successfully');
+        console.log(`✅ ${job.product_name} — done`);
     } else {
-        console.error(`❌ Failed to print HACCP ticket for ${job.product_name} on all printers`);
+        console.error(`❌ FAILED: ${job.product_name} — all ${HACCP_RETRY_COUNT} attempts failed on all printers`);
     }
 }
 
