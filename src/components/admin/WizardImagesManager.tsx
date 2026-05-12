@@ -15,6 +15,8 @@ interface ProductInfo {
 }
 
 const products: ProductInfo[] = [
+    { type: 'pizza_senior', label: 'Pizza Senior (Format)', emoji: '🍕' },
+    { type: 'pizza_mega', label: 'Pizza Mega (Format)', emoji: '🍕' },
     { type: 'soufflet', label: 'Soufflet', emoji: '🥟' },
     { type: 'tacos', label: 'Tacos', emoji: '🌮' },
     { type: 'makloub', label: 'Makloub', emoji: '🌯' },

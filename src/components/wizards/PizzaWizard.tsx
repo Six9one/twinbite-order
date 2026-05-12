@@ -4,6 +4,7 @@ import { pizzasTomate, pizzasCreme, pizzaPrices, cheeseSupplementOptions } from 
 import { isMenuMidiTime, getMenuMidiRemainingTime } from '@/utils/promotions';
 import { useOrder } from '@/context/OrderContext';
 import { usePizzasByBase, Product } from '@/hooks/useProducts';
+import { usePizzaFormatImages } from '@/hooks/useWizardImages';
 import { trackProductView, trackAddToCart } from '@/hooks/useProductAnalytics';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,8 +12,16 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Check, Pizza, Sun, Clock, Plus, Image } from 'lucide-react';
+import { ArrowLeft, Check, Pizza, Sun, Clock, Plus, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+
+type WizardStep = 'SELECT_FORMAT' | 'SELECT_PIZZA' | 'CUSTOMIZE';
+
+interface FormatSelection {
+  size: PizzaSize;
+  isMenuMidi: boolean;
+  basePrice: number;
+}
 
 interface PizzaWizardProps {
   onClose: () => void;
@@ -21,21 +30,28 @@ interface PizzaWizardProps {
 
 export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
   const { addToCart, orderType } = useOrder();
-  const [step, setStep] = useState<'select' | 'customize'>('select');
+
+  // If lockedSize is set (loyalty free pizza), skip format selection
+  const initialStep: WizardStep = lockedSize ? 'SELECT_PIZZA' : 'SELECT_FORMAT';
+  const initialFormat: FormatSelection = lockedSize
+    ? { size: lockedSize, isMenuMidi: false, basePrice: lockedSize === 'mega' ? pizzaPrices.mega : pizzaPrices.senior }
+    : { size: 'senior', isMenuMidi: false, basePrice: pizzaPrices.senior };
+
+  const [step, setStep] = useState<WizardStep>(initialStep);
+  const [format, setFormat] = useState<FormatSelection>(initialFormat);
   const [selectedPizza, setSelectedPizza] = useState<MenuItem | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [base, setBase] = useState<PizzaBase>('tomate');
-  const [size, setSize] = useState<PizzaSize>(lockedSize || 'senior');
-  const [isMenuMidi, setIsMenuMidi] = useState(false);
   const [supplements, setSupplements] = useState<string[]>([]);
   const [note, setNote] = useState('');
+  const [showAddedOverlay, setShowAddedOverlay] = useState(false);
   const [countdown, setCountdown] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
 
-  // Fetch pizzas from database
+  // Data fetching
   const { data: dbPizzasTomate, isLoading: loadingTomate } = usePizzasByBase('tomate');
   const { data: dbPizzasCreme, isLoading: loadingCreme } = usePizzasByBase('creme');
+  const { data: formatImages } = usePizzaFormatImages();
 
-  // Use database pizzas if available, fallback to static data
   const displayPizzasTomate = dbPizzasTomate && dbPizzasTomate.length > 0 ? dbPizzasTomate : pizzasTomate;
   const displayPizzasCreme = dbPizzasCreme && dbPizzasCreme.length > 0 ? dbPizzasCreme : pizzasCreme;
 
@@ -44,286 +60,298 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
     ? '2 achetées = 1 offerte'
     : orderType ? '1 achetée = 1 offerte' : null;
 
-  // Update countdown every second
+  // Countdown timer for menu midi
   useEffect(() => {
     if (!showMenuMidi) return;
-
-    const updateCountdown = () => {
-      setCountdown(getMenuMidiRemainingTime());
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
+    const update = () => setCountdown(getMenuMidiRemainingTime());
+    update();
+    const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
   }, [showMenuMidi]);
 
+  // --- Format Selection ---
+  const handleFormatSelect = (size: PizzaSize, isMenuMidi: boolean) => {
+    const basePrice = isMenuMidi
+      ? (size === 'senior' ? pizzaPrices.menuMidiSenior : pizzaPrices.menuMidiMega)
+      : (size === 'senior' ? pizzaPrices.senior : pizzaPrices.mega);
+    setFormat({ size, isMenuMidi, basePrice });
+    setStep('SELECT_PIZZA');
+  };
+
+  // --- Pizza Selection ---
   const handleSelectPizza = (pizza: MenuItem | Product) => {
-    // Handle both static MenuItem and database Product
     const isProduct = 'base_price' in pizza;
     const menuItem: MenuItem = isProduct
-      ? {
-        id: pizza.id,
-        name: pizza.name,
-        description: pizza.description || '',
-        price: (pizza as Product).base_price,
-        category: 'pizzas' as const,
-        base: (pizza as Product).pizza_base as PizzaBase || 'tomate',
-        imageUrl: (pizza as Product).image_url || undefined,
-      }
+      ? { id: pizza.id, name: pizza.name, description: pizza.description || '', price: (pizza as Product).base_price, category: 'pizzas' as const, base: (pizza as Product).pizza_base as PizzaBase || 'tomate', imageUrl: (pizza as Product).image_url || undefined }
       : pizza;
-
-    // Track product view
     trackProductView(pizza.id, pizza.name, 'pizzas');
-
     setSelectedPizza(menuItem);
     setSelectedProduct(isProduct ? pizza as Product : null);
     setBase(menuItem.base || 'tomate');
-    setStep('customize');
+    setStep('CUSTOMIZE');
   };
 
+  // --- Supplements ---
   const toggleSupplement = (supId: string) => {
-    if (supplements.includes(supId)) {
-      setSupplements(supplements.filter(s => s !== supId));
-    } else {
-      setSupplements([...supplements, supId]);
-    }
+    setSupplements(prev => prev.includes(supId) ? prev.filter(s => s !== supId) : [...prev, supId]);
   };
 
   const getPrice = () => {
-    let basePrice = 0;
-    if (isMenuMidi && showMenuMidi) {
-      basePrice = size === 'senior' ? pizzaPrices.menuMidiSenior : pizzaPrices.menuMidiMega;
-    } else {
-      basePrice = size === 'senior' ? pizzaPrices.senior : pizzaPrices.mega;
-    }
-
-    // Add supplements price
     const supplementsPrice = supplements.reduce((total, supId) => {
       const sup = cheeseSupplementOptions.find(s => s.id === supId);
       return total + (sup?.price || 0);
     }, 0);
-
-    return basePrice + supplementsPrice;
+    return format.basePrice + supplementsPrice;
   };
 
+  // --- Add to Cart ---
   const handleAddToCart = () => {
     if (!selectedPizza) return;
-
     const customization: PizzaCustomization = {
       base,
-      size,
-      isMenuMidi: isMenuMidi && showMenuMidi,
+      size: format.size,
+      isMenuMidi: format.isMenuMidi,
       note: note || undefined,
       supplements: supplements.length > 0 ? supplements : undefined,
     };
-
-    const cartItem = {
-      ...selectedPizza,
-      id: `${selectedPizza.id}-${Date.now()}`,
-    };
-
-    const calculatedPrice = getPrice();
-    addToCart(cartItem, 1, customization, calculatedPrice);
-
-    // Track add to cart
+    const cartItem = { ...selectedPizza, id: `${selectedPizza.id}-${Date.now()}` };
+    addToCart(cartItem, 1, customization, getPrice());
     trackAddToCart(selectedPizza.id.split('-')[0], selectedPizza.name, 'pizzas');
+    toast({ title: 'Ajouté au panier', description: `${selectedPizza.name} ${format.size === 'mega' ? 'Mega' : 'Senior'}${format.isMenuMidi ? ' (Menu Midi)' : ''}` });
 
-    toast({
-      title: 'Ajouté au panier',
-      description: `${selectedPizza.name} ${size === 'mega' ? 'Mega' : 'Senior'}${isMenuMidi ? ' (Menu Midi)' : ''}`,
-    });
-
-    // Reset and go back to pizza selection instead of closing
+    // Reset for next pizza and show overlay
     setSelectedPizza(null);
-    setSize('senior');
-    setIsMenuMidi(false);
     setSupplements([]);
     setNote('');
-    setStep('select');
+    setShowAddedOverlay(true);
+    setTimeout(() => {
+      setShowAddedOverlay(false);
+      setStep('SELECT_PIZZA');
+    }, 3000);
   };
 
-  if (step === 'select') {
+  // --- Upsell actions from overlay ---
+  const handleUpsellDrinks = () => { setShowAddedOverlay(false); onClose(); };
+  const handleUpsellContinue = () => { setShowAddedOverlay(false); setStep('SELECT_PIZZA'); };
+
+  // Get format label
+  const formatLabel = format.isMenuMidi
+    ? `Menu Midi ${format.size === 'mega' ? 'Mega' : 'Senior'}`
+    : `${format.size === 'mega' ? 'Mega 40cm' : 'Senior 31cm'}`;
+
+  // ============================================================
+  // STEP 0: FORMAT SELECTION
+  // ============================================================
+  if (step === 'SELECT_FORMAT') {
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-screen bg-background pb-4">
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={onClose} className="w-10 h-10 sm:w-11 sm:h-11">
+              <Button variant="ghost" size="icon" onClick={onClose} className="w-10 h-10">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-display font-bold">Nos Pizzas</h1>
+              <h1 className="text-xl sm:text-2xl font-display font-bold">🍕 Choisissez votre format de Pizza</h1>
+            </div>
+          </div>
+        </div>
+
+        <div className="container mx-auto px-4 py-6 flex-1 flex flex-col">
+          {/* Symmetrical two-column grid — cards stretch to same height */}
+          <div className="grid grid-cols-2 gap-8 items-stretch max-w-5xl mx-auto flex-1">
+
+            {/* ── SENIOR Column ── */}
+            <div
+              className="flex flex-col gap-4 cursor-pointer group"
+              onClick={() => handleFormatSelect('senior', false)}
+            >
+              <Card className="flex-1 flex flex-col items-center justify-center rounded-[2rem] p-8 min-h-[450px] bg-white border-2 border-orange-200 hover:border-orange-400 transition-all hover:shadow-2xl group-active:scale-[0.98]">
+                {/* Fixed image container — image scales small */}
+                <div className="h-64 w-full flex items-center justify-center mb-6">
+                  {formatImages?.senior ? (
+                    <img src={formatImages.senior} alt="Pizza Senior" className="w-44 h-44 object-contain drop-shadow-xl" />
+                  ) : (
+                    <div className="w-44 h-44 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
+                      <Pizza className="w-20 h-20 text-orange-300" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Promo Badge */}
                 {promoText && (
-                  <Badge variant="secondary" className="mt-1 bg-primary/10 text-primary">
-                    {promoText}
+                  <Badge className="bg-orange-500 hover:bg-orange-500 text-white text-sm px-5 py-2 mb-4 rounded-full font-bold shadow-md">
+                    {promoText.toUpperCase()}
                   </Badge>
+                )}
+
+                {/* Size Info */}
+                <h2 className="text-4xl font-black tracking-tight text-slate-900">SENIOR</h2>
+                <p className="text-muted-foreground mt-1 text-lg">Taille Senior - 31 cm</p>
+                <p className="text-4xl font-bold text-primary mt-4">{pizzaPrices.senior},00€</p>
+              </Card>
+
+              {/* Menu Midi — pinned to bottom via mt-auto */}
+              <div className="mt-auto">
+                {showMenuMidi ? (
+                  <Button
+                    variant="outline"
+                    className="w-full h-20 text-xl font-bold rounded-2xl border-2 border-yellow-400/50 hover:bg-yellow-50 hover:border-yellow-500 text-yellow-700"
+                    onClick={(e) => { e.stopPropagation(); handleFormatSelect('senior', true); }}
+                  >
+                    <Sun className="w-6 h-6 mr-3 text-yellow-500" />
+                    Menu Midi Senior: {pizzaPrices.menuMidiSenior}€
+                  </Button>
+                ) : (
+                  <div className="h-20" /> /* Spacer to keep alignment when no menu midi */
                 )}
               </div>
             </div>
 
-            {/* Menu Midi availability banner */}
-            {showMenuMidi && countdown && (
-              <div className="mt-3 p-3 bg-yellow-500/10 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-2 text-yellow-600">
-                  <Sun className="w-5 h-5" />
-                  <span className="font-semibold">Menu Midi disponible</span>
+            {/* ── MEGA Column ── */}
+            <div
+              className="flex flex-col gap-4 cursor-pointer group"
+              onClick={() => handleFormatSelect('mega', false)}
+            >
+              <Card className="flex-1 flex flex-col items-center justify-center rounded-[2rem] p-8 min-h-[450px] bg-white border-2 border-orange-200 hover:border-orange-400 transition-all hover:shadow-2xl group-active:scale-[0.98]">
+                {/* Fixed image container — image scales large */}
+                <div className="h-64 w-full flex items-center justify-center mb-6">
+                  {formatImages?.mega ? (
+                    <img src={formatImages.mega} alt="Pizza Mega" className="w-64 h-64 object-contain drop-shadow-xl" />
+                  ) : (
+                    <div className="w-64 h-64 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
+                      <Pizza className="w-28 h-28 text-orange-300" />
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-1 text-yellow-600 font-mono">
-                  <Clock className="w-4 h-4" />
-                  <span>Fin dans {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}</span>
+
+                {/* Promo Badge */}
+                {promoText && (
+                  <Badge className="bg-orange-500 hover:bg-orange-500 text-white text-sm px-5 py-2 mb-4 rounded-full font-bold shadow-md">
+                    {promoText.toUpperCase()}
+                  </Badge>
+                )}
+
+                {/* Size Info */}
+                <h2 className="text-4xl font-black tracking-tight text-slate-900">MEGA</h2>
+                <p className="text-muted-foreground mt-1 text-lg">Taille Mega - 40 cm</p>
+                <p className="text-4xl font-bold text-primary mt-4">{pizzaPrices.mega},00€</p>
+              </Card>
+
+              {/* Menu Midi — pinned to bottom via mt-auto */}
+              <div className="mt-auto">
+                {showMenuMidi ? (
+                  <Button
+                    variant="outline"
+                    className="w-full h-20 text-xl font-bold rounded-2xl border-2 border-yellow-400/50 hover:bg-yellow-50 hover:border-yellow-500 text-yellow-700"
+                    onClick={(e) => { e.stopPropagation(); handleFormatSelect('mega', true); }}
+                  >
+                    <Sun className="w-6 h-6 mr-3 text-yellow-500" />
+                    Menu Midi Mega: {pizzaPrices.menuMidiMega}€
+                  </Button>
+                ) : (
+                  <div className="h-20" />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Menu Midi info banner */}
+          {showMenuMidi && countdown && (
+            <div className="mt-6 max-w-5xl mx-auto p-3 bg-yellow-500/10 rounded-lg flex items-center justify-center gap-3">
+              <Sun className="w-5 h-5 text-yellow-600" />
+              <span className="font-semibold text-yellow-700">Menu Midi disponible</span>
+              <span className="text-yellow-600 font-mono">
+                Fin dans {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // STEP 1: SELECT PIZZA (simplified — single price)
+  // ============================================================
+  if (step === 'SELECT_PIZZA') {
+    const renderPizzaCard = (pizza: any) => {
+      const imageUrl = pizza.image_url || pizza.imageUrl || pizza.image;
+      const imageZoom = pizza.image_zoom || 1.0;
+      return (
+        <Card
+          key={pizza.id}
+          className="overflow-hidden cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30"
+          onClick={() => handleSelectPizza(pizza)}
+        >
+          <div className="p-4 bg-gradient-to-b from-slate-50 to-white flex justify-center">
+            <div className="w-32 h-32 rounded-full overflow-hidden bg-white shadow-md border-4 border-orange-100">
+              {imageUrl ? (
+                <img src={imageUrl} alt={pizza.name} loading="lazy" decoding="async" className="w-full h-full object-contain" style={{ transform: `scale(${imageZoom})` }} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50">
+                  <Pizza className="w-12 h-12 text-primary/30" />
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="p-4 pt-0">
+            <h3 className="font-display font-semibold text-lg text-center">{pizza.name}</h3>
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-2 text-center">{pizza.description}</p>
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <span className="text-lg font-bold text-primary">{format.basePrice}€</span>
+              <Badge variant="secondary" className="text-xs">{formatLabel}</Badge>
+            </div>
+          </div>
+        </Card>
+      );
+    };
+
+    return (
+      <div className="min-h-screen bg-background pb-24">
+        {/* Added overlay */}
+        {showAddedOverlay && <AddedOverlay onDrinks={handleUpsellDrinks} onContinue={handleUpsellContinue} onClose={() => { setShowAddedOverlay(false); onClose(); }} />}
+
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => lockedSize ? onClose() : setStep('SELECT_FORMAT')} className="w-10 h-10">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div className="flex-1">
+                <h1 className="text-xl sm:text-2xl font-display font-bold">Nos Pizzas</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge className="bg-primary/10 text-primary border-primary/20">
+                    {formatLabel} — {format.basePrice}€
+                  </Badge>
+                  {!lockedSize && (
+                    <button className="text-xs text-primary underline" onClick={() => setStep('SELECT_FORMAT')}>
+                      Changer
+                    </button>
+                  )}
                 </div>
               </div>
-            )}
-            {!showMenuMidi && (
-              <div className="mt-3 p-3 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground text-center">
-                  Menu midi disponible de 11:00 à minuit
-                </p>
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
         <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
           <Tabs defaultValue="tomate" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 h-12 sm:h-14">
-              <TabsTrigger value="tomate" className="text-sm sm:text-base h-10 sm:h-12">
-                🍅 Base Tomate
-              </TabsTrigger>
-              <TabsTrigger value="creme" className="text-sm sm:text-base h-10 sm:h-12">
-                🥛 Base Crème
-              </TabsTrigger>
+              <TabsTrigger value="tomate" className="text-sm sm:text-base h-10 sm:h-12">🍅 Base Tomate</TabsTrigger>
+              <TabsTrigger value="creme" className="text-sm sm:text-base h-10 sm:h-12">🥛 Base Crème</TabsTrigger>
             </TabsList>
 
             <TabsContent value="tomate">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {(loadingTomate ? [] : displayPizzasTomate).map((pizza: any) => {
-                  const imageUrl = pizza.image_url || pizza.imageUrl || pizza.image;
-                  const imageZoom = pizza.image_zoom || 1.0;
-                  return (
-                    <Card
-                      key={pizza.id}
-                      className="overflow-hidden cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30"
-                      onClick={() => handleSelectPizza(pizza)}
-                    >
-                      {/* Circular Pizza Image */}
-                      <div className="p-4 bg-gradient-to-b from-slate-50 to-white flex justify-center">
-                        <div className="w-32 h-32 rounded-full overflow-hidden bg-white shadow-md border-4 border-orange-100">
-                          {imageUrl ? (
-                            <img
-                              src={imageUrl}
-                              alt={pizza.name}
-                              loading="lazy"
-                              decoding="async"
-                              className="w-full h-full object-contain"
-                              style={{ transform: `scale(${imageZoom})` }}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50">
-                              <Pizza className="w-12 h-12 text-primary/30" />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="p-4 pt-0">
-                        <h3 className="font-display font-semibold text-lg text-center">{pizza.name}</h3>
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2 text-center">{pizza.description}</p>
-                        <div className="mt-3 flex items-center justify-center gap-2">
-                          {lockedSize === 'senior' ? (
-                            <>
-                              <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
-                              <span className="text-sm text-muted-foreground">Senior (Offerte)</span>
-                            </>
-                          ) : lockedSize === 'mega' ? (
-                            <>
-                              <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
-                              <span className="text-sm text-muted-foreground">Mega (Offerte)</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
-                              <span className="text-sm text-muted-foreground">Senior</span>
-                              <span className="text-muted-foreground">|</span>
-                              <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
-                              <span className="text-sm text-muted-foreground">Mega</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-                {loadingTomate && (
-                  <div className="col-span-full text-center py-8 text-muted-foreground">
-                    Chargement des pizzas...
-                  </div>
-                )}
+                {(loadingTomate ? [] : displayPizzasTomate).map(renderPizzaCard)}
+                {loadingTomate && <div className="col-span-full text-center py-8 text-muted-foreground">Chargement des pizzas...</div>}
               </div>
             </TabsContent>
 
             <TabsContent value="creme">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {(loadingCreme ? [] : displayPizzasCreme).map((pizza: any) => {
-                  const imageUrl = pizza.image_url || pizza.imageUrl || pizza.image;
-                  const imageZoom = pizza.image_zoom || 1.0;
-                  return (
-                    <Card
-                      key={pizza.id}
-                      className="overflow-hidden cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 border-transparent hover:border-primary/30"
-                      onClick={() => handleSelectPizza(pizza)}
-                    >
-                      {/* Circular Pizza Image */}
-                      <div className="p-4 bg-gradient-to-b from-slate-50 to-white flex justify-center">
-                        <div className="w-32 h-32 rounded-full overflow-hidden bg-white shadow-md border-4 border-orange-100">
-                          {imageUrl ? (
-                            <img
-                              src={imageUrl}
-                              alt={pizza.name}
-                              loading="lazy"
-                              decoding="async"
-                              className="w-full h-full object-contain"
-                              style={{ transform: `scale(${imageZoom})` }}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50">
-                              <Pizza className="w-12 h-12 text-primary/30" />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="p-4 pt-0">
-                        <h3 className="font-display font-semibold text-lg text-center">{pizza.name}</h3>
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2 text-center">{pizza.description}</p>
-                        <div className="mt-3 flex items-center justify-center gap-2">
-                          {lockedSize === 'senior' ? (
-                            <>
-                              <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
-                              <span className="text-sm text-muted-foreground">Senior (Offerte)</span>
-                            </>
-                          ) : lockedSize === 'mega' ? (
-                            <>
-                              <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
-                              <span className="text-sm text-muted-foreground">Mega (Offerte)</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-lg font-bold text-primary">{pizzaPrices.senior}€</span>
-                              <span className="text-sm text-muted-foreground">Senior</span>
-                              <span className="text-muted-foreground">|</span>
-                              <span className="text-lg font-bold text-primary">{pizzaPrices.mega}€</span>
-                              <span className="text-sm text-muted-foreground">Mega</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-                {loadingCreme && (
-                  <div className="col-span-full text-center py-8 text-muted-foreground">
-                    Chargement des pizzas...
-                  </div>
-                )}
+                {(loadingCreme ? [] : displayPizzasCreme).map(renderPizzaCard)}
+                {loadingCreme && <div className="col-span-full text-center py-8 text-muted-foreground">Chargement des pizzas...</div>}
               </div>
             </TabsContent>
           </Tabs>
@@ -332,13 +360,18 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
     );
   }
 
-  // Customize step
+  // ============================================================
+  // STEP 2: CUSTOMIZE (no size selection — already locked)
+  // ============================================================
   return (
     <div className="min-h-screen bg-background pb-24">
+      {/* Added overlay */}
+      {showAddedOverlay && <AddedOverlay onDrinks={handleUpsellDrinks} onContinue={handleUpsellContinue} onClose={() => { setShowAddedOverlay(false); onClose(); }} />}
+
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setStep('select')}>
+            <Button variant="ghost" size="icon" onClick={() => setStep('SELECT_PIZZA')}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex-1">
@@ -351,90 +384,15 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
       </div>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Size & Menu Selection - ALL OPTIONS */}
-        <div>
-          <h2 className="text-lg font-semibold mb-3">Choisir votre formule</h2>
-
-          {/* Regular Pizzas */}
-          <div className="mb-4">
-            <p className="text-sm text-muted-foreground mb-2">
-              {lockedSize ? `🏁 Pizza ${lockedSize === 'mega' ? 'Mega' : 'Senior'} Offerte` : '🍕 Pizza seule (1 achetée = 1 offerte)'}
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              {(lockedSize === 'senior' || !lockedSize) && (
-                <Card
-                  className={`p-4 cursor-pointer transition-all ${size === 'senior' && !isMenuMidi ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'} ${lockedSize === 'mega' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => { if (!lockedSize || lockedSize === 'senior') { setSize('senior'); setIsMenuMidi(false); } }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">Senior</h3>
-                      <p className="text-xs text-muted-foreground">31cm</p>
-                    </div>
-                    <p className="text-xl font-bold text-primary">{pizzaPrices.senior}€</p>
-                  </div>
-                  {size === 'senior' && !isMenuMidi && <Check className="w-5 h-5 text-primary mt-2" />}
-                </Card>
-              )}
-              {(lockedSize === 'mega' || !lockedSize) && (
-                <Card
-                  className={`p-4 cursor-pointer transition-all ${size === 'mega' && !isMenuMidi ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'} ${lockedSize === 'senior' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => { if (!lockedSize || lockedSize === 'mega') { setSize('mega'); setIsMenuMidi(false); } }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">Mega</h3>
-                      <p className="text-xs text-muted-foreground">40cm</p>
-                    </div>
-                    <p className="text-xl font-bold text-primary">{pizzaPrices.mega}€</p>
-                  </div>
-                  {size === 'mega' && !isMenuMidi && <Check className="w-5 h-5 text-primary mt-2" />}
-                </Card>
-              )}
-            </div>
-          </div>
-
-          {/* Menu Midi Options */}
-          {showMenuMidi && !lockedSize && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
-                <Sun className="w-4 h-4 text-yellow-500" />
-                Menu Midi (Pizza + Boisson)
-                {countdown && (
-                  <span className="text-xs text-yellow-600 font-mono">
-                    Fin dans {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')}
-                  </span>
-                )}
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <Card
-                  className={`p-4 cursor-pointer transition-all border-2 ${size === 'senior' && isMenuMidi ? 'border-yellow-500 bg-yellow-500/10' : 'border-transparent hover:bg-muted/50'}`}
-                  onClick={() => { setSize('senior'); setIsMenuMidi(true); }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-yellow-700">Senior</h3>
-                      <p className="text-xs text-green-600">+ Boisson offerte!</p>
-                    </div>
-                    <p className="text-xl font-bold text-yellow-600">{pizzaPrices.menuMidiSenior}€</p>
-                  </div>
-                  {size === 'senior' && isMenuMidi && <Check className="w-5 h-5 text-yellow-500 mt-2" />}
-                </Card>
-                <Card
-                  className={`p-4 cursor-pointer transition-all border-2 ${size === 'mega' && isMenuMidi ? 'border-yellow-500 bg-yellow-500/10' : 'border-transparent hover:bg-muted/50'}`}
-                  onClick={() => { setSize('mega'); setIsMenuMidi(true); }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-yellow-700">Mega</h3>
-                      <p className="text-xs text-green-600">+ Boisson offerte!</p>
-                    </div>
-                    <p className="text-xl font-bold text-yellow-600">{pizzaPrices.menuMidiMega}€</p>
-                  </div>
-                  {size === 'mega' && isMenuMidi && <Check className="w-5 h-5 text-yellow-500 mt-2" />}
-                </Card>
-              </div>
-            </div>
+        {/* Format badge (non-interactive) */}
+        <div className="flex items-center gap-3">
+          <Badge className="bg-primary/10 text-primary border-primary/20 text-sm py-1.5 px-4">
+            {formatLabel} — {format.basePrice}€
+          </Badge>
+          {format.isMenuMidi && (
+            <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 text-sm py-1.5 px-3">
+              <Sun className="w-4 h-4 mr-1" /> + Boisson offerte
+            </Badge>
           )}
         </div>
 
@@ -450,14 +408,14 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
             {cheeseSupplementOptions.map((sup) => (
               <Card
                 key={sup.id}
-                className={`p-3 cursor-pointer transition-all ${supplements.includes(sup.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                className={`p-4 min-h-[60px] cursor-pointer transition-all flex items-center justify-between ${supplements.includes(sup.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
                 onClick={() => toggleSupplement(sup.id)}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{sup.name}</span>
-                  {supplements.includes(sup.id) && <Check className="w-5 h-5 text-primary" />}
+                <div>
+                  <span className="font-medium text-base">{sup.name}</span>
+                  <span className="text-sm text-primary font-semibold ml-2">+{sup.price}€</span>
                 </div>
-                <span className="text-sm text-primary font-semibold">+{sup.price}€</span>
+                {supplements.includes(sup.id) && <Check className="w-5 h-5 text-primary flex-shrink-0" />}
               </Card>
             ))}
           </div>
@@ -488,13 +446,63 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
       {/* Bottom Action */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 sm:p-4 z-50 safe-bottom">
         <div className="container mx-auto">
-          <Button
-            className="w-full h-14 sm:h-16 text-base sm:text-lg rounded-xl"
-            onClick={handleAddToCart}
-          >
+          <Button className="w-full h-14 sm:h-16 text-base sm:text-lg rounded-xl" onClick={handleAddToCart}>
             Ajouter au panier - {getPrice().toFixed(2)}€
           </Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// POST-ADD OVERLAY — Upsell: Boissons, Tarte au Daim, Tiramisu
+// ============================================================
+function AddedOverlay({ onDrinks, onContinue, onClose }: { onDrinks: () => void; onContinue: () => void; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 text-center animate-in zoom-in-95 duration-300">
+        {/* Success */}
+        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+          <Check className="w-10 h-10 text-green-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900 mb-1">Ajouté au panier ! 🎉</h2>
+        <p className="text-slate-500 mb-6">Un petit extra avec votre pizza ?</p>
+
+        {/* Upsell Options */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <Card
+            className="p-4 cursor-pointer hover:scale-[1.03] active:scale-[0.97] transition-all border-2 border-transparent hover:border-blue-400/50 text-center"
+            onClick={onDrinks}
+          >
+            <span className="text-4xl block mb-2">🥤</span>
+            <h3 className="font-bold text-slate-900 text-sm">Boisson</h3>
+          </Card>
+          <Card
+            className="p-4 cursor-pointer hover:scale-[1.03] active:scale-[0.97] transition-all border-2 border-transparent hover:border-amber-400/50 text-center"
+            onClick={onClose}
+          >
+            <span className="text-4xl block mb-2">🍫</span>
+            <h3 className="font-bold text-slate-900 text-sm">Tarte Daim</h3>
+          </Card>
+          <Card
+            className="p-4 cursor-pointer hover:scale-[1.03] active:scale-[0.97] transition-all border-2 border-transparent hover:border-pink-400/50 text-center"
+            onClick={onClose}
+          >
+            <span className="text-4xl block mb-2">🍮</span>
+            <h3 className="font-bold text-slate-900 text-sm">Tiramisu</h3>
+          </Card>
+        </div>
+
+        {/* Continue button */}
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={onContinue}
+          className="w-full h-14 text-lg text-slate-600 border-slate-300 hover:text-slate-900"
+        >
+          Ajouter une autre pizza →
+        </Button>
       </div>
     </div>
   );

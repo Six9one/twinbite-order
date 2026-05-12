@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export type WizardProductType = 'soufflet' | 'tacos' | 'makloub' | 'mlawi' | 'panini';
+export type WizardProductType = 'soufflet' | 'tacos' | 'makloub' | 'mlawi' | 'panini' | 'pizza_senior' | 'pizza_mega';
 
 interface WizardImageSetting {
     setting_key: string;
@@ -30,19 +30,51 @@ export function useWizardImage(productType: WizardProductType) {
 }
 
 /**
+ * Hook to fetch pizza format selection images (Senior & Mega)
+ */
+export function usePizzaFormatImages() {
+    return useQuery({
+        queryKey: ['wizard_images', 'pizza_format'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('admin_settings')
+                .select('setting_key, setting_value')
+                .in('setting_key', ['wizard_image_pizza_senior', 'wizard_image_pizza_mega']);
+
+            if (error) throw error;
+
+            const result = { senior: null as string | null, mega: null as string | null };
+            if (data) {
+                data.forEach((item: WizardImageSetting) => {
+                    const value = item.setting_value as { image_url?: string } | null;
+                    if (item.setting_key === 'wizard_image_pizza_senior') {
+                        result.senior = value?.image_url || null;
+                    } else if (item.setting_key === 'wizard_image_pizza_mega') {
+                        result.mega = value?.image_url || null;
+                    }
+                });
+            }
+            return result;
+        },
+    });
+}
+
+/**
  * Hook to fetch all wizard images (for admin panel)
  */
 export function useAllWizardImages() {
     return useQuery({
         queryKey: ['wizard_images', 'all'],
         queryFn: async () => {
-            const productTypes: WizardProductType[] = ['soufflet', 'tacos', 'makloub', 'mlawi', 'panini'];
+            const productTypes: WizardProductType[] = ['soufflet', 'tacos', 'makloub', 'mlawi', 'panini', 'pizza_senior', 'pizza_mega'];
             const results: Record<WizardProductType, string | null> = {
                 soufflet: null,
                 tacos: null,
                 makloub: null,
                 mlawi: null,
                 panini: null,
+                pizza_senior: null,
+                pizza_mega: null,
             };
 
             const { data, error } = await supabase
