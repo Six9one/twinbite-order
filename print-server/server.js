@@ -3,9 +3,8 @@ import { Socket } from 'net';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
-import { execSync } from 'child_process';
-import { tmpdir } from 'os';
+import { existsSync, readFileSync } from 'fs';
+import { writeFile } from 'fs/promises';
 import express from 'express';
 import cors from 'cors';
 
@@ -17,12 +16,11 @@ config({ path: join(__dirname, '.env') });
 // Configuration
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const PRINTER_IPS = (process.env.PRINTER_IPS || process.env.PRINTER_IP || '192.168.1.1,192.168.1.200').split(',').map(ip => ip.trim());
+const PRINTER_IPS = (process.env.PRINTER_IPS || process.env.PRINTER_IP || '192.168.1.1,192.168.1.200').split(',').map(ip => ip.trim()).filter(Boolean);
 const PRINTER_PORT = parseInt(process.env.PRINTER_PORT || '9100', 10);
-const USB_PRINTER_NAME = process.env.USB_PRINTER_NAME || '';
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 5000;
-const SETTINGS_REFRESH_INTERVAL = 60000; // Refresh settings every 60 seconds
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1500;
+const SETTINGS_REFRESH_INTERVAL = 300000; // Refresh settings every 5 minutes
 
 // Validate configuration
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -168,11 +166,11 @@ function loadPrintedOrders() {
     return new Map();
 }
 
-// Save printed orders to file
-function savePrintedOrders() {
+// Save printed orders to file (async — non-blocking)
+async function savePrintedOrders() {
     try {
         const data = Array.from(printedOrders.entries()).map(([id, timestamp]) => ({ id, timestamp }));
-        writeFileSync(PRINTED_ORDERS_FILE, JSON.stringify(data, null, 2));
+        await writeFile(PRINTED_ORDERS_FILE, JSON.stringify(data, null, 2));
     } catch (err) {
         console.error('⚠️ Could not save printed orders cache:', err.message);
     }
@@ -221,290 +219,314 @@ function getLine() {
     return ticketSettings.paperWidth === '58mm' ? ESCPOS.LINE_32 : ESCPOS.LINE_42;
 }
 
-// Format order for ESC/POS printing using database settings
-function formatOrderForPrint(order, isKitchen = false) {
-    const template = isKitchen ? ticketSettings.kitchenTemplate : ticketSettings.counterTemplate;
+// ============================================
+// KITCHEN TICKET — Bold, clean, easy to read
+// Matches: order# + type, items bold, customizations indented
+// ============================================
+function formatKitchenTicket(order) {
     const LINE = getLine();
-    let ticket = '';
+    let t = '';
+    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
 
-    // Initialize printer and set code page for French characters
-    ticket += ESCPOS.INIT;
-    ticket += ESCPOS.SET_CODEPAGE_1252;
+    // Order number + type on same line (like the photo)
+    const typeLabels = { livraison: 'LIVR', emporter: 'EMP', surplace: 'SUR PL' };
+    const typeLabel = typeLabels[order.order_type] || order.order_type?.toUpperCase() || '';
 
-    // Header
-    if (isKitchen) {
-        ticket += ESCPOS.CENTER;
-        ticket += ESCPOS.BOLD_ON;
-        ticket += template.header + '\n';
-        ticket += ESCPOS.BOLD_OFF;
-    } else {
-        ticket += ESCPOS.CENTER;
-        ticket += ESCPOS.DOUBLE_SIZE;
-        ticket += ESCPOS.BOLD_ON;
-        ticket += template.header + '\n';
-        ticket += ESCPOS.NORMAL_SIZE;
-
-        if (template.subheader) {
-            ticket += template.subheader.replace(/\\n/g, '\n') + '\n';
-        }
-    }
-    ticket += LINE;
-
-    // Order number (bold, centered)
-    if (template.showOrderNumber) {
-        if (isKitchen) {
-            ticket += ESCPOS.DOUBLE_HEIGHT;
-            ticket += ESCPOS.BOLD_ON;
-            ticket += `COMMANDE N. ${order.order_number}\n`;
-            ticket += ESCPOS.NORMAL_SIZE;
-            ticket += ESCPOS.BOLD_OFF;
-        } else {
-            ticket += ESCPOS.BOLD_ON;
-            ticket += `N. ${order.order_number}\n`;
-            ticket += ESCPOS.BOLD_OFF;
-        }
-    }
+    t += ESCPOS.CENTER + LINE;
+    t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+    t += `Commande : ${order.order_number}`;
+    // Right-align the type by padding
+    const cmdText = `Commande : ${order.order_number}`;
+    const pad = Math.max(1, 21 - cmdText.length);
+    t += ' '.repeat(pad) + typeLabel + '\n';
+    t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
 
     // Date/time
-    if (template.showDateTime) {
-        const orderDate = new Date(order.created_at);
-        ticket += orderDate.toLocaleString('fr-FR', {
-            dateStyle: 'short',
-            timeStyle: 'short',
-            timeZone: 'Europe/Paris'
-        }) + '\n';
+    const orderDate = new Date(order.created_at);
+    t += orderDate.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' }) + '\n';
+    t += LINE;
+
+    // Scheduled order
+    if (order.is_scheduled && order.scheduled_for) {
+        const sd = new Date(order.scheduled_for);
+        t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+        t += 'PROGRAMMEE POUR:\n';
+        t += sd.toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }) + '\n';
+        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + LINE;
     }
 
-    ticket += LINE;
-
-    // Order type (highlighted)
-    const orderTypeLabels = {
-        livraison: 'LIVRAISON',
-        emporter: 'À EMPORTER',
-        surplace: 'SUR PLACE'
-    };
-    ticket += ESCPOS.DOUBLE_HEIGHT;
-    ticket += ESCPOS.BOLD_ON;
-    ticket += orderTypeLabels[order.order_type] || order.order_type.toUpperCase();
-    ticket += '\n';
-    ticket += ESCPOS.NORMAL_SIZE;
-    ticket += ESCPOS.BOLD_OFF;
-
-    // Scheduled order info
-    if (template.showScheduledTime && order.is_scheduled && order.scheduled_for) {
-        const scheduledDate = new Date(order.scheduled_for);
-        ticket += ESCPOS.BOLD_ON;
-        ticket += '\n⏰ PROGRAMMÉE POUR:\n';
-        ticket += scheduledDate.toLocaleString('fr-FR', {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'Europe/Paris'
-        }) + '\n';
-        ticket += ESCPOS.BOLD_OFF;
+    // Customer (delivery only)
+    if (order.order_type === 'livraison') {
+        t += ESCPOS.LEFT + ESCPOS.BOLD_ON;
+        t += 'Client: ' + order.customer_name + '\n';
+        t += ESCPOS.BOLD_OFF;
+        if (order.customer_phone) t += 'Tel: ' + order.customer_phone + '\n';
+        if (order.customer_address) t += 'Adresse: ' + order.customer_address + '\n';
+        t += LINE;
     }
 
-    ticket += LINE;
-
-    // Customer info
-    ticket += ESCPOS.LEFT;
-
-    if (template.showCustomerInfo) {
-        ticket += ESCPOS.BOLD_ON;
-        ticket += 'Client: ' + order.customer_name + '\n';
-        ticket += ESCPOS.BOLD_OFF;
+    // Customer notes
+    if (order.customer_notes) {
+        t += ESCPOS.LEFT + ESCPOS.BOLD_ON;
+        t += '*** NOTE: ' + order.customer_notes + ' ***\n';
+        t += ESCPOS.BOLD_OFF + LINE;
     }
 
-    if (template.showCustomerPhone && order.customer_phone) {
-        ticket += 'Tél: ' + order.customer_phone + '\n';
+    // Items — big, bold, clear
+    t += ESCPOS.LEFT;
+    const items = Array.isArray(order.items) ? order.items : [];
+    items.forEach((ci) => {
+        const name = (ci.item?.name || ci.name || 'Produit').toUpperCase();
+        const qty = ci.quantity || 1;
+
+        // Item name: BOLD + DOUBLE HEIGHT (e.g. "1  TACOS DOUBLE")
+        t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+        t += `${qty}  ${name}\n`;
+        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+
+        const c = ci.customization;
+        if (c) {
+            // Size in parentheses for pizzas (e.g. "(MEGA)" or "(SENIOR)")
+            if (c.size) {
+                t += `   (${c.size.toUpperCase()})\n`;
+            }
+
+            // Base/dough
+            if (c.base) t += `   ${c.base.toUpperCase()}\n`;
+
+            // Meats with dot prefix (e.g. "     . TENDERS")
+            if (c.meats?.length) c.meats.forEach(m => { t += `     . ${m.toUpperCase()}\n`; });
+            if (c.meat) t += `     . ${c.meat.toUpperCase()}\n`;
+
+            // Sauces with dot prefix (e.g. "     .ALGERIENNE")
+            if (c.sauces?.length) c.sauces.forEach(s => { t += `     .${s.toUpperCase()}\n`; });
+            if (c.sauce) t += `     .${c.sauce.toUpperCase()}\n`;
+
+            // Garnitures with dot prefix
+            if (c.garnitures?.length) c.garnitures.forEach(g => { t += `     .${g.toUpperCase()}\n`; });
+
+            // Removed ingredients with "Sans" bold
+            if (c.removedIngredients?.length) c.removedIngredients.forEach(r => {
+                t += ESCPOS.BOLD_ON + `   Sans ${r.toUpperCase()}\n` + ESCPOS.BOLD_OFF;
+            });
+
+            // Supplements in parentheses
+            if (c.supplements?.length) c.supplements.forEach(s => { t += `   (${s.toUpperCase()})\n`; });
+
+            // Menu option: FRITE / BOISSON
+            if (c.menuOption && c.menuOption !== 'none') {
+                const ml = { 'frites': 'FRITE', 'boisson': 'BOISSON', 'menu': 'FRITE / BOISSON' };
+                t += `   ${ml[c.menuOption] || c.menuOption.toUpperCase()}\n`;
+            }
+
+            // Drink on its own line
+            if (c.drink) t += `   ${c.drink.toUpperCase()}\n`;
+
+            // Note: bold with asterisks
+            if (c.note) t += ESCPOS.BOLD_ON + `   *** ${c.note} ***\n` + ESCPOS.BOLD_OFF;
+        }
+        t += LINE;
+    });
+
+    t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
+    return convertToCP1252(t);
+}
+
+// ============================================
+// COUNTER/CUSTOMER TICKET — Full receipt with business details
+// Matches: name, address, SIRET, TVA, prices, totals, payment
+// ============================================
+function formatCounterTicket(order, loyaltyText) {
+    const LINE = getLine();
+    const TVA_RATE = 10;
+    let t = '';
+    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
+
+    // === HEADER: Business info ===
+    t += ESCPOS.CENTER;
+    t += ESCPOS.DOUBLE_SIZE + ESCPOS.BOLD_ON;
+    t += 'TWIN PIZZA\n';
+    t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    t += '60 Rue Georges Clemenceau\n';
+    t += '76530 Grand-Couronne\n';
+    t += 'France\n';
+    t += 'SIRET 942 617 358 00018\n';
+    t += 'N. TVA FR28942617358\n';
+    t += LINE;
+
+    // === ORDER INFO ===
+    const typeLabels = { livraison: 'LIVRAISON', emporter: 'A EMPORTER', surplace: 'SUR PLACE' };
+    const typeLabel = typeLabels[order.order_type] || order.order_type?.toUpperCase() || '';
+
+    t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+    t += `COMMANDE N.${order.order_number}`;
+    const pad2 = Math.max(1, 21 - `COMMANDE N.${order.order_number}`.length);
+    t += ' '.repeat(pad2) + typeLabel + '\n';
+    t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+
+    // Date/time
+    const orderDate = new Date(order.created_at);
+    t += orderDate.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' }) + '\n';
+    t += LINE;
+
+    // Scheduled
+    if (order.is_scheduled && order.scheduled_for) {
+        const sd = new Date(order.scheduled_for);
+        t += ESCPOS.BOLD_ON;
+        t += 'PROGRAMMEE: ' + sd.toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }) + '\n';
+        t += ESCPOS.BOLD_OFF;
     }
 
-    if (template.showDeliveryAddress && order.customer_address) {
-        ticket += 'Adresse: ' + order.customer_address + '\n';
+    // === CUSTOMER ===
+    t += ESCPOS.LEFT;
+    if (order.customer_name) {
+        t += ESCPOS.BOLD_ON + 'Client: ' + ESCPOS.BOLD_OFF + order.customer_name + '\n';
     }
+    if (order.customer_phone) t += 'Tel: ' + order.customer_phone + '\n';
+    if (order.customer_address) t += 'Adresse: ' + order.customer_address + '\n';
+    if (order.customer_notes) t += 'Note: ' + order.customer_notes + '\n';
+    t += LINE;
 
-    if (template.showCustomerNotes && order.customer_notes) {
-        ticket += '\n';
-        ticket += ESCPOS.BOLD_ON;
-        ticket += '📝 Note: ';
-        ticket += ESCPOS.BOLD_OFF;
-        ticket += order.customer_notes + '\n';
-    }
-
-    ticket += LINE;
-
-    // Items
-    ticket += ESCPOS.BOLD_ON;
-    if (isKitchen) ticket += ESCPOS.DOUBLE_HEIGHT;
-    ticket += 'ARTICLES:\n';
-    if (isKitchen) ticket += ESCPOS.NORMAL_SIZE;
-    ticket += ESCPOS.BOLD_OFF;
+    // === ITEMS with prices ===
+    t += ESCPOS.LEFT;
+    t += ESCPOS.BOLD_ON + ' QT  DESIGNATION              P.U   TTC\n' + ESCPOS.BOLD_OFF;
+    t += LINE;
 
     const items = Array.isArray(order.items) ? order.items : [];
-    items.forEach((cartItem) => {
-        const productName = cartItem.item?.name || cartItem.name || 'Produit';
-        const quantity = cartItem.quantity || 1;
-        const price = cartItem.totalPrice || cartItem.calculatedPrice || cartItem.price || 0;
+    items.forEach((ci) => {
+        const name = ci.item?.name || ci.name || 'Produit';
+        const qty = ci.quantity || 1;
+        const price = ci.totalPrice || ci.calculatedPrice || ci.price || 0;
+        const unitPrice = qty > 0 ? (price / qty) : price;
 
-        ticket += ESCPOS.BOLD_ON;
-        if (isKitchen) {
-            ticket += ESCPOS.DOUBLE_HEIGHT;
-            ticket += `${quantity}x ${productName}\n`;
-            ticket += ESCPOS.NORMAL_SIZE;
-        } else {
-            ticket += `${quantity}x ${productName}`;
-            if (template.showItemDetails) {
-                ticket += ` - ${price.toFixed(2)}€`;
-            }
-            ticket += '\n';
-        }
-        ticket += ESCPOS.BOLD_OFF;
+        // Main item line
+        t += ESCPOS.BOLD_ON;
+        t += ` ${qty}   ${name}\n`;
+        t += ESCPOS.BOLD_OFF;
+
+        // Price line (right-aligned)
+        const priceStr = `${unitPrice.toFixed(2)} ${Number(price).toFixed(2)}`;
+        t += ' '.repeat(Math.max(1, 42 - priceStr.length - 4)) + priceStr + '\n';
 
         // Customization details
-        if (template.showItemDetails) {
-            const customization = cartItem.customization;
-            if (customization) {
-                if (isKitchen) {
-                    // Kitchen: Clean, indented, multi-line details without emojis
-                    if (customization.base) ticket += `  - Base: ${customization.base}\n`;
-                    if (customization.meats?.length) ticket += `  - Viande: ${customization.meats.join(', ')}\n`;
-                    if (customization.meat) ticket += `  - Viande: ${customization.meat}\n`;
-                    if (customization.sauces?.length) ticket += `  - Sauce: ${customization.sauces.join(', ')}\n`;
-                    if (customization.sauce) ticket += `  - Sauce: ${customization.sauce}\n`;
-                    if (customization.garnitures?.length) ticket += `  - Garniture: ${customization.garnitures.join(', ')}\n`;
-                    if (customization.supplements?.length) ticket += `  - Supp: ${customization.supplements.join(', ')}\n`;
-                    if (customization.menuOption && customization.menuOption !== 'none') {
-                        const menuLabels = { 'frites': 'Frites', 'boisson': 'Boisson', 'menu': 'Menu' };
-                        ticket += `  - Option: ${menuLabels[customization.menuOption] || customization.menuOption}\n`;
-                    }
-                } else {
-                    // Counter: Compact inline details
-                    const details = [];
-                    if (customization.base) details.push(`Base ${customization.base}`);
-                    if (customization.meats?.length) details.push(`🥩 ${customization.meats.join(', ')}`);
-                    if (customization.meat) details.push(`🥩 ${customization.meat}`);
-                    if (customization.sauces?.length) details.push(`🍯 ${customization.sauces.join(', ')}`);
-                    if (customization.sauce) details.push(`🍯 ${customization.sauce}`);
-                    if (customization.garnitures?.length) details.push(`🥗 ${customization.garnitures.join(', ')}`);
-                    if (customization.supplements?.length) details.push(`➕ ${customization.supplements.join(', ')}`);
-                    if (customization.menuOption && customization.menuOption !== 'none') {
-                        const menuLabels = { 'frites': '+Frites', 'boisson': '+Boisson', 'menu': '+Menu' };
-                        details.push(menuLabels[customization.menuOption] || customization.menuOption);
-                    }
-                    if (details.length > 0) {
-                        ticket += `   ${details.join(' | ')}\n`;
-                    }
-                }
+        const c = ci.customization;
+        if (c) {
+            const details = [];
+            if (c.base) details.push(c.base);
+            if (c.meats?.length) details.push(...c.meats.map(m => 'Avec ' + m));
+            if (c.meat) details.push('Avec ' + c.meat);
+            if (c.sauces?.length) details.push(...c.sauces);
+            if (c.sauce) details.push(c.sauce);
+            if (c.garnitures?.length) details.push(...c.garnitures);
+            if (c.supplements?.length) details.push(...c.supplements);
+            if (c.removedIngredients?.length) details.push(...c.removedIngredients.map(r => 'Sans ' + r));
+            if (c.menuOption && c.menuOption !== 'none') {
+                const ml = { 'frites': 'Frite classique', 'boisson': 'Boisson', 'menu': 'Menu complet' };
+                details.push(ml[c.menuOption] || c.menuOption);
             }
-        }
-
-        // Item notes
-        if (template.showItemNotes && cartItem.customization?.note) {
-            ticket += isKitchen 
-                ? `  *** NOTE: ${cartItem.customization.note} ***\n` 
-                : `   📝 ${cartItem.customization.note}\n`;
-        }
-
-        if (isKitchen) {
-            ticket += '----------------\n';
+            if (c.drink) details.push(c.drink);
+            if (c.note) details.push('Note: ' + c.note);
+            details.forEach(d => { t += `      ${d}\n`; });
         }
     });
 
-    ticket += LINE;
+    t += LINE;
+
+    // === TVA BREAKDOWN ===
+    const totalTTC = order.total || 0;
+    const deliveryFee = order.delivery_fee || 0;
+    const subtotalTTC = (order.subtotal || totalTTC) - deliveryFee;
+    const totalHT = subtotalTTC / (1 + TVA_RATE / 100);
+    const tvaAmount = subtotalTTC - totalHT;
+
+    t += ESCPOS.LEFT;
+    t += `NB LIGNES : ${items.length}\n`;
+    t += LINE;
+
+    // TVA table
+    t += ESCPOS.BOLD_ON;
+    t += ' Code  TAUX    HT      TVA     TTC\n';
+    t += ESCPOS.BOLD_OFF;
+    t += ` (001) ${TVA_RATE}%  ${totalHT.toFixed(2)}  ${tvaAmount.toFixed(2)}  ${subtotalTTC.toFixed(2)}\n`;
+    t += LINE;
+
+    // Delivery fee
+    if (deliveryFee > 0) {
+        t += `Frais de livraison: ${deliveryFee.toFixed(2)}E\n`;
+    }
 
     // Totals
-    ticket += ESCPOS.RIGHT;
+    t += ESCPOS.RIGHT;
+    t += `TOTAL HT : ${totalHT.toFixed(2)}E\n`;
+    t += '\n';
+    t += ESCPOS.DOUBLE_HEIGHT + ESCPOS.BOLD_ON;
+    t += `TOTAL TTC : ${totalTTC.toFixed(2)}E\n`;
+    t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    t += LINE;
 
-    if (template.showSubtotal) {
-        ticket += `Sous-total: ${order.subtotal.toFixed(2)}€\n`;
+    // Payment
+    t += ESCPOS.LEFT;
+    const payLabels = { 'en_ligne': 'Carte Bancaire (en ligne)', 'cb': 'Carte Bancaire', 'especes': 'Especes' };
+    const payLabel = payLabels[order.payment_method] || order.payment_method || '';
+    const isPaid = order.payment_method === 'en_ligne';
+
+    if (isPaid) {
+        t += ESCPOS.CENTER + ESCPOS.BOLD_ON;
+        t += '*** COMMANDE PAYEE ***\n';
+        t += ESCPOS.BOLD_OFF;
+        t += `Paiement: ${payLabel}\n`;
+        t += `Montant: ${totalTTC.toFixed(2)}E\n`;
+    } else {
+        t += ESCPOS.CENTER + ESCPOS.DOUBLE_HEIGHT + ESCPOS.BOLD_ON;
+        t += 'A PAYER\n';
+        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+        t += `Mode: ${payLabel}\n`;
+        t += `Montant: ${totalTTC.toFixed(2)}E\n`;
+    }
+    t += LINE;
+
+    // Loyalty
+    if (loyaltyText) {
+        t += loyaltyText + '\n';
+        t += LINE;
+    } else {
+        t += ESCPOS.CENTER + ESCPOS.BOLD_ON;
+        t += 'CARTE FIDELITE\n';
+        t += ESCPOS.BOLD_OFF;
+        t += 'Achetez 9 produits\n';
+        t += '= 10eme GRATUIT (10E)!\n';
+        t += LINE;
     }
 
-    if (template.showTva) {
-        ticket += `TVA (10%): ${order.tva.toFixed(2)}€\n`;
-    }
-
-    if (template.showDeliveryFee && order.delivery_fee > 0) {
-        ticket += `Livraison: ${order.delivery_fee.toFixed(2)}€\n`;
-    }
-
-    if (template.showTotal) {
-        ticket += ESCPOS.DOUBLE_HEIGHT;
-        ticket += ESCPOS.BOLD_ON;
-        ticket += `TOTAL: ${order.total.toFixed(2)}€\n`;
-        ticket += ESCPOS.NORMAL_SIZE;
-        ticket += ESCPOS.BOLD_OFF;
-    }
-
-    ticket += ESCPOS.CENTER;
-    ticket += '\n';
-
-    // Payment status
-    if (template.showPaymentMethod || template.showPaymentStatus) {
-        const paymentLabels = {
-            'en_ligne': { label: 'PAYÉE ✓', paid: true },
-            'cb': { label: 'CB (À PAYER)', paid: false },
-            'especes': { label: 'ESPÈCES (À PAYER)', paid: false }
-        };
-        const payment = paymentLabels[order.payment_method] || { label: order.payment_method, paid: false };
-
-        if (payment.paid) {
-            ticket += ESCPOS.BOLD_ON;
-            ticket += '*** COMMANDE PAYÉE ***\n';
-            ticket += ESCPOS.BOLD_OFF;
-        } else {
-            ticket += ESCPOS.DOUBLE_HEIGHT;
-            ticket += ESCPOS.BOLD_ON;
-            ticket += `À PAYER: ${payment.label}\n`;
-            ticket += ESCPOS.NORMAL_SIZE;
-            ticket += ESCPOS.BOLD_OFF;
+    // Pizza credits
+    const creditsSaved = order.pizza_credits_saved || 0;
+    const creditsRemaining = order.pizza_credits_remaining || 0;
+    if (creditsSaved > 0 || creditsRemaining > 0) {
+        t += ESCPOS.CENTER + ESCPOS.BOLD_ON;
+        t += '*** PIZZAS EN RESERVE ***\n' + ESCPOS.BOLD_OFF;
+        if (creditsSaved > 0) t += `Pizza sauvegardee: ${creditsSaved}\n`;
+        if (creditsRemaining > 0) {
+            t += ESCPOS.BOLD_ON + `TOTAL EN RESERVE: ${creditsRemaining}\n` + ESCPOS.BOLD_OFF;
         }
-    }
-
-    ticket += LINE;
-
-    // Stamp Card Section (if loyalty info available from order)
-    // Note: This would need loyalty info to be passed with the order
-    // For now, we add a loyalty reminder
-    ticket += ESCPOS.CENTER;
-    ticket += ESCPOS.BOLD_ON;
-    ticket += 'CARTE FIDELITE\n';
-    ticket += ESCPOS.BOLD_OFF;
-    ticket += 'Achetez 9 produits\n';
-    ticket += '= 10ème GRATUIT (10€)!\n';
-    ticket += LINE;
-
-    // Pizza Credits Section (if any)
-    const pizzaCreditsSaved = order.pizza_credits_saved || 0;
-    const pizzaCreditsRemaining = order.pizza_credits_remaining || 0;
-    if (pizzaCreditsSaved > 0 || pizzaCreditsRemaining > 0) {
-        ticket += ESCPOS.CENTER;
-        ticket += ESCPOS.BOLD_ON;
-        ticket += '*** PIZZAS EN RESERVE ***\n';
-        ticket += ESCPOS.BOLD_OFF;
-        if (pizzaCreditsSaved > 0) {
-            ticket += `Pizza sauvegardee: ${pizzaCreditsSaved}\n`;
-        }
-        if (pizzaCreditsRemaining > 0) {
-            ticket += ESCPOS.BOLD_ON;
-            ticket += `TOTAL EN RESERVE: ${pizzaCreditsRemaining}\n`;
-            ticket += ESCPOS.BOLD_OFF;
-        }
-        ticket += 'Valable sans limite de temps!\n';
-        ticket += LINE;
+        t += 'Valable sans limite de temps!\n';
+        t += LINE;
     }
 
     // Footer
-    if (template.footer) {
-        ticket += template.footer.replace(/\\n/g, '\n');
-    }
-    ticket += '\n\n';
-    ticket += ESCPOS.FEED;
-    ticket += ESCPOS.PARTIAL_CUT;
+    t += ESCPOS.CENTER;
+    t += '\nTwin Pizza - Entreprise individuelle\n';
+    t += 'SIRET: 942 617 358 00018\n';
+    t += 'TVA: FR28942617358\n';
+    t += '\n';
+    t += 'Merci de votre visite!\n';
+    t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
-    // Convert all text to CP1252 encoding for proper French character display
-    return convertToCP1252(ticket);
+    return convertToCP1252(t);
+}
+
+// Legacy wrapper for backward compatibility (HACCP endpoints etc.)
+function formatOrderForPrint(order, isKitchen = false) {
+    return isKitchen ? formatKitchenTicket(order) : formatCounterTicket(order, '');
 }
 
 // Send data to printer via TCP
@@ -512,7 +534,7 @@ function sendToPrinter(data, targetIp) {
     return new Promise((resolve, reject) => {
         const socket = new Socket();
 
-        socket.setTimeout(10000); // 10 second timeout
+        socket.setTimeout(3000); // 3 second timeout (LAN printers respond in <100ms)
 
         socket.on('timeout', () => {
             socket.destroy();
@@ -537,88 +559,55 @@ function sendToPrinter(data, targetIp) {
     });
 }
 
-// Send data to USB printer via PowerShell raw printing
-async function sendToUSBPrinter(data, printerName) {
-    const tempFile = join(tmpdir(), `ticket_${Date.now()}.bin`);
-    const scriptPath = join(__dirname, 'print-raw.ps1');
-
-    try {
-        writeFileSync(tempFile, data, 'binary');
-        execSync(
-            `powershell -ExecutionPolicy Bypass -File "${scriptPath}" -PrinterName "${printerName}" -FilePath "${tempFile}"`,
-            { windowsHide: true, timeout: 15000 }
-        );
-        console.log(`✅ Printed to USB printer: ${printerName}`);
-        return true;
-    } catch (err) {
-        console.error(`❌ USB print failed on ${printerName}:`, err.message);
-        return false;
-    } finally {
-        try { unlinkSync(tempFile); } catch(e) {}
+// Print to a single printer with retry logic
+async function printToSinglePrinter(data, ip, orderLabel) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            console.log(`🖨️  Attempt ${attempt}/${MAX_RETRIES} → ${ip} [${orderLabel}]`);
+            await sendToPrinter(data, ip);
+            console.log(`✅ Printed on ${ip} [${orderLabel}]`);
+            return true;
+        } catch (error) {
+            console.error(`❌ Attempt ${attempt} failed on ${ip}: ${error.message}`);
+            if (attempt < MAX_RETRIES) {
+                await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+            }
+        }
     }
+    console.error(`❌ All ${MAX_RETRIES} attempts failed on ${ip} [${orderLabel}]`);
+    return false;
 }
 
-// Print with retry logic - sends to ALL printers (network + USB)
+// Print with retry logic — prints BOTH tickets to ALL printers
+// 1st ticket: KITCHEN (bold items, no prices)
+// 2nd ticket: COUNTER/CUSTOMER (full receipt with SIRET, TVA, prices)
 async function printWithRetry(order, loyaltyText) {
-    let anyPrinted = false;
-
-    // === NETWORK PRINTERS (KITCHEN) ===
-    if (PRINTER_IPS.length > 0) {
-        let kitchenData = formatOrderForPrint(order, true);
-        
-        for (const ip of PRINTER_IPS) {
-            if (!ip) continue;
-            let printSuccess = false;
-
-            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-                try {
-                    console.log(`🖨️  Print attempt ${attempt}/${MAX_RETRIES} for order ${order.order_number} to ${ip} (Kitchen)...`);
-                    await sendToPrinter(kitchenData, ip);
-                    console.log(`✅ Order ${order.order_number} printed successfully on ${ip}!`);
-                    printSuccess = true;
-                    anyPrinted = true;
-                    break;
-                } catch (error) {
-                    console.error(`❌ Attempt ${attempt} failed on ${ip}:`, error.message);
-
-                    if (attempt < MAX_RETRIES) {
-                        console.log(`⏳ Waiting ${RETRY_DELAY_MS / 1000}s before retry on ${ip}...`);
-                        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
-                    }
-                }
-            }
-            
-            if (!printSuccess) {
-                console.error(`❌ Failed to print order ${order.order_number} on ${ip} after ${MAX_RETRIES} attempts`);
-            }
-        }
+    if (PRINTER_IPS.length === 0) {
+        console.error('❌ No printers configured');
+        return false;
     }
 
-    // === USB PRINTER (COUNTER - STAR TSP) ===
-    if (USB_PRINTER_NAME) {
-        let counterData = formatOrderForPrint(order, false);
-        
-        // Inject loyalty text before the cut/footer if we have it
-        if (loyaltyText) {
-            const cutIndex = counterData.lastIndexOf(ESCPOS.PARTIAL_CUT);
-            if (cutIndex !== -1) {
-                counterData = counterData.substring(0, cutIndex) +
-                    ESCPOS.CENTER + '--------------------------------\n' +
-                    loyaltyText +
-                    '\n\n' +
-                    ESCPOS.PARTIAL_CUT;
-            }
-        }
+    const kitchenData = formatKitchenTicket(order);
+    const counterData = formatCounterTicket(order, loyaltyText || '');
 
-        console.log(`🖨️  Printing order ${order.order_number} to USB printer: ${USB_PRINTER_NAME} (Counter)...`);
-        const usbSuccess = await sendToUSBPrinter(counterData, USB_PRINTER_NAME);
-        if (usbSuccess) {
-            anyPrinted = true;
-        }
-    }
+    // Print kitchen ticket first (all printers in parallel)
+    console.log(`🖨️  Printing KITCHEN ticket #${order.order_number}...`);
+    const kitchenResults = await Promise.allSettled(
+        PRINTER_IPS.map(ip => printToSinglePrinter(kitchenData, ip, `#${order.order_number} CUISINE`))
+    );
+    const kitchenOk = kitchenResults.some(r => r.status === 'fulfilled' && r.value === true);
 
-    // Return true as long as AT LEAST ONE printer successfully printed
-    return anyPrinted;
+    // Small delay to let the printer cut paper
+    await new Promise(r => setTimeout(r, 800));
+
+    // Print counter/customer ticket (all printers in parallel)
+    console.log(`🖨️  Printing COUNTER ticket #${order.order_number}...`);
+    const counterResults = await Promise.allSettled(
+        PRINTER_IPS.map(ip => printToSinglePrinter(counterData, ip, `#${order.order_number} CAISSE`))
+    );
+    const counterOk = counterResults.some(r => r.status === 'fulfilled' && r.value === true);
+
+    return kitchenOk || counterOk;
 }
 
 // Handle new order
@@ -935,40 +924,11 @@ async function handleHACCPPrint(job) {
         });
     }
 
-    // Try printing with retries
-    let anyPrinted = false;
-
-    for (let attempt = 1; attempt <= HACCP_RETRY_COUNT; attempt++) {
-        // Try network printers
-        for (const ip of PRINTER_IPS) {
-            if (!ip) continue;
-            try {
-                await sendToPrinter(ticketData, ip);
-                console.log(`✅ ${job.product_name} printed on ${ip} (attempt ${attempt})`);
-                anyPrinted = true;
-                break; // Stop trying other IPs once one works
-            } catch (err) {
-                console.error(`❌ ${job.product_name} failed on ${ip} (attempt ${attempt}): ${err.message}`);
-            }
-        }
-
-        if (anyPrinted) break;
-
-        // Try USB printer as fallback
-        if (USB_PRINTER_NAME) {
-            const usbOk = await sendToUSBPrinter(ticketData, USB_PRINTER_NAME);
-            if (usbOk) {
-                anyPrinted = true;
-                break;
-            }
-        }
-
-        // Wait before retrying
-        if (!anyPrinted && attempt < HACCP_RETRY_COUNT) {
-            console.log(`⏳ Retry ${attempt + 1}/${HACCP_RETRY_COUNT} in ${HACCP_RETRY_DELAY / 1000}s...`);
-            await new Promise(r => setTimeout(r, HACCP_RETRY_DELAY));
-        }
-    }
+    // Try printing — all network printers in parallel
+    const results = await Promise.allSettled(
+        PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, job.product_name))
+    );
+    let anyPrinted = results.some(r => r.status === 'fulfilled' && r.value === true);
 
     // Mark as printed in DB
     if (anyPrinted) {
@@ -996,24 +956,17 @@ async function handleDisconnect() {
     }, RECONNECT_DELAY);
 }
 
-// Heartbeat to check connection
+// Heartbeat — check channel state instead of querying DB
 function startHeartbeat() {
-    setInterval(async () => {
-        try {
-            // Simple query to test connection
-            const { error } = await supabase.from('orders').select('id').limit(1);
-            if (error) {
-                console.error('💔 Heartbeat failed:', error.message);
-                handleDisconnect();
-            } else {
-                const now = new Date().toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris' });
-                console.log(`💚 Heartbeat OK - ${now}`);
-            }
-        } catch (err) {
-            console.error('💔 Heartbeat error:', err.message);
+    setInterval(() => {
+        const now = new Date().toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris' });
+        if (channel && channel.state === 'joined') {
+            console.log(`💚 Heartbeat OK - ${now}`);
+        } else {
+            console.error(`💔 Heartbeat: channel not joined (state: ${channel?.state || 'null'}) - ${now}`);
             handleDisconnect();
         }
-    }, HEARTBEAT_INTERVAL);
+    }, 60000); // Check every 60s
 }
 
 // ============================================
@@ -1191,16 +1144,12 @@ function setupHttpServer() {
             console.log(`   Product: ${data.productName}`);
             console.log(`   Category: ${data.categoryName}`);
 
+
             const ticketData = formatHACCPTicket(data);
-            let success = false;
-            for (const ip of PRINTER_IPS) {
-                if (!ip) continue;
-                try { await sendToPrinter(ticketData, ip); success = true; } catch(e) {}
-            }
-            if (USB_PRINTER_NAME) {
-                const usbOk = await sendToUSBPrinter(ticketData, USB_PRINTER_NAME);
-                if (usbOk) success = true;
-            }
+            const results = await Promise.allSettled(
+                PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, data.productName))
+            );
+            const success = results.some(r => r.status === 'fulfilled' && r.value === true);
 
             if (success) {
                 console.log('✅ HACCP ticket printed successfully');
@@ -1238,17 +1187,12 @@ function setupHttpServer() {
 
             let printed = 0;
             for (let i = 0; i < numCopies; i++) {
-                let ok = false;
-                for (const ip of PRINTER_IPS) {
-                    if (!ip) continue;
-                    try { await sendToPrinter(ticketData, ip); ok = true; } catch(e) {}
-                }
-                if (USB_PRINTER_NAME) {
-                    const usbOk = await sendToUSBPrinter(ticketData, USB_PRINTER_NAME);
-                    if (usbOk) ok = true;
-                }
+                const results = await Promise.allSettled(
+                    PRINTER_IPS.map(ip => sendToPrinter(ticketData, ip))
+                );
+                const ok = results.some(r => r.status === 'fulfilled');
                 if (ok) printed++;
-                if (i < numCopies - 1) await new Promise(r => setTimeout(r, 500));
+                if (i < numCopies - 1) await new Promise(r => setTimeout(r, 300));
             }
 
             if (printed > 0) {
@@ -1627,12 +1571,13 @@ function setupHttpServer() {
 async function startServer() {
     console.log(`
 ╔════════════════════════════════════════════════════════╗
-║           🍕 TWIN PIZZA PRINT SERVER 🍕               ║
+║        🍕 TWIN PIZZA PRINT SERVER v2.0 🍕             ║
 ╠════════════════════════════════════════════════════════╣
-║  Printers: ${PRINTER_IPS.join(', ').padEnd(14)} Port: ${PRINTER_PORT.toString().padEnd(6)}       ║
-║  Loading settings from database...                     ║
-║  Auto-reconnect: ENABLED                               ║
-║  Heartbeat: Every ${HEARTBEAT_INTERVAL / 1000}s                                  ║
+║  Printers: ${PRINTER_IPS.join(', ').padEnd(42)}║
+║  Port: ${PRINTER_PORT.toString().padEnd(47)}║
+║  Mode: PARALLEL dispatch | TCP timeout: 3s           ║
+║  Retries: ${MAX_RETRIES} attempts, ${(RETRY_DELAY_MS/1000)}s delay                          ║
+║  Auto-reconnect: ENABLED                              ║
 ╚════════════════════════════════════════════════════════╝
 `);
 

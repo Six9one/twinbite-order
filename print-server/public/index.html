@@ -3,201 +3,584 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Twin Pizza - Contrôle Système</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Twin Pizza — Centre de Contrôle</title>
+    <meta name="description" content="Dashboard de contrôle du système Twin Pizza — Imprimante et WhatsApp Bot">
     <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .log-line { font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 12px; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1f2937; }
-        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
-        .btn-control {
-            transition: all 0.2s;
-            padding: 6px 12px;
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-deep: #0a0e1a;
+            --bg-card: rgba(15, 23, 42, 0.6);
+            --bg-glass: rgba(30, 41, 69, 0.45);
+            --border-glass: rgba(100, 120, 180, 0.15);
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --green: #22c55e;
+            --green-glow: rgba(34, 197, 94, 0.4);
+            --red: #ef4444;
+            --red-glow: rgba(239, 68, 68, 0.4);
+            --blue: #3b82f6;
+            --blue-glow: rgba(59, 130, 246, 0.3);
+            --amber: #f59e0b;
+            --amber-glow: rgba(245, 158, 11, 0.3);
+            --purple: #8b5cf6;
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, rgba(59,130,246,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 100%, rgba(34,197,94,0.04) 0%, transparent 40%);
+        }
+
+        /* === HEADER === */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 28px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-glass);
+            z-index: 10;
+        }
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .logo {
+            width: 44px; height: 44px;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 16px rgba(34,197,94,0.3);
+        }
+        .header-title { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+        .header-subtitle { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+        .header-right { display: flex; align-items: center; gap: 20px; }
+        .clock {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: var(--text-secondary);
+            background: rgba(30,41,69,0.6);
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border-glass);
+        }
+        .version-badge {
+            font-size: 11px;
+            padding: 4px 10px;
             border-radius: 6px;
+            background: rgba(139,92,246,0.15);
+            color: var(--purple);
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+
+        /* === STATS BAR === */
+        .stats-bar {
+            display: flex;
+            gap: 12px;
+            padding: 14px 28px;
+            border-bottom: 1px solid var(--border-glass);
+            background: rgba(15,23,42,0.3);
+        }
+        .stat-card {
+            flex: 1;
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .stat-card:hover {
+            border-color: rgba(100,120,180,0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .stat-icon {
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+        .stat-icon.green { background: rgba(34,197,94,0.15); }
+        .stat-icon.blue { background: rgba(59,130,246,0.15); }
+        .stat-icon.amber { background: rgba(245,158,11,0.15); }
+        .stat-icon.purple { background: rgba(139,92,246,0.15); }
+        .stat-value { font-size: 20px; font-weight: 700; line-height: 1; }
+        .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+
+        /* === MAIN PANELS === */
+        .main { flex: 1; display: flex; overflow: hidden; }
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .panel + .panel { border-left: 1px solid var(--border-glass); }
+
+        /* Panel Header */
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-glass);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-header.green-accent { background: linear-gradient(135deg, rgba(34,197,94,0.08), transparent 60%); }
+        .panel-header.blue-accent { background: linear-gradient(135deg, rgba(59,130,246,0.08), transparent 60%); }
+
+        .panel-info { display: flex; align-items: center; gap: 12px; }
+        .panel-icon {
+            width: 42px; height: 42px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .panel-icon.green { background: rgba(34,197,94,0.15); color: var(--green); }
+        .panel-icon.blue { background: rgba(59,130,246,0.15); color: var(--blue); }
+        .panel-title { font-size: 16px; font-weight: 700; }
+
+        .status-indicator {
+            display: flex; align-items: center; gap: 7px;
+            margin-top: 4px;
+        }
+        .status-dot {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        .status-dot.online {
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green-glow), 0 0 20px var(--green-glow);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .status-dot.offline { background: var(--text-muted); }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .status-text { font-size: 12px; font-weight: 500; }
+        .status-text.online { color: var(--green); }
+        .status-text.offline { color: var(--text-muted); }
+
+        /* Buttons */
+        .btn-group { display: flex; gap: 6px; }
+        .btn {
+            padding: 7px 14px;
+            border-radius: 8px;
             font-size: 12px;
             font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-family: inherit;
         }
-        .btn-start { background: #059669; color: white; }
-        .btn-start:hover { background: #047857; }
-        .btn-stop { background: #dc2626; color: white; }
-        .btn-stop:hover { background: #b91c1c; }
-        .btn-restart { background: #2563eb; color: white; }
-        .btn-restart:hover { background: #1d4ed8; }
-        .btn-control:disabled { opacity: 0.5; cursor: not-allowed; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; }
-        .status-online { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
-        .status-offline { background: #6b7280; }
+        .btn:active { transform: scale(0.96); }
+        .btn-start { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+        .btn-start:hover { background: rgba(34,197,94,0.25); box-shadow: 0 0 16px rgba(34,197,94,0.15); }
+        .btn-stop { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+        .btn-stop:hover { background: rgba(239,68,68,0.22); box-shadow: 0 0 16px rgba(239,68,68,0.15); }
+        .btn-restart { background: rgba(59,130,246,0.12); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+        .btn-restart:hover { background: rgba(59,130,246,0.22); box-shadow: 0 0 16px rgba(59,130,246,0.15); }
+
+        /* Log Filter Bar */
+        .log-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border-glass);
+            background: rgba(15,23,42,0.4);
+        }
+        .log-search {
+            flex: 1;
+            background: rgba(30,41,69,0.5);
+            border: 1px solid var(--border-glass);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .log-search:focus { border-color: rgba(59,130,246,0.4); }
+        .log-search::placeholder { color: var(--text-muted); }
+        .filter-btn {
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid var(--border-glass);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .filter-btn.active { background: rgba(59,130,246,0.15); color: var(--blue); border-color: rgba(59,130,246,0.3); }
+        .filter-btn:hover { border-color: rgba(100,120,180,0.3); }
+        .clear-btn {
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid rgba(239,68,68,0.2);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .clear-btn:hover { color: var(--red); border-color: rgba(239,68,68,0.4); }
+
+        /* Logs */
+        .log-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+            background: rgba(5,10,20,0.4);
+        }
+        .log-container::-webkit-scrollbar { width: 6px; }
+        .log-container::-webkit-scrollbar-track { background: transparent; }
+        .log-container::-webkit-scrollbar-thumb { background: rgba(100,120,180,0.2); border-radius: 3px; }
+        .log-container::-webkit-scrollbar-thumb:hover { background: rgba(100,120,180,0.35); }
+
+        .log-line {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 5px 10px;
+            border-radius: 6px;
+            transition: background 0.15s;
+            line-height: 1.5;
+        }
+        .log-line:hover { background: rgba(255,255,255,0.03); }
+        .log-time {
+            color: var(--text-muted);
+            font-size: 11px;
+            min-width: 60px;
+            flex-shrink: 0;
+            user-select: none;
+            padding-top: 1px;
+        }
+        .log-msg { word-break: break-word; }
+        .log-msg.info { color: var(--text-secondary); }
+        .log-msg.error { color: var(--red); }
+        .log-msg.success { color: var(--green); }
+        .log-msg.warning { color: var(--amber); }
+        .log-msg.highlight {
+            color: #fff;
+            font-weight: 600;
+            background: linear-gradient(90deg, rgba(59,130,246,0.15), transparent);
+            padding: 6px 10px;
+            margin: 2px -10px;
+            border-radius: 6px;
+            border-left: 3px solid var(--blue);
+        }
+        .log-line.error-line {
+            background: rgba(239,68,68,0.06);
+            border-left: 3px solid var(--red);
+            margin-left: -3px;
+        }
+
+        .log-empty {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            padding: 40px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main { flex-direction: column; }
+            .panel + .panel { border-left: none; border-top: 1px solid var(--border-glass); }
+            .stats-bar { flex-wrap: wrap; }
+            .stat-card { min-width: calc(50% - 6px); }
+            .header { padding: 12px 16px; }
+            .stats-bar { padding: 10px 16px; }
+            .btn-group { flex-wrap: wrap; }
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-white h-screen flex flex-col overflow-hidden">
+<body>
 
     <!-- Header -->
-    <header class="bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700 p-4 flex justify-between items-center shadow-xl z-10">
-        <div class="flex items-center space-x-4">
-            <div class="h-10 w-10 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center font-bold text-white text-xl shadow-lg">🍕</div>
+    <header class="header" id="app-header">
+        <div class="header-left">
+            <div class="logo">🍕</div>
             <div>
-                <h1 class="text-xl font-bold tracking-wide">TWIN PIZZA</h1>
-                <p class="text-xs text-gray-400">Contrôle WhatsApp & Imprimante</p>
+                <div class="header-title">TWIN PIZZA</div>
+                <div class="header-subtitle">Centre de Contrôle Système</div>
             </div>
         </div>
-        <div class="flex items-center space-x-4">
-            <div class="text-sm text-gray-400 font-mono" id="clock">00:00:00</div>
+        <div class="header-right">
+            <span class="version-badge">v2.0</span>
+            <div class="clock" id="clock">00:00:00</div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-1 flex overflow-hidden">
-        
-        <!-- Left Panel: WhatsApp Bot -->
-        <div class="flex-1 flex flex-col border-r border-gray-700">
-            <!-- Panel Header with Controls -->
-            <div class="p-4 bg-gradient-to-r from-green-900/30 to-gray-800/50 border-b border-gray-700">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center space-x-3">
-                        <div class="p-2 bg-green-500/20 rounded-lg">
-                            <svg class="w-7 h-7 text-green-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.882 3.805.882 4.301 0 7.798-3.498 7.798-7.798 0-4.301-3.497-7.798-7.797-7.798zm6.602 4.091c.081 2.155-1.071 4.225-3.058 5.253-1.896.98-4.217.653-5.769-.769-1.551-1.422-1.88-3.238-1.002-4.939l-.004-.004c.007-.014.07-.123.151-.233.157-.215.395-.453.681-.531.026.002.348-.112.551.173.075.105.166.368.261.64.098.283.18.519.191.564.062.247.018.423-.099.643-.116.216-.299.39-.524.591-.018.016-.038.033-.06.05-.286.257-.04.606.097.808 1.411 2.083 3.69 2.148 4.218 2.091.077-.008.156-.006.236.007.135.021.32-.089.467-.234.148-.146.331-.418.425-.689a.44.44 0 0 1 .432-.303c.312.012.721.203 1.393.535.597.296.969.492 1.01.52.122.082.203.188.225.217.135.176.109.522-.056.816z"/></svg>
-                        </div>
-                        <div>
-                            <h2 class="font-bold text-lg text-white">WhatsApp Bot</h2>
-                            <div class="flex items-center space-x-2 mt-1">
-                                <div id="bot-status-dot" class="status-dot status-offline"></div>
-                                <span id="bot-status-text" class="text-xs text-gray-400">Arrêté</span>
-                            </div>
-                        </div>
+    <!-- Stats Bar -->
+    <div class="stats-bar" id="stats-bar">
+        <div class="stat-card">
+            <div class="stat-icon green">🖨️</div>
+            <div>
+                <div class="stat-value" id="stat-printed">0</div>
+                <div class="stat-label">Imprimés Aujourd'hui</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon blue">⏱️</div>
+            <div>
+                <div class="stat-value" id="stat-uptime">0m</div>
+                <div class="stat-label">Temps en ligne</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon amber">📥</div>
+            <div>
+                <div class="stat-value" id="stat-last-print">—</div>
+                <div class="stat-label">Dernière impression</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon purple">📊</div>
+            <div>
+                <div class="stat-value" id="stat-errors">0</div>
+                <div class="stat-label">Erreurs</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Panels -->
+    <main class="main">
+
+        <!-- WhatsApp Bot Panel -->
+        <div class="panel" id="panel-bot">
+            <div class="panel-header green-accent">
+                <div class="panel-info">
+                    <div class="panel-icon green">
+                        <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.882 3.805.882 4.301 0 7.798-3.498 7.798-7.798 0-4.301-3.497-7.798-7.797-7.798z"/></svg>
                     </div>
-                    <div class="flex space-x-2">
-                        <button onclick="controlService('bot', 'start')" class="btn-control btn-start">▶ Démarrer</button>
-                        <button onclick="controlService('bot', 'stop')" class="btn-control btn-stop">⬛ Arrêter</button>
-                        <button onclick="controlService('bot', 'restart')" class="btn-control btn-restart">🔄 Relancer</button>
+                    <div>
+                        <div class="panel-title">WhatsApp Bot</div>
+                        <div class="status-indicator">
+                            <div id="bot-dot" class="status-dot offline"></div>
+                            <span id="bot-text" class="status-text offline">Arrêté</span>
+                        </div>
                     </div>
                 </div>
+                <div class="btn-group">
+                    <button onclick="ctrl('bot','start')" class="btn btn-start">▶ Start</button>
+                    <button onclick="ctrl('bot','stop')" class="btn btn-stop">⬛ Stop</button>
+                    <button onclick="ctrl('bot','restart')" class="btn btn-restart">↻ Restart</button>
+                </div>
             </div>
-            
-            <!-- Logs -->
-            <div id="logs-bot" class="flex-1 overflow-y-auto p-3 space-y-1 bg-gray-950/50"></div>
+            <div class="log-toolbar">
+                <input type="text" class="log-search" id="search-bot" placeholder="🔍 Filtrer les logs…" oninput="filterLogs('bot')">
+                <button class="filter-btn active" data-panel="bot" data-filter="all" onclick="toggleFilter(this)">Tous</button>
+                <button class="filter-btn" data-panel="bot" data-filter="error" onclick="toggleFilter(this)">Erreurs</button>
+                <button class="filter-btn" data-panel="bot" data-filter="success" onclick="toggleFilter(this)">Succès</button>
+                <button class="clear-btn" onclick="clearLogs('bot')">✕ Vider</button>
+            </div>
+            <div class="log-container" id="logs-bot">
+                <div class="log-empty">En attente de logs…</div>
+            </div>
         </div>
 
-        <!-- Right Panel: Print Server -->
-        <div class="flex-1 flex flex-col">
-            <!-- Panel Header with Controls -->
-            <div class="p-4 bg-gradient-to-r from-blue-900/30 to-gray-800/50 border-b border-gray-700">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center space-x-3">
-                        <div class="p-2 bg-blue-500/20 rounded-lg">
-                            <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                        </div>
-                        <div>
-                            <h2 class="font-bold text-lg text-white">Serveur d'Impression</h2>
-                            <div class="flex items-center space-x-2 mt-1">
-                                <div id="printer-status-dot" class="status-dot status-offline"></div>
-                                <span id="printer-status-text" class="text-xs text-gray-400">Arrêté</span>
-                            </div>
-                        </div>
+        <!-- Print Server Panel -->
+        <div class="panel" id="panel-printer">
+            <div class="panel-header blue-accent">
+                <div class="panel-info">
+                    <div class="panel-icon blue">
+                        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                     </div>
-                    <div class="flex space-x-2">
-                        <button onclick="controlService('printer', 'start')" class="btn-control btn-start">▶ Démarrer</button>
-                        <button onclick="controlService('printer', 'stop')" class="btn-control btn-stop">⬛ Arrêter</button>
-                        <button onclick="controlService('printer', 'restart')" class="btn-control btn-restart">🔄 Relancer</button>
+                    <div>
+                        <div class="panel-title">Serveur d'Impression</div>
+                        <div class="status-indicator">
+                            <div id="printer-dot" class="status-dot offline"></div>
+                            <span id="printer-text" class="status-text offline">Arrêté</span>
+                        </div>
                     </div>
                 </div>
+                <div class="btn-group">
+                    <button onclick="ctrl('printer','start')" class="btn btn-start">▶ Start</button>
+                    <button onclick="ctrl('printer','stop')" class="btn btn-stop">⬛ Stop</button>
+                    <button onclick="ctrl('printer','restart')" class="btn btn-restart">↻ Restart</button>
+                </div>
             </div>
-            
-            <!-- Logs -->
-            <div id="logs-printer" class="flex-1 overflow-y-auto p-3 space-y-1 bg-gray-950/50"></div>
+            <div class="log-toolbar">
+                <input type="text" class="log-search" id="search-printer" placeholder="🔍 Filtrer les logs…" oninput="filterLogs('printer')">
+                <button class="filter-btn active" data-panel="printer" data-filter="all" onclick="toggleFilter(this)">Tous</button>
+                <button class="filter-btn" data-panel="printer" data-filter="error" onclick="toggleFilter(this)">Erreurs</button>
+                <button class="filter-btn" data-panel="printer" data-filter="highlight" onclick="toggleFilter(this)">Commandes</button>
+                <button class="clear-btn" onclick="clearLogs('printer')">✕ Vider</button>
+            </div>
+            <div class="log-container" id="logs-printer">
+                <div class="log-empty">En attente de logs…</div>
+            </div>
         </div>
+
     </main>
 
-    <!-- Script -->
     <script>
         const socket = io();
-        const logsBot = document.getElementById('logs-bot');
-        const logsPrinter = document.getElementById('logs-printer');
+        const startTime = Date.now();
+        let printCount = 0;
+        let errorCount = 0;
+        let lastPrintTime = null;
+        const activeFilters = { bot: 'all', printer: 'all' };
 
-        // Control service via API
-        async function controlService(service, action) {
-            try {
-                const response = await fetch(`/api/${service}/${action}`, { method: 'POST' });
-                const data = await response.json();
-                console.log(`${service} ${action}:`, data);
-            } catch (error) {
-                console.error('Error:', error);
-            }
+        // === CONTROL ===
+        async function ctrl(svc, action) {
+            try { await fetch(`/api/${svc}/${action}`, { method: 'POST' }); }
+            catch (e) { console.error(e); }
         }
 
-        // Update status indicators
-        function updateStatus(service, isOnline) {
-            const dot = document.getElementById(`${service}-status-dot`);
-            const text = document.getElementById(`${service}-status-text`);
-            
-            if (isOnline) {
-                dot.className = 'status-dot status-online';
-                text.textContent = service === 'bot' ? 'En ligne' : 'Connecté';
-                text.className = 'text-xs text-green-400';
-            } else {
-                dot.className = 'status-dot status-offline';
-                text.textContent = 'Arrêté';
-                text.className = 'text-xs text-gray-400';
-            }
+        // === STATUS ===
+        function setStatus(svc, online) {
+            const dot = document.getElementById(`${svc}-dot`);
+            const text = document.getElementById(`${svc}-text`);
+            dot.className = `status-dot ${online ? 'online' : 'offline'}`;
+            text.className = `status-text ${online ? 'online' : 'offline'}`;
+            text.textContent = online
+                ? (svc === 'bot' ? 'En ligne' : 'Connecté')
+                : 'Arrêté';
         }
 
-        function createLogElement(log) {
+        // === LOG RENDERING ===
+        function mkLog(log) {
             const div = document.createElement('div');
-            div.className = 'log-line flex items-start space-x-2 py-1 px-2 rounded hover:bg-white/5 transition-colors';
-            
-            let colorClass = 'text-gray-300';
-            
-            if (log.type === 'error') {
-                colorClass = 'text-red-400 bg-red-500/10 border-l-2 border-red-500 pl-2';
-            } else if (log.type === 'success') {
-                colorClass = 'text-green-400';
-            } else if (log.type === 'warning') {
-                colorClass = 'text-yellow-400';
-            } else if (log.type === 'highlight') {
-                colorClass = 'text-white font-bold bg-blue-600/30 border-l-2 border-blue-400 pl-2 py-2';
-            }
-            
-            div.innerHTML = `
-                <span class="text-gray-500 text-xs shrink-0 select-none w-14">${log.timestamp}</span>
-                <span class="break-words ${colorClass}">${log.message}</span>
-            `;
+            const isError = log.type === 'error';
+            div.className = `log-line${isError ? ' error-line' : ''}`;
+            div.dataset.type = log.type || 'info';
+            div.dataset.msg = (log.message || '').toLowerCase();
+            div.innerHTML = `<span class="log-time">${log.timestamp}</span><span class="log-msg ${log.type || 'info'}">${escapeHtml(log.message)}</span>`;
             return div;
         }
 
-        function appendLog(source, log) {
-            const container = source === 'bot' ? logsBot : logsPrinter;
-            const element = createLogElement(log);
-            container.appendChild(element);
-            container.scrollTop = container.scrollHeight;
+        function escapeHtml(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
         }
 
-        // Socket events
-        socket.on('history', (history) => {
-            logsBot.innerHTML = '';
-            logsPrinter.innerHTML = '';
-            history.bot.forEach(log => appendLog('bot', log));
-            history.printer.forEach(log => appendLog('printer', log));
+        function addLog(source, log) {
+            const el = document.getElementById(`logs-${source}`);
+            // Remove empty placeholder
+            const empty = el.querySelector('.log-empty');
+            if (empty) empty.remove();
+
+            const node = mkLog(log);
+            el.appendChild(node);
+
+            // Apply current filter
+            applyFilterToNode(source, node);
+
+            // Auto-scroll
+            el.scrollTop = el.scrollHeight;
+
+            // Track stats
+            if (log.type === 'error') {
+                errorCount++;
+                document.getElementById('stat-errors').textContent = errorCount;
+            }
+            if (log.message && (log.message.includes('printed') || log.message.includes('imprimé'))) {
+                printCount++;
+                lastPrintTime = new Date();
+                document.getElementById('stat-printed').textContent = printCount;
+                document.getElementById('stat-last-print').textContent = lastPrintTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            }
+        }
+
+        // === FILTERS ===
+        function toggleFilter(btn) {
+            const panel = btn.dataset.panel;
+            const filter = btn.dataset.filter;
+            // Deactivate siblings
+            btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeFilters[panel] = filter;
+            applyAllFilters(panel);
+        }
+
+        function filterLogs(panel) {
+            applyAllFilters(panel);
+        }
+
+        function applyAllFilters(panel) {
+            const search = document.getElementById(`search-${panel}`).value.toLowerCase();
+            const filter = activeFilters[panel];
+            const container = document.getElementById(`logs-${panel}`);
+            container.querySelectorAll('.log-line').forEach(node => {
+                let show = true;
+                if (filter !== 'all' && node.dataset.type !== filter) show = false;
+                if (search && !node.dataset.msg.includes(search)) show = false;
+                node.style.display = show ? '' : 'none';
+            });
+        }
+
+        function applyFilterToNode(panel, node) {
+            const search = document.getElementById(`search-${panel}`).value.toLowerCase();
+            const filter = activeFilters[panel];
+            let show = true;
+            if (filter !== 'all' && node.dataset.type !== filter) show = false;
+            if (search && !node.dataset.msg.includes(search)) show = false;
+            node.style.display = show ? '' : 'none';
+        }
+
+        function clearLogs(panel) {
+            const el = document.getElementById(`logs-${panel}`);
+            el.innerHTML = '<div class="log-empty">Logs vidés.</div>';
+        }
+
+        // === SOCKET EVENTS ===
+        socket.on('history', (h) => {
+            ['bot', 'printer'].forEach(s => {
+                const el = document.getElementById(`logs-${s}`);
+                el.innerHTML = '';
+                (h[s] || []).forEach(log => addLog(s, log));
+            });
         });
 
-        socket.on('log', (data) => {
-            appendLog(data.source, data);
-        });
+        socket.on('log', (data) => addLog(data.source, data));
 
         socket.on('status', (data) => {
-            updateStatus('bot', data.bot);
-            updateStatus('printer', data.printer);
+            setStatus('bot', data.bot);
+            setStatus('printer', data.printer);
         });
 
-        // Request initial status
         socket.emit('getStatus');
 
-        // Clock
-        setInterval(() => {
+        // === CLOCK + UPTIME ===
+        function updateClock() {
             document.getElementById('clock').textContent = new Date().toLocaleTimeString('fr-FR');
-        }, 1000);
+            const mins = Math.floor((Date.now() - startTime) / 60000);
+            const h = Math.floor(mins / 60);
+            document.getElementById('stat-uptime').textContent = h > 0 ? `${h}h${(mins%60).toString().padStart(2,'0')}` : `${mins}m`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
     </script>
 </body>
 </html>
