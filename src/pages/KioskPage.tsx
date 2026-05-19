@@ -29,7 +29,7 @@ import { MilkshakeWizard } from '@/components/wizards/MilkshakeWizard';
 // Data
 import { crepes, gaufres, boissons, frites as staticFrites, croques as staticCroques } from '@/data/menu';
 import { useProductsByCategory } from '@/hooks/useProducts';
-import { calculateTVA } from '@/utils/promotions';
+import { calculateTVA, applyPizzaPromotions } from '@/utils/promotions';
 
 type KioskScreen = 'welcome' | 'orderType' | 'name' | 'menu' | 'wizard' | 'upsell' | 'loyalty' | 'processing' | 'success';
 
@@ -261,8 +261,13 @@ function KioskContent() {
             const newOrderNumber = await generateOrderNumber();
             setOrderNumber(newOrderNumber);
 
-            // Calculate totals
-            const total = getTotal();
+            // Calculate totals with pizza promotion applied
+            const pizzaItems = cart.filter(item => item.item.category === 'pizzas');
+            const otherItems = cart.filter(item => item.item.category !== 'pizzas');
+            const pizzaPromo = applyPizzaPromotions(pizzaItems, orderType);
+            const otherTotal = otherItems.reduce((sum, item) =>
+                sum + (item.calculatedPrice || item.item.price) * item.quantity, 0);
+            const total = pizzaPromo.discountedTotal + otherTotal;
             const { ht, tva } = calculateTVA(total);
 
             // Create order in database

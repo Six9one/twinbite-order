@@ -1,7 +1,9 @@
 import { useOrder } from '@/context/OrderContext';
+import { applyPizzaPromotions } from '@/utils/promotions';
+import { PizzaCustomization } from '@/types/order';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Minus, Plus, Trash2, ShoppingCart } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingCart, Gift } from 'lucide-react';
 
 interface KioskCartProps {
     customerName: string;
@@ -10,9 +12,19 @@ interface KioskCartProps {
 }
 
 export function KioskCart({ customerName, orderType, onConfirm }: KioskCartProps) {
-    const { cart, removeFromCart, updateQuantity, getTotal, getItemCount } = useOrder();
+    const { cart, removeFromCart, updateQuantity, getItemCount } = useOrder();
     const itemCount = getItemCount();
-    const total = getTotal();
+
+    // Apply pizza promotions (1 achetée = 1 offerte for surplace/emporter)
+    const pizzaItems = cart.filter(item => item.item.category === 'pizzas');
+    const otherItems = cart.filter(item => item.item.category !== 'pizzas');
+
+    const pizzaPromo = applyPizzaPromotions(pizzaItems, orderType);
+    const otherTotal = otherItems.reduce((sum, item) =>
+        sum + (item.calculatedPrice || item.item.price) * item.quantity, 0);
+
+    const total = pizzaPromo.discountedTotal + otherTotal;
+    const savings = pizzaPromo.originalTotal - pizzaPromo.discountedTotal;
 
     return (
         <div className="h-full flex flex-col bg-slate-900/50 border-l border-white/10">
@@ -114,6 +126,24 @@ export function KioskCart({ customerName, orderType, onConfirm }: KioskCartProps
             {/* Footer with total and confirm */}
             {itemCount > 0 && (
                 <div className="p-4 border-t border-white/10 bg-gradient-to-t from-slate-900 to-transparent space-y-3">
+                    {/* Promo savings banner */}
+                    {savings > 0 && (
+                        <div className="flex items-center justify-between bg-green-500/15 border border-green-500/30 rounded-lg px-3 py-2">
+                            <div className="flex items-center gap-2 text-green-400">
+                                <Gift className="w-4 h-4" />
+                                <span className="text-xs font-semibold">{pizzaPromo.promoDescription}</span>
+                            </div>
+                            <span className="text-green-400 font-bold text-sm">-{savings.toFixed(2)}€</span>
+                        </div>
+                    )}
+                    {/* Show "add 1 more for free" hint when odd number */}
+                    {pizzaPromo.freePizzas > 0 && savings === 0 && pizzaItems.length > 0 && (
+                        <div className="bg-amber-500/15 border border-amber-500/30 rounded-lg px-3 py-2 text-center">
+                            <span className="text-amber-300 text-xs font-semibold">
+                                🍕 Ajoutez 1 pizza pour en avoir 2 au prix d'1 !
+                            </span>
+                        </div>
+                    )}
                     <div className="flex items-center justify-between">
                         <span className="text-white/70 text-sm">{itemCount} article{itemCount > 1 ? 's' : ''}</span>
                         <span className="text-2xl font-extrabold text-white">{total.toFixed(2)}€</span>
