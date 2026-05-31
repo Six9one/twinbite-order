@@ -21,6 +21,8 @@ const PRINTER_PORT = parseInt(process.env.PRINTER_PORT || '9100', 10);
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
 const SETTINGS_REFRESH_INTERVAL = 300000; // Refresh settings every 5 minutes
+const POLL_INTERVAL = 30000; // Poll for missed orders every 30 seconds
+let lastEventReceivedAt = Date.now();
 
 // Validate configuration
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -529,6 +531,152 @@ function formatOrderForPrint(order, isKitchen = false) {
     return isKitchen ? formatKitchenTicket(order) : formatCounterTicket(order, '');
 }
 
+// ============================================
+// UNIFIED TICKET — ONE single clear ticket
+// Kitchen-readable items + prices + totals
+// ============================================
+function formatUnifiedTicket(order, loyaltyText) {
+    const LINE = getLine();
+    const TVA_RATE = 10;
+    let t = '';
+    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
+
+    // === HEADER ===
+    t += ESCPOS.CENTER;
+    t += ESCPOS.DOUBLE_SIZE + ESCPOS.BOLD_ON;
+    t += 'TWIN PIZZA\n';
+    t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    t += '60 Rue Georges Clemenceau\n';
+    t += '76530 Grand-Couronne\n';
+    t += '02 32 11 26 13\n';
+    t += LINE;
+
+    // === ORDER NUMBER + TYPE ===
+    const typeLabels = { livraison: 'LIVRAISON', emporter: 'A EMPORTER', surplace: 'SUR PLACE' };
+    const typeLabel = typeLabels[order.order_type] || order.order_type?.toUpperCase() || '';
+
+    t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+    t += `#${order.order_number}  ${typeLabel}\n`;
+    t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+
+    // Date/time
+    const orderDate = new Date(order.created_at);
+    t += orderDate.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' }) + '\n';
+    t += LINE;
+
+    // Scheduled
+    if (order.is_scheduled && order.scheduled_for) {
+        const sd = new Date(order.scheduled_for);
+        t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+        t += 'PROGRAMMEE POUR:\n';
+        t += sd.toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }) + '\n';
+        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + LINE;
+    }
+
+    // === CUSTOMER ===
+    t += ESCPOS.LEFT;
+    if (order.customer_name) {
+        t += ESCPOS.BOLD_ON + 'Client: ' + ESCPOS.BOLD_OFF + order.customer_name + '\n';
+    }
+    if (order.customer_phone) t += 'Tel: ' + order.customer_phone + '\n';
+    if (order.customer_address) t += 'Adresse: ' + order.customer_address + '\n';
+    if (order.customer_notes) {
+        t += ESCPOS.BOLD_ON + '*** NOTE: ' + order.customer_notes + ' ***\n' + ESCPOS.BOLD_OFF;
+    }
+    t += LINE;
+
+    // === ITEMS — bold names + details + price ===
+    t += ESCPOS.LEFT;
+    const items = Array.isArray(order.items) ? order.items : [];
+    items.forEach((ci) => {
+        const name = (ci.item?.name || ci.name || 'Produit').toUpperCase();
+        const qty = ci.quantity || 1;
+        const price = ci.totalPrice || ci.calculatedPrice || ci.price || 0;
+
+        // Item: bold + double height with price on same line
+        t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+        t += `${qty}  ${name}\n`;
+        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+
+        // Price right-aligned
+        const priceStr = `${Number(price).toFixed(2)}E`;
+        t += ' '.repeat(Math.max(1, 42 - priceStr.length)) + priceStr + '\n';
+
+        // Customization details
+        const c = ci.customization;
+        if (c) {
+            if (c.size) t += `   (${c.size.toUpperCase()})\n`;
+            if (c.base) t += `   ${c.base.toUpperCase()}\n`;
+            if (c.meats?.length) c.meats.forEach(m => { t += `     . ${m.toUpperCase()}\n`; });
+            if (c.meat) t += `     . ${c.meat.toUpperCase()}\n`;
+            if (c.sauces?.length) c.sauces.forEach(s => { t += `     .${s.toUpperCase()}\n`; });
+            if (c.sauce) t += `     .${c.sauce.toUpperCase()}\n`;
+            if (c.garnitures?.length) c.garnitures.forEach(g => { t += `     .${g.toUpperCase()}\n`; });
+            if (c.removedIngredients?.length) c.removedIngredients.forEach(r => {
+                t += ESCPOS.BOLD_ON + `   Sans ${r.toUpperCase()}\n` + ESCPOS.BOLD_OFF;
+            });
+            if (c.supplements?.length) c.supplements.forEach(s => { t += `   (${s.toUpperCase()})\n`; });
+            if (c.menuOption && c.menuOption !== 'none') {
+                const ml = { 'frites': 'FRITE', 'boisson': 'BOISSON', 'menu': 'FRITE / BOISSON' };
+                t += `   ${ml[c.menuOption] || c.menuOption.toUpperCase()}\n`;
+            }
+            if (c.drink) t += `   ${c.drink.toUpperCase()}\n`;
+            if (c.note) t += ESCPOS.BOLD_ON + `   *** ${c.note} ***\n` + ESCPOS.BOLD_OFF;
+        }
+        t += '\n';
+    });
+
+    t += LINE;
+
+    // === TOTALS ===
+    const totalTTC = order.total || 0;
+    const deliveryFee = order.delivery_fee || 0;
+    const subtotalTTC = (order.subtotal || totalTTC) - deliveryFee;
+    const totalHT = subtotalTTC / (1 + TVA_RATE / 100);
+    const tvaAmount = subtotalTTC - totalHT;
+
+    t += ESCPOS.LEFT;
+    if (deliveryFee > 0) {
+        t += `Frais de livraison: ${deliveryFee.toFixed(2)}E\n`;
+    }
+    t += ESCPOS.RIGHT;
+    t += `TOTAL HT : ${totalHT.toFixed(2)}E\n`;
+    t += `TVA ${TVA_RATE}% : ${tvaAmount.toFixed(2)}E\n`;
+    t += ESCPOS.DOUBLE_HEIGHT + ESCPOS.BOLD_ON;
+    t += `TOTAL TTC : ${totalTTC.toFixed(2)}E\n`;
+    t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    t += LINE;
+
+    // === PAYMENT ===
+    const payLabels = { 'en_ligne': 'CB en ligne', 'cb': 'Carte Bancaire', 'especes': 'Especes' };
+    const payLabel = payLabels[order.payment_method] || order.payment_method || '';
+    const isPaid = order.payment_method === 'en_ligne';
+
+    t += ESCPOS.CENTER;
+    if (isPaid) {
+        t += ESCPOS.BOLD_ON + '*** PAYE ***\n' + ESCPOS.BOLD_OFF;
+    } else {
+        t += ESCPOS.DOUBLE_HEIGHT + ESCPOS.BOLD_ON + 'A PAYER\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    }
+    t += `${payLabel} - ${totalTTC.toFixed(2)}E\n`;
+    t += LINE;
+
+    // Loyalty
+    if (loyaltyText) {
+        t += loyaltyText + '\n';
+        t += LINE;
+    }
+
+    // Footer
+    t += ESCPOS.CENTER;
+    t += 'SIRET 942 617 358 00018\n';
+    t += 'TVA FR28942617358\n';
+    t += '\nMerci de votre visite!\n';
+    t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
+
+    return convertToCP1252(t);
+}
+
 // Send data to printer via TCP
 function sendToPrinter(data, targetIp) {
     return new Promise((resolve, reject) => {
@@ -559,6 +707,43 @@ function sendToPrinter(data, targetIp) {
     });
 }
 
+// ============================================
+// SERIAL PRINT QUEUE — prevents conflicts
+// One print job at a time to avoid garbled output
+// ============================================
+const printQueue = [];
+let printQueueProcessing = false;
+
+function enqueuePrintJob(jobFn, label) {
+    return new Promise((resolve) => {
+        printQueue.push({ jobFn, label, resolve });
+        if (!printQueueProcessing) processPrintQueue();
+    });
+}
+
+async function processPrintQueue() {
+    if (printQueueProcessing || printQueue.length === 0) return;
+    printQueueProcessing = true;
+
+    while (printQueue.length > 0) {
+        const { jobFn, label, resolve } = printQueue.shift();
+        try {
+            console.log(`🖨️  Queue: processing [${label}] (${printQueue.length} remaining)`);
+            const result = await jobFn();
+            resolve(result);
+        } catch (err) {
+            console.error(`❌ Queue job [${label}] failed:`, err.message);
+            resolve(false); // Don't reject — keep queue moving
+        }
+        // Brief pause between jobs so the printer can breathe
+        if (printQueue.length > 0) {
+            await new Promise(r => setTimeout(r, 500));
+        }
+    }
+
+    printQueueProcessing = false;
+}
+
 // Print to a single printer with retry logic
 async function printToSinglePrinter(data, ip, orderLabel) {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -578,36 +763,34 @@ async function printToSinglePrinter(data, ip, orderLabel) {
     return false;
 }
 
-// Print with retry logic — prints BOTH tickets to ALL printers
-// 1st ticket: KITCHEN (bold items, no prices)
-// 2nd ticket: COUNTER/CUSTOMER (full receipt with SIRET, TVA, prices)
-async function printWithRetry(order, loyaltyText) {
+// Send formatted data to all printers (parallel per printer, queued globally)
+async function sendToAllPrinters(ticketData, label) {
     if (PRINTER_IPS.length === 0) {
         console.error('❌ No printers configured');
         return false;
     }
-
-    const kitchenData = formatKitchenTicket(order);
-    const counterData = formatCounterTicket(order, loyaltyText || '');
-
-    // Print kitchen ticket first (all printers in parallel)
-    console.log(`🖨️  Printing KITCHEN ticket #${order.order_number}...`);
-    const kitchenResults = await Promise.allSettled(
-        PRINTER_IPS.map(ip => printToSinglePrinter(kitchenData, ip, `#${order.order_number} CUISINE`))
+    const results = await Promise.allSettled(
+        PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, label))
     );
-    const kitchenOk = kitchenResults.some(r => r.status === 'fulfilled' && r.value === true);
+    return results.some(r => r.status === 'fulfilled' && r.value === true);
+}
 
-    // Small delay to let the printer cut paper
-    await new Promise(r => setTimeout(r, 800));
+// Print order ticket (QUEUED) — formats and sends to all printers
+async function printWithRetry(order, loyaltyText) {
+    const label = `Order #${order.order_number}`;
+    return enqueuePrintJob(async () => {
+        const ticketData = formatUnifiedTicket(order, loyaltyText || '');
+        console.log(`🖨️  Printing ticket #${order.order_number}...`);
+        return sendToAllPrinters(ticketData, label);
+    }, label);
+}
 
-    // Print counter/customer ticket (all printers in parallel)
-    console.log(`🖨️  Printing COUNTER ticket #${order.order_number}...`);
-    const counterResults = await Promise.allSettled(
-        PRINTER_IPS.map(ip => printToSinglePrinter(counterData, ip, `#${order.order_number} CAISSE`))
-    );
-    const counterOk = counterResults.some(r => r.status === 'fulfilled' && r.value === true);
-
-    return kitchenOk || counterOk;
+// Print raw pre-formatted data (QUEUED) — for invoices, HACCP, etc.
+async function printRawWithRetry(ticketData, label) {
+    return enqueuePrintJob(async () => {
+        console.log(`🖨️  Printing [${label}]...`);
+        return sendToAllPrinters(ticketData, label);
+    }, label);
 }
 
 // Handle new order
@@ -791,9 +974,8 @@ async function recoverMissedPrints() {
 // Start the print server
 let channel = null;
 let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 10;
-const RECONNECT_DELAY = 5000;
-const HEARTBEAT_INTERVAL = 30000; // Check connection every 30 seconds
+let disconnectTimer = null;
+const RECONNECT_BASE_DELAY = 5000; // Exponential backoff: 5s → 10s → 20s → 40s → cap 60s
 
 async function setupRealtimeSubscription() {
     // Remove existing channel if any
@@ -813,7 +995,7 @@ async function setupRealtimeSubscription() {
             },
             (payload) => {
                 console.log('📥 Received new order event');
-                reconnectAttempts = 0; // Reset on successful event
+                reconnectAttempts = 0; lastEventReceivedAt = Date.now(); // Reset on successful event
                 handleNewOrder(payload.new);
             }
         )
@@ -827,6 +1009,7 @@ async function setupRealtimeSubscription() {
             (payload) => {
                 console.log('🧾 Received HACCP print job');
                 reconnectAttempts = 0;
+                lastEventReceivedAt = Date.now();
                 enqueueHACCPPrint(payload.new);
             }
         )
@@ -897,6 +1080,7 @@ async function handleHACCPPrint(job) {
     // Detect label type by category_name
     const isDateLabel = job.category_name === 'ETIQUETTE_DATE';
     const isIngredientLabel = job.category_name === 'ETIQUETTE_INGREDIENT';
+    const isFreezerLabel = job.category_name === 'Congélation';
 
     let ticketData;
     if (isDateLabel || isIngredientLabel) {
@@ -909,6 +1093,21 @@ async function handleHACCPPrint(job) {
             useByDate,
             operator: job.operator,
             warning: isIngredientLabel ? 'NE PAS DEPASSER 3 JOURS' : '',
+        });
+    } else if (isFreezerLabel) {
+        console.log(`🧊 Routing to FREEZER label format`);
+        // Parse extra data from notes JSON
+        let extra = {};
+        try { if (job.notes) extra = JSON.parse(job.notes); } catch {}
+        ticketData = formatFreezerTicket({
+            productName: job.product_name,
+            frozenDate: job.action_date,
+            expiryDate: job.dlc_date,
+            originalDlc: extra.originalDlc || 'N/A',
+            lotNumber: extra.lotNumber || 'N/A',
+            weight: extra.weight || '',
+            origin: extra.origin || '',
+            operator: job.operator,
         });
     } else {
         ticketData = formatHACCPTicket({
@@ -924,11 +1123,8 @@ async function handleHACCPPrint(job) {
         });
     }
 
-    // Try printing — all network printers in parallel
-    const results = await Promise.allSettled(
-        PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, job.product_name))
-    );
-    let anyPrinted = results.some(r => r.status === 'fulfilled' && r.value === true);
+    // Send through the global print queue
+    const anyPrinted = await printRawWithRetry(ticketData, `HACCP: ${job.product_name}`);
 
     // Mark as printed in DB
     if (anyPrinted) {
@@ -943,30 +1139,78 @@ async function handleHACCPPrint(job) {
 }
 
 async function handleDisconnect() {
-    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-        console.error(`❌ Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Exiting...`);
-        process.exit(1);
+    // Prevent multiple simultaneous reconnect attempts
+    if (disconnectTimer) {
+        console.log('🔄 Reconnect already scheduled, skipping...');
+        return;
     }
 
     reconnectAttempts++;
-    console.log(`🔄 Reconnecting... Attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
+    // Exponential backoff: 5s → 10s → 20s → 40s → capped at 60s — NEVER gives up
+    const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttempts - 1), 60000);
+    console.log(`🔄 Reconnecting in ${delay / 1000}s... (attempt #${reconnectAttempts}, NEVER gives up)`);
 
-    setTimeout(async () => {
-        await setupRealtimeSubscription();
-    }, RECONNECT_DELAY);
+    disconnectTimer = setTimeout(async () => {
+        disconnectTimer = null;
+        try {
+            await setupRealtimeSubscription();
+        } catch (err) {
+            console.error('❌ Reconnection error:', err.message);
+            handleDisconnect(); // Try again — never give up
+        }
+    }, delay);
 }
 
-// Heartbeat — check channel state instead of querying DB
+// Heartbeat — monitors channel health + event freshness
 function startHeartbeat() {
     setInterval(() => {
         const now = new Date().toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris' });
+        const eventAge = Math.round((Date.now() - lastEventReceivedAt) / 60000);
+
         if (channel && channel.state === 'joined') {
-            console.log(`💚 Heartbeat OK - ${now}`);
+            console.log(`💚 Heartbeat OK — ${now} | last event: ${eventAge}m ago | queue: ${printQueue.length}`);
         } else {
-            console.error(`💔 Heartbeat: channel not joined (state: ${channel?.state || 'null'}) - ${now}`);
+            console.error(`💔 Heartbeat FAIL — channel: ${channel?.state || 'null'} — ${now}`);
             handleDisconnect();
         }
-    }, 60000); // Check every 60s
+    }, 60000);
+}
+
+// ============================================
+// ACTIVE POLLING FALLBACK — catches missed orders
+// Safety net when realtime silently dies
+// ============================================
+async function pollForUnprintedOrders(lookbackMs) {
+    try {
+        const lookback = lookbackMs || 5 * 60 * 1000; // Default: last 5 minutes
+        const since = new Date(Date.now() - lookback).toISOString();
+        const { data: orders, error } = await supabase
+            .from('orders')
+            .select('*')
+            .gte('created_at', since)
+            .order('created_at', { ascending: true });
+
+        if (error) {
+            console.log('⚠️ Poll check failed:', error.message);
+            return;
+        }
+
+        let caught = 0;
+        for (const order of (orders || [])) {
+            if (!printedOrders.has(order.id)) {
+                console.log(`🔍 POLL CATCH: Order #${order.order_number} missed by realtime! Printing now...`);
+                await handleNewOrder(order);
+                caught++;
+            }
+        }
+
+        if (caught > 0) {
+            console.log(`⚠️ Poll caught ${caught} missed order(s) — forcing realtime reconnect...`);
+            handleDisconnect();
+        }
+    } catch (err) {
+        console.log('⚠️ Poll error:', err.message);
+    }
 }
 
 // ============================================
@@ -1038,6 +1282,91 @@ function formatDateLabel(data) {
     ticket += '\n';
 
     // Cut
+    ticket += ESCPOS.FEED;
+    ticket += ESCPOS.PARTIAL_CUT;
+
+    return convertToCP1252(ticket);
+}
+// Format FREEZER/CONGÉLATION ticket for ESC/POS printing
+// Shows product info scanned from the original label + freezing details
+function formatFreezerTicket(data) {
+    const { productName, frozenDate, expiryDate, originalDlc, lotNumber, weight, origin, operator } = data;
+
+    let ticket = '';
+    ticket += ESCPOS.INIT;
+    ticket += ESCPOS.SET_CODEPAGE_1252;
+
+    // Header
+    ticket += ESCPOS.CENTER;
+    ticket += ESCPOS.BOLD_ON;
+    ticket += 'TWIN PIZZA\n';
+    ticket += ESCPOS.BOLD_OFF;
+    ticket += ESCPOS.LINE_42;
+
+    // Big snowflake label
+    ticket += ESCPOS.DOUBLE_SIZE + ESCPOS.BOLD_ON;
+    ticket += 'CONGELATION\n';
+    ticket += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    ticket += '\n';
+
+    // Product name (big + bold)
+    ticket += ESCPOS.DOUBLE_SIZE + ESCPOS.BOLD_ON;
+    ticket += productName + '\n';
+    ticket += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    ticket += '\n';
+    ticket += ESCPOS.LINE_42;
+
+    // Frozen date
+    ticket += ESCPOS.LEFT;
+    ticket += ESCPOS.BOLD_ON + 'Congele le: ' + ESCPOS.BOLD_OFF;
+    ticket += frozenDate + '\n';
+    ticket += '\n';
+
+    // Original DLC
+    if (originalDlc && originalDlc !== 'N/A') {
+        ticket += ESCPOS.BOLD_ON + 'DLC Origine: ' + ESCPOS.BOLD_OFF;
+        ticket += originalDlc + '\n';
+    }
+
+    // Lot number
+    if (lotNumber && lotNumber !== 'N/A') {
+        ticket += ESCPOS.BOLD_ON + 'N. Lot: ' + ESCPOS.BOLD_OFF;
+        ticket += lotNumber + '\n';
+    }
+
+    // Weight
+    if (weight) {
+        ticket += ESCPOS.BOLD_ON + 'Poids: ' + ESCPOS.BOLD_OFF;
+        ticket += weight + '\n';
+    }
+
+    // Origin
+    if (origin) {
+        ticket += ESCPOS.BOLD_ON + 'Origine: ' + ESCPOS.BOLD_OFF;
+        ticket += origin + '\n';
+    }
+
+    ticket += ESCPOS.LINE_42;
+
+    // Expiry date (big, bold, highlighted)
+    ticket += ESCPOS.CENTER;
+    ticket += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+    ticket += 'A CONSOMMER AVANT LE\n';
+    ticket += expiryDate + '\n';
+    ticket += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    ticket += ESCPOS.LINE_42;
+
+    // Storage rules
+    ticket += ESCPOS.CENTER;
+    ticket += ESCPOS.BOLD_ON;
+    ticket += 'Conservation: -18.C\n';
+    ticket += '3 MOIS MAXIMUM\n';
+    ticket += ESCPOS.BOLD_OFF;
+    ticket += '\n';
+
+    // Footer
+    ticket += 'Par: ' + operator + '\n';
+    ticket += '\n';
     ticket += ESCPOS.FEED;
     ticket += ESCPOS.PARTIAL_CUT;
 
@@ -1146,10 +1475,7 @@ function setupHttpServer() {
 
 
             const ticketData = formatHACCPTicket(data);
-            const results = await Promise.allSettled(
-                PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, data.productName))
-            );
-            const success = results.some(r => r.status === 'fulfilled' && r.value === true);
+            const success = await printRawWithRetry(ticketData, `HACCP-HTTP: ${data.productName}`);
 
             if (success) {
                 console.log('✅ HACCP ticket printed successfully');
@@ -1187,12 +1513,8 @@ function setupHttpServer() {
 
             let printed = 0;
             for (let i = 0; i < numCopies; i++) {
-                const results = await Promise.allSettled(
-                    PRINTER_IPS.map(ip => sendToPrinter(ticketData, ip))
-                );
-                const ok = results.some(r => r.status === 'fulfilled');
+                const ok = await printRawWithRetry(ticketData, `Label: ${decodeURIComponent(String(product))} (${i+1}/${numCopies})`);
                 if (ok) printed++;
-                if (i < numCopies - 1) await new Promise(r => setTimeout(r, 300));
             }
 
             if (printed > 0) {
@@ -1226,8 +1548,7 @@ function setupHttpServer() {
                 return res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>❌ Commande ${orderNumber} non trouvée</h2><script>setTimeout(()=>window.close(),2000)</script></body></html>`);
             }
 
-            const ticketData = formatOrderForPrint(order);
-            const success = await printWithRetry(ticketData, orderNumber);
+            const success = await printWithRetry(order, '');
 
             if (success) {
                 console.log(`✅ Order #${orderNumber} reprinted`);
@@ -1265,8 +1586,7 @@ function setupHttpServer() {
             console.log(`   Found: ${order.customer_name} - ${order.total}€`);
 
             // Format and print
-            const ticketData = formatOrderForPrint(order);
-            const success = await printWithRetry(ticketData, orderNumber);
+            const success = await printWithRetry(order, '');
 
             if (success) {
                 console.log(`✅ Order #${orderNumber} reprinted successfully!`);
@@ -1379,7 +1699,7 @@ function setupHttpServer() {
             ticket += ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
             const ticketData = convertToCP1252(ticket);
-            const success = await printWithRetry(ticketData, `INVOICE-${invoiceNumber}`);
+            const success = await printRawWithRetry(ticketData, `INVOICE-${invoiceNumber}`);
 
             if (success) {
                 console.log(`✅ Invoice ${invoiceNumber} printed`);
@@ -1527,7 +1847,7 @@ function setupHttpServer() {
             ticket += ESCPOS.PARTIAL_CUT;
 
             const ticketData = convertToCP1252(ticket);
-            const success = await printWithRetry(ticketData, `INVOICE-${invoiceNumber}`);
+            const success = await printRawWithRetry(ticketData, `INVOICE-${invoiceNumber}`);
 
             if (success) {
                 console.log(`✅ Invoice ${invoiceNumber} printed successfully`);
@@ -1605,11 +1925,35 @@ async function startServer() {
     console.log('\n🔄 Running startup recovery check...');
     setTimeout(async () => {
         await recoverMissedPrints();
+        // Extra sweep: check last hour for orders never seen by the server
+        await pollForUnprintedOrders(60 * 60 * 1000);
     }, 5000); // Wait 5s for system to stabilize
+
+    // Start polling fallback — safety net for missed realtime events
+    setInterval(pollForUnprintedOrders, POLL_INTERVAL);
+    console.log(`🔍 Polling fallback active: checking every ${POLL_INTERVAL / 1000}s for missed orders`);
+
+    // Catch uncaught errors — NEVER crash silently
+    process.on('uncaughtException', (err) => {
+        console.error('💥 UNCAUGHT EXCEPTION (server stays alive):', err.message);
+        console.error(err.stack);
+    });
+
+    process.on('unhandledRejection', (reason) => {
+        console.error('💥 UNHANDLED REJECTION (server stays alive):', reason);
+    });
 
     // Handle graceful shutdown
     process.on('SIGINT', async () => {
         console.log('\n👋 Shutting down print server...');
+        if (channel) {
+            await supabase.removeChannel(channel);
+        }
+        process.exit(0);
+    });
+
+    process.on('SIGTERM', async () => {
+        console.log('\n👋 SIGTERM received, shutting down...');
         if (channel) {
             await supabase.removeChannel(channel);
         }
