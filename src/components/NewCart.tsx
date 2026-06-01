@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useOrder } from '@/context/OrderContext';
-import { useLoyalty } from '@/context/LoyaltyContext';
 import { PizzaCustomization, TacosCustomization, SouffletCustomization, MakloubCustomization } from '@/types/order';
 import { meatOptions, sauceOptions, garnitureOptions, souffletGarnitureOptions, makloubGarnitureOptions, pizzaPrices, cheeseSupplementOptions } from '@/data/menu';
 import { applyPizzaPromotions } from '@/utils/promotions';
@@ -11,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Minus, Trash2, ShoppingBag, CalendarClock, Star } from 'lucide-react';
+import { Plus, Minus, Trash2, ShoppingBag, CalendarClock } from 'lucide-react';
 import { format, addMonths, isSunday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -23,7 +22,6 @@ interface NewCartProps {
 
 export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
   const { cart, orderType, scheduledInfo, setScheduledInfo, updateQuantity, removeFromCart, getTotal } = useOrder();
-  const { customer, calculatePointsToEarn } = useLoyalty();
   const [showSchedulePicker, setShowSchedulePicker] = useState(false);
   const [tempDate, setTempDate] = useState<Date | undefined>(undefined);
   const [tempTime, setTempTime] = useState<string>('12:00');
@@ -70,8 +68,6 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
     { name: 'Supplément Frites', price: 3, emoji: '🍟' },
   ];
 
-  // Calculate loyalty points to earn from this order
-  const pointsToEarn = calculatePointsToEarn(total);
 
   // Time slots for scheduling
   const timeSlots = [
@@ -420,39 +416,6 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
                 <span className="text-primary">{total.toFixed(2)}€</span>
               </div>
 
-              {/* Loyalty Stamps Section - New System */}
-              {cart.length > 0 && (
-                <Card className="p-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                    <span className="font-semibold text-amber-700">Carte de Fidélité</span>
-                  </div>
-                  {customer ? (
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span>Vos tampons:</span>
-                        <span className="font-bold text-amber-600">{customer.stamps || 0} / 10</span>
-                      </div>
-                      {(customer.freeItemsAvailable || 0) > 0 && (
-                        <div className="mt-2 p-2 bg-green-100 rounded text-green-700 text-center text-xs font-bold animate-pulse">
-                          🎁 Vous avez {customer.freeItemsAvailable} produit(s) GRATUIT!
-                        </div>
-                      )}
-                      {(customer.stamps || 0) % 10 === 9 && (customer.freeItemsAvailable || 0) === 0 && (
-                        <div className="mt-2 p-2 bg-amber-100 rounded text-amber-700 text-center text-xs font-bold">
-                          🎉 Plus qu'1 achat pour un cadeau!
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Entrez votre numéro de téléphone au checkout pour accumuler des tampons!
-                      <br />
-                      <span className="font-medium text-amber-600">9 tampons = 10ème OFFERT (valeur 10€) 🎁</span>
-                    </p>
-                  )}
-                </Card>
-              )}
 
               <Button
                 className="w-full h-14 sm:h-16 text-base sm:text-lg rounded-xl"

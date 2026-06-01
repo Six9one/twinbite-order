@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 // Contexts
 import { LanguageProvider } from "@/context/LanguageContext";
-import { LoyaltyProvider } from "@/context/LoyaltyContext";
 
 // PWA Components
 import { PWAInstallPrompt, OfflineIndicator } from "@/components/PWAComponents";
@@ -39,8 +38,7 @@ const App = () => (
     <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
             <LanguageProvider>
-                <LoyaltyProvider>
-                    <TooltipProvider>
+                <TooltipProvider>
                         <Toaster />
                         <Sonner />
                         <OfflineIndicator />
@@ -69,8 +67,7 @@ const App = () => (
                             </Routes>
                             <PWAInstallPrompt />
                         </BrowserRouter>
-                    </TooltipProvider>
-                </LoyaltyProvider>
+                </TooltipProvider>
             </LanguageProvider>
         </QueryClientProvider>
     </ErrorBoundary>

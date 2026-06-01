@@ -32,7 +32,11 @@ export function useSandwichTypes() {
         .order('display_order', { ascending: true });
       
       if (error) throw error;
-      return data as SandwichType[];
+      // Strip "Pain maison, " prefix from descriptions
+      return (data as SandwichType[]).map(s => ({
+        ...s,
+        description: s.description?.replace(/^pain maison,\s*/i, '') ?? null,
+      }));
     },
   });
 }

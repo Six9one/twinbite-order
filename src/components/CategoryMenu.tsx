@@ -39,7 +39,7 @@ const productCategoryLabels: Record<string, string> = {
   soufflets: "🥙 Soufflet",
   makloub: "🌯 Makloub",
   mlawi: "🫓 Mlawi",
-  sandwiches: "🥖 Sandwich (Pain Maison)",
+  sandwiches: "🥖 Sandwich",
   tacos: "🌮 Tacos",
   panini: "🥪 Panini",
   croques: "🧀 Croques",

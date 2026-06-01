@@ -4,12 +4,10 @@ import { Check, Printer } from 'lucide-react';
 interface KioskSuccessProps {
     orderNumber: string;
     customerName: string;
-    stampsEarned?: number;
-    totalStamps?: number;
     onReset: () => void;
 }
 
-export function KioskSuccess({ orderNumber, customerName, stampsEarned, totalStamps, onReset }: KioskSuccessProps) {
+export function KioskSuccess({ orderNumber, customerName, onReset }: KioskSuccessProps) {
     const [countdown, setCountdown] = useState(15);
 
     useEffect(() => {
@@ -68,17 +66,6 @@ export function KioskSuccess({ orderNumber, customerName, stampsEarned, totalSta
                 Présentez votre ticket à la <strong>caisse</strong> pour payer
             </p>
 
-            {/* Loyalty info */}
-            {stampsEarned && stampsEarned > 0 && (
-                <div className="relative z-10 bg-amber-500/10 backdrop-blur rounded-xl border border-amber-400/30 px-8 py-4 mb-6">
-                    <p className="text-xl text-amber-300 text-center">
-                        🎁 +{stampsEarned} tampon{stampsEarned > 1 ? 's' : ''} fidélité
-                        {totalStamps !== undefined && (
-                            <span className="text-amber-400/60 ml-2">({totalStamps % 10}/10)</span>
-                        )}
-                    </p>
-                </div>
-            )}
 
             {/* Countdown */}
             <p className="relative z-10 text-emerald-400/40 text-lg mt-4">

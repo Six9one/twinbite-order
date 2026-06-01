@@ -355,7 +355,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
               </Button>
               <div>
                 <h1 className="text-2xl font-display font-bold">
-                  Sandwiches (pain maison)
+                  Sandwiches
                 </h1>
                 <p className="text-sm text-muted-foreground">Étape {step}/{totalSteps}</p>
               </div>

@@ -46,7 +46,9 @@ export function useCategoryImages() {
     };
 
     const getDisplayName = (categorySlug: string): string => {
-        return images[categorySlug]?.display_name || categorySlug;
+        const name = images[categorySlug]?.display_name || categorySlug;
+        // Remove "(Pain Maison)" suffix if present
+        return name.replace(/\s*\(pain maison\)\s*/i, '').trim();
     };
 
     return {

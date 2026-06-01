@@ -50,6 +50,7 @@ export async function printFreezerLabel(data: {
     originalDlc: string;
     lotNumber: string;
     weight: string;
+    origin: string;
     expiryDate: string;
     operator: string;
 }): Promise<boolean> {
@@ -72,6 +73,7 @@ export async function printFreezerLabel(data: {
                     originalDlc: data.originalDlc,
                     lotNumber: data.lotNumber,
                     weight: data.weight,
+                    origin: data.origin,
                 }),
             } as any);
 

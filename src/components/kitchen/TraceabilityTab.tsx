@@ -11,6 +11,7 @@ import { Tag, Camera, Printer, Clock, Calendar, Check, X, RefreshCw, AlertTriang
 import { uploadToKitchenStorage, KITCHEN_BUCKETS } from '@/lib/kitchenStorage';
 import { printHACCPDirect, printFreezerLabel } from '@/config/printConfig';
 import { DateLabelTab } from '@/components/kitchen/DateLabelTab';
+import { createWorker, Worker } from 'tesseract.js';
 
 interface HACCPCategory { id: string; name: string; slug: string; color: string; dlc_hours: number; storage_temp_min: number; storage_temp_max: number; }
 interface HACCPProduct { id: string; category_id: string; name: string; dlc_hours_override: number | null; }
@@ -159,46 +160,31 @@ export function TraceabilityTab() {
             const base64 = reader.result as string;
             setFreezerPhoto(base64);
 
-            // Call OCR.space API directly (FREE - 500/day)
+            // Use Tesseract.js — runs locally in the browser, no API key needed
             setOcrLoading(true);
+            let worker: Worker | null = null;
             try {
-                const formData = new FormData();
-                formData.append('base64Image', base64);
-                formData.append('language', 'fre');
-                formData.append('isOverlayRequired', 'false');
-                formData.append('OCREngine', '2');
-                formData.append('scale', 'true');
+                worker = await createWorker('fra+eng');
+                const { data } = await worker.recognize(base64);
+                const rawText = data.text;
+                console.log('OCR Raw Text:', rawText);
 
-                const response = await fetch('https://api.ocr.space/parse/image', {
-                    method: 'POST',
-                    headers: {
-                        'apikey': 'K88888888888957', // Free demo key
-                    },
-                    body: formData
-                });
+                const ocrData = parseOCRText(rawText);
+                ocrData.confidence = data.confidence / 100;
 
-                const ocrData = await response.json();
-                console.log('OCR Response:', ocrData);
-
-                if (ocrData.IsErroredOnProcessing) {
-                    throw new Error(ocrData.ErrorMessage?.[0] || 'OCR failed');
-                }
-
-                const rawText = ocrData.ParsedResults?.[0]?.ParsedText || '';
-                const data = parseOCRText(rawText);
-
-                setOcrResult(data);
-                setFreezerProductName(data.productName || '');
-                setFreezerDlc(data.dlc || '');
-                setFreezerLotNumber(data.lotNumber || '');
-                setFreezerWeight(data.weight || '');
-                setFreezerOrigin(data.origin || '');
+                setOcrResult(ocrData);
+                setFreezerProductName(ocrData.productName || '');
+                setFreezerDlc(ocrData.dlc || '');
+                setFreezerLotNumber(ocrData.lotNumber || '');
+                setFreezerWeight(ocrData.weight || '');
+                setFreezerOrigin(ocrData.origin || '');
                 toast.success('✅ Étiquette analysée!');
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             } catch (err) {
                 console.error('OCR Error:', err);
                 toast.error('Erreur OCR - Entrez les données manuellement');
             } finally {
+                if (worker) await worker.terminate();
                 setOcrLoading(false);
             }
         };
@@ -280,6 +266,7 @@ export function TraceabilityTab() {
                 originalDlc: freezerDlc || 'N/A',
                 lotNumber: freezerLotNumber || 'N/A',
                 weight: freezerWeight || '',
+                origin: freezerOrigin || '',
                 expiryDate: expiryDate.toLocaleDateString('fr-FR'),
                 operator: 'Staff'
             });

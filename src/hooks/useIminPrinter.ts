@@ -45,9 +45,6 @@ interface KioskOrderData {
     total: number;
     subtotal: number;
     tva: number;
-    loyaltyPhone?: string;
-    stampsEarned?: number;
-    totalStamps?: number;
 }
 
 export function useIminPrinter() {
@@ -160,17 +157,6 @@ export function useIminPrinter() {
             p.printText(`TOTAL: ${order.total.toFixed(2)}E\n`);
             p.setTextStyle(0);
 
-            // Loyalty
-            if (order.stampsEarned && order.stampsEarned > 0) {
-                p.setAlignment(1);
-                p.setTextSize(20);
-                p.printText("================================\n");
-                p.setTextSize(22);
-                p.printText(`FIDELITE: +${order.stampsEarned} tampon${order.stampsEarned > 1 ? 's' : ''}\n`);
-                if (order.totalStamps !== undefined) {
-                    p.printText(`Total tampons: ${order.totalStamps}/10\n`);
-                }
-            }
 
             // Footer
             p.setAlignment(1);
@@ -219,15 +205,6 @@ export function useIminPrinter() {
             return html;
         }).join('');
 
-        // Build loyalty HTML
-        let loyaltyHtml = '';
-        if (order.stampsEarned && order.stampsEarned > 0) {
-            loyaltyHtml = `
-                <div class="sep">================================</div>
-                <div class="loyalty">FIDELITE: +${order.stampsEarned} tampon${order.stampsEarned > 1 ? 's' : ''}</div>
-                ${order.totalStamps !== undefined ? `<div class="loyalty">Total tampons: ${order.totalStamps}/10</div>` : ''}
-            `;
-        }
 
         // Try RawBT first (async), then fallback to browser print
         const tryRawBTHttp = async (): Promise<boolean> => {
@@ -267,13 +244,6 @@ export function useIminPrinter() {
                 rawbtText += `[R]TVA (10%): ${order.tva.toFixed(2)}E\n`;
                 rawbtText += `[R]<font size='big'><b>TOTAL: ${order.total.toFixed(2)}E</b></font>\n`;
 
-                if (order.stampsEarned && order.stampsEarned > 0) {
-                    rawbtText += "[C]================================\n";
-                    rawbtText += `[C]FIDELITE: +${order.stampsEarned} tampon${order.stampsEarned > 1 ? 's' : ''}\n`;
-                    if (order.totalStamps !== undefined) {
-                        rawbtText += `[C]Total tampons: ${order.totalStamps}/10\n`;
-                    }
-                }
 
                 rawbtText += "[C]================================\n";
                 rawbtText += "[C]<b>Presentez ce ticket a la caisse pour payer</b>\n";
@@ -319,7 +289,6 @@ export function useIminPrinter() {
                         #kiosk-print-container .details { font-size: 10px; color: #333; margin-left: 8px; margin-bottom: 3px; }
                         #kiosk-print-container .total { font-size: 16px; font-weight: bold; text-align: right; margin-top: 6px; }
                         #kiosk-print-container .sep { text-align: center; color: #666; font-size: 11px; }
-                        #kiosk-print-container .loyalty { text-align: center; font-size: 12px; }
                     }
                 </style>
                 <div class="center bold big">TWIN PIZZA</div>
@@ -337,7 +306,6 @@ export function useIminPrinter() {
                 <div style="text-align:right">Sous-total: ${order.subtotal.toFixed(2)}E</div>
                 <div style="text-align:right">TVA (10%): ${order.tva.toFixed(2)}E</div>
                 <div class="total">TOTAL: ${order.total.toFixed(2)}E</div>
-                ${loyaltyHtml}
                 <div class="sep">================================</div>
                 <div class="center bold">Presentez ce ticket a la caisse pour payer</div>
                 <div class="center">Merci ${order.customerName}!</div>

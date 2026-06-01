@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
-import { useLoyalty } from '@/context/LoyaltyContext';
 import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
 import { useIminPrinter, KioskOrderData } from '@/hooks/useIminPrinter';
 import { useNetworkPrinter } from '@/hooks/useNetworkPrinter';
@@ -14,7 +13,6 @@ import { KioskNameInput } from '@/components/kiosk/KioskNameInput';
 import { KioskCategories } from '@/components/kiosk/KioskCategories';
 import { KioskCart } from '@/components/kiosk/KioskCart';
 import { KioskUpsell } from '@/components/kiosk/KioskUpsell';
-import { KioskLoyalty } from '@/components/kiosk/KioskLoyalty';
 import { KioskSuccess } from '@/components/kiosk/KioskSuccess';
 
 // Existing wizards — reused as-is
@@ -31,7 +29,7 @@ import { crepes, gaufres, boissons, frites as staticFrites, croques as staticCro
 import { useProductsByCategory } from '@/hooks/useProducts';
 import { calculateTVA, applyPizzaPromotions } from '@/utils/promotions';
 
-type KioskScreen = 'welcome' | 'orderType' | 'name' | 'menu' | 'wizard' | 'upsell' | 'loyalty' | 'processing' | 'success';
+type KioskScreen = 'welcome' | 'orderType' | 'name' | 'menu' | 'wizard' | 'upsell' | 'processing' | 'success';
 
 function KioskContent() {
     const [screen, setScreen] = useState<KioskScreen>('welcome');
@@ -39,14 +37,9 @@ function KioskContent() {
     const [customerName, setCustomerName] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [orderNumber, setOrderNumber] = useState('');
-    const [loyaltyPhone, setLoyaltyPhone] = useState<string | null>(null);
-    const [stampsEarned, setStampsEarned] = useState(0);
-    const [totalStamps, setTotalStamps] = useState(0);
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const [showUpsellAfterWizard, setShowUpsellAfterWizard] = useState(false);
-
     const { setOrderType, cart, clearCart, getTotal, getItemCount } = useOrder();
-    const { findOrCreateCustomer, addStamps: loyaltyAddStamps } = useLoyalty();
     const createOrder = useCreateOrder();
     const { initPrinter, printKioskTicket } = useIminPrinter();
     const { printOrder: networkPrintOrder } = useNetworkPrinter();
@@ -183,9 +176,6 @@ function KioskContent() {
         setCustomerName('');
         setSelectedCategory(null);
         setOrderNumber('');
-        setLoyaltyPhone(null);
-        setStampsEarned(0);
-        setTotalStamps(0);
         setShowUpsellAfterWizard(false);
     };
 
@@ -239,21 +229,10 @@ function KioskContent() {
     };
 
     const handleConfirmOrder = () => {
-        setScreen('loyalty');
+        processOrder();
     };
 
-    const handleLoyaltyComplete = async (phone: string | null, stamps: number, total: number) => {
-        setLoyaltyPhone(phone);
-        setStampsEarned(stamps);
-        setTotalStamps(total);
-        await processOrder(phone, stamps, total);
-    };
-
-    const handleLoyaltySkip = async () => {
-        await processOrder(null, 0, 0);
-    };
-
-    const processOrder = async (phone: string | null, stamps: number, totalStampsVal: number) => {
+    const processOrder = async () => {
         setScreen('processing');
 
         try {
@@ -276,7 +255,7 @@ function KioskContent() {
                 order_type: orderType,
                 items: cart as any,
                 customer_name: customerName.trim(),
-                customer_phone: phone || 'borne',
+                customer_phone: 'borne',
                 customer_address: null,
                 customer_notes: `[BORNE] ${orderType === 'surplace' ? 'Sur Place' : 'À Emporter'}`,
                 payment_method: 'especes' as any, // Pays at caisse
@@ -295,7 +274,7 @@ function KioskContent() {
                     body: {
                         orderNumber: newOrderNumber,
                         customerName: customerName.trim(),
-                        customerPhone: phone || 'Borne',
+                        customerPhone: 'Borne',
                         customerAddress: null,
                         customerNotes: `[BORNE] ${orderType === 'surplace' ? 'Sur Place' : 'À Emporter'}`,
                         orderType: orderType,
@@ -312,9 +291,6 @@ function KioskContent() {
                         })),
                         isScheduled: false,
                         scheduledFor: null,
-                        stampsEarned: stamps,
-                        totalStamps: totalStampsVal,
-                        freeItemsAvailable: Math.floor(totalStampsVal / 10),
                         isKiosk: true,
                     },
                 });
@@ -322,31 +298,6 @@ function KioskContent() {
                 console.error('[KIOSK] Telegram notification failed:', telegramError);
             }
 
-            // Send WhatsApp if loyalty phone provided
-            if (phone) {
-                try {
-                    const itemsList = cart.map(item =>
-                        `${item.quantity}x ${item.item.name} - ${((item.calculatedPrice || item.item.price) * item.quantity).toFixed(2)}€`
-                    ).join('\n');
-
-                    const whatsappText = encodeURIComponent(
-                        `🍕 *Twin Pizza - Commande Borne #${newOrderNumber}*\n\n` +
-                        `${itemsList}\n\n` +
-                        `💰 *Total: ${total.toFixed(2)}€*\n\n` +
-                        (stamps > 0 ? `🎁 Fidélité: +${stamps} tampon${stamps > 1 ? 's' : ''}\n` : '') +
-                        `\nMerci ${customerName} et bon appétit! 🍕`
-                    );
-
-                    // Use WhatsApp API
-                    const cleanPhone = phone.replace(/\s/g, '').replace(/^0/, '33');
-                    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${whatsappText}`;
-
-                    // For kiosk, we send via server-side/API if available, or just log
-                    console.log('[KIOSK] WhatsApp URL:', whatsappUrl);
-                } catch (waError) {
-                    console.error('[KIOSK] WhatsApp failed:', waError);
-                }
-            }
 
             // Print ticket
             const printData: KioskOrderData = {
@@ -362,9 +313,6 @@ function KioskContent() {
                 total: total,
                 subtotal: ht,
                 tva: tva,
-                loyaltyPhone: phone || undefined,
-                stampsEarned: stamps,
-                totalStamps: totalStampsVal,
             };
             printKioskTicket(printData);
 
@@ -379,7 +327,7 @@ function KioskContent() {
                             order_type: orderType,
                             status: 'pending',
                             customer_name: customerName.trim(),
-                            customer_phone: phone || 'Borne',
+                            customer_phone: 'Borne',
                             customer_notes: `[BORNE] ${orderType === 'surplace' ? 'Sur Place' : 'À Emporter'}`,
                             items: cart.map(item => ({
                                 name: item.item.name,
@@ -393,8 +341,6 @@ function KioskContent() {
                             total: total,
                             payment_method: 'especes',
                             created_at: new Date().toISOString(),
-                            stampsEarned: stamps,
-                            totalStamps: totalStampsVal,
                             isKiosk: true,
                         },
                     },
@@ -515,15 +461,6 @@ function KioskContent() {
         return <KioskNameInput onSubmit={handleNameSubmit} onBack={() => setScreen('orderType')} />;
     }
 
-    if (screen === 'loyalty') {
-        return (
-            <KioskLoyalty
-                onComplete={handleLoyaltyComplete}
-                onSkip={handleLoyaltySkip}
-                cartItems={cart}
-            />
-        );
-    }
 
     if (screen === 'processing') {
         return (
@@ -540,8 +477,6 @@ function KioskContent() {
             <KioskSuccess
                 orderNumber={orderNumber}
                 customerName={customerName}
-                stampsEarned={stampsEarned}
-                totalStamps={totalStamps}
                 onReset={handleFullReset}
             />
         );

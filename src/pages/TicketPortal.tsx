@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Package, ChevronDown, ChevronUp, Ticket, Phone, ArrowLeft, RefreshCw, ChefHat, Clock, CheckCircle, MapPin, ExternalLink, Gift } from 'lucide-react';
-import { LoyaltyStampCard } from '@/components/LoyaltyStampCard';
+import { Package, ChevronDown, ChevronUp, Ticket, Phone, ArrowLeft, RefreshCw, ChefHat, Clock, CheckCircle, MapPin, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface Order {
@@ -30,11 +29,6 @@ interface Order {
     subtotal?: number;
 }
 
-interface LoyaltyInfo {
-    stamps: number;
-    total_stamps: number;
-    free_items_available: number;
-}
 
 const statusConfig: Record<string, { label: string; color: string; icon: any; bg: string }> = {
     pending: { label: 'En attente', color: 'text-amber-600', icon: Clock, bg: 'bg-amber-100' },
@@ -51,7 +45,6 @@ export default function TicketPortal() {
     const [searchParams] = useSearchParams();
     const [phone, setPhone] = useState(searchParams.get('phone') || '');
     const [orders, setOrders] = useState<Order[]>([]);
-    const [loyaltyInfo, setLoyaltyInfo] = useState<LoyaltyInfo | null>(null);
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
@@ -79,7 +72,6 @@ export default function TicketPortal() {
         setLoading(true);
         setSearched(true);
         setOrders([]); // Clear previous
-        setLoyaltyInfo(null);
 
         try {
             const { data, error } = await supabase
@@ -92,20 +84,15 @@ export default function TicketPortal() {
 
             // Separate orders and loyalty
             const foundOrders: any[] = [];
-            let foundLoyalty: any = null;
 
             if (data) {
                 data.forEach((item: any) => {
                     if (item.result_type === 'order') {
                         foundOrders.push(item.data);
-                    } else if (item.result_type === 'loyalty') {
-                        foundLoyalty = item.data;
                     }
                 });
             }
 
-            // Process Orders
-            let totalStampsFromOrders = 0;
             const mappedOrders: Order[] = foundOrders.map((o: any) => ({
                 id: o.id,
                 order_number: o.order_number,
@@ -138,38 +125,6 @@ export default function TicketPortal() {
                     setExpandedOrder(mostRecent.id);
                 }
             }
-
-            // Calculate Stamps
-            const qualifyingCategories = ['pizzas', 'soufflets', 'makloub', 'tacos', 'panini', 'salades', 'sandwiches', 'menus-midi'];
-            for (const order of foundOrders) {
-                const items = Array.isArray(order.items) ? order.items : [];
-                for (const item of items) {
-                    const category = (item.item?.category || item.category || '').toLowerCase();
-                    const quantity = item.quantity || 1;
-                    if (qualifyingCategories.some(cat => category.includes(cat))) {
-                        totalStampsFromOrders += quantity;
-                    }
-                }
-            }
-
-            // Process Loyalty
-            const STAMPS_FOR_FREE = 10;
-            let stampsFromDB = 0;
-            let freeItemsFromDB = 0;
-
-            if (foundLoyalty) {
-                stampsFromDB = foundLoyalty.points || foundLoyalty.stamps || foundLoyalty.total_stamps || 0;
-                freeItemsFromDB = foundLoyalty.free_items_available || 0;
-            }
-
-            const finalStamps = Math.max(stampsFromDB, totalStampsFromOrders);
-            const freeItems = freeItemsFromDB || Math.floor(finalStamps / STAMPS_FOR_FREE);
-
-            setLoyaltyInfo({
-                stamps: finalStamps,
-                total_stamps: finalStamps,
-                free_items_available: freeItems
-            });
 
         } catch (error) {
             console.error('Catch Error:', error);
@@ -265,7 +220,7 @@ export default function TicketPortal() {
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold text-slate-900">Bienvenue 👋</h2>
-                            <p className="text-slate-500 mt-2">Entrez votre numéro pour voir vos tickets et fidélité</p>
+                            <p className="text-slate-500 mt-2">Entrez votre numéro pour voir vos tickets</p>
                         </div>
 
                         <div className="space-y-4">
@@ -306,25 +261,6 @@ export default function TicketPortal() {
                                 <div className="text-right">
                                     <p className="text-sm font-medium text-slate-900">{formatPhoneDisplay(phone)}</p>
                                 </div>
-                            </div>
-                        )}
-
-                        {/* Loyalty Card - Premium Look */}
-                        {loyaltyInfo && (
-                            <div className="transform transition-all hover:scale-[1.02] duration-300">
-                                <LoyaltyStampCard
-                                    currentStamps={loyaltyInfo.stamps}
-                                    customerName={customerName}
-                                    customerPhone={phone}
-                                />
-                                {loyaltyInfo.free_items_available > 0 && (
-                                    <div className="mt-3 p-4 bg-gradient-to-r from-amber-400 to-orange-500 rounded-xl text-white shadow-lg text-center animate-pulse">
-                                        <p className="font-bold flex items-center justify-center gap-2">
-                                            <Gift className="w-5 h-5" />
-                                            Félicitations! Vous avez {loyaltyInfo.free_items_available} article(s) gratuit(s)
-                                        </p>
-                                    </div>
-                                )}
                             </div>
                         )}
 

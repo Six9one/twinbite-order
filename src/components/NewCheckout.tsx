@@ -1,8 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { useOrder } from '@/context/OrderContext';
-import { useLoyalty } from '@/context/LoyaltyContext';
-import { LoyaltyStampCard, countQualifyingItems } from '@/components/LoyaltyStampCard';
-import { toPng } from 'html-to-image';
 
 import { CustomerInfo, PaymentMethod, PizzaCustomization } from '@/types/order';
 import { applyPizzaPromotions, calculateTVA } from '@/utils/promotions';
@@ -18,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe, Loader2, CalendarClock, Star, Gift } from 'lucide-react';
+import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe, Loader2, CalendarClock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { format, addMonths, isSunday } from 'date-fns';
@@ -54,7 +51,6 @@ interface NewCheckoutProps {
 
 export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const { cart, orderType, setOrderType, clearCart, scheduledInfo, setScheduledInfo } = useOrder();
-  const { customer, lookupCustomer, calculatePointsToEarn, findOrCreateCustomer, earnPoints, addStamps, redeemReward, rewards, getPizzaCredits, getPizzaCreditsWithSize, addPizzaCredit, redeemPizzaCredit } = useLoyalty();
   const createOrder = useCreateOrder();
   const { data: paymentSettings, isLoading: isLoadingPaymentSettings } = usePaymentSettings();
   const [step, setStep] = useState<'info' | 'payment' | 'schedule-confirm' | 'confirm' | 'success'>('info');
@@ -68,17 +64,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const orderNumberRef = useRef<string | null>(null);
-  const loyaltyCardRef = useRef<HTMLDivElement | null>(null);
   const [scheduleAsked, setScheduleAsked] = useState(false);
   const [tempScheduleDate, setTempScheduleDate] = useState<Date | undefined>(undefined);
   const [tempScheduleTime, setTempScheduleTime] = useState<string>('12:00');
-  const [useLoyaltyDiscount, setUseLoyaltyDiscount] = useState(false);
-  const [pizzasToDefer, setPizzasToDefer] = useState(0);
-  const [deferSize, setDeferSize] = useState<'senior' | 'mega'>('senior'); // Track deferred pizza size
-  const [usePizzaCredit, setUsePizzaCredit] = useState(false);
-  const availablePizzaCredits = getPizzaCredits();
-  const pizzaCreditsList = getPizzaCreditsWithSize();
-  const [lastLookedUpPhone, setLastLookedUpPhone] = useState<string>('');
   const [confirmedOrderData, setConfirmedOrderData] = useState<{
     orderNumber: string;
     items: typeof cart;
@@ -92,30 +80,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     paymentMethod: string;
     createdAt: Date;
     scheduledFor?: Date;
-    newStampsEarned?: number; // Track stamps earned for animation
-    totalStampsAfterOrder?: number; // Total stamps AFTER this order
   } | null>(null);
 
-
-  // Lookup loyalty customer when phone changes (debounced)
-  useEffect(() => {
-    const phone = customerInfo.phone.replace(/\s+/g, '').replace(/^(\+33|0033)/, '0');
-    // Only lookup if phone is valid and different from last lookup
-    if (phone.length >= 10 && phone !== lastLookedUpPhone) {
-      const timer = setTimeout(() => {
-        console.log('[LOYALTY] Looking up customer:', phone);
-        lookupCustomer(phone).then((result) => {
-          setLastLookedUpPhone(phone);
-          if (result) {
-            console.log('[LOYALTY] Found customer:', result.name, 'with', result.points, 'points');
-          } else {
-            console.log('[LOYALTY] No customer found for phone:', phone);
-          }
-        });
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [customerInfo.phone, lookupCustomer, lastLookedUpPhone]);
 
   // Prevent duplicate submissions
   useEffect(() => {
@@ -124,90 +90,6 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       orderNumberRef.current = null;
     };
   }, []);
-
-  // Capture and upload loyalty card image when order is confirmed
-  useEffect(() => {
-    const captureAndUploadLoyaltyCard = async () => {
-      // Capture for ALL confirmed orders (not just stamps earned)
-      if (!confirmedOrderData) {
-        return;
-      }
-
-      // Wait a bit for the card to render and animations to settle
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      if (!loyaltyCardRef.current) {
-        console.log('[LOYALTY] No ref found for capture - will retry...');
-        // Retry after a bit more time
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        if (!loyaltyCardRef.current) {
-          console.log('[LOYALTY] Still no ref found, skipping capture');
-          return;
-        }
-      }
-
-      try {
-        console.log('[LOYALTY] Capturing loyalty card image...');
-
-        // Capture the loyalty card as PNG
-        const dataUrl = await toPng(loyaltyCardRef.current, {
-          backgroundColor: '#ffffff',
-          quality: 0.95,
-          pixelRatio: 2, // Higher quality for mobile
-        });
-
-        // Convert data URL to blob
-        const response = await fetch(dataUrl);
-        const blob = await response.blob();
-
-        // Generate a unique filename (just the filename, not the bucket path)
-        const filename = `${confirmedOrderData.orderNumber}-${Date.now()}.png`;
-
-        console.log('[LOYALTY] Uploading to Supabase Storage:', filename);
-
-        // Upload to Supabase Storage (loyalty-cards bucket)
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('loyalty-cards')
-          .upload(filename, blob, {
-            contentType: 'image/png',
-            upsert: true,
-          });
-
-        if (uploadError) {
-          console.error('[LOYALTY] Upload error:', uploadError);
-          // Try to create bucket if it doesn't exist - this might fail silently
-          return;
-        }
-
-        console.log('[LOYALTY] Upload successful:', uploadData);
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('loyalty-cards')
-          .getPublicUrl(filename);
-
-        const loyaltyCardImageUrl = urlData.publicUrl;
-        console.log('[LOYALTY] Public URL:', loyaltyCardImageUrl);
-
-        // Update order with loyalty card image URL
-        const { error: updateError } = await supabase
-          .from('orders')
-          .update({ loyalty_card_image_url: loyaltyCardImageUrl } as any)
-          .eq('order_number', confirmedOrderData.orderNumber);
-
-        if (updateError) {
-          console.error('[LOYALTY] Failed to update order with image URL:', updateError);
-        } else {
-          console.log('[LOYALTY] Order updated with loyalty card image URL');
-        }
-
-      } catch (error) {
-        console.error('[LOYALTY] Failed to capture loyalty card:', error);
-      }
-    };
-
-    captureAndUploadLoyaltyCard();
-  }, [confirmedOrderData]);
 
   // Calculate totals with promotions - recalculate on every render to ensure accuracy
   const pizzaItems = cart.filter(item => item.item.category === 'pizzas');
@@ -252,19 +134,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
   const subtotal = productsSubtotal + deliveryFee;
 
-  // Loyalty discount: 100 points = €5
-  const loyaltyDiscount = useLoyaltyDiscount && customer && customer.points >= 100 ? 5 : 0;
-  const subtotalAfterLoyalty = Math.max(0, subtotal - loyaltyDiscount);
-
-  const { ht, tva, ttc } = calculateTVA(subtotalAfterLoyalty);
-
-  // Points to earn from this order
-  const pointsToEarn = calculatePointsToEarn(ttc);
-
-  // Stamps to earn from this order (count qualifying products)
-  const stampsToEarn = countQualifyingItems(cart);
-
-  // Validate cart has items and total is valid
+  const { ht, tva, ttc } = calculateTVA(subtotal);
   const isCartValid = cart.length > 0 && ttc > 0;
 
   const orderTypeLabels = {
@@ -461,52 +331,6 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
       console.log('[CHECKOUT] Order created successfully:', result);
 
-      // Handle loyalty points AND stamps FIRST (before Telegram)
-      let stampsEarned = 0;
-      let totalStampsAfter = 0;
-      let freeItemsAfter = 0;
-      try {
-        // Find or create loyalty customer
-        const loyaltyCustomer = await findOrCreateCustomer(customerInfo.phone.trim(), customerInfo.name.trim());
-
-        if (loyaltyCustomer) {
-          // Award points for this order
-          await earnPoints(orderNumberRef.current!, ttc, `Commande #${orderNumberRef.current}`);
-          console.log('[CHECKOUT] Loyalty points awarded:', pointsToEarn);
-
-          // Count and award stamps for qualifying items
-          stampsEarned = countQualifyingItems(cart);
-          if (stampsEarned > 0) {
-            const stampSuccess = await addStamps(orderNumberRef.current!, stampsEarned, `+${stampsEarned} tampon${stampsEarned > 1 ? 's' : ''}`);
-            console.log('[CHECKOUT] Loyalty stamps awarded:', stampsEarned, 'Success:', stampSuccess);
-
-            // After addStamps, the customer context is updated with fresh DB values
-            // We need to calculate based on the customer's previous total + this order's stamps
-            totalStampsAfter = loyaltyCustomer.totalStamps + stampsEarned;
-            const STAMPS_FOR_FREE = 10;
-            freeItemsAfter = Math.floor(totalStampsAfter / STAMPS_FOR_FREE);
-          }
-
-
-          // Redeem points if customer used discount
-          if (useLoyaltyDiscount && loyaltyDiscount > 0) {
-            await redeemReward('discount-5-euro');
-            console.log('[CHECKOUT] Loyalty discount redeemed: -5€ (100 pts)');
-          }
-
-          // Save pizza credits if user chose to defer
-          if (pizzasToDefer > 0) {
-            for (let i = 0; i < pizzasToDefer; i++) {
-              await addPizzaCredit(result.id, deferSize);
-            }
-            console.log('[CHECKOUT] Pizza credits saved:', pizzasToDefer, 'size:', deferSize);
-          }
-        }
-      } catch (loyaltyError) {
-        console.error('[CHECKOUT] Loyalty processing failed:', loyaltyError);
-        // Don't fail the order if loyalty fails
-      }
-
       // Send Telegram notification with stamp info included
       try {
         await supabase.functions.invoke('send-telegram-notification', {
@@ -530,10 +354,6 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             })),
             isScheduled: scheduledInfo.isScheduled,
             scheduledFor: scheduledInfo.scheduledFor?.toISOString() || null,
-            // Stamp card info
-            stampsEarned: stampsEarned,
-            totalStamps: totalStampsAfter,
-            freeItemsAvailable: freeItemsAfter,
           },
         });
         console.log('[CHECKOUT] Telegram notification sent with stamp info');
@@ -556,8 +376,6 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         paymentMethod: paymentMethod,
         createdAt: new Date(),
         scheduledFor: scheduledInfo.scheduledFor || undefined,
-        newStampsEarned: stampsEarned,
-        totalStampsAfterOrder: totalStampsAfter, // Store the AFTER value
       });
 
 
@@ -599,8 +417,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-green-50 to-background p-4">
         <div className="max-w-md mx-auto">
-          {/* Full success screen for WhatsApp capture */}
-          <div ref={loyaltyCardRef} className="bg-gradient-to-b from-green-50 to-white rounded-xl p-2">
+          <div className="bg-gradient-to-b from-green-50 to-white rounded-xl p-2">
             {/* Success header */}
             <div className="text-center mb-4">
               <PartyPopper className="w-16 h-16 mx-auto text-green-500 mb-2" />
@@ -716,42 +533,6 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 Merci de votre confiance! À bientôt chez Twin Pizza 🍕
               </div>
             </Card>
-
-            {/* Loyalty Stamp Card - Show if customer has stamps or earned new ones */}
-            {customer && (confirmedOrderData.newStampsEarned || 0) > 0 && (
-              <div className="mt-6">
-                <h2 className="text-lg font-bold text-center mb-3 text-amber-700">
-                  🎁 Votre Carte de Fidélité
-                </h2>
-                <LoyaltyStampCard
-                  currentStamps={confirmedOrderData.totalStampsAfterOrder || 0}
-                  customerName={confirmedOrderData.customerName}
-                  customerPhone={confirmedOrderData.customerPhone}
-                  newStampsEarned={confirmedOrderData.newStampsEarned}
-                  animated={true}
-                />
-              </div>
-            )}
-
-            {/* Pizza Credits Section - Show if customer earned free pizzas to defer */}
-            {pizzaPromo.freePizzas > 0 && pizzasToDefer > 0 && (
-              <Card className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400">
-                <div className="flex items-center gap-3">
-                  <div className="text-4xl">🍕</div>
-                  <div>
-                    <h3 className="font-bold text-green-800 text-lg">
-                      Pizza sauvegardée!
-                    </h3>
-                    <p className="text-sm text-green-700">
-                      Vous avez {pizzasToDefer} pizza{pizzasToDefer > 1 ? 's' : ''} en réserve pour votre prochaine commande.
-                    </p>
-                    <p className="text-xs text-green-600 mt-1">
-                      ✅ Valable sans limite de temps!
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            )}
           </div>
 
           {/* Actions */}
@@ -861,102 +642,6 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 className="mt-2 text-base min-h-[60px] rounded-xl"
               />
             </div>
-
-            {/* Loyalty Stamp Card - New System */}
-            {customer && (
-              <Card className="p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-                  <span className="font-bold text-amber-700">Carte de Fidélité</span>
-                </div>
-                <div className="space-y-3 text-sm">
-                  {/* Stamps display */}
-                  <div className="flex justify-between items-center">
-                    <span>Vos tampons:</span>
-                    <span className="font-bold text-amber-600">{customer.stamps || 0} / 10</span>
-                  </div>
-
-                  {/* Show stamps to earn from this order */}
-                  {stampsToEarn > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Tampons à gagner:</span>
-                      <span className="font-bold">+{stampsToEarn} 🍕</span>
-                    </div>
-                  )}
-
-                  {/* FREE ITEM AVAILABLE - Show prominently! */}
-                  {(customer.freeItemsAvailable || 0) > 0 && (
-                    <div className="mt-2 bg-green-100 border-2 border-green-400 rounded-lg p-3 text-center animate-pulse">
-                      <p className="text-green-700 font-bold text-base">
-                        🎁 Vous avez {customer.freeItemsAvailable} produit{(customer.freeItemsAvailable || 0) > 1 ? 's' : ''} GRATUIT!
-                      </p>
-                      <p className="text-xs text-green-600 mt-1">
-                        Demandez-le à la caisse (valeur 10€)
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Almost there - 9 stamps! */}
-                  {(customer.stamps || 0) % 10 === 9 && (customer.freeItemsAvailable || 0) === 0 && (
-                    <div className="mt-2 bg-amber-100 border-2 border-amber-400 rounded-lg p-3 text-center">
-                      <p className="text-amber-700 font-bold">
-                        🎉 Plus qu'1 achat pour un produit OFFERT!
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Progress to next free item */}
-                  {(customer.stamps || 0) % 10 < 9 && (customer.freeItemsAvailable || 0) === 0 && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      Encore {10 - ((customer.stamps || 0) % 10)} tampon(s) pour un produit gratuit!
-                    </p>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {/* 🍕 PIZZA CREDITS - Show saved pizzas prominently when customer has credits */}
-            {customer && availablePizzaCredits > 0 && (
-              <Card className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400">
-                <div className="flex items-start gap-3">
-                  <div className="text-4xl animate-bounce">🍕</div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-green-800 text-lg">
-                      Vous avez {availablePizzaCredits} pizza{availablePizzaCredits > 1 ? 's' : ''} en réserve!
-                    </h3>
-                    <p className="text-sm text-green-700 mt-1">
-                      {pizzaCreditsList.length > 0 && pizzaCreditsList.map((credit, idx) => (
-                        <span key={credit.id}>
-                          {idx > 0 ? ', ' : ''}Pizza {credit.size === 'mega' ? 'Mega' : 'Senior'}
-                        </span>
-                      ))}
-                    </p>
-                    <p className="text-xs text-green-600 mt-2">
-                      ✅ Ces pizzas sont gratuites et sans date limite!
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {/* If not logged in but phone entered, show stamps info */}
-            {!customer && customerInfo.phone.length >= 10 && (
-              <Card className="p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Star className="w-5 h-5 text-amber-500" />
-                  <span className="font-semibold text-amber-700">Carte de Fidélité</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {stampsToEarn > 0 ? (
-                    <>Gagnez <span className="font-bold text-amber-600">+{stampsToEarn} tampon(s)</span> avec cette commande!</>
-                  ) : (
-                    <>Commandez des pizzas, tacos, soufflets... pour gagner des tampons!</>
-                  )}
-                  <br />
-                  <span className="text-xs">9 tampons = 10ème OFFERT (valeur 10€) 🎁</span>
-                </p>
-              </Card>
-            )}
           </div>
         )}
 

@@ -15,7 +15,6 @@ import { SettingsManager } from '@/components/admin/SettingsManager';
 import { ImageUploadTable } from '@/components/admin/ImageUploadTable';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { PromotionsManager } from '@/components/admin/PromotionsManager';
-import { StampCenter } from '@/components/admin/StampCenter';
 import { OpeningHoursManager } from '@/components/admin/OpeningHoursManager';
 import { StatisticsSection } from '@/components/admin/StatisticsSection';
 import { PaymentSettingsManager } from '@/components/admin/PaymentSettingsManager';
@@ -41,7 +40,7 @@ import {
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 
-type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'loyalty' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability';
+type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability';
 
 
 
@@ -934,7 +933,6 @@ export default function AdminDashboard() {
           {/* New Sections */}
           {activeTab === 'promotions' && <PromotionsManager />}
           {activeTab === 'carousel' && <CarouselManager />}
-          {activeTab === 'loyalty' && <StampCenter />}
           {activeTab === 'reviews' && <ReviewsManager />}
           {activeTab === 'hours' && <OpeningHoursManager />}
           {activeTab === 'store-status' && <StoreStatusManager />}
