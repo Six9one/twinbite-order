@@ -36,25 +36,33 @@ export function ImageUploadTable({ tableName, title, hasImage = false }: ImageUp
   const handleImageUpload = async (itemId: string, file: File) => {
     setUploading(itemId);
     try {
+      console.log('Uploading image for item:', itemId, 'in table:', tableName);
       const { uploadToCloudinary } = await import('@/utils/cloudinary');
       const imageUrl = await uploadToCloudinary(file);
 
       if (!imageUrl) {
-        toast.error('Erreur upload image');
+        toast.error('Erreur upload image : URL vide');
         return;
       }
+
+      console.log('Image uploaded successfully. URL:', imageUrl);
+      console.log('Updating database row for item:', itemId);
 
       const { error } = await supabase
         .from(tableName as any)
         .update({ image_url: imageUrl })
         .eq('id', itemId);
 
-      if (!error) {
+      if (error) {
+        console.error('Database update error:', error);
+        toast.error(`Erreur lors de la mise à jour en base de données : ${error.message}`);
+      } else {
         toast.success('Image ajoutée!');
         fetchItems();
       }
-    } catch (error) {
-      toast.error('Erreur lors du téléchargement');
+    } catch (error: any) {
+      console.error('Upload catch block error:', error);
+      toast.error(`Erreur : ${error.message || error || 'Erreur lors du téléchargement'}`);
     } finally {
       setUploading(null);
     }
@@ -69,6 +77,9 @@ export function ImageUploadTable({ tableName, title, hasImage = false }: ImageUp
     if (!error) {
       toast.success('Image supprimée!');
       fetchItems();
+    } else {
+      console.error('Remove image error:', error);
+      toast.error(`Erreur lors de la suppression de l'image : ${error.message}`);
     }
   };
 
@@ -85,6 +96,9 @@ export function ImageUploadTable({ tableName, title, hasImage = false }: ImageUp
       toast.success('Mis à jour!');
       setEditingId(null);
       fetchItems();
+    } else {
+      console.error('Save error:', error);
+      toast.error(`Erreur lors de la modification : ${error.message}`);
     }
   };
 
@@ -97,6 +111,9 @@ export function ImageUploadTable({ tableName, title, hasImage = false }: ImageUp
     if (!error) {
       toast.success('Supprimé!');
       fetchItems();
+    } else {
+      console.error('Delete error:', error);
+      toast.error(`Erreur lors de la suppression : ${error.message}`);
     }
   };
 

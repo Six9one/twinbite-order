@@ -14,8 +14,8 @@ export async function uploadToCloudinary(file: File): Promise<string> {
         .upload(filePath, file, { cacheControl: '3600', upsert: true });
 
     if (error) {
-        console.error('Upload error:', error);
-        throw new Error('Upload failed');
+        console.error('Upload error details:', error);
+        throw new Error(`Upload failed: ${error.message || 'Unknown storage error'}`);
     }
 
     const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(filePath);
