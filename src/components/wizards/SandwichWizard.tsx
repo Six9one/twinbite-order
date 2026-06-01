@@ -10,29 +10,95 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Check, Sandwich, Image } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { ArrowLeft, Check, Sandwich, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+
+const FREE_SAUCES_COUNT = 2;
+const EXTRA_SAUCE_PRICE = 0.30;
+
+// Emoji fallbacks for sauces when no image_url
+const sauceEmojis: Record<string, string> = {
+  'Sauce Blanche': '🥛',
+  'Algérienne': '🟡',
+  'Algériene': '🟡',
+  'Harissa': '🌶️',
+  'Biggy Burger': '🍔',
+  'Biggy': '🍔',
+  'Samouraï': '⚔️',
+  'Samourai': '⚔️',
+  'Ketchup': '🍅',
+  'Mayonnaise': '🥚',
+  'Barbecue': '🔥',
+  'BBQ': '🔥',
+  'Curry': '🟠',
+  'Moutarde': '🌻',
+};
+
+// Emoji fallbacks for crudités
+const cruditeEmojis: Record<string, string> = {
+  'Salade': '🥬',
+  'Tomate': '🍅',
+  'Oignon': '🧅',
+  'Oignons': '🧅',
+  'Olive': '🫒',
+  'Olives': '🫒',
+  'Cornichon': '🥒',
+};
+
+// Emoji fallbacks for supplements
+const supplementEmojis: Record<string, string> = {
+  'Chèvre': '🐐',
+  'Reblochon': '🧀',
+  'Mozzarella': '🧀',
+  'Raclette': '🫕',
+  'Cheddar': '🧡',
+  'Boursin': '🌿',
+  'Fromage': '🧀',
+};
+
+// Default crudités that come pre-selected (user can remove them)
+const DEFAULT_CRUDITES = ['Salade', 'Tomate', 'Oignon'];
 
 interface SandwichWizardProps {
   onClose: () => void;
+}
+
+function getOptionEmoji(name: string, map: Record<string, string>): string {
+  for (const [key, emoji] of Object.entries(map)) {
+    if (name.toLowerCase().includes(key.toLowerCase())) return emoji;
+  }
+  return '🥗';
 }
 
 export function SandwichWizard({ onClose }: SandwichWizardProps) {
   const { addToCart } = useOrder();
   const { data: sandwichTypes, isLoading: loadingSandwiches } = useSandwichTypes();
   const { data: cruditeOptions } = useCruditeOptions();
-  const { data: sauceOptions } = useSauceOptions();
-  const { data: supplementOptions } = useSupplementOptions();
+  const { data: sauceOptionsData } = useSauceOptions();
+  const { data: supplementOptionsData } = useSupplementOptions();
 
   const [step, setStep] = useState<number>(1);
   const [selectedSandwich, setSelectedSandwich] = useState<SandwichType | null>(null);
   const [selectedSauces, setSelectedSauces] = useState<string[]>([]);
-  const [selectedCrudites, setSelectedCrudites] = useState<string[]>([]);
+  // Crudités: track which defaults have been removed
+  const [removedDefaults, setRemovedDefaults] = useState<string[]>([]);
+  const [selectedExtraCrudites, setSelectedExtraCrudites] = useState<string[]>([]);
   const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
   const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'menu'>('none');
   const [note, setNote] = useState('');
 
   const totalSteps = 5;
+
+  // Split crudites into defaults and extras
+  const defaultCrudites = (cruditeOptions || []).filter(c =>
+    DEFAULT_CRUDITES.some(d => c.name.toLowerCase().includes(d.toLowerCase()))
+  );
+  const extraCrudites = (cruditeOptions || []).filter(c =>
+    !DEFAULT_CRUDITES.some(d => c.name.toLowerCase().includes(d.toLowerCase()))
+  );
+
+  const sauceSurcharge = Math.max(0, selectedSauces.length - FREE_SAUCES_COUNT) * EXTRA_SAUCE_PRICE;
 
   const toggleSauce = (sauce: string) => {
     setSelectedSauces(prev =>
@@ -40,9 +106,15 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
     );
   };
 
-  const toggleCrudite = (crudite: string) => {
-    setSelectedCrudites(prev =>
-      prev.includes(crudite) ? prev.filter(c => c !== crudite) : [...prev, crudite]
+  const toggleDefaultCrudite = (cruditeId: string) => {
+    setRemovedDefaults(prev =>
+      prev.includes(cruditeId) ? prev.filter(c => c !== cruditeId) : [...prev, cruditeId]
+    );
+  };
+
+  const toggleExtraCrudite = (cruditeId: string) => {
+    setSelectedExtraCrudites(prev =>
+      prev.includes(cruditeId) ? prev.filter(c => c !== cruditeId) : [...prev, cruditeId]
     );
   };
 
@@ -57,18 +129,18 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
 
     let price = selectedSandwich.base_price;
 
-    // Add supplements
     selectedSupplements.forEach(supName => {
-      const sup = supplementOptions?.find(s => s.name === supName);
+      const sup = supplementOptionsData?.find(s => s.name === supName);
       if (sup) price += sup.price;
     });
 
-    // Add menu option
     if (menuOption === 'frites' || menuOption === 'boisson') {
       price += menuOptionPrices.frites;
     } else if (menuOption === 'menu') {
       price += menuOptionPrices.menu;
     }
+
+    price += sauceSurcharge;
 
     return price;
   };
@@ -87,9 +159,20 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
   const handleAddToCart = () => {
     if (!selectedSandwich) return;
 
+    // Build final crudites list
+    const activeCruditeNames = [
+      ...defaultCrudites.filter(c => !removedDefaults.includes(c.id)).map(c => c.name),
+      ...extraCrudites.filter(c => selectedExtraCrudites.includes(c.id)).map(c => c.name),
+    ];
+
+    // Add "Sans X" for removed defaults
+    const removedNames = defaultCrudites
+      .filter(c => removedDefaults.includes(c.id))
+      .map(c => `Sans ${c.name}`);
+
     const customization: SandwichCustomization = {
       sauces: selectedSauces,
-      crudites: selectedCrudites,
+      crudites: [...activeCruditeNames, ...removedNames],
       supplements: selectedSupplements,
       menuOption,
       note: note || undefined,
@@ -100,7 +183,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
       name: selectedSandwich.name,
       description: selectedSandwich.description || '',
       price: selectedSandwich.base_price,
-      category: 'panini', // Use existing category for now
+      category: 'panini',
       imageUrl: selectedSandwich.image_url || undefined,
     };
 
@@ -114,10 +197,10 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
       description: `${selectedSandwich.name}${menuOption !== 'none' ? ` (${menuOption})` : ''}`,
     });
 
-    // Reset for another order
     setSelectedSandwich(null);
     setSelectedSauces([]);
-    setSelectedCrudites([]);
+    setRemovedDefaults([]);
+    setSelectedExtraCrudites([]);
     setSelectedSupplements([]);
     setMenuOption('none');
     setNote('');
@@ -178,88 +261,190 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
           </div>
         );
 
-      case 2:
+      case 2: {
+        const freeSaucesLeft = Math.max(0, FREE_SAUCES_COUNT - selectedSauces.length);
         return (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Choisir vos sauces</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {sauceOptions?.map(sauce => (
-                <Card
-                  key={sauce.id}
-                  className={`p-3 cursor-pointer transition-all ${selectedSauces.includes(sauce.name)
-                      ? 'ring-2 ring-primary bg-primary/5'
-                      : 'hover:bg-muted/50'
-                    }`}
-                  onClick={() => toggleSauce(sauce.name)}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{sauce.name}</span>
-                    {selectedSauces.includes(sauce.name) && (
-                      <Check className="w-4 h-4 text-primary" />
-                    )}
-                  </div>
-                </Card>
-              ))}
+            {/* Info banner */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg text-sm">
+              <span className="text-primary font-bold">🎁</span>
+              <span>
+                {freeSaucesLeft > 0
+                  ? <><strong>{freeSaucesLeft}</strong> sauce{freeSaucesLeft > 1 ? 's' : ''} gratuite{freeSaucesLeft > 1 ? 's' : ''} restante{freeSaucesLeft > 1 ? 's' : ''}</>
+                  : <><strong>+{EXTRA_SAUCE_PRICE.toFixed(2)}€</strong> par sauce supplémentaire</>
+                }
+              </span>
+              {selectedSauces.length > 0 && (
+                <Badge variant="outline" className="ml-auto">
+                  {selectedSauces.length} sélectionnée{selectedSauces.length > 1 ? 's' : ''}
+                </Badge>
+              )}
             </div>
-            {selectedSauces.length > 0 && (
-              <p className="text-sm text-muted-foreground">
-                Sélectionnées: {selectedSauces.join(', ')}
+            <div className="grid grid-cols-3 gap-3">
+              {sauceOptionsData?.map((sauce, index) => {
+                const isSelected = selectedSauces.includes(sauce.name);
+                const sauceIndex = selectedSauces.indexOf(sauce.name);
+                const isPaidSauce = sauceIndex >= FREE_SAUCES_COUNT;
+                const wouldBePaid = !isSelected && selectedSauces.length >= FREE_SAUCES_COUNT;
+                const emoji = getOptionEmoji(sauce.name, sauceEmojis);
+                return (
+                  <Card
+                    key={sauce.id}
+                    className={`cursor-pointer transition-all overflow-hidden ${isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                    onClick={() => toggleSauce(sauce.name)}
+                  >
+                    <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
+                      {sauce.image_url ? (
+                        <img src={sauce.image_url} alt={sauce.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-4xl">{emoji}</span>
+                      )}
+                      {isSelected && (
+                        <div className="absolute top-1 right-1 bg-primary rounded-full w-6 h-6 flex items-center justify-center">
+                          <Check className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2 text-center">
+                      <p className="font-medium text-sm leading-tight">{sauce.name}</p>
+                      {wouldBePaid && <p className="text-xs text-primary font-semibold">+{EXTRA_SAUCE_PRICE.toFixed(2)}€</p>}
+                      {isPaidSauce && isSelected && <p className="text-xs text-primary font-semibold">+{EXTRA_SAUCE_PRICE.toFixed(2)}€</p>}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+            {sauceSurcharge > 0 && (
+              <p className="text-sm text-primary font-medium text-center">
+                Supplément sauces : +{sauceSurcharge.toFixed(2)}€
               </p>
             )}
           </div>
         );
+      }
 
       case 3:
         return (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Crudités (optionnel)</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {cruditeOptions?.map(crudite => (
-                <Card
-                  key={crudite.id}
-                  className={`p-3 cursor-pointer transition-all ${selectedCrudites.includes(crudite.name)
-                      ? 'ring-2 ring-primary bg-primary/5'
-                      : 'hover:bg-muted/50'
-                    }`}
-                  onClick={() => toggleCrudite(crudite.name)}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{crudite.name}</span>
-                    {selectedCrudites.includes(crudite.name) && (
-                      <Check className="w-4 h-4 text-primary" />
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
+            <h2 className="text-lg font-semibold">Crudités</h2>
+            <p className="text-sm text-muted-foreground">
+              Salade, tomate et oignon sont inclus par défaut. Appuyez pour retirer.
+            </p>
+
+            {/* Default crudites — pre-selected, tap to remove */}
+            {defaultCrudites.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Inclus par défaut</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {defaultCrudites.map((crudite) => {
+                    const isRemoved = removedDefaults.includes(crudite.id);
+                    const emoji = getOptionEmoji(crudite.name, cruditeEmojis);
+                    return (
+                      <Card
+                        key={crudite.id}
+                        className={`cursor-pointer transition-all overflow-hidden ${!isRemoved ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50 opacity-60'}`}
+                        onClick={() => toggleDefaultCrudite(crudite.id)}
+                      >
+                        <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
+                          {crudite.image_url ? (
+                            <img src={crudite.image_url} alt={crudite.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-4xl">{emoji}</span>
+                          )}
+                          {!isRemoved && (
+                            <div className="absolute top-1 right-1 bg-primary rounded-full w-6 h-6 flex items-center justify-center">
+                              <Check className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                          {isRemoved && (
+                            <div className="absolute top-1 right-1 bg-red-500 rounded-full w-6 h-6 flex items-center justify-center">
+                              <X className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-2 text-center">
+                          <p className="font-medium text-sm">{crudite.name}</p>
+                          {isRemoved && <p className="text-xs text-red-500">Retiré</p>}
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Extra crudites */}
+            {extraCrudites.length > 0 && (
+              <div className="space-y-2">
+                <Separator />
+                <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Ajouter</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {extraCrudites.map((crudite) => {
+                    const emoji = getOptionEmoji(crudite.name, cruditeEmojis);
+                    return (
+                      <Card
+                        key={crudite.id}
+                        className={`cursor-pointer transition-all overflow-hidden ${selectedExtraCrudites.includes(crudite.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                        onClick={() => toggleExtraCrudite(crudite.id)}
+                      >
+                        <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
+                          {crudite.image_url ? (
+                            <img src={crudite.image_url} alt={crudite.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-4xl">{emoji}</span>
+                          )}
+                          {selectedExtraCrudites.includes(crudite.id) && (
+                            <div className="absolute top-1 right-1 bg-primary rounded-full w-6 h-6 flex items-center justify-center">
+                              <Check className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-2 text-center">
+                          <p className="font-medium text-sm">{crudite.name}</p>
+                          {crudite.price > 0 && <p className="text-xs text-primary font-semibold">+{crudite.price.toFixed(2)}€</p>}
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         );
 
       case 4:
         return (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Suppléments (+1€ chacun)</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {supplementOptions?.map(sup => (
-                <Card
-                  key={sup.id}
-                  className={`p-3 cursor-pointer transition-all ${selectedSupplements.includes(sup.name)
-                      ? 'ring-2 ring-primary bg-primary/5'
-                      : 'hover:bg-muted/50'
-                    }`}
-                  onClick={() => toggleSupplement(sup.name)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="font-medium">{sup.name}</span>
-                      <span className="text-xs text-muted-foreground ml-1">+{sup.price}€</span>
+            <h2 className="text-lg font-semibold">Suppléments (optionnel)</h2>
+            <div className="grid grid-cols-3 gap-3">
+              {supplementOptionsData?.map(sup => {
+                const emoji = getOptionEmoji(sup.name, supplementEmojis);
+                return (
+                  <Card
+                    key={sup.id}
+                    className={`cursor-pointer transition-all overflow-hidden ${selectedSupplements.includes(sup.name) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                    onClick={() => toggleSupplement(sup.name)}
+                  >
+                    <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
+                      {sup.image_url ? (
+                        <img src={sup.image_url} alt={sup.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-4xl">{emoji}</span>
+                      )}
+                      {selectedSupplements.includes(sup.name) && (
+                        <div className="absolute top-1 right-1 bg-primary rounded-full w-6 h-6 flex items-center justify-center">
+                          <Check className="w-3 h-3 text-white" />
+                        </div>
+                      )}
                     </div>
-                    {selectedSupplements.includes(sup.name) && (
-                      <Check className="w-4 h-4 text-primary" />
-                    )}
-                  </div>
-                </Card>
-              ))}
+                    <div className="p-2 text-center">
+                      <p className="font-medium text-sm">{sup.name}</p>
+                      <p className="text-xs text-primary font-semibold">+{sup.price}€</p>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         );
@@ -271,8 +456,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
               <h2 className="text-lg font-semibold mb-3">Options menu</h2>
               <div className="grid grid-cols-2 gap-3">
                 <Card
-                  className={`p-4 cursor-pointer transition-all ${menuOption === 'none' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
-                    }`}
+                  className={`p-4 cursor-pointer transition-all ${menuOption === 'none' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
                   onClick={() => setMenuOption('none')}
                 >
                   <div className="flex items-center justify-between">
@@ -281,8 +465,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
                   </div>
                 </Card>
                 <Card
-                  className={`p-4 cursor-pointer transition-all ${menuOption === 'frites' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
-                    }`}
+                  className={`p-4 cursor-pointer transition-all ${menuOption === 'frites' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
                   onClick={() => setMenuOption('frites')}
                 >
                   <div className="flex items-center justify-between">
@@ -294,8 +477,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
                   </div>
                 </Card>
                 <Card
-                  className={`p-4 cursor-pointer transition-all ${menuOption === 'boisson' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
-                    }`}
+                  className={`p-4 cursor-pointer transition-all ${menuOption === 'boisson' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
                   onClick={() => setMenuOption('boisson')}
                 >
                   <div className="flex items-center justify-between">
@@ -307,8 +489,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
                   </div>
                 </Card>
                 <Card
-                  className={`p-4 cursor-pointer transition-all ${menuOption === 'menu' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
-                    }`}
+                  className={`p-4 cursor-pointer transition-all ${menuOption === 'menu' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
                   onClick={() => setMenuOption('menu')}
                 >
                   <div className="flex items-center justify-between">
@@ -368,8 +549,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
             {Array.from({ length: totalSteps }).map((_, i) => (
               <div
                 key={i}
-                className={`h-1 flex-1 rounded-full ${i < step ? 'bg-primary' : 'bg-muted'
-                  }`}
+                className={`h-1 flex-1 rounded-full ${i < step ? 'bg-primary' : 'bg-muted'}`}
               />
             ))}
           </div>

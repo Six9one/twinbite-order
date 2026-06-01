@@ -15,7 +15,37 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Check, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-// Allowed meats for Tacos (same as other products)
+const FREE_SAUCES_COUNT = 2;
+const EXTRA_SAUCE_PRICE = 0.30;
+
+// Emoji fallbacks for sauces
+const sauceEmojis: Record<string, string> = {
+  'Sauce Blanche': '🥛',
+  'Algérienne': '🟡',
+  'Algériene': '🟡',
+  'Harissa': '🌶️',
+  'Biggy Burger': '🍔',
+  'Biggy': '🍔',
+  'Samouraï': '⚔️',
+  'Samourai': '⚔️',
+  'Ketchup': '🍅',
+  'Mayonnaise': '🥚',
+  'Barbecue': '🔥',
+  'BBQ': '🔥',
+  'Curry': '🟠',
+  'Moutarde': '🌻',
+};
+
+// Emoji fallbacks for supplements
+const supplementEmojis: Record<string, string> = {
+  'Chèvre': '🐐',
+  'Reblochon': '🧀',
+  'Mozzarella': '🧀',
+  'Raclette': '🫕',
+  'Cheddar': '🧡',
+  'Boursin': '🌿',
+};
+
 const allowedMeatNames = [
   'Escalope marinée',
   'Tenders',
@@ -31,13 +61,9 @@ interface TacosWizardProps {
 
 type TacosSize = 'solo' | 'double' | 'triple';
 
-// Helper to map database products to expected shape
 function mapDbProductsToTacos(products: Product[] | undefined): MenuItem[] {
   if (!products || products.length === 0) return tacos;
-
-  // Sort by base_price to determine size
   const sorted = [...products].sort((a, b) => Number(a.base_price) - Number(b.base_price));
-
   return sorted.map((p, idx) => {
     let size: TacosSize = 'solo';
     const nameLower = p.name.toLowerCase();
@@ -45,7 +71,6 @@ function mapDbProductsToTacos(products: Product[] | undefined): MenuItem[] {
     else if (nameLower.includes('double')) size = 'double';
     else if (idx === 1) size = 'double';
     else if (idx === 2) size = 'triple';
-
     return {
       id: `tacos-${size}`,
       name: p.name,
@@ -55,6 +80,13 @@ function mapDbProductsToTacos(products: Product[] | undefined): MenuItem[] {
       imageUrl: p.image_url || undefined,
     };
   });
+}
+
+function getOptionEmoji(name: string, map: Record<string, string>): string {
+  for (const [key, emoji] of Object.entries(map)) {
+    if (name.toLowerCase().includes(key.toLowerCase())) return emoji;
+  }
+  return '•';
 }
 
 export function TacosWizard({ onClose }: TacosWizardProps) {
@@ -67,32 +99,30 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   const [supplements, setSupplements] = useState<string[]>([]);
   const [note, setNote] = useState('');
 
-  // Load tacos from database (fallback to static)
   const { data: dbTacos } = useProductsByCategory('tacos');
   const tacosProducts = mapDbProductsToTacos(dbTacos);
-
-  // Load wizard image
   const { data: wizardImage } = useWizardImage('tacos');
-
-  // Load meat and sauce options from database (fallback to static)
   const { data: dbMeats } = useMeatOptions();
   const { data: dbSauces } = useSauceOptions();
 
-  // Use database options if available, else static
   const meatOptions = (dbMeats && dbMeats.length > 0)
     ? dbMeats.filter(m => allowedMeatNames.some(allowed =>
-      m.name.toLowerCase().includes(allowed.toLowerCase()) ||
-      allowed.toLowerCase().includes(m.name.toLowerCase())
-    ))
+        m.name.toLowerCase().includes(allowed.toLowerCase()) ||
+        allowed.toLowerCase().includes(m.name.toLowerCase())
+      ))
     : staticMeatOptions.filter(m => allowedMeatNames.some(allowed =>
-      m.name.toLowerCase().includes(allowed.toLowerCase()) ||
-      allowed.toLowerCase().includes(m.name.toLowerCase())
-    ));
+        m.name.toLowerCase().includes(allowed.toLowerCase()) ||
+        allowed.toLowerCase().includes(m.name.toLowerCase())
+      ));
 
-  const sauceOptions = (dbSauces && dbSauces.length > 0) ? dbSauces : staticSauceOptions;
+  const sauceOptions = (dbSauces && dbSauces.length > 0)
+    ? dbSauces.map(s => ({ ...s, image_url: s.image_url }))
+    : staticSauceOptions.map(s => ({ ...s, image_url: null }));
 
   const maxMeats = size === 'solo' ? 1 : size === 'double' ? 2 : 3;
   const tacosItem = tacosProducts.find(t => t.id === `tacos-${size}`) || tacos.find(t => t.id === `tacos-${size}`);
+
+  const sauceSurcharge = Math.max(0, selectedSauces.length - FREE_SAUCES_COUNT) * EXTRA_SAUCE_PRICE;
 
   const toggleMeat = (meatId: string) => {
     if (selectedMeats.includes(meatId)) {
@@ -121,14 +151,13 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   const calculatePrice = () => {
     let price = tacosItem?.price || 0;
     price += menuOptionPrices[menuOption];
+    price += sauceSurcharge;
 
-    // Add meat supplements
     selectedMeats.forEach(meatId => {
       const meat = meatOptions.find(m => m.id === meatId);
       if (meat) price += meat.price;
     });
 
-    // Add other supplements (cheese)
     supplements.forEach(supId => {
       const sup = supplementOptions.find(s => s.id === supId) || cheeseSupplementOptions.find(s => s.id === supId);
       if (sup) price += sup.price;
@@ -147,7 +176,6 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   const handleAddToCart = () => {
     if (!tacosItem) return;
 
-    // Convert IDs to names for display
     const meatNames = selectedMeats.map(id => {
       const meat = meatOptions.find(m => m.id === id);
       return meat?.name || id;
@@ -157,10 +185,6 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
       const sauce = sauceOptions.find(s => s.id === id);
       return sauce?.name || id;
     });
-
-    // For supplements in Tacos, we also need to map them if they come from DB (cheese supplements usually static, but better to be safe)
-    // Supplements in TacosWizard uses specific logic: meat supplements or cheese supplements
-    // Line 128: const sup = supplementOptions.find(s => s.id === supId) || cheeseSupplementOptions.find(s => s.id === supId);
 
     const supplementNames = supplements.map(id => {
       const sup = supplementOptions.find(s => s.id === id) || cheeseSupplementOptions.find(s => s.id === id);
@@ -183,8 +207,6 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
 
     const calculatedPrice = calculatePrice();
     addToCart(cartItem, 1, customization, calculatedPrice);
-
-    // Track analytics
     trackAddToCart(tacosItem.id, `Tacos ${size}`, 'tacos');
 
     toast({
@@ -225,7 +247,6 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
               })}
             </div>
 
-            {/* Product Image */}
             {wizardImage && (
               <div className="mt-6 flex justify-center">
                 <div className="relative w-full max-w-xs overflow-hidden rounded-xl shadow-lg">
@@ -265,27 +286,68 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
           </div>
         );
 
-      case 3:
+      case 3: {
+        const freeSaucesLeft = Math.max(0, FREE_SAUCES_COUNT - selectedSauces.length);
         return (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Choisir les sauces</h2>
-            <p className="text-sm text-muted-foreground">Sélection multiple possible</p>
-            <div className="grid grid-cols-2 gap-3">
-              {sauceOptions.map((sauce) => (
-                <Card
-                  key={sauce.id}
-                  className={`p-3 cursor-pointer transition-all ${selectedSauces.includes(sauce.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                  onClick={() => toggleSauce(sauce.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{sauce.name}</span>
-                    {selectedSauces.includes(sauce.id) && <Check className="w-5 h-5 text-primary" />}
-                  </div>
-                </Card>
-              ))}
+            {/* Info banner */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg text-sm">
+              <span className="text-primary font-bold">🎁</span>
+              <span>
+                {freeSaucesLeft > 0
+                  ? <><strong>{freeSaucesLeft}</strong> sauce{freeSaucesLeft > 1 ? 's' : ''} gratuite{freeSaucesLeft > 1 ? 's' : ''} restante{freeSaucesLeft > 1 ? 's' : ''}</>
+                  : <><strong>+{EXTRA_SAUCE_PRICE.toFixed(2)}€</strong> par sauce supplémentaire</>
+                }
+              </span>
+              {selectedSauces.length > 0 && (
+                <Badge variant="outline" className="ml-auto">
+                  {selectedSauces.length} sélectionnée{selectedSauces.length > 1 ? 's' : ''}
+                </Badge>
+              )}
             </div>
+            <div className="grid grid-cols-3 gap-3">
+              {sauceOptions.map((sauce) => {
+                const isSelected = selectedSauces.includes(sauce.id);
+                const isExtraPaid = !isSelected && selectedSauces.length >= FREE_SAUCES_COUNT;
+                const sauceIndex = selectedSauces.indexOf(sauce.id);
+                const isPaidSauce = sauceIndex >= FREE_SAUCES_COUNT;
+                const emoji = getOptionEmoji(sauce.name, sauceEmojis);
+                return (
+                  <Card
+                    key={sauce.id}
+                    className={`cursor-pointer transition-all overflow-hidden ${isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                    onClick={() => toggleSauce(sauce.id)}
+                  >
+                    <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
+                      {sauce.image_url ? (
+                        <img src={sauce.image_url} alt={sauce.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-4xl">{emoji}</span>
+                      )}
+                      {isSelected && (
+                        <div className="absolute top-1 right-1 bg-primary rounded-full w-6 h-6 flex items-center justify-center">
+                          <Check className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2 text-center">
+                      <p className="font-medium text-sm leading-tight">{sauce.name}</p>
+                      {isExtraPaid && <p className="text-xs text-primary font-semibold">+{EXTRA_SAUCE_PRICE.toFixed(2)}€</p>}
+                      {isPaidSauce && isSelected && <p className="text-xs text-primary font-semibold">+{EXTRA_SAUCE_PRICE.toFixed(2)}€</p>}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+            {sauceSurcharge > 0 && (
+              <p className="text-sm text-primary font-medium text-center">
+                Supplément sauces : +{sauceSurcharge.toFixed(2)}€
+              </p>
+            )}
           </div>
         );
+      }
 
       case 4:
         return (
@@ -307,7 +369,7 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="font-medium">{option.label}</span>
-                        {option.desc && <p className="text-xs text-muted-foreground">{option.desc}</p>}
+                        {(option as any).desc && <p className="text-xs text-muted-foreground">{(option as any).desc}</p>}
                       </div>
                       {menuOption === option.id && <Check className="w-5 h-5 text-primary" />}
                     </div>
@@ -324,28 +386,41 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
             <div className="space-y-4">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Plus className="w-5 h-5 text-primary" />
-                Options supplémentaires (+1€ chacun)
+                Suppléments (+1€ chacun)
               </h2>
-              <div className="grid grid-cols-2 gap-3">
-                {cheeseSupplementOptions.map((sup) => (
-                  <Card
-                    key={sup.id}
-                    className={`p-3 cursor-pointer transition-all ${supplements.includes(sup.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                    onClick={() => toggleSupplement(sup.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{sup.name}</span>
-                      {supplements.includes(sup.id) && <Check className="w-5 h-5 text-primary" />}
-                    </div>
-                    <span className="text-sm text-primary font-semibold">+{sup.price}€</span>
-                  </Card>
-                ))}
+              <div className="grid grid-cols-3 gap-3">
+                {cheeseSupplementOptions.map((sup) => {
+                  const emoji = getOptionEmoji(sup.name, supplementEmojis);
+                  return (
+                    <Card
+                      key={sup.id}
+                      className={`cursor-pointer transition-all overflow-hidden ${supplements.includes(sup.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                      onClick={() => toggleSupplement(sup.id)}
+                    >
+                      <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
+                        {(sup as any).image_url ? (
+                          <img src={(sup as any).image_url} alt={sup.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-4xl">{emoji}</span>
+                        )}
+                        {supplements.includes(sup.id) && (
+                          <div className="absolute top-1 right-1 bg-primary rounded-full w-6 h-6 flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-2 text-center">
+                        <p className="font-medium text-sm">{sup.name}</p>
+                        <p className="text-xs text-primary font-semibold">+{sup.price}€</p>
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
 
             <Separator />
 
-            {/* Notes */}
             <div className="space-y-2">
               <h2 className="text-lg font-semibold">Notes / Remarques</h2>
               <Textarea
@@ -379,7 +454,6 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
             <span className="text-xl font-bold text-primary">{calculatePrice().toFixed(2)}€</span>
           </div>
 
-          {/* Progress */}
           <div className="flex gap-2 mt-4">
             {[1, 2, 3, 4].map((s) => (
               <div
@@ -395,7 +469,6 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
         {renderStep()}
       </div>
 
-      {/* Bottom Action */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
         <div className="container mx-auto">
           {step < 4 ? (

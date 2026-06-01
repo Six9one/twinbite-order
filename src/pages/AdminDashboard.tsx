@@ -915,7 +915,7 @@ export default function AdminDashboard() {
           {activeTab === 'meats' && <ImageUploadTable tableName="meat_options" title="Options viandes" hasImage />}
           {activeTab === 'sauces' && <ImageUploadTable tableName="sauce_options" title="Options sauces" hasImage />}
           {activeTab === 'garnitures' && <ImageUploadTable tableName="garniture_options" title="Options garnitures" hasImage />}
-          {activeTab === 'crudites' && <CruditesManager />}
+          {activeTab === 'crudites' && <ImageUploadTable tableName="crudites_options" title="Crudités (Salade, Tomate, Oignon...)" hasImage />}
           {activeTab === 'supplements' && <ImageUploadTable tableName="supplement_options" title="Options suppléments" hasImage />}
 
           {/* Ventes */}
