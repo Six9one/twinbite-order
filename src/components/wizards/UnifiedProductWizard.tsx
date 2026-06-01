@@ -566,9 +566,6 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
         return (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Garnitures</h2>
-            <p className="text-sm text-muted-foreground">
-              Salade, tomate et oignon sont inclus par défaut. Appuyez pour retirer.
-            </p>
 
             {/* Default garnitures — tap to remove */}
             {defaultGarnitures.length > 0 && (

@@ -328,9 +328,6 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
         return (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Crudités</h2>
-            <p className="text-sm text-muted-foreground">
-              Salade, tomate et oignon sont inclus par défaut. Appuyez pour retirer.
-            </p>
 
             {/* Default crudites — pre-selected, tap to remove */}
             {defaultCrudites.length > 0 && (
