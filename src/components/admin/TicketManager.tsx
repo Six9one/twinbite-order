@@ -291,7 +291,7 @@ export function TicketManager() {
                                                         {customization.sauces?.length > 0 && <div>Sauces: {customization.sauces.join(', ')}</div>}
                                                         {customization.garnitures?.length > 0 && <div>Garnitures: {customization.garnitures.join(', ')}</div>}
                                                         {customization.supplements?.length > 0 && <div>Suppléments: {customization.supplements.join(', ')}</div>}
-                                                        {customization.menuOption && (customization.menuOption !== 'none' || itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini')) && (
+                                                        {customization.menuOption !== undefined && (customization.menuOption !== 'none' || itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini')) && (
                                                             <div className="text-green-600 font-bold">
                                                                 🍟 {(() => {
                                                                     const isSandwichOrPanini = itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini');

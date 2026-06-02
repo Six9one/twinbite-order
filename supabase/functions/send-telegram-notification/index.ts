@@ -121,18 +121,53 @@ serve(async (req) => {
       }
 
       // Menu option
-      if (customization.menuOption && customization.menuOption !== 'none') {
-        const menuLabels: Record<string, string> = {
-          'frites': '+Frites',
-          'boisson': '+Boisson',
-          'supp_frites': '+Supplément Frites',
-          'menu': '+Menu complet'
-        };
-        const opts = customization.menuOption.split(',').map((o: string) => o.trim()).filter(Boolean);
-        const labels = opts.map((opt: string) => menuLabels[opt] || opt);
-        const activeLabels = labels.filter(Boolean);
-        if (activeLabels.length > 0) {
-          parts.push(activeLabels.join(' | '));
+      if (customization.menuOption !== undefined) {
+        const isSandwichOrPanini = productName.toLowerCase().includes('sandwich') || productName.toLowerCase().includes('panini');
+        if (customization.menuOption === 'none' || customization.menuOption === '') {
+          if (isSandwichOrPanini) {
+            parts.push('🚫 SANS FRITE');
+          }
+        } else {
+          const menuLabels: Record<string, string> = {
+            'frites': 'Frites',
+            'boisson': 'Boisson',
+            'supp_frites': 'Supplément Frites',
+            'menu': 'Menu complet'
+          };
+          const opts = customization.menuOption.split(',').map((o: string) => o.trim()).filter(Boolean);
+          const labels: string[] = [];
+          
+          if (isSandwichOrPanini) {
+            if (opts.includes('frites')) {
+              labels.push('Frites');
+            } else {
+              labels.push('🚫 SANS FRITE');
+            }
+          } else {
+            if (opts.includes('frites')) {
+              labels.push('Frites');
+            }
+          }
+          
+          if (opts.includes('boisson')) {
+            labels.push('Boisson');
+          }
+          if (opts.includes('supp_frites')) {
+            labels.push('Supplément Frites');
+          }
+          if (opts.includes('menu')) {
+            labels.push('Menu complet');
+          }
+          
+          opts.forEach((p: string) => {
+            if (!['frites', 'boisson', 'supp_frites', 'menu'].includes(p)) {
+              labels.push(p);
+            }
+          });
+          
+          if (labels.length > 0) {
+            parts.push(labels.join(' + '));
+          }
         }
       }
 

@@ -316,12 +316,44 @@ function formatKitchenTicket(order) {
             if (c.supplements?.length) c.supplements.forEach(s => { t += `   (${s.toUpperCase()})\n`; });
 
             // Menu option: FRITE / BOISSON
-            if (c.menuOption && c.menuOption !== 'none') {
+            if (c.menuOption !== undefined) {
+                const isSandwichOrPanini = name.includes('SANDWICH') || name.includes('PANINI');
                 const ml = { 'frites': 'FRITE INCLUSE', 'boisson': 'BOISSON', 'supp_frites': 'SUPPLEMENT FRITES', 'menu': 'FRITE / BOISSON' };
-                const parts = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
-                const labels = parts.map(part => ml[part] || part.toUpperCase());
-                if (labels.length > 0) {
-                    t += `   ${labels.join(' + ')}\n`;
+                if (c.menuOption === 'none' || c.menuOption === '') {
+                    if (isSandwichOrPanini) {
+                        t += `   SANS FRITE\n`;
+                    }
+                } else {
+                    const parts = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
+                    const labels = [];
+                    if (isSandwichOrPanini) {
+                        if (parts.includes('frites')) {
+                            labels.push('FRITE INCLUSE');
+                        } else {
+                            labels.push('SANS FRITE');
+                        }
+                    } else {
+                        if (parts.includes('frites')) {
+                            labels.push('FRITE');
+                        }
+                    }
+                    if (parts.includes('boisson')) {
+                        labels.push('BOISSON');
+                    }
+                    if (parts.includes('supp_frites')) {
+                        labels.push('SUPPLEMENT FRITES');
+                    }
+                    if (parts.includes('menu')) {
+                        labels.push('FRITE / BOISSON');
+                    }
+                    parts.forEach(p => {
+                        if (!['frites', 'boisson', 'supp_frites', 'menu'].includes(p)) {
+                            labels.push(ml[p] || p.toUpperCase());
+                        }
+                    });
+                    if (labels.length > 0) {
+                        t += `   ${labels.join(' + ')}\n`;
+                    }
                 }
             }
 
@@ -426,12 +458,44 @@ function formatCounterTicket(order, loyaltyText) {
             if (c.garnitures?.length) details.push(...c.garnitures);
             if (c.supplements?.length) details.push(...c.supplements);
             if (c.removedIngredients?.length) details.push(...c.removedIngredients.map(r => 'Sans ' + r));
-            if (c.menuOption && c.menuOption !== 'none') {
+            if (c.menuOption !== undefined) {
+                const isSandwichOrPanini = name.toUpperCase().includes('SANDWICH') || name.toUpperCase().includes('PANINI');
                 const ml = { 'frites': 'Frite classique', 'boisson': 'Boisson', 'supp_frites': 'Supplement Frites', 'menu': 'Menu complet' };
-                const parts = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
-                const labels = parts.map(part => ml[part] || part);
-                if (labels.length > 0) {
-                    details.push(labels.join(' + '));
+                if (c.menuOption === 'none' || c.menuOption === '') {
+                    if (isSandwichOrPanini) {
+                        details.push('SANS FRITE');
+                    }
+                } else {
+                    const parts = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
+                    const labels = [];
+                    if (isSandwichOrPanini) {
+                        if (parts.includes('frites')) {
+                            labels.push('Frite classique');
+                        } else {
+                            labels.push('SANS FRITE');
+                        }
+                    } else {
+                        if (parts.includes('frites')) {
+                            labels.push('Frite');
+                        }
+                    }
+                    if (parts.includes('boisson')) {
+                        labels.push('Boisson');
+                    }
+                    if (parts.includes('supp_frites')) {
+                        labels.push('Supplement Frites');
+                    }
+                    if (parts.includes('menu')) {
+                        labels.push('Menu complet');
+                    }
+                    parts.forEach(p => {
+                        if (!['frites', 'boisson', 'supp_frites', 'menu'].includes(p)) {
+                            labels.push(ml[p] || p);
+                        }
+                    });
+                    if (labels.length > 0) {
+                        details.push(labels.join(' + '));
+                    }
                 }
             }
             if (c.drink) details.push(c.drink);
@@ -624,12 +688,44 @@ function formatUnifiedTicket(order, loyaltyText) {
                 t += ESCPOS.BOLD_ON + `   Sans ${r.toUpperCase()}\n` + ESCPOS.BOLD_OFF;
             });
             if (c.supplements?.length) c.supplements.forEach(s => { t += `   (${s.toUpperCase()})\n`; });
-            if (c.menuOption && c.menuOption !== 'none') {
+            if (c.menuOption !== undefined) {
+                const isSandwichOrPanini = name.includes('SANDWICH') || name.includes('PANINI');
                 const ml = { 'frites': 'FRITE INCLUSE', 'boisson': 'BOISSON', 'supp_frites': 'SUPPLEMENT FRITES', 'menu': 'FRITE / BOISSON' };
-                const parts = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
-                const labels = parts.map(part => ml[part] || part.toUpperCase());
-                if (labels.length > 0) {
-                    t += `   ${labels.join(' + ')}\n`;
+                if (c.menuOption === 'none' || c.menuOption === '') {
+                    if (isSandwichOrPanini) {
+                        t += `   SANS FRITE\n`;
+                    }
+                } else {
+                    const parts = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
+                    const labels = [];
+                    if (isSandwichOrPanini) {
+                        if (parts.includes('frites')) {
+                            labels.push('FRITE INCLUSE');
+                        } else {
+                            labels.push('SANS FRITE');
+                        }
+                    } else {
+                        if (parts.includes('frites')) {
+                            labels.push('FRITE');
+                        }
+                    }
+                    if (parts.includes('boisson')) {
+                        labels.push('BOISSON');
+                    }
+                    if (parts.includes('supp_frites')) {
+                        labels.push('SUPPLEMENT FRITES');
+                    }
+                    if (parts.includes('menu')) {
+                        labels.push('FRITE / BOISSON');
+                    }
+                    parts.forEach(p => {
+                        if (!['frites', 'boisson', 'supp_frites', 'menu'].includes(p)) {
+                            labels.push(ml[p] || p.toUpperCase());
+                        }
+                    });
+                    if (labels.length > 0) {
+                        t += `   ${labels.join(' + ')}\n`;
+                    }
                 }
             }
             if (c.drink) t += `   ${c.drink.toUpperCase()}\n`;
