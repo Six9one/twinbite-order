@@ -470,7 +470,16 @@ export default function AdminDashboard() {
     if (customization?.garnitures?.length) details.push(customization.garnitures.join(', '));
     if (customization?.supplements?.length) details.push(customization.supplements.join(', '));
     if (customization?.cheeseSupplements?.length) details.push(customization.cheeseSupplements.join(', '));
-    if (customization?.menuOption && customization.menuOption !== 'none') details.push(customization.menuOption);
+    if (customization?.menuOption) {
+      if (category.includes('panini') || productName.toLowerCase().includes('sandwich') || productName.toLowerCase().includes('panini')) {
+        if (customization.menuOption === 'none') details.push('<b>SANS FRITES</b>');
+        else if (customization.menuOption === 'frites') details.push('Avec Frites (Inclus)');
+        else if (customization.menuOption === 'boisson') details.push('+ Boisson');
+        else if (customization.menuOption === 'supp_frites') details.push('+ Supplément Frites');
+      } else if (customization.menuOption !== 'none') {
+        details.push(customization.menuOption);
+      }
+    }
 
     // Name bold, price small and gray on right
     let html = '<div class="item"><span style="font-weight:bold;">' + cartItem.quantity + 'x ' + escapeHtml(productName) + '</span><span style="font-size:10px;color:#666;">' + Number(price).toFixed(2) + '€</span></div>';

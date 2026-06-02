@@ -291,8 +291,16 @@ export function TicketManager() {
                                                         {customization.sauces?.length > 0 && <div>Sauces: {customization.sauces.join(', ')}</div>}
                                                         {customization.garnitures?.length > 0 && <div>Garnitures: {customization.garnitures.join(', ')}</div>}
                                                         {customization.supplements?.length > 0 && <div>Suppléments: {customization.supplements.join(', ')}</div>}
-                                                        {customization.menuOption && customization.menuOption !== 'none' && (
-                                                            <div className="text-green-600 font-bold">🍟 {customization.menuOption.toUpperCase()}</div>
+                                                        {customization.menuOption && (customization.menuOption !== 'none' || itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini')) && (
+                                                            <div className="text-green-600 font-bold">
+                                                                🍟 {customization.menuOption === 'none'
+                                                                    ? 'SANS FRITES'
+                                                                    : (customization.menuOption === 'frites' && (itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini')))
+                                                                    ? 'FRITES INCLUSES'
+                                                                    : customization.menuOption === 'supp_frites'
+                                                                    ? 'SUPPLÉMENT FRITES'
+                                                                    : customization.menuOption.toUpperCase()}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 )}

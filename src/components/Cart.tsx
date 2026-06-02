@@ -14,7 +14,16 @@ interface CartProps {
 }
 
 // Helper to get menu option label
-const getMenuOptionLabel = (option: string | undefined) => {
+const getMenuOptionLabel = (option: string | undefined, category?: string) => {
+  if (category === 'panini') {
+    switch (option) {
+      case 'frites': return 'Avec Frites (Inclus)';
+      case 'boisson': return '+ Boisson';
+      case 'supp_frites': return '+ Supplément Frites';
+      case 'none': return 'Sans Frites';
+      default: return option || '';
+    }
+  }
   switch (option) {
     case 'frites': return '+ Frites';
     case 'boisson': return '+ Boisson';
@@ -102,8 +111,12 @@ export function Cart({ isOpen, onClose, onCheckout }: CartProps) {
     }
 
     // Menu option
-    if (customization.menuOption && customization.menuOption !== 'none') {
-      details.push({ label: 'Menu', value: getMenuOptionLabel(customization.menuOption) });
+    if (customization.menuOption) {
+      if (category === 'panini') {
+        details.push({ label: 'Menu', value: getMenuOptionLabel(customization.menuOption, category) });
+      } else if (customization.menuOption !== 'none') {
+        details.push({ label: 'Menu', value: getMenuOptionLabel(customization.menuOption) });
+      }
     }
 
     // Side (old format)
@@ -198,9 +211,9 @@ export function Cart({ isOpen, onClose, onCheckout }: CartProps) {
                                 {getSizeLabel(cartItem.customization.size, cartItem.item.category)}
                               </Badge>
                             )}
-                            {cartItem.customization?.menuOption && cartItem.customization.menuOption !== 'none' && (
+                            {cartItem.customization?.menuOption && (cartItem.item.category === 'panini' || cartItem.customization.menuOption !== 'none') && (
                               <Badge className="text-xs bg-primary/20 text-primary border-0">
-                                {getMenuOptionLabel(cartItem.customization.menuOption)}
+                                {getMenuOptionLabel(cartItem.customization.menuOption, cartItem.item.category)}
                               </Badge>
                             )}
                           </div>
