@@ -403,11 +403,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
       .map(g => g.name);
     const garnitureNames = [...activeDefaults, ...activeExtras];
 
-    // Add "sans X" for removed defaults
-    const removedNames = defaultGarnitures
-      .filter(g => removedDefaults.includes(g.id))
-      .map(g => `Sans ${g.name}`);
-    const allGarnitureNotes = [...garnitureNames, ...removedNames];
+    const allGarnitureNotes = garnitureNames;
 
     const supplementNames = selectedSupplements.map(id => {
       const sup = supplementOptions.find(s => s.id === id);

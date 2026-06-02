@@ -167,14 +167,9 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
       ...extraCrudites.filter(c => selectedExtraCrudites.includes(c.id)).map(c => c.name),
     ];
 
-    // Add "Sans X" for removed defaults
-    const removedNames = defaultCrudites
-      .filter(c => removedDefaults.includes(c.id))
-      .map(c => `Sans ${c.name}`);
-
     const customization: SandwichCustomization = {
       sauces: selectedSauces,
-      crudites: [...activeCruditeNames, ...removedNames],
+      crudites: activeCruditeNames,
       supplements: selectedSupplements,
       menuOption,
       note: note || undefined,
