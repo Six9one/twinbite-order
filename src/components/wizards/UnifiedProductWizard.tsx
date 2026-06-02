@@ -259,19 +259,48 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
   };
 
   // For non-panini, build the garnitures list
-  // Split into: defaults (salade, tomate, oignon) and extras
-  const allGarnitures = config.showGarniture
+  const rawGarnitures = config.showGarniture
     ? (dbGarnitures && dbGarnitures.length > 0
         ? dbGarnitures.map(g => ({ id: g.id, name: g.name, price: Number(g.price), image_url: g.image_url }))
         : getStaticGarnitures()
       )
     : [];
 
+  const allowedGarnitureNames = (() => {
+    switch (productType) {
+      case 'soufflet':
+        return ['pomme', 'oignon', 'olive'];
+      case 'makloub':
+        return ['salade', 'tomate', 'oignon'];
+      case 'mlawi':
+        return ['salade', 'tomate', 'oignon', 'olive'];
+      default:
+        return ['salade', 'tomate', 'oignon'];
+    }
+  })();
+
+  const allGarnitures = rawGarnitures.filter(g =>
+    allowedGarnitureNames.some(allowed => g.name.toLowerCase().includes(allowed))
+  );
+
+  const defaultGarnitureNames = (() => {
+    switch (productType) {
+      case 'soufflet':
+        return ['pomme', 'oignon', 'olive'];
+      case 'makloub':
+        return ['salade', 'tomate', 'oignon'];
+      case 'mlawi':
+        return ['salade', 'tomate', 'oignon', 'olive'];
+      default:
+        return ['salade', 'tomate', 'oignon'];
+    }
+  })();
+
   const defaultGarnitures = allGarnitures.filter(g =>
-    DEFAULT_GARNITURES.some(d => g.name.toLowerCase().includes(d.toLowerCase()))
+    defaultGarnitureNames.some(d => g.name.toLowerCase().includes(d.toLowerCase()))
   );
   const extraGarnitures = allGarnitures.filter(g =>
-    !DEFAULT_GARNITURES.some(d => g.name.toLowerCase().includes(d.toLowerCase()))
+    !defaultGarnitureNames.some(d => g.name.toLowerCase().includes(d.toLowerCase()))
   );
 
   const currentSizeConfig = config.sizes.find(s => s.id === size) || config.sizes[0];
