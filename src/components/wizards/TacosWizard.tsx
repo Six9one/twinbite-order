@@ -6,13 +6,13 @@ import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { useProductsByCategory, Product } from '@/hooks/useProducts';
 import { useMeatOptions, useSauceOptions } from '@/hooks/useCustomizationOptions';
-import { useWizardImage } from '@/hooks/useWizardImages';
+import { useWizardImage, useMenuOptionImages } from '@/hooks/useWizardImages';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Check, Plus } from 'lucide-react';
+import { ArrowLeft, Check, Plus, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const FREE_SAUCES_COUNT = 2;
@@ -54,6 +54,81 @@ const allowedMeatNames = [
   'Cordon bleu',
   'Nuggets',
 ];
+
+// Emoji fallbacks for meats
+const meatEmojis: Record<string, string> = {
+  'poulet': '🍗',
+  'escalope': '🥩',
+  'viande': '🥩',
+  'merguez': '🌭',
+  'cordon': '🫓',
+  'nuggets': '🍗',
+  'tenders': '🍗',
+  'mixte': '🍖',
+  'thon': '🐟',
+};
+
+const getMeatEmoji = (name: string) => {
+  const lower = name.toLowerCase();
+  for (const [key, emoji] of Object.entries(meatEmojis)) {
+    if (lower.includes(key)) return emoji;
+  }
+  return '🥩';
+};
+
+function OptionCard({
+  name,
+  imageUrl,
+  emoji,
+  isSelected,
+  isDefault,
+  isDisabled,
+  price,
+  extraInfo,
+  onClick,
+}: {
+  name: string;
+  imageUrl?: string | null;
+  emoji: string;
+  isSelected: boolean;
+  isDefault?: boolean;
+  isDisabled?: boolean;
+  price?: number;
+  extraInfo?: string;
+  onClick: () => void;
+}) {
+  return (
+    <Card
+      className={`cursor-pointer transition-all overflow-hidden ${
+        isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
+      } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+      onClick={isDisabled ? undefined : onClick}
+    >
+      {/* Image or emoji */}
+      <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
+        {imageUrl ? (
+          <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-4xl">{emoji}</span>
+        )}
+        {isSelected && (
+          <div className={`absolute top-1 right-1 rounded-full w-6 h-6 flex items-center justify-center ${
+            isDefault ? 'bg-red-500' : 'bg-primary'
+          }`}>
+            {isDefault ? <X className="w-3 h-3 text-white" /> : <Check className="w-3 h-3 text-white" />}
+          </div>
+        )}
+      </div>
+      <div className="p-2 text-center">
+        <p className="font-medium text-sm leading-tight">{name}</p>
+        {price !== undefined && price > 0 && (
+          <p className="text-xs text-primary font-semibold">+{price.toFixed(2)}€</p>
+        )}
+        {extraInfo && <p className="text-xs text-muted-foreground">{extraInfo}</p>}
+      </div>
+    </Card>
+  );
+}
 
 interface TacosWizardProps {
   onClose: () => void;
@@ -98,6 +173,7 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'menu'>('none');
   const [supplements, setSupplements] = useState<string[]>([]);
   const [note, setNote] = useState('');
+  const { data: menuOptionImages } = useMenuOptionImages();
 
   const { data: dbTacos } = useProductsByCategory('tacos');
   const tacosProducts = mapDbProductsToTacos(dbTacos);
@@ -105,15 +181,16 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   const { data: dbMeats } = useMeatOptions();
   const { data: dbSauces } = useSauceOptions();
 
-  const meatOptions = (dbMeats && dbMeats.length > 0)
-    ? dbMeats.filter(m => allowedMeatNames.some(allowed =>
-        m.name.toLowerCase().includes(allowed.toLowerCase()) ||
-        allowed.toLowerCase().includes(m.name.toLowerCase())
-      ))
-    : staticMeatOptions.filter(m => allowedMeatNames.some(allowed =>
-        m.name.toLowerCase().includes(allowed.toLowerCase()) ||
-        allowed.toLowerCase().includes(m.name.toLowerCase())
-      ));
+  const allMeats = (dbMeats && dbMeats.length > 0)
+    ? dbMeats.map(m => ({ id: m.id, name: m.name, price: Number(m.price), image_url: m.image_url }))
+    : staticMeatOptions.map(m => ({ ...m, image_url: null }));
+
+  const meatOptions = allMeats.filter(m =>
+    allowedMeatNames.some(allowed =>
+      m.name.toLowerCase().includes(allowed.toLowerCase()) ||
+      allowed.toLowerCase().includes(m.name.toLowerCase())
+    )
+  );
 
   const sauceOptions = (dbSauces && dbSauces.length > 0)
     ? dbSauces.map(s => ({ ...s, image_url: s.image_url }))
@@ -269,18 +346,17 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
               <h2 className="text-lg font-semibold">Choisir les viandes</h2>
               <Badge>{selectedMeats.length}/{maxMeats}</Badge>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {meatOptions.map((meat) => (
-                <Card
+                <OptionCard
                   key={meat.id}
-                  className={`p-3 cursor-pointer transition-all ${selectedMeats.includes(meat.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'} ${selectedMeats.length >= maxMeats && !selectedMeats.includes(meat.id) ? 'opacity-50' : ''}`}
+                  name={meat.name}
+                  emoji={getMeatEmoji(meat.name)}
+                  imageUrl={meat.image_url}
+                  isSelected={selectedMeats.includes(meat.id)}
+                  isDisabled={selectedMeats.length >= maxMeats && !selectedMeats.includes(meat.id)}
                   onClick={() => toggleMeat(meat.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{meat.name}</span>
-                    {selectedMeats.includes(meat.id) && <Check className="w-5 h-5 text-primary" />}
-                  </div>
-                </Card>
+                />
               ))}
             </div>
           </div>
@@ -354,29 +430,23 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
           <div className="space-y-6">
             <div className="space-y-4">
               <h2 className="text-lg font-semibold">Option Menu</h2>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { id: 'none', label: 'Sans', price: 0 },
-                  { id: 'frites', label: 'Frites', price: 1.5 },
-                  { id: 'boisson', label: 'Boisson', price: 1.5 },
-                  { id: 'menu', label: 'Menu Complet', price: 2.5, desc: 'Frites + Boisson' },
+                  { id: 'none', label: 'Sans', price: 0, emoji: '🚫', imageUrl: null },
+                  { id: 'frites', label: 'Frites', price: 1.5, emoji: '🍟', imageUrl: menuOptionImages?.frites || null },
+                  { id: 'boisson', label: 'Boisson', price: 1.5, emoji: '🥤', imageUrl: menuOptionImages?.boisson || null },
+                  { id: 'menu', label: 'Menu Complet', price: 2.5, desc: 'Frites + Boisson', emoji: '🍔', imageUrl: menuOptionImages?.menu || null },
                 ].map((option) => (
-                  <Card
+                  <OptionCard
                     key={option.id}
-                    className={`p-3 cursor-pointer transition-all ${menuOption === option.id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                    name={option.label}
+                    emoji={option.emoji}
+                    imageUrl={option.imageUrl}
+                    isSelected={menuOption === option.id}
+                    price={option.price}
+                    extraInfo={(option as any).desc}
                     onClick={() => setMenuOption(option.id as typeof menuOption)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-medium">{option.label}</span>
-                        {(option as any).desc && <p className="text-xs text-muted-foreground">{(option as any).desc}</p>}
-                      </div>
-                      {menuOption === option.id && <Check className="w-5 h-5 text-primary" />}
-                    </div>
-                    {option.price > 0 && (
-                      <span className="text-sm text-primary font-semibold">+{option.price}€</span>
-                    )}
-                  </Card>
+                  />
                 ))}
               </div>
             </div>

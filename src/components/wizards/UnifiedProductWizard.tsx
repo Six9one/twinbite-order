@@ -65,6 +65,27 @@ const supplementEmojis: Record<string, string> = {
   'Boursin': '🌿',
 };
 
+// Emoji fallbacks for meats
+const meatEmojis: Record<string, string> = {
+  'poulet': '🍗',
+  'escalope': '🥩',
+  'viande': '🥩',
+  'merguez': '🌭',
+  'cordon': '🫓',
+  'nuggets': '🍗',
+  'tenders': '🍗',
+  'mixte': '🍖',
+  'thon': '🐟',
+};
+
+const getMeatEmoji = (name: string) => {
+  const lower = name.toLowerCase();
+  for (const [key, emoji] of Object.entries(meatEmojis)) {
+    if (lower.includes(key)) return emoji;
+  }
+  return '🥩';
+};
+
 // Default garnitures that are ON by default (user removes them)
 const DEFAULT_GARNITURES = ['Salade', 'Tomate', 'Oignon'];
 
@@ -520,18 +541,17 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
               <h2 className="text-lg font-semibold">Choisir les viandes</h2>
               <Badge>{selectedMeats.length}/{maxMeats}</Badge>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {meatOptions.map((meat) => (
-                <Card
+                <OptionCard
                   key={meat.id}
-                  className={`p-3 cursor-pointer transition-all ${selectedMeats.includes(meat.id) ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'} ${selectedMeats.length >= maxMeats && !selectedMeats.includes(meat.id) ? 'opacity-50' : ''}`}
+                  name={meat.name}
+                  emoji={getMeatEmoji(meat.name)}
+                  imageUrl={meat.image_url}
+                  isSelected={selectedMeats.includes(meat.id)}
+                  isDisabled={selectedMeats.length >= maxMeats && !selectedMeats.includes(meat.id)}
                   onClick={() => toggleMeat(meat.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{meat.name}</span>
-                    {selectedMeats.includes(meat.id) && <Check className="w-5 h-5 text-primary" />}
-                  </div>
-                </Card>
+                />
               ))}
             </div>
           </div>
@@ -704,7 +724,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
                 { id: 'boisson', label: 'Boisson', price: 1.5, emoji: '🥤', imageUrl: menuOptionImages?.boisson || null },
                 { id: 'menu', label: 'Menu Complet', price: 2.5, desc: 'Frites + Boisson', emoji: '🍔', imageUrl: menuOptionImages?.menu || null },
               ].map((option) => (
-                <WizardOptionCard
+                <OptionCard
                   key={option.id}
                   name={option.label}
                   emoji={option.emoji}
