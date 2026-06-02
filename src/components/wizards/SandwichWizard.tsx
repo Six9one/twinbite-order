@@ -4,6 +4,7 @@ import { useOrder } from '@/context/OrderContext';
 import { useSandwichTypes, useCruditeOptions, SandwichType } from '@/hooks/useSandwiches';
 import { useSauceOptions, useSupplementOptions } from '@/hooks/useCustomizationOptions';
 import { menuOptionPrices } from '@/data/menu';
+import { useMenuOptionImages } from '@/hooks/useWizardImages';
 import { SandwichCustomization } from '@/types/order';
 import { trackProductView, trackAddToCart } from '@/hooks/useProductAnalytics';
 import { Button } from '@/components/ui/button';
@@ -87,6 +88,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
   const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
   const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'menu'>('none');
   const [note, setNote] = useState('');
+  const { data: menuOptionImages } = useMenuOptionImages();
 
   const totalSteps = 5;
 
@@ -451,52 +453,44 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold mb-3">Options menu</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <Card
-                  className={`p-4 cursor-pointer transition-all ${menuOption === 'none' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                  onClick={() => setMenuOption('none')}
-                >
-                  <div className="flex items-center justify-between">
-                    <span>Sans supplément</span>
-                    {menuOption === 'none' && <Check className="w-4 h-4 text-primary" />}
-                  </div>
-                </Card>
-                <Card
-                  className={`p-4 cursor-pointer transition-all ${menuOption === 'frites' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                  onClick={() => setMenuOption('frites')}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span>+ Frites</span>
-                      <p className="text-xs text-muted-foreground">+{menuOptionPrices.frites}€</p>
-                    </div>
-                    {menuOption === 'frites' && <Check className="w-4 h-4 text-primary" />}
-                  </div>
-                </Card>
-                <Card
-                  className={`p-4 cursor-pointer transition-all ${menuOption === 'boisson' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                  onClick={() => setMenuOption('boisson')}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span>+ Boisson</span>
-                      <p className="text-xs text-muted-foreground">+{menuOptionPrices.boisson}€</p>
-                    </div>
-                    {menuOption === 'boisson' && <Check className="w-4 h-4 text-primary" />}
-                  </div>
-                </Card>
-                <Card
-                  className={`p-4 cursor-pointer transition-all ${menuOption === 'menu' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                  onClick={() => setMenuOption('menu')}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span>Menu Complet</span>
-                      <p className="text-xs text-muted-foreground">Frites + Boisson +{menuOptionPrices.menu}€</p>
-                    </div>
-                    {menuOption === 'menu' && <Check className="w-4 h-4 text-primary" />}
-                  </div>
-                </Card>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { id: 'none', label: 'Sans supplément', price: 0, emoji: '🚫', imageUrl: null },
+                  { id: 'frites', label: 'Frites', price: menuOptionPrices.frites, emoji: '🍟', imageUrl: menuOptionImages?.frites || null },
+                  { id: 'boisson', label: 'Boisson', price: menuOptionPrices.boisson, emoji: '🥤', imageUrl: menuOptionImages?.boisson || null },
+                  { id: 'menu', label: 'Menu Complet', price: menuOptionPrices.menu, emoji: '🍔', imageUrl: menuOptionImages?.menu || null, desc: 'Frites + Boisson' },
+                ].map((option) => {
+                  const isSelected = menuOption === option.id;
+                  return (
+                    <Card
+                      key={option.id}
+                      className={`cursor-pointer transition-all overflow-hidden ${
+                        isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => setMenuOption(option.id as typeof menuOption)}
+                    >
+                      <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
+                        {option.imageUrl ? (
+                          <img src={option.imageUrl} alt={option.label} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-4xl">{option.emoji}</span>
+                        )}
+                        {isSelected && (
+                          <div className="absolute top-1 right-1 bg-primary rounded-full w-6 h-6 flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-2 text-center">
+                        <p className="font-medium text-sm leading-tight">{option.label}</p>
+                        {option.price > 0 && (
+                          <p className="text-xs text-primary font-semibold">+{option.price.toFixed(2)}€</p>
+                        )}
+                        {option.desc && <p className="text-[10px] text-muted-foreground">{option.desc}</p>}
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
 

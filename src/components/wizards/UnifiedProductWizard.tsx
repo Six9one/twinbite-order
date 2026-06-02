@@ -3,7 +3,7 @@ import { MenuItem, SouffletCustomization, MakloubCustomization, MlawiCustomizati
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { useMeatOptions, useSauceOptions, useSupplementOptions, useGarnitureOptions } from '@/hooks/useCustomizationOptions';
-import { useWizardImage } from '@/hooks/useWizardImages';
+import { useWizardImage, useMenuOptionImages } from '@/hooks/useWizardImages';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -225,6 +225,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
 
   // Load wizard image
   const { data: wizardImage } = useWizardImage(productType);
+  const { data: menuOptionImages } = useMenuOptionImages();
 
   // Load options from database
   const { data: dbMeats } = useMeatOptions();
@@ -700,29 +701,23 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
             )}
 
             <h2 className="text-lg font-semibold">Option Menu</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { id: 'none', label: 'Sans', price: 0 },
-                { id: 'frites', label: 'Frites', price: 1.5 },
-                { id: 'boisson', label: 'Boisson', price: 1.5 },
-                { id: 'menu', label: 'Menu Complet', price: 2.5, desc: 'Frites + Boisson' },
+                { id: 'none', label: 'Sans', price: 0, emoji: '🚫', imageUrl: null },
+                { id: 'frites', label: 'Frites', price: 1.5, emoji: '🍟', imageUrl: menuOptionImages?.frites || null },
+                { id: 'boisson', label: 'Boisson', price: 1.5, emoji: '🥤', imageUrl: menuOptionImages?.boisson || null },
+                { id: 'menu', label: 'Menu Complet', price: 2.5, desc: 'Frites + Boisson', emoji: '🍔', imageUrl: menuOptionImages?.menu || null },
               ].map((option) => (
-                <Card
+                <WizardOptionCard
                   key={option.id}
-                  className={`p-3 cursor-pointer transition-all ${menuOption === option.id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                  name={option.label}
+                  emoji={option.emoji}
+                  imageUrl={option.imageUrl}
+                  isSelected={menuOption === option.id}
+                  price={option.price}
+                  extraInfo={(option as any).desc}
                   onClick={() => setMenuOption(option.id as typeof menuOption)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="font-medium">{option.label}</span>
-                      {(option as any).desc && <p className="text-xs text-muted-foreground">{(option as any).desc}</p>}
-                    </div>
-                    {menuOption === option.id && <Check className="w-5 h-5 text-primary" />}
-                  </div>
-                  {option.price > 0 && (
-                    <span className="text-sm text-primary font-semibold">+{option.price}€</span>
-                  )}
-                </Card>
+                />
               ))}
             </div>
 

@@ -22,6 +22,9 @@ const products: ProductInfo[] = [
     { type: 'makloub', label: 'Makloub', emoji: '🌯' },
     { type: 'mlawi', label: 'Mlawi', emoji: '🫓' },
     { type: 'panini', label: 'Panini', emoji: '🥪' },
+    { type: 'option_frites', label: 'Option : Frites', emoji: '🍟' },
+    { type: 'option_boisson', label: 'Option : Boisson', emoji: '🥤' },
+    { type: 'option_menu', label: 'Option : Menu Complet', emoji: '🍔' },
 ];
 
 export function WizardImagesManager() {

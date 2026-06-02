@@ -1,7 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export type WizardProductType = 'soufflet' | 'tacos' | 'makloub' | 'mlawi' | 'panini' | 'pizza_senior' | 'pizza_mega';
+export type WizardProductType = 
+    | 'soufflet' 
+    | 'tacos' 
+    | 'makloub' 
+    | 'mlawi' 
+    | 'panini' 
+    | 'pizza_senior' 
+    | 'pizza_mega'
+    | 'option_frites'
+    | 'option_boisson'
+    | 'option_menu';
 
 interface WizardImageSetting {
     setting_key: string;
@@ -60,13 +70,48 @@ export function usePizzaFormatImages() {
 }
 
 /**
+ * Hook to fetch menu option images (Frites, Boisson, Menu Complet)
+ */
+export function useMenuOptionImages() {
+    return useQuery({
+        queryKey: ['wizard_images', 'menu_options'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('admin_settings')
+                .select('setting_key, setting_value')
+                .in('setting_key', ['wizard_image_option_frites', 'wizard_image_option_boisson', 'wizard_image_option_menu']);
+
+            if (error) throw error;
+
+            const result = { frites: null as string | null, boisson: null as string | null, menu: null as string | null };
+            if (data) {
+                data.forEach((item: WizardImageSetting) => {
+                    const value = item.setting_value as { image_url?: string } | null;
+                    if (item.setting_key === 'wizard_image_option_frites') {
+                        result.frites = value?.image_url || null;
+                    } else if (item.setting_key === 'wizard_image_option_boisson') {
+                        result.boisson = value?.image_url || null;
+                    } else if (item.setting_key === 'wizard_image_option_menu') {
+                        result.menu = value?.image_url || null;
+                    }
+                });
+            }
+            return result;
+        },
+    });
+}
+
+/**
  * Hook to fetch all wizard images (for admin panel)
  */
 export function useAllWizardImages() {
     return useQuery({
         queryKey: ['wizard_images', 'all'],
         queryFn: async () => {
-            const productTypes: WizardProductType[] = ['soufflet', 'tacos', 'makloub', 'mlawi', 'panini', 'pizza_senior', 'pizza_mega'];
+            const productTypes: WizardProductType[] = [
+                'soufflet', 'tacos', 'makloub', 'mlawi', 'panini', 'pizza_senior', 'pizza_mega',
+                'option_frites', 'option_boisson', 'option_menu'
+            ];
             const results: Record<WizardProductType, string | null> = {
                 soufflet: null,
                 tacos: null,
@@ -75,6 +120,9 @@ export function useAllWizardImages() {
                 panini: null,
                 pizza_senior: null,
                 pizza_mega: null,
+                option_frites: null,
+                option_boisson: null,
+                option_menu: null,
             };
 
             const { data, error } = await supabase
