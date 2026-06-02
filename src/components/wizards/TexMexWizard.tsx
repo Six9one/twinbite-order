@@ -233,14 +233,14 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
                     </div>
                     <div className="space-y-3">
                         <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Poulet (Wings, Tenders, Nuggets)</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Wings, Tenders, Nuggets</p>
                             <div className="flex gap-2">
                                 <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-none">5 pièces = 7.00€</Badge>
                                 <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-none">10 pièces = 13.00€</Badge>
                             </div>
                         </div>
                         <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Fromage & Oignon (Mozza Stick, Jalapeños, Onion Rings)</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Mozza Stick, Jalapeños, Onion Rings</p>
                             <div className="flex gap-2">
                                 <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-none">5 pièces = 6.00€</Badge>
                                 <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-none">10 pièces = 10.00€</Badge>
