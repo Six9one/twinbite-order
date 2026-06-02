@@ -16,6 +16,7 @@ interface OrderNotification {
     name: string;
     quantity: number;
     price: number;
+    category?: string;
     customization?: any;
   }>;
   customerAddress?: string;
@@ -57,7 +58,7 @@ serve(async (req) => {
     }
 
     // Format order items with full customization details
-    const formatCustomization = (customization: any, productName: string): string => {
+    const formatCustomization = (customization: any, productName: string, category?: string): string => {
       if (!customization) return '';
       const parts: string[] = [];
 
@@ -122,7 +123,7 @@ serve(async (req) => {
 
       // Menu option
       if (customization.menuOption !== undefined) {
-        const isSandwichOrPanini = productName.toLowerCase().includes('sandwich') || productName.toLowerCase().includes('panini');
+        const isSandwichOrPanini = category === 'panini' || productName.toLowerCase().includes('sandwich') || productName.toLowerCase().includes('panini');
         if (customization.menuOption === 'none' || customization.menuOption === '') {
           if (isSandwichOrPanini) {
             parts.push('🚫 SANS FRITE');
@@ -181,7 +182,7 @@ serve(async (req) => {
 
     const itemsList = order.items
       .map(item => {
-        const customDetails = formatCustomization(item.customization, item.name);
+        const customDetails = formatCustomization(item.customization, item.name, item.category);
         return `• ${item.quantity}x ${item.name} - ${item.price.toFixed(2)}€${customDetails}`;
       })
       .join('\n');

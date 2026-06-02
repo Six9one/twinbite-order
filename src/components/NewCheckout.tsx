@@ -350,6 +350,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               name: item.item.name,
               quantity: item.quantity,
               price: item.calculatedPrice || item.item.price,
+              category: item.item.category,
               customization: item.customization,
             })),
             isScheduled: scheduledInfo.isScheduled,

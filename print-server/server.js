@@ -317,7 +317,8 @@ function formatKitchenTicket(order) {
 
             // Menu option: FRITE / BOISSON
             if (c.menuOption !== undefined) {
-                const isSandwichOrPanini = name.includes('SANDWICH') || name.includes('PANINI');
+                const itemCategory = (ci.item?.category || ci.category || '').toLowerCase();
+                const isSandwichOrPanini = itemCategory === 'panini' || name.includes('SANDWICH') || name.includes('PANINI');
                 const ml = { 'frites': 'FRITE INCLUSE', 'boisson': 'BOISSON', 'supp_frites': 'SUPPLEMENT FRITES', 'menu': 'FRITE / BOISSON' };
                 if (c.menuOption === 'none' || c.menuOption === '') {
                     if (isSandwichOrPanini) {
@@ -459,7 +460,8 @@ function formatCounterTicket(order, loyaltyText) {
             if (c.supplements?.length) details.push(...c.supplements);
             if (c.removedIngredients?.length) details.push(...c.removedIngredients.map(r => 'Sans ' + r));
             if (c.menuOption !== undefined) {
-                const isSandwichOrPanini = name.toUpperCase().includes('SANDWICH') || name.toUpperCase().includes('PANINI');
+                const itemCategory = (ci.item?.category || ci.category || '').toLowerCase();
+                const isSandwichOrPanini = itemCategory === 'panini' || name.toUpperCase().includes('SANDWICH') || name.toUpperCase().includes('PANINI');
                 const ml = { 'frites': 'Frite classique', 'boisson': 'Boisson', 'supp_frites': 'Supplement Frites', 'menu': 'Menu complet' };
                 if (c.menuOption === 'none' || c.menuOption === '') {
                     if (isSandwichOrPanini) {
@@ -689,7 +691,8 @@ function formatUnifiedTicket(order, loyaltyText) {
             });
             if (c.supplements?.length) c.supplements.forEach(s => { t += `   (${s.toUpperCase()})\n`; });
             if (c.menuOption !== undefined) {
-                const isSandwichOrPanini = name.includes('SANDWICH') || name.includes('PANINI');
+                const itemCategory = (ci.item?.category || ci.category || '').toLowerCase();
+                const isSandwichOrPanini = itemCategory === 'panini' || name.includes('SANDWICH') || name.includes('PANINI');
                 const ml = { 'frites': 'FRITE INCLUSE', 'boisson': 'BOISSON', 'supp_frites': 'SUPPLEMENT FRITES', 'menu': 'FRITE / BOISSON' };
                 if (c.menuOption === 'none' || c.menuOption === '') {
                     if (isSandwichOrPanini) {

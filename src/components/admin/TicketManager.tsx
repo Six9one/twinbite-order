@@ -291,10 +291,11 @@ export function TicketManager() {
                                                         {customization.sauces?.length > 0 && <div>Sauces: {customization.sauces.join(', ')}</div>}
                                                         {customization.garnitures?.length > 0 && <div>Garnitures: {customization.garnitures.join(', ')}</div>}
                                                         {customization.supplements?.length > 0 && <div>Suppléments: {customization.supplements.join(', ')}</div>}
-                                                        {customization.menuOption !== undefined && (customization.menuOption !== 'none' || itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini')) && (
+                                                        {customization.menuOption !== undefined && (customization.menuOption !== 'none' || itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini') || item.item?.category === 'panini' || item.category === 'panini') && (
                                                             <div className="text-green-600 font-bold">
                                                                 🍟 {(() => {
-                                                                    const isSandwichOrPanini = itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini');
+                                                                    const itemCategory = item.item?.category || item.category || '';
+                                                                    const isSandwichOrPanini = itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini') || itemCategory === 'panini';
                                                                     if (customization.menuOption === 'none') return 'SANS FRITES';
                                                                     const parts = customization.menuOption.split(',').map((o: string) => o.trim()).filter(Boolean);
                                                                     const labels: string[] = [];
