@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { writeFile } from 'fs/promises';
+import { promises as fsPromises } from 'fs';
+import { exec } from 'child_process';
 import express from 'express';
 import cors from 'cors';
 
@@ -874,16 +876,70 @@ async function printToSinglePrinter(data, ip, orderLabel) {
     return false;
 }
 
+// Send data to USB printer using print-raw.ps1 script
+function sendToUSBPrinter(data, printerName) {
+    return new Promise(async (resolve, reject) => {
+        const tempFilePath = join(__dirname, `temp_ticket_${Date.now()}_${Math.floor(Math.random() * 1000)}.bin`);
+        try {
+            await fsPromises.writeFile(tempFilePath, data, 'binary');
+            const psScript = join(__dirname, 'print-raw.ps1');
+            const command = `powershell -ExecutionPolicy Bypass -File "${psScript}" -PrinterName "${printerName}" -FilePath "${tempFilePath}"`;
+            
+            exec(command, async (error, stdout, stderr) => {
+                // Clean up temp file
+                try {
+                    await fsPromises.unlink(tempFilePath);
+                } catch (err) {
+                    // ignore
+                }
+                
+                if (error) {
+                    console.error('❌ USB Printer Error:', stderr || error.message);
+                    reject(error);
+                } else {
+                    console.log(`✅ Successfully printed to USB printer: ${printerName}`);
+                    resolve();
+                }
+            });
+        } catch (err) {
+            reject(err);
+        }
+    });
+}
+
 // Send formatted data to all printers (parallel per printer, queued globally)
 async function sendToAllPrinters(ticketData, label) {
-    if (PRINTER_IPS.length === 0) {
-        console.error('❌ No printers configured');
-        return false;
+    let success = false;
+    
+    // 1. Try USB Printer if configured
+    const usbPrinterName = process.env.USB_PRINTER_NAME;
+    if (usbPrinterName) {
+        try {
+            console.log(`🖨️  Attempting to print to USB printer: "${usbPrinterName}"`);
+            await sendToUSBPrinter(ticketData, usbPrinterName);
+            success = true;
+        } catch (err) {
+            console.error(`❌ USB Printer print failed: ${err.message}`);
+        }
     }
-    const results = await Promise.allSettled(
-        PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, label))
-    );
-    return results.some(r => r.status === 'fulfilled' && r.value === true);
+    
+    // 2. Try network printers if configured and not default placeholders
+    const activeIps = PRINTER_IPS.filter(ip => ip && ip !== '192.168.1.1' && ip !== '192.168.1.200');
+    if (activeIps.length > 0) {
+        const results = await Promise.allSettled(
+            activeIps.map(ip => printToSinglePrinter(ticketData, ip, label))
+        );
+        const netSuccess = results.some(r => r.status === 'fulfilled' && r.value === true);
+        success = success || netSuccess;
+    } else if (!usbPrinterName && PRINTER_IPS.length > 0) {
+        // Fallback: try network printers if no USB printer is set and we only have placeholders
+        const results = await Promise.allSettled(
+            PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, label))
+        );
+        success = results.some(r => r.status === 'fulfilled' && r.value === true);
+    }
+    
+    return success;
 }
 
 // Print order ticket (QUEUED) — formats and sends to all printers
