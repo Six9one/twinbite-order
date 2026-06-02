@@ -68,55 +68,66 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
             console.error('Error fetching tex-mex data:', error);
             // Fallback data
             setProducts([
-                { id: 'wings', name: 'Wings', description: 'Ailes de poulet croustillantes', unit_price: 1, image_url: null },
-                { id: 'tenders', name: 'Tenders', description: 'Tendres de poulet marinés', unit_price: 1, image_url: null },
-                { id: 'nuggets', name: 'Nuggets', description: 'Nuggets de poulet dorés', unit_price: 1, image_url: null },
-                { id: 'mozzastick', name: 'Mozzastick', description: 'Bâtonnets de mozzarella fondante', unit_price: 1, image_url: null },
-                { id: 'jalapenos', name: 'Jalapeños', description: 'Piments jalapeños farcis au fromage', unit_price: 1, image_url: null },
+                { id: 'wings', name: 'Wings', description: 'Ailes de poulet croustillantes', unit_price: 1.40, image_url: null },
+                { id: 'tenders', name: 'Tenders', description: 'Tendres de poulet marinés', unit_price: 1.40, image_url: null },
+                { id: 'nuggets', name: 'Nuggets', description: 'Nuggets de poulet dorés', unit_price: 1.40, image_url: null },
+                { id: 'mozzastick', name: 'Mozza Stick', description: 'Bâtonnets de mozzarella fondante', unit_price: 1.20, image_url: null },
+                { id: 'jalapenos', name: 'Jalapeños', description: 'Piments jalapeños farcis au fromage', unit_price: 1.20, image_url: null },
+                { id: 'onionrings', name: 'Onion Rings', description: 'Rondelles d\'oignons croustillantes', unit_price: 1.20, image_url: null },
             ]);
             setOffers([
-                { id: 'offer-5', quantity: 5, price: 5 },
-                { id: 'offer-10', quantity: 10, price: 9 },
+                { id: 'offer-5', quantity: 5, price: 7 },
+                { id: 'offer-10', quantity: 10, price: 13 },
             ]);
         } finally {
             setLoading(false);
         }
     };
 
+    const getProductGroup = (name: string): 'A' | 'B' => {
+        const norm = name.toLowerCase().replace(/[^a-z]/g, '');
+        if (['wings', 'tenders', 'nuggets'].includes(norm)) return 'A';
+        return 'B';
+    };
+
+    const calculateGroupPrice = (qty: number, group: 'A' | 'B'): number => {
+        if (qty <= 0) return 0;
+        
+        const unitPrice = group === 'A' ? 1.40 : 1.20;
+        const price5 = group === 'A' ? 7.00 : 6.00;
+        const price10 = group === 'A' ? 13.00 : 10.00;
+
+        let tempQty = qty;
+        let totalPrice = 0;
+
+        const num10s = Math.floor(tempQty / 10);
+        totalPrice += num10s * price10;
+        tempQty %= 10;
+
+        const num5s = Math.floor(tempQty / 5);
+        totalPrice += num5s * price5;
+        tempQty %= 5;
+
+        totalPrice += tempQty * unitPrice;
+
+        return totalPrice;
+    };
+
     const getTotalQuantity = () => {
         return selectedItems.reduce((sum, item) => sum + item.quantity, 0);
     };
 
-    const calculatePrice = (totalQty: number): number => {
-        // Find the best applicable offer
-        const applicableOffers = offers.filter(o => totalQty >= o.quantity);
-        if (applicableOffers.length === 0) {
-            // No offer applies, unit price (default 1€ per item)
-            return totalQty * 1;
-        }
+    const calculatePrice = (): number => {
+        let qtyA = 0;
+        let qtyB = 0;
 
-        // Find the best deal (highest quantity)
-        const bestOffer = applicableOffers.reduce((best, current) =>
-            current.quantity > best.quantity ? current : best
-        );
+        selectedItems.forEach(item => {
+            const grp = getProductGroup(item.product.name);
+            if (grp === 'A') qtyA += item.quantity;
+            else qtyB += item.quantity;
+        });
 
-        // Calculate: (number of full offers * offer price) + (remaining * unit price)
-        const numFullOffers = Math.floor(totalQty / bestOffer.quantity);
-        const remaining = totalQty % bestOffer.quantity;
-
-        // Check if remaining items can use a smaller offer
-        let remainingPrice = remaining * 1;
-        const smallerOffers = offers.filter(o => remaining >= o.quantity);
-        if (smallerOffers.length > 0) {
-            const smallOffer = smallerOffers.reduce((best, current) =>
-                current.quantity > best.quantity ? current : best
-            );
-            const subOffers = Math.floor(remaining / smallOffer.quantity);
-            const subRemaining = remaining % smallOffer.quantity;
-            remainingPrice = (subOffers * smallOffer.price) + (subRemaining * 1);
-        }
-
-        return (numFullOffers * bestOffer.price) + remainingPrice;
+        return calculateGroupPrice(qtyA, 'A') + calculateGroupPrice(qtyB, 'B');
     };
 
     const updateQuantity = (product: TexMexProduct, delta: number) => {
@@ -150,7 +161,7 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
         }
 
         const totalQty = getTotalQuantity();
-        const price = calculatePrice(totalQty);
+        const price = calculatePrice();
         const itemNames = selectedItems
             .filter(i => i.quantity > 0)
             .map(i => `${i.quantity}x ${i.product.name}`)
@@ -172,15 +183,16 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
     };
 
     const totalQty = getTotalQuantity();
-    const totalPrice = calculatePrice(totalQty);
+    const totalPrice = calculatePrice();
 
-    // Calculate savings
-    const regularPrice = totalQty * 1;
-    const savings = regularPrice - totalPrice;
-
-    // Find current/next offer
-    const currentOffer = offers.find(o => totalQty >= o.quantity && totalQty < (offers.find(o2 => o2.quantity > o.quantity)?.quantity || Infinity));
-    const nextOffer = offers.find(o => o.quantity > totalQty);
+    const getRegularPrice = () => {
+        return selectedItems.reduce((sum, item) => {
+            const unitPrice = getProductGroup(item.product.name) === 'A' ? 1.40 : 1.20;
+            return sum + item.quantity * unitPrice;
+        }, 0);
+    };
+    const regularPrice = getRegularPrice();
+    const savings = Math.max(0, regularPrice - totalPrice);
 
     if (loading) {
         return (
@@ -215,26 +227,26 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
             {/* Offers Banner */}
             <div className="container mx-auto px-4 py-4">
                 <Card className="p-4 bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/20">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-3">
                         <Sparkles className="w-5 h-5 text-orange-500" />
-                        <h3 className="font-semibold text-orange-700">Offres Spéciales</h3>
+                        <h3 className="font-semibold text-orange-700">Offres Spéciales Tex-Mex</h3>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        {offers.map(offer => (
-                            <Badge
-                                key={offer.id}
-                                variant={totalQty >= offer.quantity ? "default" : "outline"}
-                                className={totalQty >= offer.quantity ? "bg-orange-500" : ""}
-                            >
-                                {offer.quantity} pièces = {offer.price}€
-                            </Badge>
-                        ))}
+                    <div className="space-y-3">
+                        <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Poulet (Wings, Tenders, Nuggets)</p>
+                            <div className="flex gap-2">
+                                <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-none">5 pièces = 7.00€</Badge>
+                                <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-none">10 pièces = 13.00€</Badge>
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Fromage & Oignon (Mozza Stick, Jalapeños, Onion Rings)</p>
+                            <div className="flex gap-2">
+                                <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-none">5 pièces = 6.00€</Badge>
+                                <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-none">10 pièces = 10.00€</Badge>
+                            </div>
+                        </div>
                     </div>
-                    {nextOffer && totalQty > 0 && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                            Ajoutez {nextOffer.quantity - totalQty} pièce(s) de plus pour {nextOffer.price}€ !
-                        </p>
-                    )}
                 </Card>
             </div>
 
