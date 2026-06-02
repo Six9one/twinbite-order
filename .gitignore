@@ -29,9 +29,7 @@ dist-ssr
 *.sw?
 
 # Python
-whatsapp-bot-python/venv/
-whatsapp-bot-python/__pycache__/
-whatsapp-bot-python/whatsapp_session/
+whatsapp-bot-python/
 venv/
 __pycache__/
 *.pyc

@@ -37,7 +37,8 @@ import {
   ExternalLink,
   Ticket,
   FileText,
-  History
+  History,
+  Phone
 } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -140,6 +141,7 @@ const navItems: NavItem[] = [
     label: 'Réglages Système',
     icon: Settings,
     children: [
+      { label: 'Réceptionniste AI', icon: Phone, value: 'ai-receptionist' },
       { label: 'Paiements', icon: CreditCard, value: 'payments' },
       { label: 'Configuration Imprimante', icon: Printer, value: 'printer' },
       { label: 'Templates Tickets', icon: FileText, value: 'ticket-templates' },

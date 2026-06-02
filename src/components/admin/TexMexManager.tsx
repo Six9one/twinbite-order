@@ -35,6 +35,12 @@ export function TexMexManager() {
     const [editingOffer, setEditingOffer] = useState<string | null>(null);
     const [editedOffer, setEditedOffer] = useState<Partial<TexMexOffer>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+
+    const triggerUpload = (productId: string) => {
+        setSelectedProductId(productId);
+        fileInputRef.current?.click();
+    };
 
     useEffect(() => {
         fetchData();
@@ -138,6 +144,25 @@ export function TexMexManager() {
         }
     };
 
+    const handleRemoveImage = async (productId: string) => {
+        try {
+            const { error: updateError } = await supabase
+                .from('texmex_products' as any)
+                .update({ image_url: null })
+                .eq('id', productId);
+
+            if (updateError) {
+                toast.error('Erreur lors de la suppression de l\'image');
+            } else {
+                toast.success('Image supprimée');
+                fetchData();
+            }
+        } catch (error) {
+            console.error('Error removing image:', error);
+            toast.error('Erreur lors de la suppression de l\'image');
+        }
+    };
+
     // Offer management
     const handleAddOffer = async () => {
         const { error } = await supabase
@@ -210,6 +235,20 @@ export function TexMexManager() {
                     </Button>
                 </div>
 
+                <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file && selectedProductId) {
+                            handleImageUpload(selectedProductId, file);
+                        }
+                        e.target.value = '';
+                    }}
+                />
+
                 <div className="grid gap-3">
                     {products.map((product) => {
                         const isEditing = editingProduct === product.id;
@@ -267,19 +306,14 @@ export function TexMexManager() {
                                             </div>
                                         </div>
                                         <div className="flex gap-1">
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="hidden"
-                                                ref={fileInputRef}
-                                                onChange={(e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file) handleImageUpload(product.id, file);
-                                                }}
-                                            />
-                                            <Button size="sm" variant="ghost" onClick={() => fileInputRef.current?.click()}>
+                                            <Button size="sm" variant="ghost" onClick={() => triggerUpload(product.id)}>
                                                 <Upload className="w-4 h-4" />
                                             </Button>
+                                            {product.image_url && (
+                                                <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleRemoveImage(product.id)}>
+                                                    <X className="w-4 h-4" />
+                                                </Button>
+                                            )}
                                             <Button size="sm" variant="ghost" onClick={() => {
                                                 setEditingProduct(product.id);
                                                 setEditedProduct(product);
