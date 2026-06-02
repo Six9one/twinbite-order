@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MenuItem, SouffletCustomization, MakloubCustomization, MlawiCustomization } from '@/types/order';
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
-import { useMeatOptions, useSauceOptions, useSupplementOptions, useGarnitureOptions } from '@/hooks/useCustomizationOptions';
+import { useMeatOptions, useSauceOptions, useSupplementOptions, useGarnitureOptions, useCruditesOptions } from '@/hooks/useCustomizationOptions';
 import { useWizardImage, useMenuOptionImages } from '@/hooks/useWizardImages';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -253,6 +253,9 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
   const { data: dbSauces } = useSauceOptions();
   const { data: dbSupplements } = useSupplementOptions();
   const { data: dbGarnitures } = useGarnitureOptions();
+  const { data: dbCrudites } = useCruditesOptions();
+
+  const isCrudite = productType === 'makloub' || productType === 'mlawi';
 
   const allMeats = dbMeats && dbMeats.length > 0
     ? dbMeats.map(m => ({ id: m.id, name: m.name, price: Number(m.price), image_url: m.image_url }))
@@ -282,9 +285,15 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
 
   // For non-panini, build the garnitures list
   const rawGarnitures = config.showGarniture
-    ? (dbGarnitures && dbGarnitures.length > 0
-        ? dbGarnitures.map(g => ({ id: g.id, name: g.name, price: Number(g.price), image_url: g.image_url }))
-        : getStaticGarnitures()
+    ? (isCrudite
+        ? (dbCrudites && dbCrudites.length > 0
+            ? dbCrudites.map(g => ({ id: g.id, name: g.name, price: Number(g.price), image_url: g.image_url }))
+            : getStaticGarnitures()
+          )
+        : (dbGarnitures && dbGarnitures.length > 0
+            ? dbGarnitures.map(g => ({ id: g.id, name: g.name, price: Number(g.price), image_url: g.image_url }))
+            : getStaticGarnitures()
+          )
       )
     : [];
 
@@ -434,7 +443,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
     const baseItem: MenuItem = {
       id: `${productType}-${size}`,
       name: `${config.title} ${currentSizeConfig.label}`,
-      description: `${maxMeats} viande${maxMeats > 1 ? 's' : ''}, sauce, garnitures`,
+      description: `${maxMeats} viande${maxMeats > 1 ? 's' : ''}, sauce, ${isCrudite ? 'crudités' : 'garnitures'}`,
       price: currentSizeConfig.price,
       category: config.categorySlug as any,
     };
@@ -611,7 +620,7 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
         // Garnitures step (only for non-panini)
         return (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Garnitures</h2>
+            <h2 className="text-lg font-semibold">{isCrudite ? 'Crudités' : 'Garnitures'}</h2>
 
             {/* Default garnitures — tap to remove */}
             {defaultGarnitures.length > 0 && (
