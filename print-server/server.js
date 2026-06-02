@@ -317,8 +317,12 @@ function formatKitchenTicket(order) {
 
             // Menu option: FRITE / BOISSON
             if (c.menuOption && c.menuOption !== 'none') {
-                const ml = { 'frites': 'FRITE', 'boisson': 'BOISSON', 'menu': 'FRITE / BOISSON' };
-                t += `   ${ml[c.menuOption] || c.menuOption.toUpperCase()}\n`;
+                const ml = { 'frites': 'FRITE INCLUSE', 'boisson': 'BOISSON', 'supp_frites': 'SUPPLEMENT FRITES', 'menu': 'FRITE / BOISSON' };
+                const parts = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
+                const labels = parts.map(part => ml[part] || part.toUpperCase());
+                if (labels.length > 0) {
+                    t += `   ${labels.join(' + ')}\n`;
+                }
             }
 
             // Drink on its own line
@@ -423,8 +427,12 @@ function formatCounterTicket(order, loyaltyText) {
             if (c.supplements?.length) details.push(...c.supplements);
             if (c.removedIngredients?.length) details.push(...c.removedIngredients.map(r => 'Sans ' + r));
             if (c.menuOption && c.menuOption !== 'none') {
-                const ml = { 'frites': 'Frite classique', 'boisson': 'Boisson', 'menu': 'Menu complet' };
-                details.push(ml[c.menuOption] || c.menuOption);
+                const ml = { 'frites': 'Frite classique', 'boisson': 'Boisson', 'supp_frites': 'Supplement Frites', 'menu': 'Menu complet' };
+                const parts = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
+                const labels = parts.map(part => ml[part] || part);
+                if (labels.length > 0) {
+                    details.push(labels.join(' + '));
+                }
             }
             if (c.drink) details.push(c.drink);
             if (c.note) details.push('Note: ' + c.note);
@@ -617,8 +625,12 @@ function formatUnifiedTicket(order, loyaltyText) {
             });
             if (c.supplements?.length) c.supplements.forEach(s => { t += `   (${s.toUpperCase()})\n`; });
             if (c.menuOption && c.menuOption !== 'none') {
-                const ml = { 'frites': 'FRITE', 'boisson': 'BOISSON', 'menu': 'FRITE / BOISSON' };
-                t += `   ${ml[c.menuOption] || c.menuOption.toUpperCase()}\n`;
+                const ml = { 'frites': 'FRITE INCLUSE', 'boisson': 'BOISSON', 'supp_frites': 'SUPPLEMENT FRITES', 'menu': 'FRITE / BOISSON' };
+                const parts = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
+                const labels = parts.map(part => ml[part] || part.toUpperCase());
+                if (labels.length > 0) {
+                    t += `   ${labels.join(' + ')}\n`;
+                }
             }
             if (c.drink) t += `   ${c.drink.toUpperCase()}\n`;
             if (c.note) t += ESCPOS.BOLD_ON + `   *** ${c.note} ***\n` + ESCPOS.BOLD_OFF;

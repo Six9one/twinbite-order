@@ -87,11 +87,19 @@ export function InvoiceModal({ order, onClose }: InvoiceModalProps) {
           details.push(customization.garnitures.join(', '));
         if (customization?.supplements?.length)
           details.push(customization.supplements.join(', '));
-        if (
-          customization?.menuOption &&
-          customization.menuOption !== 'none'
-        )
-          details.push(customization.menuOption);
+        if (customization?.menuOption && customization.menuOption !== 'none') {
+          const menuLabels: Record<string, string> = {
+            'frites': 'Frites',
+            'boisson': 'Boisson',
+            'supp_frites': 'Supplément Frites',
+            'menu': 'Menu complet'
+          };
+          const parts = customization.menuOption.split(',').map((o: string) => o.trim()).filter(Boolean);
+          const labels = parts.map((part: string) => menuLabels[part] || part);
+          if (labels.length > 0) {
+            details.push(labels.join(' + '));
+          }
+        }
 
         return `
           <tr>

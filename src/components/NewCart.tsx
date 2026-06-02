@@ -161,14 +161,20 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
 
       // Menu option
       if ('menuOption' in custom) {
-        const menuOpt = (custom as TacosCustomization | SouffletCustomization).menuOption;
+        const menuOpt = (custom as any).menuOption;
         if (menuOpt && menuOpt !== 'none') {
           const menuLabels: Record<string, string> = {
             'frites': '+Frites',
             'boisson': '+Boisson',
+            'supp_frites': '+Supplément Frites',
             'menu': '+Menu complet'
           };
-          parts.push(menuLabels[menuOpt] || '');
+          const opts = menuOpt.split(',').map((o: string) => o.trim()).filter(Boolean);
+          const labels = opts.map((opt: string) => menuLabels[opt] || opt);
+          const activeLabels = labels.filter(Boolean);
+          if (activeLabels.length > 0) {
+            parts.push(activeLabels.join(' | '));
+          }
         }
       }
 

@@ -86,7 +86,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
   const [removedDefaults, setRemovedDefaults] = useState<string[]>([]);
   const [selectedExtraCrudites, setSelectedExtraCrudites] = useState<string[]>([]);
   const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
-  const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'supp_frites'>('frites');
+  const [selectedOptions, setSelectedOptions] = useState<string[]>(['frites']);
   const [note, setNote] = useState('');
   const { data: menuOptionImages } = useMenuOptionImages();
 
@@ -136,9 +136,10 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
       if (sup) price += sup.price;
     });
 
-    if (menuOption === 'boisson') {
+    if (selectedOptions.includes('boisson')) {
       price += menuOptionPrices.boisson;
-    } else if (menuOption === 'supp_frites') {
+    }
+    if (selectedOptions.includes('supp_frites')) {
       price += 1.50;
     }
 
@@ -167,8 +168,8 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
       ...extraCrudites.filter(c => selectedExtraCrudites.includes(c.id)).map(c => c.name),
     ];
 
-    // Default fries are included, so selecting 'none' means "Sans Frites"
-    const finalNote = menuOption === 'none'
+    // Default fries are included, so if 'frites' is not selected, print SANS FRITES
+    const finalNote = !selectedOptions.includes('frites')
       ? (note ? `SANS FRITES - ${note}` : 'SANS FRITES')
       : note;
 
@@ -176,7 +177,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
       sauces: selectedSauces,
       crudites: activeCruditeNames,
       supplements: selectedSupplements,
-      menuOption,
+      menuOption: selectedOptions.join(','),
       note: finalNote || undefined,
     };
 
@@ -197,10 +198,13 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
     toast({
       title: 'Ajouté au panier',
       description: `${selectedSandwich.name}${
-        menuOption === 'none' ? ' (Sans Frites)' :
-        menuOption === 'boisson' ? ' (+ Boisson)' :
-        menuOption === 'supp_frites' ? ' (+ Supplément Frites)' :
-        ' (Avec Frites)'
+        selectedOptions.length === 0 ? ' (Sans Frites)' :
+        ` (${selectedOptions.map(opt => {
+          if (opt === 'frites') return 'Avec Frites';
+          if (opt === 'boisson') return '+ Boisson';
+          if (opt === 'supp_frites') return '+ Supplément Frites';
+          return opt;
+        }).join(', ')})`
       }`,
     });
 
@@ -209,7 +213,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
     setRemovedDefaults([]);
     setSelectedExtraCrudites([]);
     setSelectedSupplements([]);
-    setMenuOption('frites');
+    setSelectedOptions(['frites']);
     setNote('');
     setStep(1);
   };
@@ -457,22 +461,27 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-semibold mb-3">Options menu</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <h2 className="text-lg font-semibold mb-3">Options menu (Choix multiples possibles)</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
                   { id: 'frites', label: 'Frites (Incluses)', price: 0, emoji: '🍟', imageUrl: menuOptionImages?.frites || null },
                   { id: 'boisson', label: 'Boisson', price: menuOptionPrices.boisson, emoji: '🥤', imageUrl: menuOptionImages?.boisson || null },
                   { id: 'supp_frites', label: 'Supplément Frites', price: 1.50, emoji: '🍟', imageUrl: menuOptionImages?.frites || null },
-                  { id: 'none', label: 'Sans Frites', price: 0, emoji: '🚫', imageUrl: null },
                 ].map((option) => {
-                  const isSelected = menuOption === option.id;
+                  const isSelected = selectedOptions.includes(option.id);
                   return (
                     <Card
                       key={option.id}
                       className={`cursor-pointer transition-all overflow-hidden ${
-                        isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
+                        isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50 border border-dashed opacity-60'
                       }`}
-                      onClick={() => setMenuOption(option.id as typeof menuOption)}
+                      onClick={() => {
+                        setSelectedOptions(prev =>
+                          prev.includes(option.id)
+                            ? prev.filter(id => id !== option.id)
+                            : [...prev, option.id]
+                        );
+                      }}
                     >
                       <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
                         {option.imageUrl ? (
@@ -480,10 +489,16 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
                         ) : (
                           <span className="text-4xl">{option.emoji}</span>
                         )}
-                        {isSelected && (
+                        {isSelected ? (
                           <div className="absolute top-1 right-1 bg-primary rounded-full w-6 h-6 flex items-center justify-center">
                             <Check className="w-3 h-3 text-white" />
                           </div>
+                        ) : (
+                          option.id === 'frites' && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <span className="text-white font-bold text-xs bg-red-600 px-2 py-1 rounded">SANS FRITES</span>
+                            </div>
+                          )
                         )}
                       </div>
                       <div className="p-2 text-center">

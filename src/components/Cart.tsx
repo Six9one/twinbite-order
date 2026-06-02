@@ -16,13 +16,26 @@ interface CartProps {
 // Helper to get menu option label
 const getMenuOptionLabel = (option: string | undefined, category?: string) => {
   if (category === 'panini') {
-    switch (option) {
-      case 'frites': return 'Avec Frites (Inclus)';
-      case 'boisson': return '+ Boisson';
-      case 'supp_frites': return '+ Supplément Frites';
-      case 'none': return 'Sans Frites';
-      default: return option || '';
+    const optStr = option !== undefined ? option : 'frites';
+    const parts = optStr.split(',').map(o => o.trim()).filter(Boolean);
+    const labels: string[] = [];
+    if (parts.includes('frites')) {
+      labels.push('Avec Frites (Inclus)');
+    } else {
+      labels.push('Sans Frites');
     }
+    if (parts.includes('boisson')) {
+      labels.push('+ Boisson');
+    }
+    if (parts.includes('supp_frites')) {
+      labels.push('+ Supplément Frites');
+    }
+    parts.forEach(p => {
+      if (!['frites', 'boisson', 'supp_frites'].includes(p)) {
+        labels.push(p);
+      }
+    });
+    return labels.join(' ');
   }
   switch (option) {
     case 'frites': return '+ Frites';
@@ -211,9 +224,9 @@ export function Cart({ isOpen, onClose, onCheckout }: CartProps) {
                                 {getSizeLabel(cartItem.customization.size, cartItem.item.category)}
                               </Badge>
                             )}
-                            {cartItem.customization?.menuOption && (cartItem.item.category === 'panini' || cartItem.customization.menuOption !== 'none') && (
+                            {(cartItem.customization?.menuOption || cartItem.item.category === 'panini') && (cartItem.item.category === 'panini' || cartItem.customization?.menuOption !== 'none') && (
                               <Badge className="text-xs bg-primary/20 text-primary border-0">
-                                {getMenuOptionLabel(cartItem.customization.menuOption, cartItem.item.category)}
+                                {getMenuOptionLabel(cartItem.customization?.menuOption, cartItem.item.category)}
                               </Badge>
                             )}
                           </div>

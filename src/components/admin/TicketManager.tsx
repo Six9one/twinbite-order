@@ -293,13 +293,38 @@ export function TicketManager() {
                                                         {customization.supplements?.length > 0 && <div>Suppléments: {customization.supplements.join(', ')}</div>}
                                                         {customization.menuOption && (customization.menuOption !== 'none' || itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini')) && (
                                                             <div className="text-green-600 font-bold">
-                                                                🍟 {customization.menuOption === 'none'
-                                                                    ? 'SANS FRITES'
-                                                                    : (customization.menuOption === 'frites' && (itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini')))
-                                                                    ? 'FRITES INCLUSES'
-                                                                    : customization.menuOption === 'supp_frites'
-                                                                    ? 'SUPPLÉMENT FRITES'
-                                                                    : customization.menuOption.toUpperCase()}
+                                                                🍟 {(() => {
+                                                                    const isSandwichOrPanini = itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini');
+                                                                    if (customization.menuOption === 'none') return 'SANS FRITES';
+                                                                    const parts = customization.menuOption.split(',').map((o: string) => o.trim()).filter(Boolean);
+                                                                    const labels: string[] = [];
+                                                                    if (isSandwichOrPanini) {
+                                                                        if (parts.includes('frites')) {
+                                                                            labels.push('FRITES INCLUSES');
+                                                                        } else {
+                                                                            labels.push('SANS FRITES');
+                                                                        }
+                                                                    } else {
+                                                                        if (parts.includes('frites')) {
+                                                                            labels.push('FRITES');
+                                                                        }
+                                                                    }
+                                                                    if (parts.includes('boisson')) {
+                                                                        labels.push('BOISSON');
+                                                                    }
+                                                                    if (parts.includes('supp_frites')) {
+                                                                        labels.push('SUPPLÉMENT FRITES');
+                                                                    }
+                                                                    if (parts.includes('menu')) {
+                                                                        labels.push('MENU COMPLET');
+                                                                    }
+                                                                    parts.forEach((p: string) => {
+                                                                        if (!['frites', 'boisson', 'supp_frites', 'menu'].includes(p)) {
+                                                                            labels.push(p.toUpperCase());
+                                                                        }
+                                                                    });
+                                                                    return labels.join(' + ');
+                                                                })()}
                                                             </div>
                                                         )}
                                                     </div>

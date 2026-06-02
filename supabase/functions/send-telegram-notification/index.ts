@@ -125,9 +125,15 @@ serve(async (req) => {
         const menuLabels: Record<string, string> = {
           'frites': '+Frites',
           'boisson': '+Boisson',
+          'supp_frites': '+Supplément Frites',
           'menu': '+Menu complet'
         };
-        parts.push(menuLabels[customization.menuOption] || '');
+        const opts = customization.menuOption.split(',').map((o: string) => o.trim()).filter(Boolean);
+        const labels = opts.map((opt: string) => menuLabels[opt] || opt);
+        const activeLabels = labels.filter(Boolean);
+        if (activeLabels.length > 0) {
+          parts.push(activeLabels.join(' | '));
+        }
       }
 
       // Note
