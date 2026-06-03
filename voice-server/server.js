@@ -740,7 +740,7 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
               // Send initial setup message
               const setupEvent = {
                 setup: {
-                  model: "models/gemini-2.0-flash",
+                  model: "models/gemini-2.0-flash-live-001",
                   generationConfig: {
                     responseModalities: ["audio"],
                     speechConfig: {
@@ -1009,7 +1009,7 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
                 ws.send(JSON.stringify({ type: 'status', message: 'Connecté à Gemini Live API' }));
                 const setupEvent = {
                   setup: {
-                    model: "models/gemini-2.0-flash",
+                    model: "models/gemini-2.0-flash-live-001",
                     generationConfig: {
                       responseModalities: ["audio"],
                       speechConfig: {
