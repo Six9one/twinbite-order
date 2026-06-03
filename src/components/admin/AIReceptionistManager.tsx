@@ -262,9 +262,9 @@ export function AIReceptionistManager() {
       const audioCtx = new AudioContextClass();
       audioContextRef.current = audioCtx;
 
-      // 3. Establish WebSocket connection to backend voice server playground
-      // Make sure local voice-server is running on port 5000 (standard in README)
-      const wsUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/voice-ws/test-agent`;
+      // 3. Establish WebSocket connection to local backend voice server
+      // Make sure local voice-server is running on port 5000
+      const wsUrl = 'ws://127.0.0.1:5000/test-agent';
       const ws = new WebSocket(wsUrl);
       socketRef.current = ws;
 
