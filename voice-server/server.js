@@ -1037,40 +1037,17 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
               // Store the pipeline functions on the ws object so audio handler can call them
               ws._geminiPipeline = async (audioBase64) => {
                 try {
-                  ws.send(JSON.stringify({ type: 'status', message: 'Transcription en cours...' }));
+                  ws.send(JSON.stringify({ type: 'status', message: '⚡ Clara écoute...' }));
                   
-                  // Step 1: Transcribe audio using Gemini (audio input → text)
-                  const sttResp = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-                    {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        contents: [{
-                          parts: [
-                            { text: "Transcris exactement ce que dit la personne dans cet audio. Réponds uniquement avec la transcription, sans commentaire." },
-                            { inlineData: { mimeType: 'audio/webm', data: audioBase64 } }
-                          ]
-                        }]
-                      })
-                    }
-                  );
-                  const sttJson = await sttResp.json();
-                  const userText = sttJson.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                  // ── STEP 1: Audio → AI response in ONE call ──────────────────────────
+                  const contentsWithAudio = [
+                    ...conversationHistory,
+                    { role: 'user', parts: [
+                      { inlineData: { mimeType: 'audio/webm', data: audioBase64 } },
+                      { text: "Réponds en français comme Clara." }
+                    ]}
+                  ];
                   
-                  if (!userText || userText.length < 2) {
-                    ws.send(JSON.stringify({ type: 'status', message: 'En attente de votre message...' }));
-                    return;
-                  }
-                  
-                  console.log(`[WS-Test] User said: "${userText}"`);
-                  ws.send(JSON.stringify({ type: 'transcript', role: 'user', text: userText }));
-                  appendToTranscript(testCallSid, 'user', userText);
-                  conversationHistory.push({ role: 'user', parts: [{ text: userText }] });
-                  
-                  ws.send(JSON.stringify({ type: 'status', message: 'Clara réfléchit...' }));
-                  
-                  // Step 2: Get AI response from Gemini Flash
                   const chatResp = await fetch(
                     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
                     {
@@ -1078,7 +1055,7 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
                         system_instruction: { parts: [{ text: finalPrompt }] },
-                        contents: conversationHistory,
+                        contents: contentsWithAudio,
                         tools: [{
                           functionDeclarations: [
                             { name: 'search_menu', description: 'Rechercher des articles dans le menu', parameters: { type: 'OBJECT', properties: { query: { type: 'STRING' } }, required: ['query'] } },
@@ -1093,16 +1070,18 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
                   const chatJson = await chatResp.json();
                   const candidate = chatJson.candidates?.[0];
                   
-                  // Handle tool calls
                   let aiText = '';
+                  
                   if (candidate?.content?.parts) {
                     const toolCalls = candidate.content.parts.filter(p => p.functionCall);
                     if (toolCalls.length > 0) {
+                      conversationHistory.push({ role: 'user', parts: [{ text: '[message vocal]' }] });
                       conversationHistory.push(candidate.content);
+                      
                       const toolResults = [];
                       for (const part of toolCalls) {
                         const { name, args } = part.functionCall;
-                        ws.send(JSON.stringify({ type: 'status', message: `Exécution : ${name}...` }));
+                        ws.send(JSON.stringify({ type: 'status', message: `⚙️ ${name}...` }));
                         let result = '{}';
                         if (toolImplementations[name]) {
                           try { result = await toolImplementations[name](args, testCallSid); }
@@ -1113,7 +1092,6 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
                       }
                       conversationHistory.push({ role: 'user', parts: toolResults });
                       
-                      // Get follow-up response after tool execution
                       const followUpResp = await fetch(
                         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
                         {
@@ -1126,23 +1104,24 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
                         }
                       );
                       const followUpJson = await followUpResp.json();
-                      aiText = followUpJson.candidates?.[0]?.content?.parts?.[0]?.text || "D'accord, je m'en occupe.";
+                      aiText = followUpJson.candidates?.[0]?.content?.parts?.[0]?.text || "D'accord !";
                     } else {
                       aiText = candidate.content.parts.find(p => p.text)?.text || "Désolée, je n'ai pas bien compris.";
+                      conversationHistory.push({ role: 'user', parts: [{ text: '[message vocal]' }] });
                     }
                   }
                   
                   aiText = aiText.trim();
                   if (!aiText) aiText = "Désolée, pouvez-vous répéter ?";
                   
-                  console.log(`[WS-Test] Clara responds: "${aiText}"`);
                   conversationHistory.push({ role: 'model', parts: [{ text: aiText }] });
                   ws.send(JSON.stringify({ type: 'transcript', role: 'assistant', text: aiText }));
                   appendToTranscript(testCallSid, 'assistant', aiText);
                   
-                  ws.send(JSON.stringify({ type: 'status', message: 'Synthèse vocale...' }));
+                  console.log(`[WS-Test] Clara: "${aiText.substring(0, 80)}..."`);
+                  ws.send(JSON.stringify({ type: 'status', message: '🔊 Clara répond...' }));
                   
-                  // Step 3: Synthesize response with TTS
+                  // ── STEP 2: TTS ──────────────────────────────────────────────────────
                   const ttsResp = await fetch(
                     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
                     {
@@ -1162,9 +1141,10 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
                   if (audioPart) {
                     ws.send(JSON.stringify({ type: 'audio', payload: audioPart.inlineData.data, mimeType: audioPart.inlineData.mimeType }));
                   }
-                  ws.send(JSON.stringify({ type: 'status', message: 'En attente de votre message...' }));
+                  ws.send(JSON.stringify({ type: 'status', message: '🎙️ À vous...' }));
                 } catch (e) {
                   console.error('[WS-Test] Pipeline error:', e.message);
+                  ws.send(JSON.stringify({ type: 'status', message: `Erreur: ${e.message}` }));
                 }
               };
             }

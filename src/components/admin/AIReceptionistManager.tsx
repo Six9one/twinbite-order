@@ -321,8 +321,8 @@ export function AIReceptionistManager() {
         };
 
         // VAD loop: detect speaking/silence and start/stop recorder
-        const SILENCE_DB = -45;  // dB threshold
-        const SILENCE_DELAY = 1500; // ms of silence before sending
+        const SILENCE_DB = -42;  // dB threshold
+        const SILENCE_DELAY = 800; // ms of silence before sending
 
         const vadLoop = () => {
           if (!mediaStreamRef.current) return;
