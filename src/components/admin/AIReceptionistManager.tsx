@@ -111,6 +111,9 @@ export function AIReceptionistManager() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isProcessingRef = useRef<boolean>(false);
 
   // Load Calls and Settings from Supabase
   useEffect(() => {
@@ -245,67 +248,128 @@ export function AIReceptionistManager() {
     }
   };
 
-  // --- PLAYGROUND MICROPHONE AUDIO TESTER ---
+  // --- PLAYGROUND MICROPHONE AUDIO TESTER (Turn-Based: MediaRecorder + VAD) ---
   const startPlaygroundTest = async () => {
     setIsTesting(true);
     setTestTranscript([]);
     setPlaygroundStatus('Initialisation du micro...');
     nextStartTimeRef.current = 0;
+    isProcessingRef.current = false;
 
     try {
       // 1. Get browser media stream
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
 
-      // 2. Initialize Web Audio API AudioContext
+      // 2. Initialize Web Audio API AudioContext for VAD (silence detection)
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const audioCtx = new AudioContextClass();
       audioContextRef.current = audioCtx;
 
       // 3. Establish WebSocket connection to local backend voice server
-      // Make sure local voice-server is running on port 5000
       const wsUrl = 'ws://127.0.0.1:5000/test-agent';
       const ws = new WebSocket(wsUrl);
       socketRef.current = ws;
 
       ws.onopen = () => {
-        setPlaygroundStatus('Connecté au serveur AI. Parlez...');
-        // Send start event config
+        setPlaygroundStatus('Connexion OK — envoi de la config...');
+        // Send start event
         ws.send(JSON.stringify({ type: 'start' }));
 
-        // Connect mic stream
+        // ── Voice Activity Detection via AnalyserNode ──
         const source = audioCtx.createMediaStreamSource(stream);
-        // ScriptProcessor node captures at default rate (e.g. 44.1kHz or 48kHz)
-        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-        scriptProcessorRef.current = processor;
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = 0.3;
+        source.connect(analyser);
 
-        processor.onaudioprocess = (e) => {
-          if (ws.readyState !== WebSocket.OPEN) return;
-          const inputData = e.inputBuffer.getChannelData(0);
+        const dataArray = new Uint8Array(analyser.fftSize);
+        let isSpeaking = false;
+        let chunkBuffer: BlobPart[] = [];
 
-          // Resample Float32 to 16000Hz PCM
-          const inputSampleRate = audioCtx.sampleRate;
-          const outputSampleRate = 16000;
-          const ratio = inputSampleRate / outputSampleRate;
-          const newLength = Math.round(inputData.length / ratio);
-          const resampled = new Float32Array(newLength);
-          for (let i = 0; i < newLength; i++) {
-            resampled[i] = inputData[Math.round(i * ratio)];
+        // Start MediaRecorder in WebM format (fully supported in Chrome)
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/ogg;codecs=opus';
+
+        const recorder = new MediaRecorder(stream, { mimeType });
+        mediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            chunkBuffer.push(e.data);
           }
-
-          // Convert Float32 to Int16 PCM buffer
-          const int16Buffer = new Int16Array(newLength);
-          for (let i = 0; i < newLength; i++) {
-            const s = Math.max(-1, Math.min(1, resampled[i]));
-            int16Buffer[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-          }
-
-          // Send raw binary PCM audio buffer over WS
-          ws.send(int16Buffer.buffer);
         };
 
-        source.connect(processor);
-        processor.connect(audioCtx.destination);
+        recorder.onstop = async () => {
+          if (chunkBuffer.length === 0 || !ws || ws.readyState !== WebSocket.OPEN) return;
+          // Convert accumulated WebM blobs → base64 and send to server
+          const blob = new Blob(chunkBuffer, { type: mimeType });
+          chunkBuffer = [];
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = (reader.result as string).split(',')[1];
+            if (base64 && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'audio_chunk', data: base64 }));
+              ws.send(JSON.stringify({ type: 'audio_done' }));
+            }
+            isProcessingRef.current = false;
+          };
+          reader.readAsDataURL(blob);
+        };
+
+        // VAD loop: detect speaking/silence and start/stop recorder
+        const SILENCE_DB = -45;  // dB threshold
+        const SILENCE_DELAY = 1500; // ms of silence before sending
+
+        const vadLoop = () => {
+          if (!mediaStreamRef.current) return;
+          analyser.getByteTimeDomainData(dataArray);
+
+          // RMS amplitude → dB
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            const norm = (dataArray[i] - 128) / 128;
+            sum += norm * norm;
+          }
+          const rms = Math.sqrt(sum / dataArray.length);
+          const db = rms > 0 ? 20 * Math.log10(rms) : -100;
+
+          const speaking = db > SILENCE_DB;
+
+          if (speaking && !isSpeaking) {
+            // Started speaking
+            isSpeaking = true;
+            if (silenceTimerRef.current) {
+              clearTimeout(silenceTimerRef.current);
+              silenceTimerRef.current = null;
+            }
+            if (recorder.state === 'inactive' && !isProcessingRef.current) {
+              chunkBuffer = [];
+              recorder.start(100); // collect chunks every 100ms
+              setPlaygroundStatus('🎙️ Vous parlez...');
+            }
+          } else if (!speaking && isSpeaking) {
+            // Stopped speaking
+            if (!silenceTimerRef.current) {
+              silenceTimerRef.current = setTimeout(() => {
+                isSpeaking = false;
+                silenceTimerRef.current = null;
+                if (recorder.state === 'recording') {
+                  isProcessingRef.current = true;
+                  recorder.stop(); // triggers onstop → sends to server
+                  setPlaygroundStatus('⏳ Traitement...');
+                }
+              }, SILENCE_DELAY);
+            }
+          }
+
+          requestAnimationFrame(vadLoop);
+        };
+
+        vadLoop();
       };
 
       ws.onmessage = (event) => {
@@ -315,21 +379,17 @@ export function AIReceptionistManager() {
           if (data.type === 'status') {
             setPlaygroundStatus(data.message);
           } 
-          
           else if (data.type === 'transcript') {
             setTestTranscript(prev => [...prev, { role: data.role, text: data.text }]);
           } 
-          
           else if (data.type === 'tool_output') {
             toast.info(`Outil exécuté : ${data.name}`);
           } 
-          
           else if (data.type === 'audio' && audioEnabled) {
-            // Play base64 audio chunks back
-            playBase64PCMChunk(data.payload);
+            playBase64Audio(data.payload, data.mimeType);
           }
         } catch (e) {
-          // Binary audio packet (or fallback)
+          // ignore non-JSON
         }
       };
 
@@ -348,12 +408,12 @@ export function AIReceptionistManager() {
       const errMsg = err.message || '';
       if (err.name === 'SecurityError' || errMsg.includes('insecure')) {
         toast.error("Erreur d'accès au microphone : Opération non sécurisée.", {
-          description: "Firefox/Safari bloque l'accès si vous êtes en Navigation Privée, si vous bloquez le micro dans la barre d'adresse, ou si privacy.resistFingerprinting est activé.",
+          description: "Firefox/Safari bloque l'accès si vous êtes en Navigation Privée ou si vous bloquez le micro dans la barre d'adresse.",
           duration: 10000
         });
       } else if (err.name === 'NotAllowedError' || errMsg.includes('permission') || errMsg.includes('denied')) {
         toast.error("Accès au microphone refusé.", {
-          description: "Veuillez autoriser l'accès au microphone pour ce site dans la barre d'adresse de votre navigateur.",
+          description: "Veuillez autoriser l'accès au microphone dans la barre d'adresse.",
           duration: 8000
         });
       } else {
@@ -364,47 +424,64 @@ export function AIReceptionistManager() {
     }
   };
 
-  const playBase64PCMChunk = (base64PCM: string) => {
+  // Play audio returned by Gemini TTS (base64-encoded audio file, any format)
+  const playBase64Audio = async (base64: string, mimeType?: string) => {
     if (!audioContextRef.current) return;
     try {
-      const binaryString = window.atob(base64PCM);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      
-      const pcm16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
-      const float32 = new Float32Array(pcm16.length);
-      for (let i = 0; i < pcm16.length; i++) {
-        float32[i] = pcm16[i] / 32768.0;
+      const binaryString = window.atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+
+      // Try to decode as standard audio file first (works for WAV, MP3, OGG from TTS)
+      try {
+        const audioBuffer = await audioContextRef.current.decodeAudioData(bytes.buffer.slice(0));
+        const src = audioContextRef.current.createBufferSource();
+        src.buffer = audioBuffer;
+        src.connect(audioContextRef.current.destination);
+        const now = audioContextRef.current.currentTime;
+        if (nextStartTimeRef.current < now) nextStartTimeRef.current = now + 0.05;
+        src.start(nextStartTimeRef.current);
+        nextStartTimeRef.current += audioBuffer.duration;
+        return;
+      } catch (_) {
+        // Not a standard audio file — fall back to raw PCM interpretation
       }
 
-      // Live API defaults output at 24000Hz (downsample/playback rate matching)
+      // Fallback: treat as raw 16-bit PCM (for OpenAI realtime compatibility)
+      const pcm16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
+      const float32 = new Float32Array(pcm16.length);
+      for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768.0;
       const sampleRate = settings?.provider === 'openai' ? 16000 : 24000;
       const audioBuffer = audioContextRef.current.createBuffer(1, float32.length, sampleRate);
       audioBuffer.getChannelData(0).set(float32);
-
-      const bufferSource = audioContextRef.current.createBufferSource();
-      bufferSource.buffer = audioBuffer;
-      bufferSource.connect(audioContextRef.current.destination);
-
+      const src = audioContextRef.current.createBufferSource();
+      src.buffer = audioBuffer;
+      src.connect(audioContextRef.current.destination);
       const now = audioContextRef.current.currentTime;
-      if (nextStartTimeRef.current < now) {
-        nextStartTimeRef.current = now + 0.08; // safety buffer offset
-      }
-      
-      bufferSource.start(nextStartTimeRef.current);
+      if (nextStartTimeRef.current < now) nextStartTimeRef.current = now + 0.08;
+      src.start(nextStartTimeRef.current);
       nextStartTimeRef.current += audioBuffer.duration;
     } catch (e: any) {
-      console.warn('Audio play chunk error:', e.message);
+      console.warn('Audio play error:', e.message);
     }
   };
+
+  // Legacy alias (kept for any remaining references)
+  const playBase64PCMChunk = (base64PCM: string) => playBase64Audio(base64PCM);
 
   const stopPlaygroundTest = () => {
     setIsTesting(false);
     setPlaygroundStatus('Prêt');
+    isProcessingRef.current = false;
     
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
+    }
     if (socketRef.current) {
       socketRef.current.close();
       socketRef.current = null;

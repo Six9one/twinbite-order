@@ -989,93 +989,200 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
             } 
             
             else {
-              // Gemini Live
+              // ── Gemini Turn-Based Pipeline (STT → LLM → TTS) ──────────────────
+              // BidiGenerateContent (Live API) is NOT available for this API key.
+              // We use: collect audio → Gemini STT → Gemini Flash text → TTS audio
               const apiKey = settings.api_key || process.env.GEMINI_API_KEY;
-              console.log(`[WS-Test] Connecting to Gemini Live API with key: ${apiKey ? apiKey.substring(0, 8) + '...' : 'NONE'}`);
-              const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
-              geminiWs = new WebSocket(geminiUrl);
-
-              geminiWs.on('error', (err) => {
-                console.error("[WS-Test] Gemini Connection Error:", err.message || err);
-                ws.send(JSON.stringify({ type: 'status', message: `Erreur Gemini : ${err.message || 'Échec'}` }));
-              });
-
-              geminiWs.on('close', (code, reason) => {
-                console.log(`[WS-Test] Gemini Connection Closed. Code: ${code}, Reason: ${reason.toString() || 'No reason'}`);
-                ws.send(JSON.stringify({ type: 'status', message: `Connexion Gemini fermée (${code})` }));
-              });
-
-              geminiWs.on('open', () => {
-                ws.send(JSON.stringify({ type: 'status', message: 'Connecté à Gemini Live API' }));
-                const setupEvent = {
-                  setup: {
-                    model: "models/gemini-2.0-flash-live-001",
-                    generationConfig: {
-                      responseModalities: ["audio"],
-                      speechConfig: {
-                        voiceConfig: {
-                          prebuiltVoiceConfig: { voiceName: "Aoede" }
+              console.log(`[WS-Test] Using Gemini turn-based pipeline with key: ${apiKey ? apiKey.substring(0, 8) + '...' : 'NONE'}`);
+              
+              // Keep a conversation history for context
+              const conversationHistory = [];
+              
+              // Send greeting immediately using TTS
+              ws.send(JSON.stringify({ type: 'status', message: 'Connecté - Clara est prête !' }));
+              
+              // Generate and send greeting audio
+              (async () => {
+                try {
+                  const greeting = settings.greeting_message || "Bonjour et bienvenue chez Twin Pizza ! Que puis-je faire pour vous ?";
+                  ws.send(JSON.stringify({ type: 'transcript', role: 'assistant', text: greeting }));
+                  appendToTranscript(testCallSid, 'assistant', greeting);
+                  conversationHistory.push({ role: 'model', parts: [{ text: greeting }] });
+                  
+                  const ttsResp = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        contents: [{ parts: [{ text: greeting }] }],
+                        generationConfig: {
+                          responseModalities: ['AUDIO'],
+                          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } }
                         }
-                      }
-                    },
-                    systemInstruction: {
-                      parts: [{ text: finalPrompt }]
+                      })
                     }
+                  );
+                  const ttsJson = await ttsResp.json();
+                  const audioPart = ttsJson.candidates?.[0]?.content?.parts?.find(p => p.inlineData?.mimeType?.includes('audio'));
+                  if (audioPart) {
+                    ws.send(JSON.stringify({ type: 'audio', payload: audioPart.inlineData.data, mimeType: audioPart.inlineData.mimeType }));
                   }
-                };
-                geminiWs.send(JSON.stringify(setupEvent));
-              });
-
-              geminiWs.on('message', async (data) => {
-                const response = JSON.parse(data);
-
-                if (response.serverContent?.modelTurn?.parts) {
-                  for (const part of response.serverContent.modelTurn.parts) {
-                    if (part.inlineData && part.inlineData.mimeType.startsWith('audio/pcm')) {
-                      // Return raw 24kHz PCM back to browser (browser handles audio synthesis)
-                      ws.send(JSON.stringify({ type: 'audio', payload: part.inlineData.data }));
-                    }
-                    if (part.text) {
-                      ws.send(JSON.stringify({ type: 'transcript', role: 'assistant', text: part.text }));
-                      appendToTranscript(testCallSid, 'assistant', part.text);
-                    }
-                  }
+                  ws.send(JSON.stringify({ type: 'status', message: 'En attente de votre message...' }));
+                } catch (e) {
+                  console.error('[WS-Test] Greeting TTS error:', e.message);
                 }
+              })();
 
-                if (response.toolCall?.functionCalls) {
-                  const functionResponses = [];
-                  for (const toolCall of response.toolCall.functionCalls) {
-                    const name = toolCall.name;
-                    const args = toolCall.args;
-                    const id = toolCall.id;
-                    
-                    ws.send(JSON.stringify({ type: 'status', message: `Exécution de l'outil ${name}...` }));
-                    
-                    let result = "{}";
-                    if (toolImplementations[name]) {
-                      try {
-                        result = await toolImplementations[name](args, testCallSid);
-                      } catch (e) {
-                        result = JSON.stringify({ error: e.message });
-                      }
+              // Store the pipeline functions on the ws object so audio handler can call them
+              ws._geminiPipeline = async (audioBase64) => {
+                try {
+                  ws.send(JSON.stringify({ type: 'status', message: 'Transcription en cours...' }));
+                  
+                  // Step 1: Transcribe audio using Gemini (audio input → text)
+                  const sttResp = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        contents: [{
+                          parts: [
+                            { text: "Transcris exactement ce que dit la personne dans cet audio. Réponds uniquement avec la transcription, sans commentaire." },
+                            { inlineData: { mimeType: 'audio/webm', data: audioBase64 } }
+                          ]
+                        }]
+                      })
                     }
-
-                    ws.send(JSON.stringify({ type: 'tool_output', name, output: result }));
-
-                    functionResponses.push({
-                      response: { output: { result } },
-                      id
-                    });
+                  );
+                  const sttJson = await sttResp.json();
+                  const userText = sttJson.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                  
+                  if (!userText || userText.length < 2) {
+                    ws.send(JSON.stringify({ type: 'status', message: 'En attente de votre message...' }));
+                    return;
                   }
-
-                  const toolResponseEvent = {
-                    toolResponse: { functionResponses }
-                  };
-                  geminiWs.send(JSON.stringify(toolResponseEvent));
+                  
+                  console.log(`[WS-Test] User said: "${userText}"`);
+                  ws.send(JSON.stringify({ type: 'transcript', role: 'user', text: userText }));
+                  appendToTranscript(testCallSid, 'user', userText);
+                  conversationHistory.push({ role: 'user', parts: [{ text: userText }] });
+                  
+                  ws.send(JSON.stringify({ type: 'status', message: 'Clara réfléchit...' }));
+                  
+                  // Step 2: Get AI response from Gemini Flash
+                  const chatResp = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        system_instruction: { parts: [{ text: finalPrompt }] },
+                        contents: conversationHistory,
+                        tools: [{
+                          functionDeclarations: [
+                            { name: 'search_menu', description: 'Rechercher des articles dans le menu', parameters: { type: 'OBJECT', properties: { query: { type: 'STRING' } }, required: ['query'] } },
+                            { name: 'validate_address', description: "Valider une adresse de livraison", parameters: { type: 'OBJECT', properties: { address: { type: 'STRING' } }, required: ['address'] } },
+                            { name: 'create_order', description: 'Créer une commande', parameters: { type: 'OBJECT', properties: { customer_name: { type: 'STRING' }, customer_phone: { type: 'STRING' }, order_type: { type: 'STRING' }, items: { type: 'ARRAY', items: { type: 'OBJECT' } }, subtotal: { type: 'NUMBER' }, delivery_fee: { type: 'NUMBER' }, total: { type: 'NUMBER' }, payment_method: { type: 'STRING' }, delivery_address: { type: 'STRING' } }, required: ['customer_name', 'customer_phone', 'order_type', 'items', 'subtotal', 'total'] } },
+                            { name: 'transfer_to_human', description: "Transférer l'appel à un humain", parameters: { type: 'OBJECT', properties: { reason: { type: 'STRING' } }, required: ['reason'] } }
+                          ]
+                        }]
+                      })
+                    }
+                  );
+                  const chatJson = await chatResp.json();
+                  const candidate = chatJson.candidates?.[0];
+                  
+                  // Handle tool calls
+                  let aiText = '';
+                  if (candidate?.content?.parts) {
+                    const toolCalls = candidate.content.parts.filter(p => p.functionCall);
+                    if (toolCalls.length > 0) {
+                      conversationHistory.push(candidate.content);
+                      const toolResults = [];
+                      for (const part of toolCalls) {
+                        const { name, args } = part.functionCall;
+                        ws.send(JSON.stringify({ type: 'status', message: `Exécution : ${name}...` }));
+                        let result = '{}';
+                        if (toolImplementations[name]) {
+                          try { result = await toolImplementations[name](args, testCallSid); }
+                          catch (e) { result = JSON.stringify({ error: e.message }); }
+                        }
+                        ws.send(JSON.stringify({ type: 'tool_output', name, output: result }));
+                        toolResults.push({ functionResponse: { name, response: { result } } });
+                      }
+                      conversationHistory.push({ role: 'user', parts: toolResults });
+                      
+                      // Get follow-up response after tool execution
+                      const followUpResp = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            system_instruction: { parts: [{ text: finalPrompt }] },
+                            contents: conversationHistory
+                          })
+                        }
+                      );
+                      const followUpJson = await followUpResp.json();
+                      aiText = followUpJson.candidates?.[0]?.content?.parts?.[0]?.text || "D'accord, je m'en occupe.";
+                    } else {
+                      aiText = candidate.content.parts.find(p => p.text)?.text || "Désolée, je n'ai pas bien compris.";
+                    }
+                  }
+                  
+                  aiText = aiText.trim();
+                  if (!aiText) aiText = "Désolée, pouvez-vous répéter ?";
+                  
+                  console.log(`[WS-Test] Clara responds: "${aiText}"`);
+                  conversationHistory.push({ role: 'model', parts: [{ text: aiText }] });
+                  ws.send(JSON.stringify({ type: 'transcript', role: 'assistant', text: aiText }));
+                  appendToTranscript(testCallSid, 'assistant', aiText);
+                  
+                  ws.send(JSON.stringify({ type: 'status', message: 'Synthèse vocale...' }));
+                  
+                  // Step 3: Synthesize response with TTS
+                  const ttsResp = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        contents: [{ parts: [{ text: aiText }] }],
+                        generationConfig: {
+                          responseModalities: ['AUDIO'],
+                          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } }
+                        }
+                      })
+                    }
+                  );
+                  const ttsJson = await ttsResp.json();
+                  const audioPart = ttsJson.candidates?.[0]?.content?.parts?.find(p => p.inlineData?.mimeType?.includes('audio'));
+                  if (audioPart) {
+                    ws.send(JSON.stringify({ type: 'audio', payload: audioPart.inlineData.data, mimeType: audioPart.inlineData.mimeType }));
+                  }
+                  ws.send(JSON.stringify({ type: 'status', message: 'En attente de votre message...' }));
+                } catch (e) {
+                  console.error('[WS-Test] Pipeline error:', e.message);
                 }
-              });
+              };
             }
-          } else {
+          } else if (isConfig && config && config.type === 'audio_chunk') {
+          // Accumulate audio chunks for turn-based Gemini pipeline
+          if (!ws._audioChunks) ws._audioChunks = [];
+          ws._audioChunks.push(config.data); // base64 WebM audio chunk
+          
+        } else if (isConfig && config && config.type === 'audio_done') {
+          // User finished speaking — process through Gemini pipeline
+          if (ws._geminiPipeline && ws._audioChunks && ws._audioChunks.length > 0) {
+            // Concatenate all base64 chunks into one
+            const combinedBase64 = ws._audioChunks.join('');
+            ws._audioChunks = [];
+            ws._geminiPipeline(combinedBase64);
+          }
+          
+        } else {
           // Raw binary audio data (PCM 16-bit, 16kHz from browser mic)
           const base64Audio = message.toString('base64');
           
