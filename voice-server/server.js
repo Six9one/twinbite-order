@@ -902,10 +902,20 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
 
     ws.on('message', async (message) => {
       try {
-        // First message can be configuration, others are raw 16kHz PCM audio buffers from user mic
-        if (typeof message === 'string') {
-          const config = JSON.parse(message);
-          if (config.type === 'start') {
+        // Determine if message is a JSON string (config) or binary audio data
+        let isConfig = false;
+        let config = null;
+        try {
+          const textMsg = typeof message === 'string' ? message : message.toString('utf8');
+          if (textMsg.trim().startsWith('{')) {
+            config = JSON.parse(textMsg);
+            isConfig = true;
+          }
+        } catch (e) {
+          // Binary audio buffer
+        }
+
+        if (isConfig && config && config.type === 'start') {
             settings = await getVoiceSettings();
             
             // Log test call start
