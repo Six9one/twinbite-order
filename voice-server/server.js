@@ -732,7 +732,7 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
           else {
             // Default: Gemini Live API
             const apiKey = settings.api_key || process.env.GEMINI_API_KEY;
-            const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+            const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
             geminiWs = new WebSocket(geminiUrl);
 
             geminiWs.on('open', () => {
@@ -992,7 +992,7 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
               // Gemini Live
               const apiKey = settings.api_key || process.env.GEMINI_API_KEY;
               console.log(`[WS-Test] Connecting to Gemini Live API with key: ${apiKey ? apiKey.substring(0, 8) + '...' : 'NONE'}`);
-              const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+              const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
               geminiWs = new WebSocket(geminiUrl);
 
               geminiWs.on('error', (err) => {
