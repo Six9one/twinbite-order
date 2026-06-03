@@ -1075,10 +1075,7 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
                 }
               });
             }
-          }
-        } 
-        
-        else {
+          } else {
           // Raw binary audio data (PCM 16-bit, 16kHz from browser mic)
           const base64Audio = message.toString('base64');
           
