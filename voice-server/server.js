@@ -932,6 +932,16 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
                 }
               });
 
+              openAiWs.on('error', (err) => {
+                console.error("[WS-Test] OpenAI Connection Error:", err.message || err);
+                ws.send(JSON.stringify({ type: 'status', message: `Erreur OpenAI : ${err.message || 'Échec'}` }));
+              });
+
+              openAiWs.on('close', (code, reason) => {
+                console.log(`[WS-Test] OpenAI Connection Closed. Code: ${code}, Reason: ${reason.toString() || 'No reason'}`);
+                ws.send(JSON.stringify({ type: 'status', message: `Connexion OpenAI fermée` }));
+              });
+
               openAiWs.on('open', () => {
                 ws.send(JSON.stringify({ type: 'status', message: 'Connecté à OpenAI Realtime' }));
                 const configEvent = {
@@ -971,8 +981,19 @@ Commence la conversation avec ce message d'accueil : "${settings.greeting_messag
             else {
               // Gemini Live
               const apiKey = settings.api_key || process.env.GEMINI_API_KEY;
+              console.log(`[WS-Test] Connecting to Gemini Live API with key: ${apiKey ? apiKey.substring(0, 8) + '...' : 'NONE'}`);
               const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
               geminiWs = new WebSocket(geminiUrl);
+
+              geminiWs.on('error', (err) => {
+                console.error("[WS-Test] Gemini Connection Error:", err.message || err);
+                ws.send(JSON.stringify({ type: 'status', message: `Erreur Gemini : ${err.message || 'Échec'}` }));
+              });
+
+              geminiWs.on('close', (code, reason) => {
+                console.log(`[WS-Test] Gemini Connection Closed. Code: ${code}, Reason: ${reason.toString() || 'No reason'}`);
+                ws.send(JSON.stringify({ type: 'status', message: `Connexion Gemini fermée (${code})` }));
+              });
 
               geminiWs.on('open', () => {
                 ws.send(JSON.stringify({ type: 'status', message: 'Connecté à Gemini Live API' }));
