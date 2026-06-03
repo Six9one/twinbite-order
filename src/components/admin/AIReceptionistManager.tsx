@@ -264,7 +264,7 @@ export function AIReceptionistManager() {
 
       // 3. Establish WebSocket connection to backend voice server playground
       // Make sure local voice-server is running on port 5000 (standard in README)
-      const wsUrl = `ws://${window.location.hostname}:5000/test-agent`;
+      const wsUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/voice-ws/test-agent`;
       const ws = new WebSocket(wsUrl);
       socketRef.current = ws;
 
@@ -344,7 +344,21 @@ export function AIReceptionistManager() {
       };
 
     } catch (err: any) {
-      toast.error(`Erreur d'accès au microphone : ${err.message}`);
+      console.error('[Microphone Access Error]', err);
+      const errMsg = err.message || '';
+      if (err.name === 'SecurityError' || errMsg.includes('insecure')) {
+        toast.error("Erreur d'accès au microphone : Opération non sécurisée.", {
+          description: "Firefox/Safari bloque l'accès si vous êtes en Navigation Privée, si vous bloquez le micro dans la barre d'adresse, ou si privacy.resistFingerprinting est activé.",
+          duration: 10000
+        });
+      } else if (err.name === 'NotAllowedError' || errMsg.includes('permission') || errMsg.includes('denied')) {
+        toast.error("Accès au microphone refusé.", {
+          description: "Veuillez autoriser l'accès au microphone pour ce site dans la barre d'adresse de votre navigateur.",
+          duration: 8000
+        });
+      } else {
+        toast.error(`Erreur d'accès au microphone : ${err.message || err.name}`);
+      }
       setIsTesting(false);
       setPlaygroundStatus('Prêt (Échec micro)');
     }
@@ -723,6 +737,16 @@ export function AIReceptionistManager() {
                     <p className="text-[10px] text-center text-muted-foreground">
                       * Nécessite que le serveur local `voice-server` soit actif sur le port 5000.
                     </p>
+                    {playgroundStatus.includes('Échec') && (
+                      <div className="mt-3 text-left p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-[11px] text-red-600 dark:text-red-400 space-y-1">
+                        <p className="font-bold">⚠️ Résolution du problème de micro :</p>
+                        <ul className="list-disc pl-4 space-y-1">
+                          <li>Évitez le mode de <b>Navigation Privée</b> (les micros y sont souvent bloqués).</li>
+                          <li>Autorisez le micro dans la <b>barre d'adresse</b> (cadenas ou icône de micro).</li>
+                          <li>Sur Firefox, vérifiez que <code>privacy.resistFingerprinting</code> n'est pas réglé sur <code>true</code> dans <code>about:config</code>.</li>
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
