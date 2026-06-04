@@ -119,29 +119,46 @@ exit /b 0
 :install_deps
 
 :: ═══════════════════════════════════════════════════════
-:: ETAPE 4 — Creer le fichier .env si absent
+:: ETAPE 4 — Creer les fichiers .env si absents
 :: ═══════════════════════════════════════════════════════
 echo.
-echo  [4/7] Verification du fichier de configuration (.env)...
+echo  [4/7] Verification des fichiers de configuration (.env)...
+
+:: Root .env
 if not exist "%~dp0.env" (
     echo  ⚠️  Fichier .env absent.
     if exist "%~dp0.env.example" (
         copy "%~dp0.env.example" "%~dp0.env" >nul
         echo  ✅ .env cree depuis .env.example
-        echo.
-        echo  ┌─────────────────────────────────────────────────────┐
-        echo  │  IMPORTANT : Editez le fichier .env pour renseigner │
-        echo  │  vos cles Supabase et l'IP de l'imprimante.         │
-        echo  │  Fichier : %~dp0.env
-        echo  └─────────────────────────────────────────────────────┘
-        echo.
-        pause
     ) else (
-        echo  ⚠️  Pas de .env ni de .env.example trouve.
-        echo     L'application pourrait ne pas fonctionner sans configuration.
+        echo  ⚠️  Pas de .env.example — creez .env manuellement.
     )
+    echo.
+    echo  ┌──────────────────────────────────────────────────────┐
+    echo  │  IMPORTANT : Editez "%~dp0.env"
+    echo  │  Renseignez VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+    echo  │  et PRINTER_IP (IP de votre imprimante).             │
+    echo  └──────────────────────────────────────────────────────┘
+    echo.
+    pause
 ) else (
     echo  ✅ Fichier .env present.
+)
+
+:: print-server/.env — must use SUPABASE_URL (no VITE_ prefix)
+if not exist "%~dp0print-server\.env" (
+    echo  ⚠️  print-server/.env absent. Creation depuis la racine...
+    powershell -NoProfile -Command ^
+      "$root = Get-Content '%~dp0.env' -Raw; ^
+       $url  = if ($root -match 'VITE_SUPABASE_URL=[\"'']?([^\"''\r\n]+)') { $matches[1] } else { '' }; ^
+       $key  = if ($root -match 'VITE_SUPABASE_ANON_KEY=[\"'']?([^\"''\r\n]+)') { $matches[1] } else { '' }; ^
+       $ip   = if ($root -match 'PRINTER_IP[S]?=[\"'']?([^\"''\r\n]+)') { $matches[1] } else { '192.168.1.100' }; ^
+       $port = if ($root -match 'PRINTER_PORT=[\"'']?([^\"''\r\n]+)') { $matches[1] } else { '9100' }; ^
+       $content = \"SUPABASE_URL=$url`nSUPABASE_ANON_KEY=$key`nPRINTER_IPS=$ip`nPRINTER_PORT=$port`nUSB_PRINTER_NAME=`n\"; ^
+       Set-Content '%~dp0print-server\.env' $content -Encoding utf8"
+    echo  ✅ print-server/.env cree automatiquement.
+) else (
+    echo  ✅ print-server/.env present.
 )
 
 :: ═══════════════════════════════════════════════════════

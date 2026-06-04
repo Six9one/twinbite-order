@@ -16,20 +16,22 @@ const __dirname = dirname(__filename);
 config({ path: join(__dirname, '.env') });
 
 // Configuration
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const PRINTER_IPS = (process.env.PRINTER_IPS || process.env.PRINTER_IP || '192.168.1.1,192.168.1.200').split(',').map(ip => ip.trim()).filter(Boolean);
+// Support both SUPABASE_URL and VITE_SUPABASE_URL (root .env uses VITE_ prefix)
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const PRINTER_IPS = (process.env.PRINTER_IPS || process.env.PRINTER_IP || '').split(',').map(ip => ip.trim()).filter(Boolean);
 const PRINTER_PORT = parseInt(process.env.PRINTER_PORT || '9100', 10);
-const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 1500;
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
 const SETTINGS_REFRESH_INTERVAL = 300000; // Refresh settings every 5 minutes
-const POLL_INTERVAL = 30000; // Poll for missed orders every 30 seconds
+const POLL_INTERVAL = 10000; // Poll for missed orders every 10 seconds
 let lastEventReceivedAt = Date.now();
 
-// Validate configuration
+// Validate configuration — warn but don't exit; Electron auto-restarts us anyway
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error('❌ Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env file');
-    process.exit(1);
+    console.error('❌ Missing SUPABASE_URL / SUPABASE_ANON_KEY — check .env in print-server/ or root');
+    console.error('   Will retry in 10s...');
+    setTimeout(() => process.exit(1), 10000); // exit so Electron restarts us
 }
 
 // Initialize Supabase client
@@ -907,38 +909,37 @@ function sendToUSBPrinter(data, printerName) {
     });
 }
 
-// Send formatted data to all printers (parallel per printer, queued globally)
+// Send formatted data to all printers (parallel, queued globally)
 async function sendToAllPrinters(ticketData, label) {
     let success = false;
-    
-    // 1. Try USB Printer if configured
-    const usbPrinterName = process.env.USB_PRINTER_NAME;
-    if (usbPrinterName) {
-        try {
-            console.log(`🖨️  Attempting to print to USB printer: "${usbPrinterName}"`);
-            await sendToUSBPrinter(ticketData, usbPrinterName);
-            success = true;
-        } catch (err) {
-            console.error(`❌ USB Printer print failed: ${err.message}`);
-        }
-    }
-    
-    // 2. Try network printers if configured and not default placeholders
-    const activeIps = PRINTER_IPS.filter(ip => ip && ip !== '192.168.1.1' && ip !== '192.168.1.200');
-    if (activeIps.length > 0) {
-        const results = await Promise.allSettled(
-            activeIps.map(ip => printToSinglePrinter(ticketData, ip, label))
-        );
-        const netSuccess = results.some(r => r.status === 'fulfilled' && r.value === true);
-        success = success || netSuccess;
-    } else if (!usbPrinterName && PRINTER_IPS.length > 0) {
-        // Fallback: try network printers if no USB printer is set and we only have placeholders
+
+    // 1. Try network printers (all configured IPs, in parallel)
+    if (PRINTER_IPS.length > 0) {
+        console.log(`🖨️  Sending to ${PRINTER_IPS.length} printer(s): ${PRINTER_IPS.join(', ')}`);
         const results = await Promise.allSettled(
             PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, label))
         );
         success = results.some(r => r.status === 'fulfilled' && r.value === true);
     }
-    
+
+    // 2. Try USB Printer as fallback (only if no network printer worked and USB_PRINTER_NAME is set)
+    if (!success) {
+        const usbPrinterName = process.env.USB_PRINTER_NAME;
+        if (usbPrinterName && usbPrinterName.trim()) {
+            try {
+                console.log(`🖨️  Fallback: trying USB printer "${usbPrinterName}"`);
+                await sendToUSBPrinter(ticketData, usbPrinterName);
+                success = true;
+            } catch (err) {
+                console.error(`❌ USB Printer failed: ${err.message}`);
+            }
+        }
+    }
+
+    if (!success) {
+        console.error(`❌ All printers failed for [${label}]. IPs tried: ${PRINTER_IPS.join(', ') || 'none configured'}`);
+    }
+
     return success;
 }
 
@@ -2088,15 +2089,19 @@ async function startServer() {
     // Start HTTP server for HACCP printing
     setupHttpServer();
 
-    // 🔄 RECOVERY: Check for missed prints on startup
-    console.log('\n🔄 Running startup recovery check...');
+    // 🔄 RECOVERY: On startup, print ALL of today's unprinted orders (no time limit)
+    console.log('\n🔄 Running startup recovery check (all of today)...');
     setTimeout(async () => {
+        // Recover orders with explicit failed records
         await recoverMissedPrints();
-        // Extra sweep: check last hour for orders never seen by the server
-        await pollForUnprintedOrders(60 * 60 * 1000);
-    }, 5000); // Wait 5s for system to stabilize
+        // Sweep ALL of today (since midnight) — catches orders from any offline period
+        const todayMidnight = new Date();
+        todayMidnight.setHours(0, 0, 0, 0);
+        const msToday = Date.now() - todayMidnight.getTime();
+        await pollForUnprintedOrders(msToday);
+    }, 3000); // Wait 3s for realtime to connect first
 
-    // Start polling fallback — safety net for missed realtime events
+    // Polling fallback — catches orders missed by realtime (e.g. brief disconnects)
     setInterval(pollForUnprintedOrders, POLL_INTERVAL);
     console.log(`🔍 Polling fallback active: checking every ${POLL_INTERVAL / 1000}s for missed orders`);
 
