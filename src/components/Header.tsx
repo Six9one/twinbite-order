@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import logoImage from '@/assets/logo.png';
+const logoImage = '/favicon.png';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 interface HeaderProps {

@@ -39,7 +39,7 @@ import {
   Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv, TrendingUp,
   Menu, Volume2, VolumeX, Bell, LayoutDashboard
 } from 'lucide-react';
-import logoImage from '@/assets/logo.png';
+const logoImage = '/favicon.png';
 
 type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist';
 

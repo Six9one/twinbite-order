@@ -382,9 +382,91 @@ export function InvoiceModal({ order, onClose }: InvoiceModalProps) {
   };
 
   const printInvoiceThermal = () => {
-    const url = `http://localhost:3001/print-invoice/${encodeURIComponent(order.order_number)}?date=${encodeURIComponent(invoiceDate)}`;
-    window.open(url, '_blank', 'width=400,height=300');
-    toast.success('🖨️ Envoi de la facture à l\'imprimante...');
+    const items = Array.isArray(order.items) ? order.items : [];
+
+    const pad = (str: string, len: number) => str.substring(0, len).padEnd(len, ' ');
+    const padLeft = (str: string, len: number) => str.substring(0, len).padStart(len, ' ');
+
+    const itemLines = items.map((cartItem: any) => {
+      const productName = cartItem.item?.name || cartItem.name || 'Produit';
+      const qty = cartItem.quantity || 1;
+      const unitPrice = cartItem.calculatedPrice || cartItem.item?.price || cartItem.price || 0;
+      const totalPrice = cartItem.totalPrice || unitPrice * qty;
+      const unitHT = unitPrice / (1 + COMPANY.tvaRate / 100);
+
+      const customization = cartItem.customization;
+      let details: string[] = [];
+      if (customization?.size) details.push(customization.size.toUpperCase());
+      if (customization?.meats?.length) details.push(customization.meats.join(', '));
+      if (customization?.meat) details.push(customization.meat);
+      if (customization?.sauces?.length) details.push(customization.sauces.join(', '));
+      if (customization?.supplements?.length) details.push(customization.supplements.join(', '));
+
+      const line1 = `${qty}x ${productName}`;
+      const priceStr = `${totalPrice.toFixed(2)}E`;
+      const htStr = `HT:${unitHT.toFixed(2)}E`;
+      return `<div style="margin:2px 0;">${escapeHtml(line1)}<span style="float:right">${priceStr}</span><br><span style="font-size:9px;color:#555">${escapeHtml(htStr)}${details.length ? ' | ' + escapeHtml(details.join(', ')) : ''}</span></div>`;
+    }).join('');
+
+    const thermalHTML = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        @media print { body { margin: 0; } }
+        body { font-family: 'Courier New', monospace; font-size: 11px; width: 72mm; padding: 4mm; background: white; color: black; }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        .line { border-top: 1px dashed #000; margin: 4px 0; }
+        .row { display: flex; justify-content: space-between; }
+        .total-row { font-size: 13px; font-weight: bold; border-top: 1px solid #000; padding-top: 2px; margin-top: 2px; }
+      </style>
+    </head><body>
+      <div class="center bold" style="font-size:14px">TWIN PIZZA</div>
+      <div class="center" style="font-size:9px">${COMPANY.address}<br>${COMPANY.city}<br>Tel: ${COMPANY.phone}</div>
+      <div class="center" style="font-size:9px">SIRET: ${COMPANY.siret}<br>TVA: ${COMPANY.tvaNumber}</div>
+      <div class="line"></div>
+      <div class="center bold">FACTURE ${escapeHtml(invoiceNumber)}</div>
+      <div class="center" style="font-size:9px">Date: ${formatDate(invoiceDate)} | Cmd: ${escapeHtml(order.order_number)}</div>
+      <div class="center" style="font-size:9px">Type: ${orderTypeLabels[order.order_type] || order.order_type}</div>
+      <div class="line"></div>
+      <div class="bold" style="font-size:9px">CLIENT: ${escapeHtml(order.customer_name)}</div>
+      <div style="font-size:9px">Tel: ${escapeHtml(order.customer_phone || '-')}</div>
+      ${order.customer_address ? `<div style="font-size:9px">${escapeHtml(order.customer_address)}</div>` : ''}
+      <div class="line"></div>
+      <div class="bold" style="font-size:9px">ARTICLES</div>
+      ${itemLines}
+      ${(order.delivery_fee || 0) > 0 ? `<div style="margin:2px 0;">Livraison<span style="float:right">${(order.delivery_fee || 0).toFixed(2)}E</span></div>` : ''}
+      <div class="line"></div>
+      <div class="row"><span>Total HT</span><span>${totalHT.toFixed(2)} EUR</span></div>
+      <div class="row"><span>TVA ${COMPANY.tvaRate}%</span><span>${totalTVA.toFixed(2)} EUR</span></div>
+      <div class="row total-row"><span>TOTAL TTC</span><span>${totalTTC.toFixed(2)} EUR</span></div>
+      <div class="line"></div>
+      <div style="font-size:9px">Paiement: ${paymentLabels[order.payment_method] || order.payment_method}${order.payment_method === 'en_ligne' ? ' - PAYE' : ''}</div>
+      <div class="line"></div>
+      <div class="center" style="font-size:9px">Merci de votre confiance !<br>www.twinpizza.fr</div>
+    </body></html>`;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      toast.error("Impossible d'accéder à l'imprimante");
+      return;
+    }
+    doc.open();
+    doc.write(thermalHTML);
+    doc.close();
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => document.body.removeChild(iframe), 1000);
+    }, 300);
+    toast.success('🖨️ Impression facture thermique...');
   };
 
   return (

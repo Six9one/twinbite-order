@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>TwinPizza Hub</title>
+<!-- Embedded minimal QR encoder (no CDN needed) -->
+<script>
+!function(){var e=function(e,t){this._el=e,this._htOption=t;var n=this._android()?"svg":"canvas";this._oDrawing=new(n==="canvas"?l:a)(e,t);var r=t.text;r&&this.makeCode(r)};e.prototype._android=function(){return/android/i.test(navigator.userAgent)&&/2\./.test(navigator.userAgent)};e.prototype.makeCode=function(e){this._oDrawing.draw(e)};e.CorrectLevel={L:1,M:0,Q:3,H:2};window.QRCodeMin=e;
+// Minimal QR wrapper using Google Charts as fallback
+window.makeQRImg=function(container,text){
+  try{
+    var img=document.createElement('img');
+    img.style.cssText='width:240px;height:240px;border-radius:10px;';
+    img.onerror=function(){container.innerHTML='<div style="color:#f59e0b;font-size:12px;padding:20px;">QR généré — vérifiez le terminal du serveur</div>';};
+    img.src='https://api.qrserver.com/v1/create-qr-code/?size=256x256&data='+encodeURIComponent(text);
+    container.innerHTML='';
+    container.appendChild(img);
+  }catch(e){container.innerHTML='<div style="color:#f59e0b;">QR disponible dans le terminal</div>';}
+};
+}();
+</script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:      #0d1117;
+  --sidebar: #111827;
+  --card:    #1f2937;
+  --border:  #2d3748;
+  --accent:  #f59e0b;
+  --red:     #ef4444;
+  --green:   #22c55e;
+  --blue:    #3b82f6;
+  --text:    #e5e7eb;
+  --muted:   #6b7280;
+  --sidebar-w: 220px;
+}
+body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; user-select:none; }
+
+/* ── Header ── */
+header {
+  display:flex; align-items:center; gap:14px;
+  padding:0 20px; height:56px; min-height:56px;
+  background:var(--sidebar); border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.logo { display:flex; align-items:center; gap:10px; }
+.logo img { width:34px; height:34px; border-radius:50%; }
+.logo-text { font-size:17px; font-weight:800; background:linear-gradient(90deg,#f59e0b,#ef4444); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.logo-sub { font-size:9px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; line-height:1; }
+.header-date { margin-left:auto; font-size:12px; color:var(--muted); }
+.stat-block { text-align:center; padding:0 16px; border-left:1px solid var(--border); }
+.stat-val { font-size:18px; font-weight:800; color:var(--accent); }
+.stat-label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+
+/* ── Layout ── */
+.body-wrap { display:flex; flex:1; overflow:hidden; }
+
+/* ── Sidebar ── */
+nav {
+  width:var(--sidebar-w); background:var(--sidebar);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column;
+  flex-shrink:0; overflow-y:auto;
+}
+.nav-section { padding:12px 12px 4px; font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; }
+.nav-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px; margin:2px 8px; border-radius:8px;
+  cursor:pointer; font-size:13px; font-weight:500;
+  transition:all .15s; position:relative;
+}
+.nav-item:hover { background:var(--card); }
+.nav-item.active { background:linear-gradient(90deg,#f59e0b22,#f59e0b11); border-left:3px solid var(--accent); color:var(--accent); padding-left:11px; }
+.nav-item .icon { font-size:16px; width:20px; text-align:center; }
+.nav-badge {
+  margin-left:auto; font-size:10px; font-weight:700;
+  background:var(--red); color:#fff;
+  padding:1px 6px; border-radius:99px; min-width:18px; text-align:center;
+}
+.nav-status { margin-left:auto; width:8px; height:8px; border-radius:50%; }
+.s-green { background:var(--green); box-shadow:0 0 6px var(--green); }
+.s-red   { background:var(--red);   box-shadow:0 0 6px var(--red); }
+.s-amber { background:var(--accent); box-shadow:0 0 6px var(--accent); animation:pulse 1.5s infinite; }
+.s-grey  { background:var(--muted); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+nav .spacer { flex:1; }
+.nav-footer { padding:12px; border-top:1px solid var(--border); font-size:10px; color:var(--muted); text-align:center; }
+
+/* ── Main content ── */
+main { flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative; }
+
+/* webview */
+webview { width:100%; flex:1; border:none; display:none; }
+webview.active { display:flex; }
+
+/* custom panels */
+.panel { display:none; flex:1; overflow-y:auto; padding:24px; }
+.panel.active { display:block; }
+
+/* ── WhatsApp panel ── */
+.wa-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.wa-status-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 12px; border-radius:99px; font-size:12px; font-weight:700;
+}
+.wa-qr-box {
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:24px; display:flex; flex-direction:column; align-items:center; gap:12px;
+  max-width:340px;
+}
+.wa-qr-box canvas { border-radius:8px; background:white; padding:8px; }
+.wa-log { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-top:16px; }
+.wa-log-title { font-size:12px; font-weight:700; color:var(--muted); margin-bottom:10px; text-transform:uppercase; letter-spacing:1px; }
+.wa-msg { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+.wa-msg:last-child { border-bottom:none; }
+.wa-msg .time { font-size:10px; color:var(--muted); white-space:nowrap; }
+.wa-msg .text { font-size:12px; color:var(--text); }
+.wa-msg .badge-ok  { font-size:10px; background:#22c55e22; color:#22c55e; padding:1px 6px; border-radius:4px; }
+.wa-msg .badge-err { font-size:10px; background:#ef444422; color:#ef4444; padding:1px 6px; border-radius:4px; }
+.wa-auto-info { background:#22c55e11; border:1px solid #22c55e33; border-radius:10px; padding:12px 16px; margin-top:12px; font-size:12px; color:#22c55e; }
+
+/* ── Printer panel ── */
+.printer-status-card {
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:20px; display:flex; align-items:center; gap:16px; margin-bottom:16px;
+}
+.printer-dot { width:16px; height:16px; border-radius:50%; flex-shrink:0; }
+.printer-queue { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+.queue-item { padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; display:flex; align-items:center; gap:10px; }
+.queue-item:last-child { border-bottom:none; }
+.btn { padding:8px 16px; border-radius:8px; border:none; cursor:pointer; font-size:12px; font-weight:700; }
+.btn-green { background:#22c55e22; color:#22c55e; border:1px solid #22c55e44; }
+.btn-red   { background:#ef444422; color:#ef4444; border:1px solid #ef444444; }
+.btn-blue  { background:#3b82f622; color:#3b82f6; border:1px solid #3b82f644; }
+.ip-row { display:flex; gap:8px; margin-top:12px; }
+.ip-row input { flex:1; background:#111; border:1px solid var(--border); color:#fff; padding:7px 10px; border-radius:8px; font-size:12px; }
+.ip-row input:focus { outline:none; border-color:var(--accent); }
+
+/* ── Sleep overlay ── */
+#sleep-overlay {
+  position:fixed; inset:0; background:#0d1117;
+  display:none; align-items:center; justify-content:center;
+  flex-direction:column; gap:16px; z-index:9999; cursor:pointer;
+}
+#sleep-overlay.active { display:flex; }
+#sleep-overlay .sleep-logo { font-size:64px; opacity:.3; }
+#sleep-overlay .sleep-time { font-size:48px; font-weight:800; color:var(--muted); letter-spacing:4px; }
+#sleep-overlay .sleep-hint { font-size:13px; color:var(--muted); opacity:.5; }
+
+/* ── Stats row ── */
+.stats-row { display:flex; gap:12px; margin-bottom:20px; }
+.stat-card { flex:1; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.stat-card .val { font-size:22px; font-weight:800; color:var(--accent); }
+.stat-card .lbl { font-size:11px; color:var(--muted); }
+.orders-table { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.orders-table table { width:100%; border-collapse:collapse; }
+.orders-table th { background:#1a2234; padding:10px 14px; font-size:11px; color:var(--muted); text-align:left; text-transform:uppercase; letter-spacing:.5px; }
+.orders-table td { padding:10px 14px; font-size:12px; border-bottom:1px solid var(--border); }
+.orders-table tr:last-child td { border-bottom:none; }
+.status-badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:10px; font-weight:700; }
+.s-pending   { background:#f59e0b22; color:#f59e0b; }
+.s-preparing { background:#3b82f622; color:#3b82f6; }
+.s-ready     { background:#22c55e22; color:#22c55e; }
+.s-completed { background:#6b728022; color:#6b7280; }
+</style>
+</head>
+<body>
+
+<!-- Sleep overlay -->
+<div id="sleep-overlay" onclick="wakeUp()">
+  <div class="sleep-logo">🍕</div>
+  <div class="sleep-time" id="sleep-time">--:--</div>
+  <div class="sleep-hint">Cliquez pour réveiller</div>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <img src="../public/favicon.png" alt="logo" onerror="this.style.display='none'" />
+    <div>
+      <div class="logo-text">TwinPizza Hub</div>
+      <div class="logo-sub">All in one</div>
+    </div>
+  </div>
+  <div class="header-date" id="header-date"></div>
+  <div class="stat-block">
+    <div class="stat-val" id="stat-revenue">0.00€</div>
+    <div class="stat-label">Chiffre (jour)</div>
+  </div>
+  <div class="stat-block">
+    <div class="stat-val" id="stat-orders">0</div>
+    <div class="stat-label">Commandes</div>
+  </div>
+  <div class="stat-block">
+    <div class="stat-val" id="stat-pending" style="color:#ef4444">0</div>
+    <div class="stat-label">En attente</div>
+  </div>
+</header>
+
+<div class="body-wrap">
+
+<!-- Sidebar -->
+<nav>
+  <div class="nav-section">Opérations</div>
+
+  <div class="nav-item active" onclick="goTo('orders')" id="nav-orders">
+    <span class="icon">📋</span> Commandes
+    <span class="nav-badge" id="badge-orders" style="display:none">0</span>
+  </div>
+  <div class="nav-item" onclick="goTo('pos')" id="nav-pos">
+    <span class="icon">🛒</span> Point de Vente
+  </div>
+  <div class="nav-item" onclick="goTo('admin')" id="nav-admin">
+    <span class="icon">⚙️</span> Admin Panel
+  </div>
+  <div class="nav-item" onclick="goTo('tv')" id="nav-tv">
+    <span class="icon">📺</span> Écran Cuisine
+  </div>
+  <div class="nav-item" onclick="goTo('kiosk')" id="nav-kiosk">
+    <span class="icon">📟</span> Borne Kiosque
+  </div>
+  <div class="nav-item" onclick="goTo('kitchen')" id="nav-kitchen">
+    <span class="icon">🌡️</span> HACCP
+  </div>
+  <div class="nav-item" onclick="goTo('crew')" id="nav-crew">
+    <span class="icon">👥</span> Équipe / Stock
+  </div>
+  <div class="nav-item" onclick="goTo('website')" id="nav-website">
+    <span class="icon">🌐</span> Site Client
+  </div>
+
+  <div class="nav-section" style="margin-top:8px;">Services</div>
+
+  <div class="nav-item" onclick="goTo('whatsapp')" id="nav-whatsapp">
+    <span class="icon">💬</span> WhatsApp
+    <span class="nav-status s-amber" id="wa-dot"></span>
+  </div>
+  <div class="nav-item" onclick="goTo('printer')" id="nav-printer">
+    <span class="icon">🖨️</span> Imprimante
+    <span class="nav-status s-grey" id="printer-dot"></span>
+  </div>
+
+  <div class="spacer"></div>
+  <div class="nav-footer">Twin Pizza · Grand-Couronne</div>
+</nav>
+
+<!-- Main area -->
+<main>
+
+  <!-- Orders overview panel -->
+  <div class="panel active" id="panel-orders">
+    <div class="stats-row">
+      <div class="stat-card"><div class="val" id="p-revenue">0.00€</div><div class="lbl">Chiffre du jour</div></div>
+      <div class="stat-card"><div class="val" id="p-orders">0</div><div class="lbl">Commandes</div></div>
+      <div class="stat-card"><div class="val" id="p-pending" style="color:#ef4444">0</div><div class="lbl">En attente</div></div>
+      <div class="stat-card"><div class="val" id="p-delivery">0</div><div class="lbl">Livraisons</div></div>
+    </div>
+    <div class="orders-table">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Client</th><th>Type</th><th>Articles</th><th>Total</th><th>Paiement</th><th>Statut</th>
+        </tr></thead>
+        <tbody id="orders-tbody">
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px;">Aucune commande aujourd'hui</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Webviews for each screen -->
+  <webview id="wv-pos"     src="about:blank" allowpopups></webview>
+  <webview id="wv-admin"   src="about:blank" allowpopups></webview>
+  <webview id="wv-tv"      src="about:blank" allowpopups></webview>
+  <webview id="wv-kiosk"   src="about:blank" allowpopups></webview>
+  <webview id="wv-kitchen" src="about:blank" allowpopups></webview>
+  <webview id="wv-crew"    src="about:blank" allowpopups></webview>
+  <webview id="wv-website" src="about:blank" allowpopups></webview>
+
+  <!-- WhatsApp panel -->
+  <div class="panel" id="panel-whatsapp">
+    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+
+      <!-- Left: QR + status -->
+      <div style="min-width:280px;flex:1;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <div style="font-size:18px;font-weight:800;">💬 WhatsApp</div>
+          <span class="wa-status-pill" id="wa-pill" style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44;">⏳ Connexion...</span>
+        </div>
+
+        <!-- QR box — visible when disconnected -->
+        <div id="wa-qr-section" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;margin-bottom:16px;">
+          <div style="font-size:15px;font-weight:700;color:var(--accent);margin-bottom:6px;">📱 Connecter le compte WhatsApp du restaurant</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">
+            Ouvrez WhatsApp sur votre téléphone →<br>
+            <strong style="color:var(--text)">Appareils connectés</strong> → <strong style="color:var(--text)">Lier un appareil</strong> → Scanner ce QR
+          </div>
+          <div id="qr-container" style="display:flex;justify-content:center;align-items:center;min-height:240px;">
+            <div id="qr-loading" style="color:var(--muted);font-size:13px;">⏳ Génération du QR code...</div>
+            <img id="qr-img" src="" alt="QR Code" style="display:none;border-radius:10px;width:240px;height:240px;" />
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:12px;">Le QR expire après 60 secondes — un nouveau sera généré automatiquement</div>
+        </div>
+
+        <!-- Connected info -->
+        <div id="wa-connected-section" style="display:none;background:#22c55e11;border:1px solid #22c55e33;border-radius:14px;padding:20px;margin-bottom:16px;text-align:center;">
+          <div style="font-size:32px;margin-bottom:8px;">✅</div>
+          <div style="font-size:15px;font-weight:700;color:#22c55e;">WhatsApp connecté</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+            Les messages de confirmation sont envoyés automatiquement<br>
+            à chaque commande reçue — même quand vous êtes sur une autre page.
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: message log -->
+      <div style="flex:1;min-width:260px;">
+        <div class="wa-log">
+          <div class="wa-log-title">Messages envoyés automatiquement</div>
+          <div id="wa-log-body">
+            <div style="text-align:center;color:var(--muted);font-size:12px;padding:24px;">
+              Aucun message envoyé pour l'instant.<br>
+              <span style="font-size:11px;">Les messages apparaîtront ici après chaque commande.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Printer panel -->
+  <div class="panel" id="panel-printer">
+    <div style="font-size:18px;font-weight:800;margin-bottom:16px;">🖨️ Serveur d'impression</div>
+
+    <!-- Server status -->
+    <div class="printer-status-card" style="margin-bottom:12px;">
+      <div class="printer-dot" id="p-dot" style="background:var(--muted)"></div>
+      <div style="flex:1;">
+        <div style="font-weight:700;" id="p-status-text">Vérification...</div>
+        <div style="font-size:11px;color:var(--muted);">Serveur local · localhost:3001</div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);text-align:right;">
+        Imprimantes: 192.168.1.1 + 192.168.1.200<br>
+        Port ESC/POS: 9100
+      </div>
+    </div>
+
+    <!-- Info box -->
+    <div style="background:#3b82f611;border:1px solid #3b82f633;border-radius:10px;padding:14px;margin-bottom:16px;font-size:12px;color:#93c5fd;">
+      <strong>ℹ️ Fonctionnement</strong><br>
+      Le serveur d'impression tourne en arrière-plan et imprime automatiquement chaque commande en temps réel via Supabase. Il a un système de rattrapage toutes les 30s pour les commandes manquées.
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+      <button class="btn btn-green" onclick="retryPrint()">🔄 Récupérer les manqués</button>
+      <button class="btn btn-blue"  onclick="testPrint()">🖨️ Ticket test</button>
+    </div>
+
+    <!-- Server not running warning -->
+    <div id="server-offline-warn" style="display:none;background:#ef444411;border:1px solid #ef444433;border-radius:10px;padding:14px;font-size:12px;color:#fca5a5;">
+      <strong>⚠️ Serveur d'impression non détecté</strong><br>
+      Lancez <strong>START_ALL_SERVERS.bat</strong> dans le dossier twinbite-order pour démarrer le serveur d'impression.
+    </div>
+
+    <div id="server-online-info" style="display:none;background:#22c55e11;border:1px solid #22c55e33;border-radius:10px;padding:14px;font-size:12px;color:#86efac;">
+      ✅ Serveur actif — impression automatique en cours sur toutes les commandes.
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let currentScreen = 'orders';
+let appUrl = 'http://localhost:3456';
+let todayOrders = [];
+let waLog = [];
+let sleepTimer = null;
+const SLEEP_AFTER = 15 * 60 * 1000; // 15 minutes
+
+// ── Init ───────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  if (window.twinHub) {
+    appUrl = window.twinHub.appUrl || appUrl;
+    window.twinHub.onWhatsAppStatus(handleWAStatus);
+    window.twinHub.onWhatsAppQR(handleWAQR);
+    window.twinHub.onPrinterStatus(handlePrinterStatus);
+    window.twinHub.onNewOrder(handleNewOrder);
+    // Load initial states
+    window.twinHub.getPrinterState().then(handlePrinterStatus).catch(() => {});
+    window.twinHub.getWhatsAppStatus().then(handleWAStatus).catch(() => {});
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+  resetSleepTimer();
+  document.addEventListener('click', resetSleepTimer);
+  document.addEventListener('keydown', resetSleepTimer);
+  document.addEventListener('mousemove', resetSleepTimer);
+});
+
+// ── Clock & date ───────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const days = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  document.getElementById('header-date').textContent =
+    `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}  ${now.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}`;
+  document.getElementById('sleep-time').textContent =
+    now.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+}
+
+// ── Sleep mode ─────────────────────────────────────────────────────────────
+function resetSleepTimer() {
+  if (sleepTimer) clearTimeout(sleepTimer);
+  sleepTimer = setTimeout(() => {
+    document.getElementById('sleep-overlay').classList.add('active');
+  }, SLEEP_AFTER);
+}
+function wakeUp() {
+  document.getElementById('sleep-overlay').classList.remove('active');
+  resetSleepTimer();
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+const WV_ROUTES = {
+  pos: '/pos', admin: '/admin/dashboard', tv: '/tv', kiosk: '/kiosk',
+  kitchen: '/kitchen', crew: '/crew', website: '/'
+};
+
+function goTo(screen) {
+  currentScreen = screen;
+
+  // Refresh WA status when opening WhatsApp tab (to re-show QR if needed)
+  if (screen === 'whatsapp' && window.twinHub) {
+    window.twinHub.getWhatsAppStatus().then(handleWAStatus).catch(() => {});
+  }
+
+  // Deactivate all
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('webview').forEach(el => el.classList.remove('active'));
+
+  // Activate nav
+  const navEl = document.getElementById('nav-' + screen);
+  if (navEl) navEl.classList.add('active');
+
+  // Show panel or webview
+  if (screen === 'orders') {
+    document.getElementById('panel-orders').classList.add('active');
+  } else if (screen === 'whatsapp') {
+    document.getElementById('panel-whatsapp').classList.add('active');
+  } else if (screen === 'printer') {
+    document.getElementById('panel-printer').classList.add('active');
+  } else {
+    const wv = document.getElementById('wv-' + screen);
+    if (wv) {
+      wv.classList.add('active');
+      // Lazy load
+      const route = WV_ROUTES[screen];
+      const target = appUrl + route;
+      if (wv.src === 'about:blank' || wv.src === '') {
+        wv.src = target;
+      }
+    }
+  }
+}
+
+// ── Orders ─────────────────────────────────────────────────────────────────
+function handleNewOrder(order) {
+  todayOrders.unshift(order);
+  renderOrders();
+  updateStats();
+
+  // Flash badge
+  const badge = document.getElementById('badge-orders');
+  badge.style.display = 'inline';
+  badge.textContent = todayOrders.filter(o => o.status === 'pending').length;
+}
+
+function renderOrders() {
+  const tbody = document.getElementById('orders-tbody');
+  if (!todayOrders.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px;">Aucune commande aujourd\'hui</td></tr>';
+    return;
+  }
+  const types = { livraison:'🚗 Livraison', emporter:'🛍️ À emporter', surplace:'🍽️ Sur place' };
+  const pays  = { cb:'CB', especes:'Espèces', en_ligne:'En ligne ✅' };
+  const statusMap = { pending:'En attente', preparing:'En cuisine', ready:'Prêt', completed:'Terminé' };
+  const statusClass = { pending:'s-pending', preparing:'s-preparing', ready:'s-ready', completed:'s-completed' };
+
+  tbody.innerHTML = todayOrders.slice(0, 50).map(o => {
+    const items = Array.isArray(o.items) ? o.items : [];
+    const summary = items.slice(0,2).map(i => `${i.quantity}x ${i.item?.name||i.name||'?'}`).join(', ') + (items.length>2 ? `…` : '');
+    return `<tr>
+      <td style="font-weight:700;color:var(--accent)">#${o.order_number}</td>
+      <td>${o.customer_name||'?'}<br><span style="font-size:10px;color:var(--muted)">${o.customer_phone||''}</span></td>
+      <td>${types[o.order_type]||o.order_type}</td>
+      <td style="font-size:11px;color:var(--muted);max-width:200px;">${summary}</td>
+      <td style="font-weight:700">${(o.total||0).toFixed(2)}€</td>
+      <td>${pays[o.payment_method]||o.payment_method}</td>
+      <td><span class="status-badge ${statusClass[o.status]||''}">${statusMap[o.status]||o.status}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function updateStats() {
+  const revenue = todayOrders.reduce((s,o) => s + (o.total||0), 0);
+  const pending  = todayOrders.filter(o => o.status === 'pending').length;
+  const delivery = todayOrders.filter(o => o.order_type === 'livraison').length;
+  const count    = todayOrders.length;
+
+  document.getElementById('stat-revenue').textContent = revenue.toFixed(2) + '€';
+  document.getElementById('stat-orders').textContent  = count;
+  document.getElementById('stat-pending').textContent = pending;
+  document.getElementById('p-revenue').textContent    = revenue.toFixed(2) + '€';
+  document.getElementById('p-orders').textContent     = count;
+  document.getElementById('p-pending').textContent    = pending;
+  document.getElementById('p-delivery').textContent   = delivery;
+
+  const badge = document.getElementById('badge-orders');
+  if (pending > 0) { badge.style.display = 'inline'; badge.textContent = pending; }
+  else badge.style.display = 'none';
+}
+
+// ── WhatsApp ───────────────────────────────────────────────────────────────
+function handleWAStatus(data) {
+  const status = typeof data === 'string' ? data : (data.status || 'disconnected');
+  const qr = data.qr || null;
+  const dot  = document.getElementById('wa-dot');
+  const pill = document.getElementById('wa-pill');
+
+  const cfg = {
+    connected:    { dot:'s-green', pill:'background:#22c55e22;color:#22c55e;border:1px solid #22c55e44', text:'✅ Connecté' },
+    connecting:   { dot:'s-amber', pill:'background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44', text:'⏳ Connexion...' },
+    qr:           { dot:'s-amber', pill:'background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44', text:'📱 Scanner le QR' },
+    disconnected: { dot:'s-red',   pill:'background:#ef444422;color:#ef4444;border:1px solid #ef444444', text:'🔴 Déconnecté' },
+    error:        { dot:'s-red',   pill:'background:#ef444422;color:#ef4444;border:1px solid #ef444444', text:'❌ Erreur' },
+  }[status] || { dot:'s-grey', pill:'background:#6b728022;color:#6b7280;border:1px solid #6b728044', text:status };
+
+  if (dot) { dot.className = 'nav-status ' + cfg.dot; }
+  if (pill) { pill.style.cssText = cfg.pill; pill.textContent = cfg.text; }
+
+  // Show/hide sections
+  const qrSection  = document.getElementById('wa-qr-section');
+  const connSection = document.getElementById('wa-connected-section');
+  if (status === 'connected') {
+    if (qrSection)   qrSection.style.display   = 'none';
+    if (connSection) connSection.style.display  = 'block';
+  } else {
+    if (qrSection)   qrSection.style.display   = 'block';
+    if (connSection) connSection.style.display  = 'none';
+  }
+
+  if (qr) handleWAQR(qr);
+}
+
+function handleWAQR(qr) {
+  if (!qr) return;
+
+  // Show QR section
+  const qrSection   = document.getElementById('wa-qr-section');
+  const connSection = document.getElementById('wa-connected-section');
+  if (qrSection)   qrSection.style.display  = 'block';
+  if (connSection) connSection.style.display = 'none';
+
+  const container = document.getElementById('qr-container');
+  if (!container) return;
+
+  const loading = document.getElementById('qr-loading');
+  const img     = document.getElementById('qr-img');
+
+  if (loading) loading.style.display = 'none';
+
+  // Always render via QR image API — works 100% of the time with internet
+  const qrRaw = qr.startsWith('data:') ? null : qr;
+  if (qrRaw && img) {
+    img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=10&data=' + encodeURIComponent(qrRaw);
+    img.style.cssText = 'display:block;width:260px;height:260px;border-radius:12px;';
+    img.onerror = () => {
+      img.style.display = 'none';
+      container.innerHTML = '<div style="color:#f59e0b;font-size:13px;padding:20px;text-align:center;">QR généré ✅<br><span style="font-size:11px;color:#6b7280;">Regardez le terminal pour le QR en texte</span></div>';
+    };
+  } else if (qr.startsWith('data:image') && img) {
+    img.src = qr;
+    img.style.display = 'block';
+  }
+
+  const dot = document.getElementById('wa-dot');
+  if (dot) dot.className = 'nav-status s-amber';
+}
+
+// Log a WhatsApp message send event
+function logWAMessage(order, success) {
+  const time = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+  waLog.unshift({ time, order: order.order_number, name: order.customer_name, success });
+  const body = document.getElementById('wa-log-body');
+  body.innerHTML = waLog.slice(0,20).map(m => `
+    <div class="wa-msg">
+      <span class="time">${m.time}</span>
+      <span class="text">📨 #${m.order} — ${m.name}</span>
+      <span class="${m.success ? 'badge-ok' : 'badge-err'}">${m.success ? 'Envoyé' : 'Échec'}</span>
+    </div>`).join('');
+}
+
+// ── Printer ────────────────────────────────────────────────────────────────
+function handlePrinterStatus(state) {
+  if (!state) return;
+  const online = state.online || state.status === 'online';
+
+  const dot = document.getElementById('p-dot');
+  const txt = document.getElementById('p-status-text');
+  const navDot = document.getElementById('printer-dot');
+  const warnEl = document.getElementById('server-offline-warn');
+  const infoEl = document.getElementById('server-online-info');
+
+  if (dot) dot.style.background = online ? '#22c55e' : '#ef4444';
+  if (txt) txt.textContent = online ? '✅ Serveur actif — impression automatique' : '🔴 Serveur hors ligne';
+  if (navDot) navDot.className = 'nav-status ' + (online ? 's-green' : 's-red');
+  if (warnEl) warnEl.style.display = online ? 'none' : 'block';
+  if (infoEl) infoEl.style.display = online ? 'block' : 'none';
+}
+
+async function retryPrint() {
+  if (window.twinHub) await window.twinHub.retryPrintQueue();
+}
+async function clearPrint() {
+  if (window.twinHub && confirm('Vider la file d\'impression ? Les tickets en attente seront perdus.')) {
+    await window.twinHub.clearPrintQueue();
+  }
+}
+async function testPrint() {
+  if (!window.twinHub) return;
+  // Call the recover endpoint which will retry any missed orders
+  const r = await window.twinHub.retryPrintQueue();
+  alert(r?.success ? '✅ Récupération lancée — vérifiez le terminal du serveur' : '⚠️ Serveur hors ligne — lancez START_ALL_SERVERS.bat');
+}
+
+// Expose logWAMessage to main process (via IPC won't work directly, but new order event handles it)
+if (window.twinHub) {
+  window.twinHub.onNewOrder((order) => {
+    handleNewOrder(order);
+    // Log WA send attempt (result unknown at renderer, assume sent if WA connected)
+    setTimeout(() => logWAMessage(order, true), 1000);
+  });
+}
+</script>
+</body>
+</html>

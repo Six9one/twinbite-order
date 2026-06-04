@@ -28,6 +28,7 @@ import CGV from "./pages/CGV";
 import SpinWheel from "./pages/SpinWheel";
 import SpinPage from "./pages/SpinPage";
 import KioskPage from "./pages/KioskPage";
+import POSPage from "./pages/POSPage";
 
 // Components
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -62,6 +63,7 @@ const App = () => (
                                 <Route path="/avis" element={<SpinWheel />} />
                                 <Route path="/spin" element={<SpinPage />} />
                                 <Route path="/kiosk" element={<KioskPage />} />
+                                <Route path="/pos" element={<POSPage />} />
                                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                                 <Route path="*" element={<NotFound />} />
                             </Routes>

@@ -14,7 +14,7 @@ import {
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import logoImage from '@/assets/logo.png';
+const logoImage = '/favicon.png';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNetworkPrinter } from '@/hooks/useNetworkPrinter';

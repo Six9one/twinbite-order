@@ -18,12 +18,21 @@ export default defineConfig({
     // Enable code splitting
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Vendor chunks - separate heavy dependencies
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs', '@radix-ui/react-toast'],
-          'vendor-supabase': ['@supabase/supabase-js'],
-          'vendor-utils': ['date-fns', 'clsx', 'tailwind-merge'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'vendor-react';
+            }
+            if (id.includes('@radix-ui') || id.includes('@radix-ui/react-dialog') || id.includes('@radix-ui/react-dropdown-menu') || id.includes('@radix-ui/react-tabs') || id.includes('@radix-ui/react-toast')) {
+              return 'vendor-ui';
+            }
+            if (id.includes('@supabase')) {
+              return 'vendor-supabase';
+            }
+            if (id.includes('date-fns') || id.includes('clsx') || id.includes('tailwind-merge')) {
+              return 'vendor-utils';
+            }
+          }
         },
       },
     },

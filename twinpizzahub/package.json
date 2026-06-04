@@ -1,0 +1,74 @@
+{
+  "name": "twinpizzahub",
+  "version": "1.0.0",
+  "description": "TwinPizza Hub — all-in-one desktop app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build:web": "cd .. && npm run build",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "fr.twinpizza.hub",
+    "productName": "TwinPizza Hub",
+    "copyright": "Twin Pizza",
+    "icon": "../public/favicon.png",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "launcher.html",
+      "assets/**",
+      "../dist/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "extraResources": [
+      {
+        "from": "../dist",
+        "to": "webapp",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.95.2",
+    "@whiskeysockets/baileys": "^6.7.0",
+    "dotenv": "^16.4.5",
+    "electron-is-dev": "^3.0.0",
+    "electron-store": "^8.1.0",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "electron": "^30.5.1",
+    "electron-builder": "^25.0.0"
+  }
+}

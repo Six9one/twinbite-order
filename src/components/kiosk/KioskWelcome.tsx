@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import logoImage from '@/assets/logo.png';
+const logoImage = '/favicon.png';
 
 interface KioskWelcomeProps {
     onStart: () => void;

@@ -363,6 +363,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         // Don't fail the order if Telegram fails
       }
 
+      // WhatsApp confirmation is now handled automatically by TwinPizza Hub (Electron)
+      // via Supabase Realtime — no API call needed here.
+
       // Save order data for the success screen BEFORE clearing cart
       setConfirmedOrderData({
         orderNumber: orderNumberRef.current!,

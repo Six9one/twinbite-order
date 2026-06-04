@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import logoImage from '@/assets/logo.png';
+const logoImage = '/favicon.png';
 
 interface NavItem {
   label: string;

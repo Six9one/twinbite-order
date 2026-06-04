@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, MapPin, Phone, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import logoImage from '@/assets/logo.png';
+const logoImage = '/favicon.png';
 
 interface OpeningHour {
   day_of_week: number;
