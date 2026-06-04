@@ -2030,6 +2030,138 @@ function setupHttpServer() {
         }
     });
 
+    // ── CUSTOM INVOICE endpoint ──────────────────────────────────────────────
+    // Called directly by FactureManager in the admin UI
+    // Expects: { invoiceNumber, invoiceDate, clientName, clientSiret, clientAddress,
+    //            clientPhone, clientEmail, items:[{description,quantity,unitPrice}],
+    //            tvaRate, notes, headerTitle, headerSubtitle }
+    app.post('/print-custom-invoice', async (req, res) => {
+        console.log('\n📥 Custom invoice print request');
+        try {
+            const {
+                invoiceNumber, invoiceDate, clientName, clientSiret,
+                clientAddress, clientPhone, clientEmail,
+                items = [], tvaRate = 10, notes,
+                headerTitle = 'TWIN PIZZA',
+                headerSubtitle = '60 Rue Georges Clemenceau\n76530 Grand-Couronne\n02 32 11 26 13',
+            } = req.body;
+
+            if (!invoiceNumber || !items.length) {
+                return res.status(400).json({ error: 'invoiceNumber and items required' });
+            }
+
+            console.log(`   Invoice: ${invoiceNumber}  Client: ${clientName}  Items: ${items.length}`);
+
+            // ── Format invoice ticket ───────────────────────────────────────────
+            const LINE = ESCPOS.LINE_42;
+            let t = '';
+            t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
+
+            // Header — business info
+            t += ESCPOS.CENTER;
+            t += ESCPOS.DOUBLE_SIZE + ESCPOS.BOLD_ON;
+            t += 'FACTURE\n';
+            t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + '\n';
+            t += ESCPOS.BOLD_ON + headerTitle + '\n' + ESCPOS.BOLD_OFF;
+            (headerSubtitle || '').split('\n').forEach(l => { t += l.trim() + '\n'; });
+            t += LINE;
+
+            // Legal numbers
+            t += ESCPOS.LEFT;
+            t += ESCPOS.BOLD_ON + 'SIRET: ' + ESCPOS.BOLD_OFF + '942 617 358 00018\n';
+            t += ESCPOS.BOLD_ON + 'N. TVA: ' + ESCPOS.BOLD_OFF + 'FR28942617358\n';
+            t += LINE;
+
+            // Invoice reference + date
+            const dateStr = invoiceDate
+                ? new Date(invoiceDate).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' })
+                : new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+            const timeStr = new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/Paris' });
+
+            t += ESCPOS.BOLD_ON;
+            t += `Facture N.: ${invoiceNumber}\n`;
+            t += ESCPOS.BOLD_OFF;
+            t += `Date: ${dateStr} a ${timeStr}\n`;
+            t += LINE;
+
+            // Client info
+            if (clientName) {
+                t += ESCPOS.BOLD_ON + 'CLIENT:\n' + ESCPOS.BOLD_OFF;
+                t += clientName + '\n';
+                if (clientSiret)   t += 'SIRET: ' + clientSiret + '\n';
+                if (clientAddress) t += clientAddress + '\n';
+                if (clientPhone)   t += 'Tel: ' + clientPhone + '\n';
+                if (clientEmail)   t += clientEmail + '\n';
+                t += LINE;
+            }
+
+            // Items table
+            t += ESCPOS.BOLD_ON + ' QT  DESIGNATION           P.U.    TTC\n' + ESCPOS.BOLD_OFF;
+            t += LINE;
+
+            let totalHT = 0;
+            for (const item of items) {
+                const qty   = Number(item.quantity)  || 1;
+                const unit  = Number(item.unitPrice) || 0;
+                const ttc   = qty * unit;
+                const ht    = ttc / (1 + tvaRate / 100);
+                totalHT += ht;
+
+                t += ESCPOS.BOLD_ON + ` ${qty}   ${item.description}\n` + ESCPOS.BOLD_OFF;
+                const priceStr = `${unit.toFixed(2)}  ${ttc.toFixed(2)}`;
+                t += ' '.repeat(Math.max(1, 42 - priceStr.length - 4)) + priceStr + '\n';
+            }
+
+            t += LINE;
+
+            // Totals
+            const totalTTC = items.reduce((s, i) => s + (Number(i.quantity)||1) * (Number(i.unitPrice)||0), 0);
+            const tvaAmt   = totalTTC - totalHT;
+
+            t += ESCPOS.LEFT;
+            t += `NB ARTICLES: ${items.length}\n`;
+            t += LINE;
+            t += ESCPOS.BOLD_ON + ` TVA  TAUX    HT      TVA     TTC\n` + ESCPOS.BOLD_OFF;
+            t += ` (001) ${tvaRate}%  ${totalHT.toFixed(2)}  ${tvaAmt.toFixed(2)}  ${totalTTC.toFixed(2)}\n`;
+            t += LINE;
+
+            t += ESCPOS.RIGHT;
+            t += `TOTAL HT : ${totalHT.toFixed(2)}E\n`;
+            t += `TVA ${tvaRate}% : ${tvaAmt.toFixed(2)}E\n`;
+            t += ESCPOS.DOUBLE_HEIGHT + ESCPOS.BOLD_ON;
+            t += `TOTAL TTC : ${totalTTC.toFixed(2)}E\n`;
+            t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+            t += LINE;
+
+            // Notes
+            if (notes) {
+                t += ESCPOS.LEFT + 'Note: ' + notes + '\n';
+                t += LINE;
+            }
+
+            // Footer
+            t += ESCPOS.CENTER;
+            t += '\nMerci de votre confiance!\n';
+            t += 'Twin Pizza - Entreprise individuelle\n';
+            t += 'SIRET: 942 617 358 00018  TVA: FR28942617358\n';
+            t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
+
+            const ticketData = convertToCP1252(t);
+            const success = await printRawWithRetry(ticketData, `FACTURE-${invoiceNumber}`);
+
+            if (success) {
+                console.log(`✅ Invoice ${invoiceNumber} printed`);
+                res.json({ success: true });
+            } else {
+                console.error(`❌ Failed to print invoice ${invoiceNumber}`);
+                res.status(500).json({ error: 'Impression echouee — verifiez l\'imprimante' });
+            }
+        } catch (err) {
+            console.error('❌ Custom invoice error:', err.message);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
     // Recovery endpoint - print all missed orders
     app.post('/recover-prints', async (req, res) => {
         console.log('\n📥 Recovery request received');

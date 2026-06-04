@@ -32,6 +32,7 @@ import { TicketManager } from '@/components/admin/TicketManager';
 import { OrdersHistoryManager } from '@/components/admin/OrdersHistoryManager';
 import { AvailabilityManager } from '@/components/admin/AvailabilityManager';
 import { AIReceptionistManager } from '@/components/admin/AIReceptionistManager';
+import { FactureManager } from '@/components/admin/FactureManager';
 import {
   LogOut, Home, Search, RefreshCw, Download, Printer,
   Clock, CheckCircle, XCircle, ChefHat, Package,
@@ -41,7 +42,7 @@ import {
 } from 'lucide-react';
 const logoImage = '/favicon.png';
 
-type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist';
+type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture';
 
 
 
@@ -971,6 +972,8 @@ export default function AdminDashboard() {
 
           {/* AI Phone Receptionist */}
           {activeTab === 'ai-receptionist' && <AIReceptionistManager />}
+
+          {activeTab === 'facture' && <FactureManager />}
         </main>
       </div>
     </div>
