@@ -5,54 +5,63 @@ color 0A
 cd /d "%~dp0"
 
 echo.
-echo  ╔══════════════════════════════════════════════════════════════╗
-echo  ║              🍕  TWINPIZZA HUB  -  DEMARRAGE               ║
-echo  ╚══════════════════════════════════════════════════════════════╝
+echo  +--------------------------------------------------------------+
+echo  ^|             TWINPIZZA HUB  -  DEMARRAGE                     ^|
+echo  +--------------------------------------------------------------+
 echo.
 
-:: ── Verifier que Node.js est present ─────────────────────────────────────────
+:: Verifier Node.js
 node --version >nul 2>&1
-if errorlevel 1 (
-    echo  ❌ Node.js introuvable ! Lancez d'abord INSTALLER.bat
-    pause
-    exit /b 1
-)
+if errorlevel 1 goto :no_node
 
-:: ── Verifier que les packages sont installes ─────────────────────────────────
-if not exist "%~dp0twinpizzahub\node_modules\electron" (
-    echo  ⚠️  Packages manquants - Installation automatique...
-    cd /d "%~dp0twinpizzahub"
-    call npm install --silent
-    cd /d "%~dp0"
-)
+:: Verifier packages Electron
+if not exist "%~dp0twinpizzahub\node_modules\electron" goto :install_hub
 
-:: ── Verifier ou construire le build de l'application ─────────────────────────
-if not exist "%~dp0dist\index.html" (
-    echo  ⚙️  Premiere utilisation - Construction de l'application...
-    echo      (2-4 minutes, une seule fois)
-    call npm install --silent
-    call npm run build
-    if errorlevel 1 (
-        echo  ❌ Erreur lors du build. Lancez INSTALLER.bat
-        pause
-        exit /b 1
-    )
-    echo  ✅ Application construite.
-)
+:: Verifier build
+if not exist "%~dp0dist\index.html" goto :do_build
 
-if not exist "%~dp0print-server\node_modules\express" (
-    echo  ⚙️  Installation serveur impression...
+:: Verifier packages print-server
+if not exist "%~dp0print-server\node_modules\express" goto :install_print
+
+goto :launch
+
+:no_node
+echo  ERREUR : Node.js introuvable. Lancez d'abord INSTALLER.bat
+pause
+exit /b 1
+
+:install_hub
+echo  Installation des packages Hub...
+cd /d "%~dp0twinpizzahub"
+call npm install --silent
+cd /d "%~dp0"
+
+:install_print
+if exist "%~dp0print-server\package.json" (
+    echo  Installation packages impression...
     cd /d "%~dp0print-server"
     call npm install --silent
     cd /d "%~dp0"
 )
+if not exist "%~dp0dist\index.html" goto :do_build
+goto :launch
 
-:: ── Lancer TwinPizza Hub (Electron gere tout: fichiers, impression) ───────────
-echo  ✅ Tout est pret !
-echo  🚀 Lancement de TwinPizza Hub...
+:do_build
+echo  Premiere utilisation - Construction de l'application (2-4 min)...
+call npm install --silent
+call npm run build
+if errorlevel 1 (
+    echo  ERREUR lors du build. Lancez INSTALLER.bat
+    pause
+    exit /b 1
+)
+echo  OK  Application construite.
+
+:launch
+echo  OK  Tout est pret. Lancement de TwinPizza Hub...
 echo.
-echo  (La fenetre Hub va s'ouvrir dans quelques secondes)
-echo  (Ne fermez pas cette fenetre noire)
+echo  (La fenetre Hub s'ouvre dans quelques secondes)
+echo  (Ne fermez pas cette fenetre)
 echo.
 
 cd /d "%~dp0twinpizzahub"
@@ -60,19 +69,15 @@ cd /d "%~dp0twinpizzahub"
 set EXIT_CODE=%ERRORLEVEL%
 cd /d "%~dp0"
 
-:: ── Quand l'app se ferme ──────────────────────────────────────────────────────
 if !EXIT_CODE! NEQ 0 (
     echo.
-    echo  ❌ L'application a quitte avec une erreur (code: !EXIT_CODE!)
+    echo  L'application a quitte avec une erreur (code: !EXIT_CODE!)
     echo.
-    echo  Solutions possibles :
+    echo  Solutions :
     echo    1. Relancer ce script
     echo    2. Si probleme de build : lancez METTRE_A_JOUR.bat
-    echo    3. Si premiere fois : lancez INSTALLER.bat
+    echo    3. Si premiere fois    : lancez INSTALLER.bat
     echo.
     pause
-) else (
-    echo.
-    echo  👋 TwinPizza Hub ferme normalement.
 )
 exit /b !EXIT_CODE!
