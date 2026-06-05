@@ -225,9 +225,9 @@ function PizzaPanel({ orderType, onAdd }: { orderType:OrderType; onAdd:(item:any
           </>
         )}
         <button onClick={handleAdd} disabled={!sel} style={{
-          width:'100%', padding:'12px', borderRadius:10, border:'none',
+          width:'100%', padding:'9px', borderRadius:9, border:'none',
           background: sel ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : '#1f2937',
-          color: sel ? '#000' : '#374151', fontSize:14, fontWeight:800, cursor: sel?'pointer':'not-allowed',
+          color: sel ? '#000' : '#374151', fontSize:13, fontWeight:800, cursor: sel?'pointer':'not-allowed',
         }}>
           {sel ? `➕ ${sel.name} ${PIZZA_SIZES.find(s=>s.id===size)!.label} — ${price.toFixed(2)}€` : 'Sélectionnez une pizza'}
         </button>
@@ -327,7 +327,7 @@ function CustomizablePanel({ categorySlug, title, onAdd }: { categorySlug:string
       {/* Add button */}
       <div style={{ padding:'10px 14px', borderTop:`1px solid ${S.border}`, background:'#111827', flexShrink:0 }}>
         <button onClick={handleAdd} disabled={!sel} style={{
-          width:'100%', padding:'12px', borderRadius:10, border:'none',
+          width:'100%', padding:'9px', borderRadius:9, border:'none',
           background: sel ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : '#1f2937',
           color: sel?'#000':'#374151', fontSize:14, fontWeight:800, cursor:sel?'pointer':'not-allowed',
         }}>
@@ -370,9 +370,9 @@ function SimplePanel({ categorySlug, title, onAdd }: { categorySlug:string; titl
       )}
       <div style={{ padding:'10px 14px', borderTop:`1px solid ${S.border}`, background:'#111827', flexShrink:0 }}>
         <button onClick={handleAdd} disabled={!sel} style={{
-          width:'100%', padding:'12px', borderRadius:10, border:'none',
+          width:'100%', padding:'9px', borderRadius:9, border:'none',
           background: sel?'linear-gradient(135deg,#f59e0b,#ef4444)':'#1f2937',
-          color:sel?'#000':'#374151', fontSize:14, fontWeight:800, cursor:sel?'pointer':'not-allowed',
+          color:sel?'#000':'#374151', fontSize:13, fontWeight:800, cursor:sel?'pointer':'not-allowed',
         }}>
           {sel?`➕ ${qty}x ${sel.name} — ${(sel.price*qty).toFixed(2)}€`:'Sélectionnez un produit'}
         </button>
@@ -587,8 +587,14 @@ function POSContent() {
     <PanelGroup
       direction="horizontal"
       autoSaveId="pos-layout-h"
+      className="pos-root"
       style={{ height:'100vh', background:S.bg, color:S.text, fontFamily:'Segoe UI,system-ui,sans-serif' }}
     >
+      {/* Hide scrollbars (touch screen) — swipe still works */}
+      <style>{`
+        .pos-root *::-webkit-scrollbar { width:0 !important; height:0 !important; display:none !important; }
+        .pos-root * { scrollbar-width:none !important; -ms-overflow-style:none !important; }
+      `}</style>
 
       {/* ── LEFT (resizable + collapsible) ── */}
       <Panel ref={leftRef} collapsible collapsedSize={0} defaultSize={72} minSize={35}
@@ -710,17 +716,17 @@ function POSContent() {
             ))}
           </div>
           <button onClick={handleSubmit} disabled={submitting||cart.length===0} style={{
-            width:'100%', padding:'13px', borderRadius:10, border:'none',
+            width:'100%', padding:'10px', borderRadius:9, border:'none',
             background: cart.length ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : '#1f2937',
-            color: cart.length?'#000':'#374151', fontSize:14, fontWeight:800,
+            color: cart.length?'#000':'#374151', fontSize:13, fontWeight:800,
             cursor:cart.length?'pointer':'not-allowed', opacity:submitting?.6:1,
           }}>
             {submitting ? '⏳...' : cart.length ? `✅ Valider — ${total.toFixed(2)}€` : 'Panier vide'}
           </button>
           {/* Facture — print invoice to ethernet printer */}
           <button onClick={()=>setShowFacture(true)} style={{
-            width:'100%', marginTop:6, padding:'10px', borderRadius:10, border:`1px solid ${S.accent}55`,
-            background:S.accent+'18', color:S.accent, fontSize:13, fontWeight:800, cursor:'pointer',
+            width:'100%', marginTop:6, padding:'8px', borderRadius:9, border:`1px solid ${S.accent}55`,
+            background:S.accent+'18', color:S.accent, fontSize:12, fontWeight:800, cursor:'pointer',
           }}>
             🧾 Facture client
           </button>
