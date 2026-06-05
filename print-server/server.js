@@ -64,6 +64,8 @@ const ESCPOS = {
     NORMAL_SIZE: GS + '!' + '\x00',
     UNDERLINE_ON: ESC + '-' + '\x01',
     UNDERLINE_OFF: ESC + '-' + '\x00',
+    UPSIDE_DOWN_ON:  ESC + '{' + '\x01',  // Rotate all text 180° (wall-mounted printer)
+    UPSIDE_DOWN_OFF: ESC + '{' + '\x00',
     CUT: GS + 'V' + '\x00',
     PARTIAL_CUT: GS + 'V' + '\x01',
     FEED: ESC + 'd' + '\x03',
@@ -240,7 +242,7 @@ function getLine() {
 function formatKitchenTicket(order) {
     const LINE = getLine();
     let t = '';
-    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
+    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252 + ESCPOS.UPSIDE_DOWN_ON;
 
     // Order number + type on same line (like the photo)
     const typeLabels = { livraison: 'LIVR', emporter: 'EMP', surplace: 'SUR PL' };
@@ -391,7 +393,7 @@ function formatCounterTicket(order, loyaltyText) {
     const LINE = getLine();
     const TVA_RATE = 10;
     let t = '';
-    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
+    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252 + ESCPOS.UPSIDE_DOWN_ON;
 
     // === HEADER: Business info ===
     t += ESCPOS.CENTER;
@@ -625,7 +627,7 @@ function formatUnifiedTicket(order, loyaltyText) {
     const LINE = getLine();
     const TVA_RATE = 10;
     let t = '';
-    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
+    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252 + ESCPOS.UPSIDE_DOWN_ON;
 
     // === HEADER ===
     t += ESCPOS.CENTER;
@@ -1419,6 +1421,7 @@ function formatDateLabel(data) {
     // Initialize printer and set code page for French characters
     ticket += ESCPOS.INIT;
     ticket += ESCPOS.SET_CODEPAGE_1252;
+    ticket += ESCPOS.UPSIDE_DOWN_ON;
 
     // Header
     ticket += ESCPOS.CENTER;
@@ -1486,6 +1489,7 @@ function formatFreezerTicket(data) {
     let ticket = '';
     ticket += ESCPOS.INIT;
     ticket += ESCPOS.SET_CODEPAGE_1252;
+    ticket += ESCPOS.UPSIDE_DOWN_ON;
 
     // Header
     ticket += ESCPOS.CENTER;
@@ -1573,6 +1577,7 @@ function formatHACCPTicket(data) {
     // Initialize printer and set code page for French characters
     ticket += ESCPOS.INIT;
     ticket += ESCPOS.SET_CODEPAGE_1252;
+    ticket += ESCPOS.UPSIDE_DOWN_ON;
 
     // Header
     ticket += ESCPOS.CENTER;
