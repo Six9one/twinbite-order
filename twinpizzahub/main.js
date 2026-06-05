@@ -95,8 +95,16 @@ function handleIncomingOrder(order) {
   messagedOrders.add(order.id); // mark before send to avoid double-send race
   const msg = generateOrderMessage(order);
   sendWhatsAppMessage(order.customer_phone, msg)
-    .then(() => { console.log('✅ WhatsApp confirmation sent for', order.order_number); scheduleReviewMessage(order); })
-    .catch(e => { console.error('WhatsApp send failed:', e.message); messagedOrders.delete(order.id); }); // allow retry
+    .then(() => {
+      console.log('✅ WhatsApp confirmation sent for', order.order_number);
+      notifyMessageSent({ type:'confirmation', order, phone:order.customer_phone, message:msg, success:true });
+      scheduleReviewMessage(order);
+    })
+    .catch(e => {
+      console.error('WhatsApp send failed:', e.message);
+      messagedOrders.delete(order.id); // allow retry
+      notifyMessageSent({ type:'confirmation', order, phone:order.customer_phone, message:msg, success:false });
+    });
 }
 
 // ─── Realtime: listen for new orders (with auto-reconnect) ────────────────────
@@ -294,34 +302,42 @@ function scheduleReviewMessage(order) {
   if (reviewTimers.has(order.id)) return;
 
   console.log(`⭐ Review scheduled for #${order.order_number} in 40 min`);
+  const msg = generateReviewMessage(order);
   const handle = setTimeout(() => {
     reviewTimers.delete(order.id);
     // Only send if WhatsApp is STILL connected
     if (whatsappStatus !== 'connected') {
       console.log(`⭐ Review skipped for #${order.order_number} — WhatsApp not connected`);
-      notifyReviewSent(order, false);
       return;
     }
-    const msg = generateReviewMessage(order);
     sendWhatsAppMessage(phone, msg)
       .then(() => {
         console.log(`⭐ Review sent for #${order.order_number}`);
-        notifyReviewSent(order, true);
+        notifyMessageSent({ type:'review', order, phone, message:msg, success:true });
       })
       .catch(e => {
         console.error('Review send failed:', e.message);
-        notifyReviewSent(order, false);
+        notifyMessageSent({ type:'review', order, phone, message:msg, success:false });
       });
   }, REVIEW_DELAY_MS);
 
   reviewTimers.set(order.id, handle);
 }
 
-// ── Tell the launcher UI that a review message was sent ───────────────────────
-function notifyReviewSent(order, success) {
-  const payload = { order_number: order.order_number, customer_name: order.customer_name, success };
+// ── Tell the launcher UI that a WhatsApp message was actually sent ─────────────
+// Includes the recipient phone, name, type, full message text and result.
+function notifyMessageSent({ type, order, phone, message, success }) {
+  const payload = {
+    type,
+    order_number: order?.order_number,
+    customer_name: order?.customer_name,
+    phone,
+    message,
+    success,
+    time: Date.now(),
+  };
   if (launcherWin && !launcherWin.isDestroyed()) {
-    launcherWin.webContents.send('whatsapp-review-sent', payload);
+    launcherWin.webContents.send('whatsapp-message-sent', payload);
   }
 }
 

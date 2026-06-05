@@ -396,7 +396,7 @@ webview.active { display:flex; }
 let currentScreen = 'orders';
 let appUrl = 'http://localhost:3456';
 let todayOrders = [];
-let waLog = [];
+let waLog = (function(){ try { return JSON.parse(localStorage.getItem('wa-log')||'[]'); } catch(_) { return []; } })();
 let sleepTimer = null;
 const SLEEP_AFTER = 15 * 60 * 1000; // 15 minutes
 
@@ -657,22 +657,63 @@ function handleWAQR(qr) {
   if (dot) dot.className = 'nav-status s-amber';
 }
 
-// Log a WhatsApp message send event — type: 'confirmation' | 'review'
-function logWAMessage(order, success, type) {
-  type = type || 'confirmation';
-  const time = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
-  waLog.unshift({ time, order: order.order_number, name: order.customer_name, success, type });
+// ── Persistent WhatsApp message log ──────────────────────────────────────────
+// Loads history from localStorage so you always see who was messaged + content.
+function loadWALog() {
+  try { return JSON.parse(localStorage.getItem('wa-log') || '[]'); } catch(_) { return []; }
+}
+function saveWALog() {
+  try { localStorage.setItem('wa-log', JSON.stringify(waLog.slice(0, 100))); } catch(_) {}
+}
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+// Record a REAL sent message (called from main via IPC)
+function recordWAMessage(data) {
+  const d = new Date(data.time || Date.now());
+  waLog.unshift({
+    time: d.toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }),
+    order: data.order_number,
+    name: data.customer_name && !String(data.customer_name).startsWith('[POS]') ? data.customer_name : '',
+    phone: data.phone,
+    message: data.message,
+    success: data.success,
+    type: data.type || 'confirmation',
+  });
+  saveWALog();
+  renderWALog();
+}
+
+function renderWALog() {
   const body = document.getElementById('wa-log-body');
+  if (!body) return;
+  if (!waLog.length) {
+    body.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:24px;">Aucun message envoyé pour l\'instant.<br><span style="font-size:11px;">Les messages apparaîtront ici après chaque commande.</span></div>';
+    return;
+  }
   const typeBadge = (t) => t === 'review'
     ? '<span style="font-size:10px;background:#f59e0b22;color:#f59e0b;padding:1px 6px;border-radius:4px;">⭐ Avis Google</span>'
     : '<span style="font-size:10px;background:#22c55e22;color:#22c55e;padding:1px 6px;border-radius:4px;">✅ Confirmation</span>';
-  body.innerHTML = waLog.slice(0,20).map(m => `
-    <div class="wa-msg">
-      <span class="time">${m.time}</span>
-      <span class="text">${m.type === 'review' ? '⭐' : '📨'} #${m.order} — ${m.name || ''}</span>
-      ${typeBadge(m.type)}
-      <span class="${m.success ? 'badge-ok' : 'badge-err'}">${m.success ? 'Envoyé' : 'Échec'}</span>
+  body.innerHTML = waLog.slice(0, 60).map(m => `
+    <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:var(--muted);">${m.time}</span>
+        ${typeBadge(m.type)}
+        <span class="${m.success ? 'badge-ok' : 'badge-err'}">${m.success ? 'Envoyé' : 'Échec'}</span>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:4px;">
+        ${m.type === 'review' ? '⭐' : '📨'} ${escapeHtml(m.name) || 'Client'}
+        ${m.phone ? `<span style="font-weight:400;color:var(--accent);">· ${escapeHtml(m.phone)}</span>` : ''}
+        ${m.order ? `<span style="font-weight:400;color:var(--muted);">· #${m.order}</span>` : ''}
+      </div>
+      ${m.message ? `<div style="font-size:11.5px;color:var(--muted);margin-top:4px;white-space:pre-wrap;background:var(--card);border-radius:8px;padding:8px 10px;">${escapeHtml(m.message)}</div>` : ''}
     </div>`).join('');
+}
+
+// Back-compat shim (older calls)
+function logWAMessage(order, success, type) {
+  recordWAMessage({ order_number: order.order_number, customer_name: order.customer_name, success, type, time: Date.now() });
 }
 
 // ── Printer ────────────────────────────────────────────────────────────────
@@ -708,20 +749,14 @@ async function testPrint() {
   alert(r?.success ? '✅ Récupération lancée — vérifiez le terminal du serveur' : '⚠️ Serveur hors ligne — lancez START_ALL_SERVERS.bat');
 }
 
-// Expose logWAMessage to main process (via IPC won't work directly, but new order event handles it)
-if (window.twinHub) {
-  window.twinHub.onNewOrder((order) => {
-    handleNewOrder(order);
-    // Log confirmation send attempt (assume sent if WA connected)
-    setTimeout(() => logWAMessage(order, true, 'confirmation'), 1000);
-  });
+// Show persisted message history on load
+renderWALog();
 
-  // Review message sent 40 min later — logged from main process
-  if (window.twinHub.onWhatsAppReviewSent) {
-    window.twinHub.onWhatsAppReviewSent((data) => {
-      logWAMessage(data, data.success, 'review');
-    });
-  }
+// Log REAL sent messages (confirmation + review) reported by the main process
+if (window.twinHub && window.twinHub.onWhatsAppMessageSent) {
+  window.twinHub.onWhatsAppMessageSent((data) => {
+    recordWAMessage(data);
+  });
 }
 </script>
 </body>
