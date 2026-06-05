@@ -39,10 +39,12 @@ let tray = null;
 function initSupabase() {
   try {
     const { createClient } = require('@supabase/supabase-js');
+    const WebSocket = require('ws');
     const url = process.env.VITE_SUPABASE_URL;
     const key = process.env.VITE_SUPABASE_ANON_KEY;
     if (!url || !key) { console.warn('⚠️ Supabase env vars missing'); return; }
-    supabase = createClient(url, key);
+    // ws transport keeps realtime stable on Node < 22 (else orders are missed)
+    supabase = createClient(url, key, { realtime: { transport: WebSocket } });
     console.log('✅ Supabase connected');
     listenForOrders();
   } catch(e) {

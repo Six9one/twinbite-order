@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import WebSocket from 'ws';
 import { Socket } from 'net';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -38,8 +39,11 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 
 console.log('[PRINT] Supabase URL:', SUPABASE_URL.slice(0, 40) + '...');
 
-// Initialize Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Initialize Supabase client — provide ws transport so realtime is STABLE on
+// Node < 22 (without it the channel keeps closing and orders get missed).
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    realtime: { transport: WebSocket },
+});
 
 // ESC/POS Commands for thermal printers
 const ESC = '\x1B';
@@ -965,13 +969,21 @@ async function printRawWithRetry(ticketData, label) {
     }, label);
 }
 
-// Handle new order
-async function handleNewOrder(order) {
-    // Skip if already printed
-    if (printedOrders.has(order.id)) {
-        console.log(`⏭️  Order ${order.order_number} already printed, skipping...`);
+// Orders currently being printed (in-flight guard — prevents the 10s poll and
+// realtime from queueing the SAME order multiple times = paper waste).
+const processingOrders = new Set();
+
+// Handle new order. `force` = bypass the printed cache (used by manual recovery).
+async function handleNewOrder(order, force = false) {
+    // Skip if already printed (unless forced)
+    if (!force && printedOrders.has(order.id)) {
+        return; // already handled — do NOT reprint
+    }
+    // Skip if a print for this order is already in progress
+    if (processingOrders.has(order.id)) {
         return;
     }
+    processingOrders.add(order.id);
 
     console.log(`\n${'='.repeat(50)}`);
     console.log(`📦 NEW ORDER: ${order.order_number}`);
@@ -979,6 +991,8 @@ async function handleNewOrder(order) {
     console.log(`   Client: ${order.customer_name}`);
     console.log(`   Total: ${order.total}€`);
     console.log(`${'='.repeat(50)}\n`);
+
+    try {
 
     // Fetch loyalty info (Only used for counter printer)
     let loyaltyText = '';
@@ -1013,17 +1027,21 @@ async function handleNewOrder(order) {
 
     const success = await printWithRetry(order, loyaltyText);
 
+    // CRITICAL: mark the order as handled in BOTH cases so the 10s poll can
+    // never re-catch it and reprint forever. A genuine failure is recorded in
+    // the DB (printed=false) and can be reprinted via "Récupérer les manqués".
+    printedOrders.set(order.id, Date.now());
+    savePrintedOrders();
+
     if (success) {
-        // Use Map.set() with timestamp
-        printedOrders.set(order.id, Date.now());
-        // Save to file for persistence
-        savePrintedOrders();
-        // Mark as printed in database
         await markOrderPrinted(order.id);
-        console.log(`✅ Order ${order.order_number} saved to printed cache + DB`);
+        console.log(`✅ Order ${order.order_number} printed + cached`);
     } else {
-        // Mark failed attempt in database
         await markPrintAttempt(order.id, 'Print failed after retries');
+        console.log(`⚠️ Order ${order.order_number} print FAILED — marked, will NOT auto-reprint (use Récupérer les manqués)`);
+    }
+    } finally {
+        processingOrders.delete(order.id);
     }
 }
 
@@ -1127,7 +1145,8 @@ async function recoverMissedPrints() {
             }
 
             console.log(`🔄 RECOVERING order #${fullOrder.order_number}...`);
-            await handleNewOrder(fullOrder);
+            printedOrders.delete(fullOrder.id);       // clear cache so the forced reprint goes through
+            await handleNewOrder(fullOrder, true);    // force = bypass printed cache
             recovered++;
 
             // Small delay between prints
@@ -1626,10 +1645,12 @@ function setupHttpServer() {
     app.use(cors());
     app.use(express.json());
 
-    // Health check endpoint
-    app.get('/health', (req, res) => {
-        res.json({ status: 'ok', printers: PRINTER_IPS });
-    });
+    // Health / status endpoints (both paths, Electron checks /status)
+    const statusHandler = (req, res) => {
+        res.json({ status: 'ok', online: true, printers: PRINTER_IPS, port: PRINTER_PORT });
+    };
+    app.get('/health', statusHandler);
+    app.get('/status', statusHandler);
 
     // HACCP print endpoint
     app.post('/print-haccp', async (req, res) => {

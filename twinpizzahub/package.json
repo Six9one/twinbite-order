@@ -65,7 +65,8 @@
     "electron-is-dev": "^3.0.0",
     "electron-store": "^8.1.0",
     "qrcode": "^1.5.4",
-    "qrcode-terminal": "^0.12.0"
+    "qrcode-terminal": "^0.12.0",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "electron": "^30.5.1",
