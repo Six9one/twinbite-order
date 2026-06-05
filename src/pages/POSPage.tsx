@@ -352,7 +352,14 @@ const WIZ_GARN_DEFAULTS: Record<WizType,string[]> = {
   soufflet:['pomme','oignon','olive'], makloub:['salade','tomate','oignon'],
   mlawi:['salade','tomate','oignon','olive'], tacos:['salade','tomate','oignon'], panini:[],
 };
-const WIZ_HAS_GARNITURE: Record<WizType,boolean> = { soufflet:true, makloub:true, mlawi:true, tacos:true, panini:false };
+// Per-product flow rules
+const WIZ_CFG: Record<WizType, { maxMeats:number; garniture:boolean; supplements:boolean; menu:boolean; crudite:boolean }> = {
+  soufflet:{ maxMeats:3, garniture:true,  supplements:true,  menu:true,  crudite:false },
+  makloub: { maxMeats:3, garniture:true,  supplements:true,  menu:true,  crudite:true  },
+  mlawi:   { maxMeats:3, garniture:true,  supplements:true,  menu:true,  crudite:true  },
+  tacos:   { maxMeats:3, garniture:true,  supplements:true,  menu:true,  crudite:true  },
+  panini:  { maxMeats:1, garniture:false, supplements:false, menu:false, crudite:false }, // just meat + sauce, 5€
+};
 const FREE_SAUCES = 2, EXTRA_SAUCE = 0.30;
 
 // Small option tile with image/emoji (compact, dark)
@@ -388,10 +395,11 @@ function SectionTitle({ children, hint }: { children:React.ReactNode; hint?:stri
 
 function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item:any,custom:any,price:number)=>void }) {
   const type = WIZARD_MAP[categorySlug] || 'soufflet';
+  const cfg = WIZ_CFG[type];
   const sizes = (wizardSizePrices as any)[type] as { id:string; label:string; maxMeats:number; price:number }[];
-  const maxMeats = Math.max(...sizes.map(s => s.maxMeats));
-  const hasGarniture = WIZ_HAS_GARNITURE[type];
-  const isCrudite = type === 'makloub' || type === 'mlawi';
+  const maxMeats = cfg.maxMeats;
+  const hasGarniture = cfg.garniture;
+  const isCrudite = cfg.crudite;
 
   const { data: dbMeats = [] }   = useMeatOptions();
   const { data: dbSauces = [] }  = useSauceOptions();
@@ -454,7 +462,7 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 14px', background:S.panel, borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
         <span style={{ fontSize:13, fontWeight:800, color:S.text }}>{WIZ_TITLE[type]}</span>
         <span style={{ background:S.accent, color:'#000', borderRadius:99, padding:'2px 12px', fontSize:12, fontWeight:800 }}>
-          {sizeCfg.label} · {sizeCfg.price.toFixed(2)}€
+          {maxMeats > 1 ? `${sizeCfg.label} · ` : ''}{sizeCfg.price.toFixed(2)}€
         </span>
         <span style={{ fontSize:11, color:S.muted }}>{selMeats.length}/{maxMeats} viande{maxMeats>1?'s':''}</span>
         <button onClick={reset} style={{ ...S.btn, marginLeft:'auto', padding:'4px 10px', fontSize:11 }}>↺ Réinit.</button>
@@ -502,7 +510,7 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
         )}
 
         {/* Supplements */}
-        {supps.length > 0 && (
+        {cfg.supplements && supps.length > 0 && (
           <>
             <SectionTitle hint="optionnel">Suppléments</SectionTitle>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(72px,1fr))', gap:6, marginBottom:12 }}>
@@ -516,21 +524,25 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
         )}
 
         {/* Menu */}
-        <SectionTitle>Menu</SectionTitle>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:12 }}>
-          {([
-            { id:'none', label:'Sans', emoji:'🚫' },
-            { id:'frites', label:`Frites +${menuOptionPrices.frites}€`, emoji:'🍟' },
-            { id:'boisson', label:`Boisson +${menuOptionPrices.boisson}€`, emoji:'🥤' },
-            { id:'menu', label:`Menu +${menuOptionPrices.menu}€`, emoji:'🍔' },
-          ] as const).map(o => (
-            <button key={o.id} onClick={()=>setMenu(o.id)} style={{
-              padding:'8px 4px', borderRadius:8, cursor:'pointer', fontSize:10, fontWeight:700, lineHeight:1.2,
-              border:`1.5px solid ${menu===o.id?'#3b82f6':'#2d3748'}`,
-              background: menu===o.id?'#3b82f622':S.card, color: menu===o.id?'#3b82f6':S.muted,
-            }}><div style={{ fontSize:16 }}>{o.emoji}</div>{o.label}</button>
-          ))}
-        </div>
+        {cfg.menu && (
+          <>
+            <SectionTitle>Menu</SectionTitle>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:12 }}>
+              {([
+                { id:'none', label:'Sans', emoji:'🚫' },
+                { id:'frites', label:`Frites +${menuOptionPrices.frites}€`, emoji:'🍟' },
+                { id:'boisson', label:`Boisson +${menuOptionPrices.boisson}€`, emoji:'🥤' },
+                { id:'menu', label:`Menu +${menuOptionPrices.menu}€`, emoji:'🍔' },
+              ] as const).map(o => (
+                <button key={o.id} onClick={()=>setMenu(o.id)} style={{
+                  padding:'8px 4px', borderRadius:8, cursor:'pointer', fontSize:10, fontWeight:700, lineHeight:1.2,
+                  border:`1.5px solid ${menu===o.id?'#3b82f6':'#2d3748'}`,
+                  background: menu===o.id?'#3b82f622':S.card, color: menu===o.id?'#3b82f6':S.muted,
+                }}><div style={{ fontSize:16 }}>{o.emoji}</div>{o.label}</button>
+              ))}
+            </div>
+          </>
+        )}
 
         <input value={note} onChange={e=>setNote(e.target.value)} placeholder="Note (ex: bien cuit, sans oignon...)" style={S.input} />
       </div>
@@ -543,8 +555,118 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
           color:(selMeats.length && selSauces.length)?'#000':'#374151', fontSize:14, fontWeight:800,
           cursor:(selMeats.length && selSauces.length)?'pointer':'not-allowed',
         }}>
-          ➕ {WIZ_TITLE[type]} {sizeCfg.label} — {price.toFixed(2)}€
+          ➕ {WIZ_TITLE[type]} {maxMeats>1?sizeCfg.label:''} — {price.toFixed(2)}€
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Sandwich panel: pick sandwich → sauce + crudités (no meat) ───────────────
+function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>void }) {
+  const { data: products = [] } = useProductsByCategory('sandwiches');
+  const { data: dbSauces = [] } = useSauceOptions();
+  const { data: dbCrud = [] }   = useCruditesOptions();
+
+  const sauces = dbSauces.map((s:any) => ({ id:s.id, name:s.name, img:s.image_url }));
+  const crud   = dbCrud.map((g:any) => ({ id:g.id, name:g.name, img:g.image_url }));
+  const defaults = ['salade','tomate','oignon'];
+  const defCrud = crud.filter(g => defaults.some(d => g.name.toLowerCase().includes(d)));
+  const extraCrud = crud.filter(g => !defaults.some(d => g.name.toLowerCase().includes(d)));
+
+  const [sel, setSel] = useState<any|null>(null);
+  const [selSauces, setSauces] = useState<string[]>([]);
+  const [removed, setRemoved] = useState<string[]>([]);
+  const [selExtra, setExtra] = useState<string[]>([]);
+  const [menu, setMenu] = useState<'none'|'frites'|'boisson'|'menu'>('none');
+  const [note, setNote] = useState('');
+
+  const sauceSurcharge = Math.max(0, selSauces.length - FREE_SAUCES) * EXTRA_SAUCE;
+  const price = (sel?.base_price || 0) + menuOptionPrices[menu] + sauceSurcharge;
+
+  const toggle = (id:string, arr:string[], set:any) => set(arr.includes(id) ? arr.filter((x:string)=>x!==id) : [...arr, id]);
+  const reset = () => { setSel(null); setSauces([]); setRemoved([]); setExtra([]); setMenu('none'); setNote(''); };
+
+  const handleAdd = () => {
+    if (!sel) { toast.error('Choisissez un sandwich'); return; }
+    const sauceNames = selSauces.map(id => sauces.find(s=>s.id===id)?.name || '');
+    const crudNames = [
+      ...defCrud.filter(g=>!removed.includes(g.id)).map(g=>g.name),
+      ...extraCrud.filter(g=>selExtra.includes(g.id)).map(g=>g.name),
+    ];
+    onAdd(
+      { id:sel.id, name:sel.name, price:sel.base_price, category:'sandwiches', description:'' },
+      { sauces:sauceNames, garnitures:crudNames, menuOption:menu, note },
+      price
+    );
+    reset();
+  };
+
+  const active = products.filter((p:any)=>p.is_active);
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
+      {/* Sandwich products */}
+      <div style={{ flex:'0 0 auto', maxHeight:200, overflow:'auto', padding:'10px 14px', borderBottom:`1px solid ${S.border}` }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(82px,1fr))', gap:6 }}>
+          {active.map((p:any)=>(
+            <ProductTile key={p.id} compact item={{...p, price:p.base_price}} selected={sel?.id===p.id}
+              onClick={()=>setSel(sel?.id===p.id?null:p)} />
+          ))}
+        </div>
+      </div>
+
+      <div style={{ flex:1, overflow:'auto', padding:'10px 14px' }}>
+        {!sel && <div style={{ textAlign:'center', color:'#374151', fontSize:13, paddingTop:24 }}>Choisissez un sandwich ci-dessus</div>}
+        {sel && (
+          <>
+            <SectionTitle hint={`${FREE_SAUCES} gratuites, +${EXTRA_SAUCE.toFixed(2)}€ ensuite`}>Sauces</SectionTitle>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(72px,1fr))', gap:6, marginBottom:12 }}>
+              {sauces.map(s => (
+                <OptTile key={s.id} name={s.name} img={s.img} emoji="🥫"
+                  selected={selSauces.includes(s.id)} onClick={()=>toggle(s.id, selSauces, setSauces)} />
+              ))}
+            </div>
+
+            <SectionTitle hint="inclus — touchez pour retirer">Crudités</SectionTitle>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(72px,1fr))', gap:6, marginBottom:12 }}>
+              {defCrud.map(g => (
+                <OptTile key={g.id} name={g.name} img={g.img} emoji="🥗" isDefaultRemovable
+                  selected={!removed.includes(g.id)} onClick={()=>toggle(g.id, removed, setRemoved)} />
+              ))}
+              {extraCrud.map(g => (
+                <OptTile key={g.id} name={g.name} img={g.img} emoji="➕"
+                  selected={selExtra.includes(g.id)} onClick={()=>toggle(g.id, selExtra, setExtra)} />
+              ))}
+            </div>
+
+            <SectionTitle>Menu</SectionTitle>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:12 }}>
+              {([
+                { id:'none', label:'Sans', emoji:'🚫' },
+                { id:'frites', label:`Frites +${menuOptionPrices.frites}€`, emoji:'🍟' },
+                { id:'boisson', label:`Boisson +${menuOptionPrices.boisson}€`, emoji:'🥤' },
+                { id:'menu', label:`Menu +${menuOptionPrices.menu}€`, emoji:'🍔' },
+              ] as const).map(o => (
+                <button key={o.id} onClick={()=>setMenu(o.id)} style={{
+                  padding:'8px 4px', borderRadius:8, cursor:'pointer', fontSize:10, fontWeight:700, lineHeight:1.2,
+                  border:`1.5px solid ${menu===o.id?'#3b82f6':'#2d3748'}`,
+                  background: menu===o.id?'#3b82f622':S.card, color: menu===o.id?'#3b82f6':S.muted,
+                }}><div style={{ fontSize:16 }}>{o.emoji}</div>{o.label}</button>
+              ))}
+            </div>
+
+            <input value={note} onChange={e=>setNote(e.target.value)} placeholder="Note..." style={S.input} />
+          </>
+        )}
+      </div>
+
+      <div style={{ padding:'10px 14px', borderTop:`1px solid ${S.border}`, background:S.panel, flexShrink:0 }}>
+        <button onClick={handleAdd} disabled={!sel} style={{
+          width:'100%', padding:'11px', borderRadius:9, border:'none',
+          background: sel?'linear-gradient(135deg,#f59e0b,#ef4444)':'#1f2937',
+          color: sel?'#000':'#374151', fontSize:14, fontWeight:800, cursor:sel?'pointer':'not-allowed',
+        }}>{sel ? `➕ ${sel.name} — ${price.toFixed(2)}€` : 'Choisissez un sandwich'}</button>
       </div>
     </div>
   );
@@ -792,8 +914,10 @@ function POSContent() {
     if (activeCategory === 'pizzas') return <PizzaPanel orderType={orderType} onAdd={handleAdd} />;
     // Build-it wizards (meat → size): Soufflet, Makloub, Mlawi, Tacos, Panini
     if (WIZARD_MAP[activeCategory]) return <WizardPanel categorySlug={activeCategory} onAdd={handleAdd} />;
-    // Product-based customizable (Sandwich, Tex-Mex): pick product then customize
-    const CUSTOMIZABLE = ['sandwiches','texmex','croques'];
+    // Sandwich: pick sandwich → sauce + crudités (no meat)
+    if (activeCategory === 'sandwiches') return <SandwichPanel onAdd={handleAdd} />;
+    // Product-based customizable (Tex-Mex, Croques): pick product then customize
+    const CUSTOMIZABLE = ['texmex','croques'];
     if (CUSTOMIZABLE.includes(activeCategory)) return <CustomizablePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
     return <SimplePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
   };
