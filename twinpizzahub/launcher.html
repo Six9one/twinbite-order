@@ -185,10 +185,6 @@ webview.active { display:flex; }
   </div>
   <div class="header-date" id="header-date"></div>
   <div class="stat-block">
-    <div class="stat-val" id="stat-revenue">0.00€</div>
-    <div class="stat-label">Chiffre (jour)</div>
-  </div>
-  <div class="stat-block">
     <div class="stat-val" id="stat-orders">0</div>
     <div class="stat-label">Commandes</div>
   </div>
@@ -511,13 +507,14 @@ function updateStats() {
   const delivery = todayOrders.filter(o => o.order_type === 'livraison').length;
   const count    = todayOrders.length;
 
-  document.getElementById('stat-revenue').textContent = revenue.toFixed(2) + '€';
-  document.getElementById('stat-orders').textContent  = count;
-  document.getElementById('stat-pending').textContent = pending;
-  document.getElementById('p-revenue').textContent    = revenue.toFixed(2) + '€';
-  document.getElementById('p-orders').textContent     = count;
-  document.getElementById('p-pending').textContent    = pending;
-  document.getElementById('p-delivery').textContent   = delivery;
+  const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setText('stat-revenue', revenue.toFixed(2) + '€'); // removed from header — safe no-op
+  setText('stat-orders',  count);
+  setText('stat-pending', pending);
+  setText('p-revenue',    revenue.toFixed(2) + '€');
+  setText('p-orders',     count);
+  setText('p-pending',    pending);
+  setText('p-delivery',   delivery);
 
   const badge = document.getElementById('badge-orders');
   if (pending > 0) { badge.style.display = 'inline'; badge.textContent = pending; }

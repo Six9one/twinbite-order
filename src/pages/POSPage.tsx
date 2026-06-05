@@ -7,6 +7,7 @@ import { useMeatOptions, useSauceOptions, useSupplementOptions } from '@/hooks/u
 import { calculateTVA, applyPizzaPromotions } from '@/utils/promotions';
 import { pizzaPrices, cheeseSupplementOptions, menuOptionPrices } from '@/data/menu';
 import { crepes, gaufres, boissons, frites as staticFrites, croques as staticCroques } from '@/data/menu';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { toast } from 'sonner';
 
 type OrderType = 'surplace' | 'emporter' | 'livraison';
@@ -37,23 +38,52 @@ const S = {
 };
 
 // ── Product tile ─────────────────────────────────────────────────────────────
-function ProductTile({ item, selected, onClick, badge }: { item:any; selected:boolean; onClick:()=>void; badge?:string }) {
+function ProductTile({ item, selected, onClick, badge, compact }: { item:any; selected:boolean; onClick:()=>void; badge?:string; compact?:boolean }) {
+  // Support both camelCase (imageUrl) and snake_case (image_url from DB)
+  const img = item.imageUrl || item.image_url;
+  const imgSize = compact ? 52 : 72;
   return (
     <button onClick={onClick} style={{
       background: selected ? '#f59e0b22' : S.card,
       border:     `${selected ? 2 : 1}px solid ${selected ? S.accent : '#2d3748'}`,
-      borderRadius:10, padding:'10px 8px', cursor:'pointer', textAlign:'center',
+      borderRadius:10, padding: compact ? '6px 5px' : '10px 8px', cursor:'pointer', textAlign:'center',
       transition:'all .12s', position:'relative',
     }}>
       {badge && <span style={{ position:'absolute', top:4, left:4, background:'#ef4444', color:'#fff', fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:99 }}>{badge}</span>}
       {selected && <span style={{ position:'absolute', top:4, right:4, background:S.accent, color:'#000', fontSize:10, fontWeight:800, width:18, height:18, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center' }}>✓</span>}
-      {item.imageUrl
-        ? <img src={item.imageUrl} alt={item.name} style={{ width:72, height:72, borderRadius:8, objectFit:'cover', display:'block', margin:'0 auto 6px' }} />
-        : <div style={{ width:72, height:72, borderRadius:8, background:'#111827', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, margin:'0 auto 6px' }}>{CAT_ICON[item.category||''] || '🍽️'}</div>
+      {img
+        ? <img src={img} alt={item.name} style={{ width:imgSize, height:imgSize, borderRadius:8, objectFit:'cover', display:'block', margin:`0 auto ${compact?4:6}px` }} />
+        : <div style={{ width:imgSize, height:imgSize, borderRadius:8, background:'#111827', display:'flex', alignItems:'center', justifyContent:'center', fontSize:compact?22:28, margin:`0 auto ${compact?4:6}px` }}>{CAT_ICON[item.category||''] || '🍽️'}</div>
       }
-      <div style={{ fontSize:11, fontWeight:700, color: selected ? S.accent : S.text, lineHeight:1.2, marginBottom:2 }}>{item.name}</div>
-      {item.price > 0 && <div style={{ fontSize:11, color:'#f59e0b', fontWeight:800 }}>{item.price.toFixed(2)}€</div>}
+      <div style={{ fontSize: compact?10:11, fontWeight:700, color: selected ? S.accent : S.text, lineHeight:1.15, marginBottom:2 }}>{item.name}</div>
+      {item.price > 0 && <div style={{ fontSize: compact?10:11, color:'#f59e0b', fontWeight:800 }}>{item.price.toFixed(2)}€</div>}
     </button>
+  );
+}
+
+// ── Draggable resize handle (between panels) ──────────────────────────────────
+function ResizeBar({ vertical }: { vertical?: boolean }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <PanelResizeHandle>
+      <div
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          ...(vertical
+            ? { height: 8, width: '100%', cursor: 'row-resize' }
+            : { width: 8, height: '100%', cursor: 'col-resize' }),
+          background: hover ? S.accent + '55' : '#1f2937',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'background .12s', flexShrink: 0,
+        }}
+      >
+        <div style={{
+          ...(vertical ? { width: 28, height: 3 } : { width: 3, height: 28 }),
+          borderRadius: 99, background: hover ? S.accent : '#4b5563',
+        }} />
+      </div>
+    </PanelResizeHandle>
   );
 }
 
@@ -120,10 +150,10 @@ function PizzaPanel({ orderType, onAdd }: { orderType:OrderType; onAdd:(item:any
         {promoLabel && <span style={{ marginLeft:'auto', background:'#f59e0b22', color:S.accent, border:`1px solid #f59e0b44`, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>🎁 {promoLabel}</span>}
       </div>
 
-      {/* Grid */}
-      <div style={{ flex:1, overflow:'auto', padding:'12px 14px' }}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))', gap:8 }}>
-          {pizzaList.map((p:any) => <ProductTile key={p.id} item={{...p, price:basePrice}} selected={sel?.id===p.id} onClick={()=>setSel(sel?.id===p.id?null:p)} />)}
+      {/* Grid — compact so all pizzas fit on one page */}
+      <div style={{ flex:1, overflow:'auto', padding:'10px 12px' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(82px,1fr))', gap:6 }}>
+          {pizzaList.map((p:any) => <ProductTile key={p.id} compact item={{...p, price:basePrice}} selected={sel?.id===p.id} onClick={()=>setSel(sel?.id===p.id?null:p)} />)}
         </div>
       </div>
 
@@ -375,10 +405,15 @@ function POSContent() {
   };
 
   return (
-    <div style={{ display:'flex', height:'100vh', minHeight:0, background:S.bg, color:S.text, fontFamily:'Segoe UI,system-ui,sans-serif', overflow:'hidden' }}>
+    <PanelGroup
+      direction="horizontal"
+      autoSaveId="pos-layout-h"
+      style={{ height:'100vh', background:S.bg, color:S.text, fontFamily:'Segoe UI,system-ui,sans-serif' }}
+    >
 
-      {/* ── LEFT ── */}
-      <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0, borderRight:`1px solid ${S.border}`, overflow:'hidden' }}>
+      {/* ── LEFT (resizable) ── */}
+      <Panel defaultSize={72} minSize={45}>
+      <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, overflow:'hidden' }}>
 
         {/* Order type bar */}
         <div style={{ display:'flex', gap:8, padding:'10px 14px', background:'#111827', borderBottom:`1px solid ${S.border}`, alignItems:'center', flexShrink:0 }}>
@@ -413,9 +448,14 @@ function POSContent() {
           {renderPanel()}
         </div>
       </div>
+      </Panel>
 
-      {/* ── RIGHT: Caisse — ALWAYS VISIBLE ── */}
-      <div style={{ width:300, display:'flex', flexDirection:'column', background:'#111827', flexShrink:0 }}>
+      {/* ── Draggable divider ── */}
+      <ResizeBar />
+
+      {/* ── RIGHT: Caisse (resizable, always visible) ── */}
+      <Panel defaultSize={28} minSize={20} maxSize={50}>
+      <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'#111827' }}>
         <div style={{ padding:'12px 14px', borderBottom:`1px solid ${S.border}`, fontSize:14, fontWeight:800, display:'flex', alignItems:'center', gap:8 }}>
           🛒 Caisse
           {cart.length > 0 && <span style={{ background:S.accent, color:'#000', borderRadius:99, fontSize:11, fontWeight:800, padding:'1px 8px' }}>{cart.reduce((s,i)=>s+i.quantity,0)}</span>}
@@ -472,7 +512,7 @@ function POSContent() {
             <span>TOTAL</span><span>{total.toFixed(2)}€</span>
           </div>
           <div style={{ display:'flex', gap:5, marginBottom:10 }}>
-            {(['especes','cb','en_ligne'] as PayMethod[]).map(m => (
+            {(['especes','cb'] as PayMethod[]).map(m => (
               <button key={m} onClick={()=>setPayMethod(m)} style={{
                 flex:1, padding:'6px 4px', borderRadius:8, border:'none', cursor:'pointer', fontSize:10, fontWeight:700,
                 background: payMethod===m ? '#3b82f622' : '#1f2937',
@@ -494,7 +534,8 @@ function POSContent() {
           </button>
         </div>
       </div>
-    </div>
+      </Panel>
+    </PanelGroup>
   );
 }
 
