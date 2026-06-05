@@ -10,89 +10,111 @@ echo  ^|             TWINPIZZA HUB  -  DEMARRAGE                     ^|
 echo  +--------------------------------------------------------------+
 echo.
 
-:: Verifier Node.js
+:: ===================================================
+:: ETAPE 0 - Creer les fichiers .env si absents
+:: (fait a chaque lancement pour etre sur)
+:: ===================================================
+echo  Verification des fichiers de configuration...
+
+if not exist "%~dp0.env" goto :write_root_env
+for %%A in ("%~dp0.env") do if %%~zA LSS 20 goto :write_root_env
+goto :check_printenv
+
+:write_root_env
+echo  Creation du fichier .env principal...
+(
+echo VITE_SUPABASE_PROJECT_ID=hsylnrzxeyqxczdalurj
+echo VITE_SUPABASE_URL=https://hsylnrzxeyqxczdalurj.supabase.co
+echo VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzeWxucnp4ZXlxeGN6ZGFsdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4ODIzMDksImV4cCI6MjA4MTQ1ODMwOX0.LmDeLvw6vHO7mjHi2qWeWwIEaNDutZ1spsahUGxEAnc
+echo VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzeWxucnp4ZXlxeGN6ZGFsdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4ODIzMDksImV4cCI6MjA4MTQ1ODMwOX0.LmDeLvw6vHO7mjHi2qWeWwIEaNDutZ1spsahUGxEAnc
+echo VITE_MAPBOX_PUBLIC_TOKEN=pk.eyJ1Ijoic2FwaG91dSIsImEiOiJjbWxkeGx3ZnExZGd6M2dwa29jbWQxY280In0.58_v8unUiqxjtjr-QhalMw
+echo PRINTER_IP=192.168.1.100
+echo PRINTER_PORT=9100
+) > "%~dp0.env"
+echo  OK  .env cree.
+
+:check_printenv
+if not exist "%~dp0print-server\.env" goto :write_printenv
+for %%A in ("%~dp0print-server\.env") do if %%~zA LSS 20 goto :write_printenv
+goto :check_node
+
+:write_printenv
+echo  Creation de print-server/.env...
+(
+echo SUPABASE_URL=https://hsylnrzxeyqxczdalurj.supabase.co
+echo SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzeWxucnp4ZXlxeGN6ZGFsdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4ODIzMDksImV4cCI6MjA4MTQ1ODMwOX0.LmDeLvw6vHO7mjHi2qWeWwIEaNDutZ1spsahUGxEAnc
+echo PRINTER_IPS=192.168.1.1,192.168.1.200
+echo PRINTER_PORT=9100
+echo USB_PRINTER_NAME=
+) > "%~dp0print-server\.env"
+echo  OK  print-server/.env cree.
+
+:: ===================================================
+:: ETAPE 1 - Verifier Node.js
+:: ===================================================
+:check_node
 node --version >nul 2>&1
 if errorlevel 1 goto :no_node
 
-:: Verifier packages Electron
+:: ===================================================
+:: ETAPE 2 - Installer packages si manquants
+:: ===================================================
 if not exist "%~dp0twinpizzahub\node_modules\electron" goto :install_hub
-
-:: Verifier build
-if not exist "%~dp0dist\index.html" goto :do_build
-
-:: Verifier packages print-server
 if not exist "%~dp0print-server\node_modules\express" goto :install_print
+goto :check_build
 
-:: Verifier print-server/.env
-if not exist "%~dp0print-server\.env" goto :fix_printenv
-for /f %%A in ("%~dp0print-server\.env") do if %%~zA==0 goto :fix_printenv
-goto :launch
+:install_hub
+echo  Installation des packages Hub (premiere fois)...
+cd /d "%~dp0twinpizzahub"
+call npm install
+cd /d "%~dp0"
 
-:fix_printenv
-echo  Creation de print-server/.env depuis la racine...
-if exist "%~dp0setup-printenv.ps1" (
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0setup-printenv.ps1" "%~dp0.env" "%~dp0print-server\.env"
+:install_print
+if exist "%~dp0print-server\package.json" (
+    echo  Installation packages impression (premiere fois)...
+    cd /d "%~dp0print-server"
+    call npm install
+    cd /d "%~dp0"
 )
-if not exist "%~dp0print-server\.env" (
-    echo  ATTENTION : Copiez vos cles Supabase dans print-server\.env
-    echo  Voir le fichier print-server\.env.example pour le format
-)
 
-goto :launch
+:: ===================================================
+:: ETAPE 3 - Build si absent
+:: ===================================================
+:check_build
+if exist "%~dp0dist\index.html" goto :launch
+echo  Premiere utilisation - Construction de l'application (2-4 min)...
+call npm install
+call npm run build
+if errorlevel 1 goto :build_error
+echo  OK  Application construite.
+
+:: ===================================================
+:: LANCEMENT
+:: ===================================================
+:launch
+echo  OK  Tout est pret. Lancement de TwinPizza Hub...
+echo.
+echo  (La fenetre Hub s'ouvre dans quelques secondes)
+echo  (Ne fermez pas cette fenetre noire)
+echo.
+cd /d "%~dp0twinpizzahub"
+"%~dp0twinpizzahub\node_modules\electron\dist\electron.exe" .
+set EXIT_CODE=%ERRORLEVEL%
+cd /d "%~dp0"
+if !EXIT_CODE! NEQ 0 (
+    echo.
+    echo  ERREUR : L'application a quitte avec le code !EXIT_CODE!
+    echo  Solutions : relancer ce script ou executer METTRE_A_JOUR.bat
+    pause
+)
+exit /b !EXIT_CODE!
 
 :no_node
 echo  ERREUR : Node.js introuvable. Lancez d'abord INSTALLER.bat
 pause
 exit /b 1
 
-:install_hub
-echo  Installation des packages Hub...
-cd /d "%~dp0twinpizzahub"
-call npm install --silent
-cd /d "%~dp0"
-
-:install_print
-if exist "%~dp0print-server\package.json" (
-    echo  Installation packages impression...
-    cd /d "%~dp0print-server"
-    call npm install --silent
-    cd /d "%~dp0"
-)
-if not exist "%~dp0dist\index.html" goto :do_build
-goto :launch
-
-:do_build
-echo  Premiere utilisation - Construction de l'application (2-4 min)...
-call npm install --silent
-call npm run build
-if errorlevel 1 (
-    echo  ERREUR lors du build. Lancez INSTALLER.bat
-    pause
-    exit /b 1
-)
-echo  OK  Application construite.
-
-:launch
-echo  OK  Tout est pret. Lancement de TwinPizza Hub...
-echo.
-echo  (La fenetre Hub s'ouvre dans quelques secondes)
-echo  (Ne fermez pas cette fenetre)
-echo.
-
-cd /d "%~dp0twinpizzahub"
-"%~dp0twinpizzahub\node_modules\electron\dist\electron.exe" .
-set EXIT_CODE=%ERRORLEVEL%
-cd /d "%~dp0"
-
-if !EXIT_CODE! NEQ 0 (
-    echo.
-    echo  L'application a quitte avec une erreur (code: !EXIT_CODE!)
-    echo.
-    echo  Solutions :
-    echo    1. Relancer ce script
-    echo    2. Si probleme de build : lancez METTRE_A_JOUR.bat
-    echo    3. Si premiere fois    : lancez INSTALLER.bat
-    echo.
-    pause
-)
-exit /b !EXIT_CODE!
+:build_error
+echo  ERREUR lors du build. Lancez INSTALLER.bat
+pause
+exit /b 1

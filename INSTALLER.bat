@@ -105,53 +105,35 @@ pause
 exit /b 1
 
 :: ===================================================
-:: ETAPE 4 - Fichiers .env
+:: ETAPE 4 - Fichiers .env (crees avec les vraies cles)
 :: ===================================================
 :check_env
 echo.
-echo  [4/7] Verification des fichiers de configuration...
+echo  [4/7] Creation des fichiers de configuration...
 
-if exist "%~dp0.env" goto :env_ok
-echo  ATTENTION : Fichier .env absent.
-if exist "%~dp0.env.example" (
-    copy "%~dp0.env.example" "%~dp0.env" >nul
-    echo  OK  .env cree depuis .env.example
-)
-echo.
-echo  IMPORTANT : Editez le fichier .env dans ce dossier.
-echo  Renseignez VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, PRINTER_IP
-echo  Fichier : %~dp0.env
-echo.
-pause
-:env_ok
-echo  OK  Fichier .env present.
+:: Root .env
+echo  Ecriture de .env...
+(
+echo VITE_SUPABASE_PROJECT_ID=hsylnrzxeyqxczdalurj
+echo VITE_SUPABASE_URL=https://hsylnrzxeyqxczdalurj.supabase.co
+echo VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzeWxucnp4ZXlxeGN6ZGFsdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4ODIzMDksImV4cCI6MjA4MTQ1ODMwOX0.LmDeLvw6vHO7mjHi2qWeWwIEaNDutZ1spsahUGxEAnc
+echo VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzeWxucnp4ZXlxeGN6ZGFsdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4ODIzMDksImV4cCI6MjA4MTQ1ODMwOX0.LmDeLvw6vHO7mjHi2qWeWwIEaNDutZ1spsahUGxEAnc
+echo VITE_MAPBOX_PUBLIC_TOKEN=pk.eyJ1Ijoic2FwaG91dSIsImEiOiJjbWxkeGx3ZnExZGd6M2dwa29jbWQxY280In0.58_v8unUiqxjtjr-QhalMw
+echo PRINTER_IP=192.168.1.100
+echo PRINTER_PORT=9100
+) > "%~dp0.env"
+echo  OK  .env cree.
 
-:: Creer print-server/.env si absent
-if exist "%~dp0print-server\.env" goto :check_printenv_content
-goto :create_printenv
-
-:check_printenv_content
-:: Verifier que le fichier n'est pas vide
-for %%A in ("%~dp0print-server\.env") do if %%~zA GTR 10 goto :printenv_ok
-
-:create_printenv
-echo  Creation de print-server/.env depuis les cles Supabase...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0setup-printenv.ps1" "%~dp0.env" "%~dp0print-server\.env" 2>nul
-:: Verifier si ca a marche
-if exist "%~dp0print-server\.env" (
-    for %%A in ("%~dp0print-server\.env") do if %%~zA GTR 10 goto :printenv_ok
-)
-:: Fallback : copier .env.example qui a les vraies cles
-if exist "%~dp0print-server\.env.example" (
-    copy "%~dp0print-server\.env.example" "%~dp0print-server\.env" >nul
-    echo  OK  print-server/.env cree depuis .env.example
-    goto :printenv_ok
-)
-echo  ATTENTION : Impossible de creer print-server/.env automatiquement.
-echo  Creez-le manuellement : copiez print-server\.env.example en print-server\.env
-
-:printenv_ok
-echo  OK  print-server/.env present.
+:: print-server/.env
+echo  Ecriture de print-server/.env...
+(
+echo SUPABASE_URL=https://hsylnrzxeyqxczdalurj.supabase.co
+echo SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzeWxucnp4ZXlxeGN6ZGFsdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4ODIzMDksImV4cCI6MjA4MTQ1ODMwOX0.LmDeLvw6vHO7mjHi2qWeWwIEaNDutZ1spsahUGxEAnc
+echo PRINTER_IPS=192.168.1.1,192.168.1.200
+echo PRINTER_PORT=9100
+echo USB_PRINTER_NAME=
+) > "%~dp0print-server\.env"
+echo  OK  print-server/.env cree.
 
 :: ===================================================
 :: ETAPE 5 - npm install
