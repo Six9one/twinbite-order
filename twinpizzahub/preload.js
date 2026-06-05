@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld('twinHub', {
   // Orders
   onNewOrder: (cb) => ipcRenderer.on('new-order', (_, order) => cb(order)),
 
+  // WhatsApp review (sent 40 min after confirmation)
+  onWhatsAppReviewSent: (cb) => ipcRenderer.on('whatsapp-review-sent', (_, data) => cb(data)),
+
   platform: process.platform,
   appUrl: process.argv.includes('--dev') ? 'http://localhost:8080' : 'http://localhost:3456',
 });

@@ -314,9 +314,13 @@ webview.active { display:flex; }
         <div id="wa-connected-section" style="display:none;background:#22c55e11;border:1px solid #22c55e33;border-radius:14px;padding:20px;margin-bottom:16px;text-align:center;">
           <div style="font-size:32px;margin-bottom:8px;">✅</div>
           <div style="font-size:15px;font-weight:700;color:#22c55e;">WhatsApp connecté</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px;">
-            Les messages de confirmation sont envoyés automatiquement<br>
-            à chaque commande reçue — même quand vous êtes sur une autre page.
+          <div style="height:1px;background:#22c55e33;margin:12px 0;"></div>
+          <div style="text-align:left;font-size:12.5px;color:var(--text);line-height:1.7;">
+            <div>📨 <strong>Confirmation</strong> → immédiat à chaque commande</div>
+            <div>⭐ <strong>Avis Google</strong> → 40 min après chaque commande</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:10px;">
+            Les messages sont envoyés même quand vous êtes sur le Point de Vente.
           </div>
         </div>
       </div>
@@ -653,15 +657,20 @@ function handleWAQR(qr) {
   if (dot) dot.className = 'nav-status s-amber';
 }
 
-// Log a WhatsApp message send event
-function logWAMessage(order, success) {
+// Log a WhatsApp message send event — type: 'confirmation' | 'review'
+function logWAMessage(order, success, type) {
+  type = type || 'confirmation';
   const time = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
-  waLog.unshift({ time, order: order.order_number, name: order.customer_name, success });
+  waLog.unshift({ time, order: order.order_number, name: order.customer_name, success, type });
   const body = document.getElementById('wa-log-body');
+  const typeBadge = (t) => t === 'review'
+    ? '<span style="font-size:10px;background:#f59e0b22;color:#f59e0b;padding:1px 6px;border-radius:4px;">⭐ Avis Google</span>'
+    : '<span style="font-size:10px;background:#22c55e22;color:#22c55e;padding:1px 6px;border-radius:4px;">✅ Confirmation</span>';
   body.innerHTML = waLog.slice(0,20).map(m => `
     <div class="wa-msg">
       <span class="time">${m.time}</span>
-      <span class="text">📨 #${m.order} — ${m.name}</span>
+      <span class="text">${m.type === 'review' ? '⭐' : '📨'} #${m.order} — ${m.name || ''}</span>
+      ${typeBadge(m.type)}
       <span class="${m.success ? 'badge-ok' : 'badge-err'}">${m.success ? 'Envoyé' : 'Échec'}</span>
     </div>`).join('');
 }
@@ -703,9 +712,16 @@ async function testPrint() {
 if (window.twinHub) {
   window.twinHub.onNewOrder((order) => {
     handleNewOrder(order);
-    // Log WA send attempt (result unknown at renderer, assume sent if WA connected)
-    setTimeout(() => logWAMessage(order, true), 1000);
+    // Log confirmation send attempt (assume sent if WA connected)
+    setTimeout(() => logWAMessage(order, true, 'confirmation'), 1000);
   });
+
+  // Review message sent 40 min later — logged from main process
+  if (window.twinHub.onWhatsAppReviewSent) {
+    window.twinHub.onWhatsAppReviewSent((data) => {
+      logWAMessage(data, data.success, 'review');
+    });
+  }
 }
 </script>
 </body>

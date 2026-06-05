@@ -25,6 +25,11 @@ let whatsappStatus = 'disconnected'; // disconnected | connecting | connected | 
 let lastQR         = null; // store last QR so we can re-send it when panel opens
 let supabase       = null;
 
+// ─── Google review timers (in-memory) ──────────────────────────────────────────
+// orderId -> setTimeout handle. Fires 40 min after a confirmation is sent.
+const reviewTimers = new Map();
+const REVIEW_DELAY_MS = 40 * 60 * 1000; // 40 minutes
+
 // ─── Window registry ──────────────────────────────────────────────────────────
 const windows = {};
 let launcherWin = null;
@@ -70,12 +75,13 @@ function listenForOrders() {
         }).show();
       } catch(_) {}
 
-      // WhatsApp confirmation
-      if (order.customer_phone && order.customer_phone !== 'borne' && whatsappStatus === 'connected') {
+      // WhatsApp confirmation + scheduled Google review (40 min later)
+      const realPhone = order.customer_phone && !['borne','pos','POS'].includes(order.customer_phone);
+      if (realPhone && whatsappStatus === 'connected') {
         const msg = generateOrderMessage(order);
-        sendWhatsAppMessage(order.customer_phone, msg).catch(e =>
-          console.error('WhatsApp send failed:', e.message)
-        );
+        sendWhatsAppMessage(order.customer_phone, msg)
+          .then(() => scheduleReviewMessage(order))
+          .catch(e => console.error('WhatsApp send failed:', e.message));
       }
 
       // Auto-print handled by the existing print server on localhost:3001
@@ -171,18 +177,85 @@ async function sendWhatsAppMessage(phone, message) {
   console.log('✅ WhatsApp sent to:', jid);
 }
 
+// Extract a friendly first name from the order
+function getFirstName(order) {
+  const raw = (order.customer_name || '').trim();
+  if (!raw || raw.startsWith('[POS]')) return '';
+  return raw.split(/\s+/)[0];
+}
+
+// ── SHORT, warm confirmation message ──────────────────────────────────────────
 function generateOrderMessage(order) {
-  const types = { livraison: '🚗 Livraison', emporter: '🛍️ À emporter', surplace: '🍽️ Sur place' };
-  const items = Array.isArray(order.items) ? order.items : [];
-  let msg = `🍕 *TWIN PIZZA* — Confirmation\n\n`;
-  msg += `📋 *Commande #${order.order_number}*\n`;
-  msg += `📦 ${types[order.order_type] || order.order_type}\n\n`;
-  msg += `*Votre commande:*\n`;
-  items.forEach(i => { msg += `  • ${i.quantity}x ${i.item?.name || i.name || 'Produit'}\n`; });
-  msg += `\n💰 *Total: ${(order.total || 0).toFixed(2)}€*\n`;
-  msg += order.order_type === 'livraison' ? `⏱️ Livraison estimée: 30-45 min\n` : `⏱️ Prêt dans: 15-25 min\n`;
-  msg += `\nMerci pour votre confiance! 🙏\ntwinpizza.fr`;
+  const meta = {
+    livraison: { emoji: '🚗', label: 'Livraison',  delay: '30/45 min' },
+    emporter:  { emoji: '🛍️', label: 'À emporter', delay: '15/20 min' },
+    surplace:  { emoji: '🍽️', label: 'Sur place',  delay: '15/20 min' },
+  }[order.order_type] || { emoji: '📦', label: order.order_type || 'Commande', delay: '15/20 min' };
+
+  const name  = getFirstName(order);
+  const hello = name ? ` ${name}` : '';
+  const phone = encodeURIComponent(order.customer_phone || '');
+
+  let msg = `🍕 *Twin Pizza* — Merci${hello} !\n\n`;
+  msg += `Votre commande *#${order.order_number}* est bien reçue ✅\n`;
+  msg += `${meta.emoji} ${meta.label} — prêt dans *${meta.delay}*\n\n`;
+  msg += `Suivre : twinpizza.fr/ticket?phone=${phone}\n`;
+  msg += `À tout de suite ! 😊`;
   return msg;
+}
+
+// ── SHORT Google review message (sent 40 min later) ───────────────────────────
+function generateReviewMessage(order) {
+  const name  = getFirstName(order);
+  const hello = name ? ` ${name}` : '';
+  // TODO: remplace par le vrai lien Google Maps du restaurant
+  const reviewLink = 'https://g.page/r/PLACEHOLDER_GOOGLE_REVIEW_ID/review';
+
+  let msg = `Bonjour${hello} ! 😊\n\n`;
+  msg += `Votre commande était bonne ?\n`;
+  msg += `On serait trop contents d'avoir votre avis ⭐ :\n`;
+  msg += `${reviewLink}\n\n`;
+  msg += `Merci d'avance ! 🙏 *Twin Pizza*`;
+  return msg;
+}
+
+// ── Schedule the review message 40 min after the confirmation ─────────────────
+function scheduleReviewMessage(order) {
+  const phone = order.customer_phone;
+  if (!phone) return;
+  // Avoid duplicate timers for the same order
+  if (reviewTimers.has(order.id)) return;
+
+  console.log(`⭐ Review scheduled for #${order.order_number} in 40 min`);
+  const handle = setTimeout(() => {
+    reviewTimers.delete(order.id);
+    // Only send if WhatsApp is STILL connected
+    if (whatsappStatus !== 'connected') {
+      console.log(`⭐ Review skipped for #${order.order_number} — WhatsApp not connected`);
+      notifyReviewSent(order, false);
+      return;
+    }
+    const msg = generateReviewMessage(order);
+    sendWhatsAppMessage(phone, msg)
+      .then(() => {
+        console.log(`⭐ Review sent for #${order.order_number}`);
+        notifyReviewSent(order, true);
+      })
+      .catch(e => {
+        console.error('Review send failed:', e.message);
+        notifyReviewSent(order, false);
+      });
+  }, REVIEW_DELAY_MS);
+
+  reviewTimers.set(order.id, handle);
+}
+
+// ── Tell the launcher UI that a review message was sent ───────────────────────
+function notifyReviewSent(order, success) {
+  const payload = { order_number: order.order_number, customer_name: order.customer_name, success };
+  if (launcherWin && !launcherWin.isDestroyed()) {
+    launcherWin.webContents.send('whatsapp-review-sent', payload);
+  }
 }
 
 // Printing handled by PrinterManager in printer.js
@@ -231,13 +304,33 @@ function startVite() {
 }
 
 // ─── Spawn print server ───────────────────────────────────────────────────────
+// First check if a print server is already running (started by LANCER_TWINPIZZA.bat)
 function startPrintServer() {
+  // Ping port 3001 — if already running, skip spawning
+  const testReq = http.get('http://localhost:3001/status', (res) => {
+    if (res.statusCode === 200) {
+      console.log('🖨️ Print server already running on port 3001 — skipping spawn.');
+      return;
+    }
+    spawnPrintServer();
+  });
+  testReq.on('error', () => {
+    // Not running — spawn it
+    spawnPrintServer();
+  });
+  testReq.setTimeout(1000, () => {
+    testReq.destroy();
+    spawnPrintServer();
+  });
+}
+
+function spawnPrintServer() {
   const serverPath = path.join(__dirname, '..', 'print-server', 'server.js');
   if (!fs.existsSync(serverPath)) {
     console.warn('⚠️ Print server not found at', serverPath);
     return;
   }
-  console.log('🖨️ Starting print server...');
+  console.log('🖨️ Spawning print server...');
   printServerProcess = spawn('node', [serverPath], {
     cwd: path.join(__dirname, '..', 'print-server'),
     stdio: 'pipe',
@@ -246,9 +339,11 @@ function startPrintServer() {
   printServerProcess.stdout.on('data', d => process.stdout.write('[PRINT] ' + d));
   printServerProcess.stderr.on('data', d => process.stderr.write('[PRINT ERR] ' + d));
   printServerProcess.on('exit', (code) => {
-    console.log(`🖨️ Print server exited (${code}) — restarting in 5s...`);
-    printServerProcess = null;
-    setTimeout(startPrintServer, 5000); // auto-restart
+    if (code !== 0) {
+      console.log(`🖨️ Print server exited (${code}) — restarting in 5s...`);
+      printServerProcess = null;
+      setTimeout(startPrintServer, 5000);
+    }
   });
 }
 
