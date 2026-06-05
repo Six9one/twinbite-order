@@ -23,6 +23,8 @@ if not errorlevel 1 (
 :: git pull
 echo.
 echo  [1/3] Telechargement des derniers changements (git pull)...
+git checkout -- twinpizzahub/package-lock.json >nul 2>&1
+git checkout -- package-lock.json >nul 2>&1
 git pull
 if errorlevel 1 (
     echo  ATTENTION : git pull a echoue. On continue avec la version locale.
@@ -61,6 +63,7 @@ echo  +--------------------------------------------------------------+
 echo  ^|  MISE A JOUR TERMINEE !                                     ^|
 echo  +--------------------------------------------------------------+
 echo.
-set /p LAUNCH="  Lancer TwinPizza Hub maintenant ? (O/N) : "
-if /i "!LAUNCH!"=="O" start "" "%~dp0LANCER_TWINPIZZA.bat"
+echo  Lancement automatique dans 3 secondes...
+timeout /t 3 /nobreak >nul
+start "" "%~dp0LANCER_TWINPIZZA.bat"
 exit /b 0
