@@ -98,28 +98,47 @@ async function initWhatsApp() {
     console.log('💬 Starting WhatsApp (Baileys)...');
     broadcastWA('connecting');
 
-    const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = await import('@whiskeysockets/baileys');
+    // Use the new "baileys" package + the CURRENT WhatsApp protocol version.
+    // Fetching the latest version fixes the "405 connection closed, no QR" bug
+    // that old/hardcoded versions hit when WhatsApp updates its servers.
+    const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = await import('baileys');
     const authPath = path.join(app.getPath('userData'), 'whatsapp-auth');
     const { state, saveCreds } = await useMultiFileAuthState(authPath);
+
+    let waVersion;
+    try {
+      const v = await fetchLatestBaileysVersion();
+      waVersion = v.version;
+      console.log('💬 WhatsApp protocol version:', waVersion.join('.'));
+    } catch (e) {
+      console.warn('Could not fetch WA version, using default:', e.message);
+    }
 
     const noop = () => {};
     const silentLogger = { trace:noop, debug:noop, info:noop, warn:noop, error:noop, fatal:noop, level:'silent', child(){ return this; } };
 
     whatsappClient = makeWASocket({
       auth: state,
-      printQRInTerminal: true, // show in terminal as backup
       browser: ['Twin Pizza Hub', 'Desktop', '1.0.0'],
       logger: silentLogger,
+      ...(waVersion ? { version: waVersion } : {}),
     });
 
-    whatsappClient.ev.on('connection.update', (update) => {
+    whatsappClient.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect, qr } = update;
 
       if (qr) {
         whatsappStatus = 'qr';
-        lastQR = qr; // store raw string — renderer will render it
         console.log('📱 QR ready — sending to UI...');
-        broadcastWA('qr', qr);
+        // Render the QR locally to a data URL so it works WITHOUT internet
+        // (no dependency on an external QR image API).
+        try {
+          const QRCode = require('qrcode');
+          lastQR = await QRCode.toDataURL(qr, { margin: 1, width: 280 });
+        } catch (e) {
+          lastQR = qr; // fallback to raw string (renderer uses external API)
+        }
+        broadcastWA('qr', lastQR);
       }
 
       if (connection === 'open') {

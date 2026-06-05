@@ -60,7 +60,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.2",
-    "@whiskeysockets/baileys": "^6.7.0",
+    "baileys": "^7.0.0-rc13",
     "dotenv": "^16.4.5",
     "electron-is-dev": "^3.0.0",
     "electron-store": "^8.1.0",
