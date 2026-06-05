@@ -177,20 +177,23 @@ function PizzaPanel({ orderType, onAdd }: { orderType:OrderType; onAdd:(item:any
 
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
-      {/* Size selector — Senior / Mega on row 1, Menu Midi under Senior */}
-      <div style={{ padding:'10px 14px', borderBottom:`1px solid ${S.border}`, background:'#111827', flexShrink:0 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-          {PIZZA_SIZES.map((s, i) => (
+      {/* Size selector — single compact row, colour-coded per size */}
+      <div style={{ display:'flex', gap:6, padding:'8px 12px', borderBottom:`1px solid ${S.border}`, background:S.panel, flexShrink:0 }}>
+        {PIZZA_SIZES.map((s) => {
+          const active = size === s.id;
+          return (
             <button key={s.id} onClick={()=>setSize(s.id)} style={{
-              ...S.btn, padding:'9px 16px', fontWeight:800, fontSize:13, border:'none',
-              gridColumn: i === 2 ? '1 / 2' : 'auto',  // Menu Midi sits under Senior
-              background: size===s.id ? s.color : '#1f2937',
-              color: size===s.id ? '#fff' : S.muted,
+              flex:1, padding:'7px 6px', borderRadius:8, cursor:'pointer', fontWeight:800, fontSize:12,
+              lineHeight:1.2, transition:'all .12s',
+              border:`1.5px solid ${s.color}`,
+              background: active ? s.color : s.color + '1e',
+              color: active ? '#fff' : s.color,
+              boxShadow: active ? `0 0 0 2px ${s.color}44` : 'none',
             }}>
-              {s.label} · {s.price}€
+              {s.label}<br/><span style={{ fontSize:11, opacity:.95 }}>{s.price}€</span>
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       {/* Grid — ONE page: tomate=red tiles, creme=blue tiles */}
