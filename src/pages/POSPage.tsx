@@ -875,7 +875,7 @@ function POSContent() {
   const { addToCart } = useOrder();
   const handleAdd = (item: any, customization: any, calculatedPrice: number) => {
     addToCart(item, 1, customization, calculatedPrice);
-    toast.success(`✅ ${item.name} ajouté`);
+    // No toast on add — the cart on the right already shows it instantly
   };
 
   const handleSubmit = async () => {
