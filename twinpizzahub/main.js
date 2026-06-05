@@ -109,12 +109,15 @@ function handleIncomingOrder(order) {
   if (whatsappStatus !== 'connected') return; // not connected yet — polling will retry
 
   messagedOrders.add(order.id); // mark before send to avoid double-send race
+
+  // Always schedule review — 40 min after order, regardless of WA connection state
+  scheduleReviewMessage(order);
+
   const msg = generateOrderMessage(order);
   sendWhatsAppMessage(order.customer_phone, msg)
     .then(() => {
       console.log('✅ WhatsApp confirmation sent for', order.order_number);
       notifyMessageSent({ type:'confirmation', order, phone:order.customer_phone, message:msg, success:true });
-      scheduleReviewMessage(order);
     })
     .catch(e => {
       console.error('WhatsApp send failed:', e.message);
@@ -352,6 +355,28 @@ function generateReviewMessage(order) {
   return msg;
 }
 
+// ── Send review with retry (up to 10 x 2min if WA disconnected at fire time) ──
+function attemptReviewSend(order, phone, msg, attempt) {
+  if (whatsappStatus !== 'connected') {
+    if (attempt < 10) {
+      console.log(`⭐ Review retry ${attempt+1}/10 for #${order.order_number} in 2 min (WA not connected)`);
+      setTimeout(() => attemptReviewSend(order, phone, msg, attempt + 1), 2 * 60 * 1000);
+    } else {
+      console.log(`⭐ Review abandoned for #${order.order_number} — WhatsApp never reconnected`);
+    }
+    return;
+  }
+  sendWhatsAppMessage(phone, msg)
+    .then(() => {
+      console.log(`⭐ Review sent for #${order.order_number}`);
+      notifyMessageSent({ type:'review', order, phone, message:msg, success:true });
+    })
+    .catch(e => {
+      console.error('Review send failed:', e.message);
+      notifyMessageSent({ type:'review', order, phone, message:msg, success:false });
+    });
+}
+
 // ── Schedule the review message 40 min after the confirmation ─────────────────
 function scheduleReviewMessage(order) {
   const phone = order.customer_phone;
@@ -363,20 +388,7 @@ function scheduleReviewMessage(order) {
   const msg = generateReviewMessage(order);
   const handle = setTimeout(() => {
     reviewTimers.delete(order.id);
-    // Only send if WhatsApp is STILL connected
-    if (whatsappStatus !== 'connected') {
-      console.log(`⭐ Review skipped for #${order.order_number} — WhatsApp not connected`);
-      return;
-    }
-    sendWhatsAppMessage(phone, msg)
-      .then(() => {
-        console.log(`⭐ Review sent for #${order.order_number}`);
-        notifyMessageSent({ type:'review', order, phone, message:msg, success:true });
-      })
-      .catch(e => {
-        console.error('Review send failed:', e.message);
-        notifyMessageSent({ type:'review', order, phone, message:msg, success:false });
-      });
+    attemptReviewSend(order, phone, msg, 0);
   }, REVIEW_DELAY_MS);
 
   reviewTimers.set(order.id, handle);
