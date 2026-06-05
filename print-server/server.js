@@ -64,8 +64,6 @@ const ESCPOS = {
     NORMAL_SIZE: GS + '!' + '\x00',
     UNDERLINE_ON: ESC + '-' + '\x01',
     UNDERLINE_OFF: ESC + '-' + '\x00',
-    UPSIDE_DOWN_ON:  ESC + '{' + '\x01',  // Rotate all text 180° (wall-mounted printer)
-    UPSIDE_DOWN_OFF: ESC + '{' + '\x00',
     CUT: GS + 'V' + '\x00',
     PARTIAL_CUT: GS + 'V' + '\x01',
     FEED: ESC + 'd' + '\x03',
@@ -74,21 +72,6 @@ const ESCPOS = {
     DOUBLE_LINE_42: '='.repeat(42) + '\n',
     DOUBLE_LINE_32: '='.repeat(32) + '\n',
 };
-
-// Reverse ticket line order so title stays on top for wall-mounted upside-down printer.
-// ESC{ rotates each character 180°; this reversal corrects the line order.
-function reverseTicketLines(raw) {
-    const initSeq = ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252 + ESCPOS.UPSIDE_DOWN_ON;
-    const tailSeq = '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
-    let body = raw;
-    if (body.startsWith(initSeq)) body = body.slice(initSeq.length);
-    if (body.endsWith(tailSeq))   body = body.slice(0, -tailSeq.length);
-    const lines = body.split('\n');
-    lines.reverse();
-    // Remove leading blanks that appear after reversal
-    while (lines.length && lines[0] === '') lines.shift();
-    return initSeq + lines.join('\n') + tailSeq;
-}
 
 // Convert French accented characters to Code Page 1252 bytes
 function convertToCP1252(text) {
@@ -257,7 +240,7 @@ function getLine() {
 function formatKitchenTicket(order) {
     const LINE = getLine();
     let t = '';
-    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252 + ESCPOS.UPSIDE_DOWN_ON;
+    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
 
     // Order number + type on same line (like the photo)
     const typeLabels = { livraison: 'LIVR', emporter: 'EMP', surplace: 'SUR PL' };
@@ -397,7 +380,7 @@ function formatKitchenTicket(order) {
     });
 
     t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
-    return convertToCP1252(reverseTicketLines(t));
+    return convertToCP1252(t);
 }
 
 // ============================================
@@ -408,7 +391,7 @@ function formatCounterTicket(order, loyaltyText) {
     const LINE = getLine();
     const TVA_RATE = 10;
     let t = '';
-    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252 + ESCPOS.UPSIDE_DOWN_ON;
+    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
 
     // === HEADER: Business info ===
     t += ESCPOS.CENTER;
@@ -626,7 +609,7 @@ function formatCounterTicket(order, loyaltyText) {
     t += 'Merci de votre visite!\n';
     t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
-    return convertToCP1252(reverseTicketLines(t));
+    return convertToCP1252(t);
 }
 
 // Legacy wrapper for backward compatibility (HACCP endpoints etc.)
@@ -642,7 +625,7 @@ function formatUnifiedTicket(order, loyaltyText) {
     const LINE = getLine();
     const TVA_RATE = 10;
     let t = '';
-    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252 + ESCPOS.UPSIDE_DOWN_ON;
+    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
 
     // === HEADER ===
     t += ESCPOS.CENTER;
@@ -814,7 +797,7 @@ function formatUnifiedTicket(order, loyaltyText) {
     t += '\nMerci de votre visite!\n';
     t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
-    return convertToCP1252(reverseTicketLines(t));
+    return convertToCP1252(t);
 }
 
 // Send data to printer via TCP
@@ -1436,7 +1419,7 @@ function formatDateLabel(data) {
     // Initialize printer and set code page for French characters
     ticket += ESCPOS.INIT;
     ticket += ESCPOS.SET_CODEPAGE_1252;
-    ticket += ESCPOS.UPSIDE_DOWN_ON;
+
 
     // Header
     ticket += ESCPOS.CENTER;
@@ -1494,7 +1477,7 @@ function formatDateLabel(data) {
     ticket += ESCPOS.FEED;
     ticket += ESCPOS.PARTIAL_CUT;
 
-    return convertToCP1252(reverseTicketLines(ticket));
+    return convertToCP1252(ticket);
 }
 // Format FREEZER/CONGÉLATION ticket for ESC/POS printing
 // Shows product info scanned from the original label + freezing details
@@ -1504,7 +1487,7 @@ function formatFreezerTicket(data) {
     let ticket = '';
     ticket += ESCPOS.INIT;
     ticket += ESCPOS.SET_CODEPAGE_1252;
-    ticket += ESCPOS.UPSIDE_DOWN_ON;
+
 
     // Header
     ticket += ESCPOS.CENTER;
@@ -1580,7 +1563,7 @@ function formatFreezerTicket(data) {
     ticket += ESCPOS.FEED;
     ticket += ESCPOS.PARTIAL_CUT;
 
-    return convertToCP1252(reverseTicketLines(ticket));
+    return convertToCP1252(ticket);
 }
 
 // Format HACCP ticket for ESC/POS printing
@@ -1592,7 +1575,7 @@ function formatHACCPTicket(data) {
     // Initialize printer and set code page for French characters
     ticket += ESCPOS.INIT;
     ticket += ESCPOS.SET_CODEPAGE_1252;
-    ticket += ESCPOS.UPSIDE_DOWN_ON;
+
 
     // Header
     ticket += ESCPOS.CENTER;
@@ -1656,7 +1639,7 @@ function formatHACCPTicket(data) {
     ticket += ESCPOS.FEED;
     ticket += ESCPOS.PARTIAL_CUT;
 
-    return convertToCP1252(reverseTicketLines(ticket));
+    return convertToCP1252(ticket);
 }
 
 // Setup Express HTTP server
@@ -2266,17 +2249,12 @@ async function startServer() {
     // Start HTTP server for HACCP printing
     setupHttpServer();
 
-    // 🔄 RECOVERY: On startup, print ALL of today's unprinted orders (no time limit)
-    console.log('\n🔄 Running startup recovery check (all of today)...');
+    // 🔄 RECOVERY: On startup, only recover orders explicitly marked failed in DB.
+    // Do NOT sweep all of today — that causes reprints if printed_orders.json is missing.
+    console.log('\n🔄 Running startup recovery check...');
     setTimeout(async () => {
-        // Recover orders with explicit failed records
-        await recoverMissedPrints();
-        // Sweep ALL of today (since midnight) — catches orders from any offline period
-        const todayMidnight = new Date();
-        todayMidnight.setHours(0, 0, 0, 0);
-        const msToday = Date.now() - todayMidnight.getTime();
-        await pollForUnprintedOrders(msToday);
-    }, 3000); // Wait 3s for realtime to connect first
+        await recoverMissedPrints(); // only orders with printed=false in order_processing_status
+    }, 3000);
 
     // Polling fallback — catches orders missed by realtime (e.g. brief disconnects)
     setInterval(pollForUnprintedOrders, POLL_INTERVAL);
