@@ -127,21 +127,29 @@ pause
 echo  OK  Fichier .env present.
 
 :: Creer print-server/.env si absent
-if exist "%~dp0print-server\.env" goto :printenv_ok
-echo  Creation de print-server/.env...
-set "PS_ENV_FILE=%~dp0print-server\.env"
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0setup-printenv.ps1" "%~dp0.env" "%PS_ENV_FILE%"
-if not exist "%~dp0print-server\.env" (
-    echo  Copie manuelle du .env pour print-server...
-    (
-        echo SUPABASE_URL=
-        echo SUPABASE_ANON_KEY=
-        echo PRINTER_IPS=192.168.1.1,192.168.1.200
-        echo PRINTER_PORT=9100
-        echo USB_PRINTER_NAME=
-    ) > "%~dp0print-server\.env"
-    echo  ATTENTION : Editez print-server\.env et renseignez SUPABASE_URL et SUPABASE_ANON_KEY
+if exist "%~dp0print-server\.env" goto :check_printenv_content
+goto :create_printenv
+
+:check_printenv_content
+:: Verifier que le fichier n'est pas vide
+for %%A in ("%~dp0print-server\.env") do if %%~zA GTR 10 goto :printenv_ok
+
+:create_printenv
+echo  Creation de print-server/.env depuis les cles Supabase...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0setup-printenv.ps1" "%~dp0.env" "%~dp0print-server\.env" 2>nul
+:: Verifier si ca a marche
+if exist "%~dp0print-server\.env" (
+    for %%A in ("%~dp0print-server\.env") do if %%~zA GTR 10 goto :printenv_ok
 )
+:: Fallback : copier .env.example qui a les vraies cles
+if exist "%~dp0print-server\.env.example" (
+    copy "%~dp0print-server\.env.example" "%~dp0print-server\.env" >nul
+    echo  OK  print-server/.env cree depuis .env.example
+    goto :printenv_ok
+)
+echo  ATTENTION : Impossible de creer print-server/.env automatiquement.
+echo  Creez-le manuellement : copiez print-server\.env.example en print-server\.env
+
 :printenv_ok
 echo  OK  print-server/.env present.
 

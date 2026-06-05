@@ -23,6 +23,21 @@ if not exist "%~dp0dist\index.html" goto :do_build
 :: Verifier packages print-server
 if not exist "%~dp0print-server\node_modules\express" goto :install_print
 
+:: Verifier print-server/.env
+if not exist "%~dp0print-server\.env" goto :fix_printenv
+for /f %%A in ("%~dp0print-server\.env") do if %%~zA==0 goto :fix_printenv
+goto :launch
+
+:fix_printenv
+echo  Creation de print-server/.env depuis la racine...
+if exist "%~dp0setup-printenv.ps1" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0setup-printenv.ps1" "%~dp0.env" "%~dp0print-server\.env"
+)
+if not exist "%~dp0print-server\.env" (
+    echo  ATTENTION : Copiez vos cles Supabase dans print-server\.env
+    echo  Voir le fichier print-server\.env.example pour le format
+)
+
 goto :launch
 
 :no_node

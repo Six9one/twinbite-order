@@ -11,28 +11,32 @@ import express from 'express';
 import cors from 'cors';
 
 // Load environment variables
+// Priority: print-server/.env → root .env (fallback, no override)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-config({ path: join(__dirname, '.env') });
+config({ path: join(__dirname, '.env') });                         // print-server/.env
+config({ path: join(__dirname, '..', '.env'), override: false });  // root .env fallback
 
-// Configuration
-// Support both SUPABASE_URL and VITE_SUPABASE_URL (root .env uses VITE_ prefix)
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+// Support SUPABASE_URL (print-server/.env) OR VITE_SUPABASE_URL (root .env)
+const SUPABASE_URL      = (process.env.SUPABASE_URL      || process.env.VITE_SUPABASE_URL      || '').replace(/['"]/g, '').trim();
+const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').replace(/['"]/g, '').trim();
 const PRINTER_IPS = (process.env.PRINTER_IPS || process.env.PRINTER_IP || '').split(',').map(ip => ip.trim()).filter(Boolean);
 const PRINTER_PORT = parseInt(process.env.PRINTER_PORT || '9100', 10);
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
-const SETTINGS_REFRESH_INTERVAL = 300000; // Refresh settings every 5 minutes
-const POLL_INTERVAL = 10000; // Poll for missed orders every 10 seconds
+const SETTINGS_REFRESH_INTERVAL = 300000;
+const POLL_INTERVAL = 10000;
 let lastEventReceivedAt = Date.now();
 
-// Validate configuration — warn but don't exit; Electron auto-restarts us anyway
+// Validate — exit immediately (Electron restarts us in 5s) if keys missing
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error('❌ Missing SUPABASE_URL / SUPABASE_ANON_KEY — check .env in print-server/ or root');
-    console.error('   Will retry in 10s...');
-    setTimeout(() => process.exit(1), 10000); // exit so Electron restarts us
+    console.error('[PRINT ERR] Missing SUPABASE_URL / SUPABASE_ANON_KEY');
+    console.error('[PRINT ERR] Check .env in print-server/ or root .env');
+    console.error('[PRINT ERR] Restarting in 5s...');
+    process.exit(1); // exit now — Electron will restart us
 }
+
+console.log('[PRINT] Supabase URL:', SUPABASE_URL.slice(0, 40) + '...');
 
 // Initialize Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
