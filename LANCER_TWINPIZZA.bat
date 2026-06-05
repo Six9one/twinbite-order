@@ -101,15 +101,13 @@ echo  OK  Build present.
 echo.
 echo  [4/4] Demarrage...
 
-:: Tuer un ancien serveur d'impression si present
+:: Tuer tout ancien serveur d'impression (Electron le relance lui-meme)
 taskkill /FI "WINDOWTITLE eq TwinPizza-PrintServer" /F >nul 2>&1
+taskkill /F /IM node.exe >nul 2>&1
 
-:: Serveur d'impression en arriere-plan
-echo  Demarrage serveur d'impression (port 3001)...
-start "TwinPizza-PrintServer" /min cmd /c "cd /d "%~dp0print-server" && node server.js"
-timeout /t 2 /nobreak >nul
+:: NOTE: Le serveur d'impression est gere par Electron (main.js -> spawnPrintServer)
+:: Ne PAS le demarrer ici pour eviter les doublons de tickets
 
-:: Fichier log pour capturer les erreurs electron
 set LOG_FILE=%~dp0twinpizzahub\electron-crash.log
 
 echo  Lancement TwinPizza Hub...
@@ -123,8 +121,7 @@ cd /d "%~dp0twinpizzahub"
 set EXIT_CODE=!ERRORLEVEL!
 cd /d "%~dp0"
 
-:: Arreter le serveur d'impression
-taskkill /FI "WINDOWTITLE eq TwinPizza-PrintServer" /F >nul 2>&1
+:: (le serveur d'impression est arrete par Electron automatiquement)
 
 echo.
 echo  ============================================================
