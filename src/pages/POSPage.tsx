@@ -357,19 +357,20 @@ const WIZ_CFG: Record<WizType, { maxMeats:number; garniture:boolean; supplements
   soufflet:{ maxMeats:3, garniture:true,  supplements:true,  menu:true,  crudite:false },
   makloub: { maxMeats:3, garniture:true,  supplements:true,  menu:true,  crudite:true  },
   mlawi:   { maxMeats:3, garniture:true,  supplements:true,  menu:true,  crudite:true  },
-  tacos:   { maxMeats:3, garniture:true,  supplements:true,  menu:true,  crudite:true  },
+  tacos:   { maxMeats:3, garniture:false, supplements:true,  menu:true,  crudite:false }, // frites incluses, pas de garniture
   panini:  { maxMeats:1, garniture:false, supplements:false, menu:false, crudite:false }, // just meat + sauce, 5€
 };
 const FREE_SAUCES = 2, EXTRA_SAUCE = 0.30;
 
 // Small option tile with image/emoji (compact, dark)
-function OptTile({ name, img, emoji, selected, isDefaultRemovable, price, onClick }:
-  { name:string; img?:string|null; emoji?:string; selected:boolean; isDefaultRemovable?:boolean; price?:number; onClick:()=>void }) {
+function OptTile({ name, img, emoji, selected, isDefaultRemovable, price, disabled, onClick }:
+  { name:string; img?:string|null; emoji?:string; selected:boolean; isDefaultRemovable?:boolean; price?:number; disabled?:boolean; onClick:()=>void }) {
   const ring = selected ? (isDefaultRemovable ? '#22c55e' : S.accent) : '#2d3748';
   return (
-    <button onClick={onClick} style={{
+    <button onClick={disabled ? undefined : onClick} disabled={disabled} style={{
       background: selected ? (isDefaultRemovable ? '#22c55e18' : S.accent+'18') : S.card,
-      border:`${selected?2:1}px solid ${ring}`, borderRadius:9, padding:'5px 4px', cursor:'pointer',
+      border:`${selected?2:1}px solid ${ring}`, borderRadius:9, padding:'5px 4px',
+      cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.35 : 1,
       textAlign:'center', position:'relative',
     }}>
       {selected && <span style={{ position:'absolute', top:3, right:3, width:15, height:15, borderRadius:99,
@@ -476,6 +477,7 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
           {meats.map(m => (
             <OptTile key={m.id} name={m.name} img={m.img} emoji="🥩"
               selected={selMeats.includes(m.id)}
+              disabled={selMeats.length >= maxMeats && !selMeats.includes(m.id)}
               onClick={()=>toggle(m.id, selMeats, setMeats, maxMeats)} />
           ))}
         </div>

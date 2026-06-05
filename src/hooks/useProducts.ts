@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+// Menu data changes rarely — cache hard for instant POS loading.
+const MENU_CACHE = {
+  staleTime: 1000 * 60 * 10,
+  gcTime:    1000 * 60 * 60,
+  refetchOnWindowFocus: false,
+  refetchOnMount: false,
+} as const;
+
 export interface Product {
   id: string;
   name: string;
@@ -37,7 +45,8 @@ export function useCategories() {
         .order('display_order', { ascending: true });
       if (error) throw error;
       return data as Category[];
-    }
+    },
+    ...MENU_CACHE,
   });
 }
 
@@ -64,7 +73,8 @@ export function useProductsByCategory(categorySlug: string) {
       if (error) throw error;
       return data as Product[];
     },
-    enabled: !!categorySlug
+    enabled: !!categorySlug,
+    ...MENU_CACHE,
   });
 }
 
@@ -91,7 +101,8 @@ export function usePizzasByBase(base: 'tomate' | 'creme') {
 
       if (error) throw error;
       return data as Product[];
-    }
+    },
+    ...MENU_CACHE,
   });
 }
 

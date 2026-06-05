@@ -10,114 +10,35 @@ export interface CustomizationOption {
   is_active: boolean;
 }
 
-export function useMeatOptions() {
-  return useQuery({
-    queryKey: ['meat_options'],
+// Options (meats, sauces…) change very rarely — cache hard so the wizards
+// open INSTANTLY from cache and never re-flicker when switching categories.
+const QUERY_OPTS = {
+  staleTime: 1000 * 60 * 15,   // 15 min: serve from cache, no refetch
+  gcTime:    1000 * 60 * 60,   // keep in memory 1 h
+  refetchOnWindowFocus: false,
+  refetchOnMount: false,
+} as const;
+
+function makeOptionHook(table: string) {
+  return () => useQuery({
+    queryKey: [table],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('meat_options')
+        .from(table as any)
         .select('*')
         .eq('is_active', true)
         .order('display_order', { ascending: true });
-      
       if (error) throw error;
       return data as CustomizationOption[];
     },
+    ...QUERY_OPTS,
   });
 }
 
-export function useSauceOptions() {
-  return useQuery({
-    queryKey: ['sauce_options'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sauce_options')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
-      
-      if (error) throw error;
-      return data as CustomizationOption[];
-    },
-  });
-}
-
-export function useGarnitureOptions() {
-  return useQuery({
-    queryKey: ['garniture_options'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('garniture_options')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
-      
-      if (error) throw error;
-      return data as CustomizationOption[];
-    },
-  });
-}
-
-export function useSupplementOptions() {
-  return useQuery({
-    queryKey: ['supplement_options'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('supplement_options')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
-      
-      if (error) throw error;
-      return data as CustomizationOption[];
-    },
-  });
-}
-
-export function useCruditesOptions() {
-  return useQuery({
-    queryKey: ['crudites_options'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('crudites_options')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
-      
-      if (error) throw error;
-      return data as CustomizationOption[];
-    },
-  });
-}
-
-export function useDrinks() {
-  return useQuery({
-    queryKey: ['drinks'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('drinks')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
-      
-      if (error) throw error;
-      return data as CustomizationOption[];
-    },
-  });
-}
-
-export function useDesserts() {
-  return useQuery({
-    queryKey: ['desserts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('desserts')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
-      
-      if (error) throw error;
-      return data as CustomizationOption[];
-    },
-  });
-}
+export const useMeatOptions       = makeOptionHook('meat_options');
+export const useSauceOptions      = makeOptionHook('sauce_options');
+export const useGarnitureOptions  = makeOptionHook('garniture_options');
+export const useSupplementOptions = makeOptionHook('supplement_options');
+export const useCruditesOptions   = makeOptionHook('crudites_options');
+export const useDrinks            = makeOptionHook('drinks');
+export const useDesserts          = makeOptionHook('desserts');
