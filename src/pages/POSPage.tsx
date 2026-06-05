@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useReducer, useRef } from 'react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
 import { useCategories, useProductsByCategory } from '@/hooks/useProducts';
@@ -7,8 +7,10 @@ import { useMeatOptions, useSauceOptions, useSupplementOptions } from '@/hooks/u
 import { calculateTVA, applyPizzaPromotions } from '@/utils/promotions';
 import { pizzaPrices, cheeseSupplementOptions, menuOptionPrices } from '@/data/menu';
 import { crepes, gaufres, boissons, frites as staticFrites, croques as staticCroques } from '@/data/menu';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Panel, PanelGroup, PanelResizeHandle, ImperativePanelHandle } from 'react-resizable-panels';
 import { toast } from 'sonner';
+
+const PRINT_SERVER = 'http://localhost:3001';
 
 type OrderType = 'surplace' | 'emporter' | 'livraison';
 type PayMethod  = 'especes' | 'cb' | 'en_ligne';
@@ -25,27 +27,59 @@ const CAT_ICON:    Record<string, string> = {
 const toItems = (products: any[] | undefined, fallback: any[]) =>
   products?.length ? products.filter((p:any) => p.is_active).map((p:any) => ({ id:p.id, name:p.name, price:p.base_price, imageUrl:p.image_url, description:p.description||'' })) : fallback;
 
-// ── CSS vars ─────────────────────────────────────────────────────────────────
-const S = {
+// ── Theme palette (mutable + persisted) ──────────────────────────────────────
+// Colors are plain hex strings so `S.accent + '22'` (alpha) keeps working.
+const DEFAULT_THEME = {
   bg:     '#0d1117',
+  panel:  '#111827',
   card:   '#1a2234',
   border: '#1f2937',
   muted:  '#6b7280',
   text:   '#e5e7eb',
   accent: '#f59e0b',
+};
+type ThemeKey = keyof typeof DEFAULT_THEME;
+const THEME_LABELS: Record<ThemeKey,string> = {
+  bg:'Fond', panel:'Barres', card:'Cartes', border:'Bordures', muted:'Texte gris', text:'Texte', accent:'Couleur principale',
+};
+
+const S = {
+  ...DEFAULT_THEME,
   btn:    { background:'#1f2937', border:'1px solid #2d3748', borderRadius:8, cursor:'pointer', color:'#e5e7eb' } as React.CSSProperties,
   input:  { width:'100%', background:'#1f2937', border:'1px solid #2d3748', color:'#fff', padding:'8px 10px', borderRadius:8, fontSize:12 } as React.CSSProperties,
 };
 
+// Load saved theme at startup
+try {
+  const saved = JSON.parse(localStorage.getItem('pos-theme') || '{}');
+  Object.assign(S, saved);
+} catch {}
+
+function saveTheme() {
+  const out: Record<string,string> = {};
+  (Object.keys(DEFAULT_THEME) as ThemeKey[]).forEach(k => { out[k] = (S as any)[k]; });
+  localStorage.setItem('pos-theme', JSON.stringify(out));
+}
+
+// Simple global re-render bus so the settings panel repaints the whole POS
+const themeListeners = new Set<() => void>();
+function notifyTheme() { themeListeners.forEach(fn => fn()); }
+function useThemeBump() {
+  const [, bump] = useReducer((x:number) => x + 1, 0);
+  useEffect(() => { themeListeners.add(bump); return () => { themeListeners.delete(bump); }; }, []);
+  return bump;
+}
+
 // ── Product tile ─────────────────────────────────────────────────────────────
-function ProductTile({ item, selected, onClick, badge, compact }: { item:any; selected:boolean; onClick:()=>void; badge?:string; compact?:boolean }) {
+function ProductTile({ item, selected, onClick, badge, compact, tint }: { item:any; selected:boolean; onClick:()=>void; badge?:string; compact?:boolean; tint?:string }) {
   // Support both camelCase (imageUrl) and snake_case (image_url from DB)
   const img = item.imageUrl || item.image_url;
   const imgSize = compact ? 52 : 72;
+  const borderColor = selected ? S.accent : (tint || '#2d3748');
   return (
     <button onClick={onClick} style={{
-      background: selected ? '#f59e0b22' : S.card,
-      border:     `${selected ? 2 : 1}px solid ${selected ? S.accent : '#2d3748'}`,
+      background: selected ? '#f59e0b22' : (tint ? tint + '14' : S.card),
+      border:     `${selected ? 2 : tint ? 2 : 1}px solid ${borderColor}`,
       borderRadius:10, padding: compact ? '6px 5px' : '10px 8px', cursor:'pointer', textAlign:'center',
       transition:'all .12s', position:'relative',
     }}>
@@ -101,59 +135,77 @@ function Chip({ label, active, onClick, extra }: { label:string; active:boolean;
   );
 }
 
+// ── Pizza sizes (Senior / Mega / Menu Midi) ──────────────────────────────────
+const PIZZA_SIZES = [
+  { id:'senior',    label:'Senior',    price:pizzaPrices.senior,         color:'#3b82f6' },
+  { id:'mega',      label:'Mega',      price:pizzaPrices.mega,           color:'#8b5cf6' },
+  { id:'menu_midi', label:'Menu Midi', price:pizzaPrices.menuMidiSenior, color:'#22c55e' },
+] as const;
+type PizzaSizeId = typeof PIZZA_SIZES[number]['id'];
+
+const BASE_TINT = { tomate:'#ef4444', creme:'#3b82f6' }; // red / blue
+
 // ── Pizza panel ───────────────────────────────────────────────────────────────
 function PizzaPanel({ orderType, onAdd }: { orderType:OrderType; onAdd:(item:any,custom:any,price:number)=>void }) {
   const { data: pizzasTomate = [] } = usePizzasByBase('tomate');
   const { data: pizzasCreme  = [] } = usePizzasByBase('creme');
-  const [base, setBase]     = useState<'tomate'|'creme'>('tomate');
-  const [size, setSize]     = useState<'senior'|'mega'>('senior');
+  const [size, setSize]     = useState<PizzaSizeId>('senior');
   const [sel,  setSel]      = useState<any|null>(null);
   const [supps,setSupps]    = useState<string[]>([]);
   const [note, setNote]     = useState('');
 
-  const basePrice = size === 'senior' ? pizzaPrices.senior : pizzaPrices.mega;
+  const basePrice = PIZZA_SIZES.find(s => s.id === size)!.price;
   const suppTotal = supps.reduce((s,id) => { const x = cheeseSupplementOptions.find(c=>c.id===id); return s+(x?.price||0); }, 0);
   const price = basePrice + suppTotal;
-  const pizzaList = base === 'tomate' ? pizzasTomate : pizzasCreme;
-  const promoLabel = (orderType==='surplace'||orderType==='emporter') ? '1 achetée = 1 offerte' : orderType==='livraison' ? '2 achetées = 1 offerte' : '';
+
+  // ONE long list: tomate (red) first, then creme (blue)
+  const allPizzas = [
+    ...pizzasTomate.map((p:any) => ({ ...p, _base:'tomate' as const })),
+    ...pizzasCreme.map((p:any)  => ({ ...p, _base:'creme'  as const })),
+  ];
 
   const handleAdd = () => {
     if (!sel) { toast.error('Choisissez une pizza'); return; }
-    onAdd({ id:sel.id, name:sel.name, price:basePrice, category:'pizzas', description:'' }, { size, base, supplements:supps, note, isMenuMidi:false }, price);
+    const sizeLabel = PIZZA_SIZES.find(s => s.id === size)!.label;
+    onAdd(
+      { id:sel.id, name:sel.name, price:basePrice, category:'pizzas', description:'' },
+      { size, sizeLabel, base:sel._base, supplements:supps, note, isMenuMidi: size==='menu_midi' },
+      price
+    );
     setSel(null); setSupps([]); setNote('');
   };
 
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
-      {/* Controls */}
-      <div style={{ display:'flex', gap:8, padding:'10px 14px', borderBottom:`1px solid ${S.border}`, background:'#111827', flexShrink:0, flexWrap:'wrap', alignItems:'center' }}>
-        {(['senior','mega'] as const).map(s => (
-          <button key={s} onClick={()=>setSize(s)} style={{
-            ...S.btn, padding:'7px 16px', fontWeight:800, fontSize:12,
-            background: size===s ? (s==='senior'?'#3b82f6':'#8b5cf6') : '#1f2937',
-            color: size===s ? '#fff' : S.muted, border:'none',
-          }}>
-            {s==='senior'?`Senior · ${pizzaPrices.senior}€`:`Mega · ${pizzaPrices.mega}€`}
-          </button>
-        ))}
-        <div style={{ width:1, height:24, background:S.border }} />
-        {(['tomate','creme'] as const).map(b => (
-          <button key={b} onClick={()=>{setBase(b);setSel(null);}} style={{
-            ...S.btn, padding:'7px 14px', fontSize:12, fontWeight:700, border:'none',
-            background: base===b ? (b==='tomate'?'#ef444422':'#f9a8d422') : '#1f2937',
-            color:      base===b ? (b==='tomate'?'#ef4444':'#f9a8d4')     : S.muted,
-            outline:    base===b ? `1px solid ${b==='tomate'?'#ef444444':'#f9a8d444'}` : 'none',
-          }}>
-            {b==='tomate'?'🍅 Sauce Tomate':'🥛 Crème Fraîche'}
-          </button>
-        ))}
-        {promoLabel && <span style={{ marginLeft:'auto', background:'#f59e0b22', color:S.accent, border:`1px solid #f59e0b44`, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>🎁 {promoLabel}</span>}
+      {/* Size selector — Senior / Mega on row 1, Menu Midi under Senior */}
+      <div style={{ padding:'10px 14px', borderBottom:`1px solid ${S.border}`, background:'#111827', flexShrink:0 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {PIZZA_SIZES.map((s, i) => (
+            <button key={s.id} onClick={()=>setSize(s.id)} style={{
+              ...S.btn, padding:'9px 16px', fontWeight:800, fontSize:13, border:'none',
+              gridColumn: i === 2 ? '1 / 2' : 'auto',  // Menu Midi sits under Senior
+              background: size===s.id ? s.color : '#1f2937',
+              color: size===s.id ? '#fff' : S.muted,
+            }}>
+              {s.label} · {s.price}€
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Grid — compact so all pizzas fit on one page */}
+      {/* Grid — ONE page: tomate=red tiles, creme=blue tiles */}
       <div style={{ flex:1, overflow:'auto', padding:'10px 12px' }}>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(82px,1fr))', gap:6 }}>
-          {pizzaList.map((p:any) => <ProductTile key={p.id} compact item={{...p, price:basePrice}} selected={sel?.id===p.id} onClick={()=>setSel(sel?.id===p.id?null:p)} />)}
+          {allPizzas.map((p:any) => (
+            <ProductTile
+              key={`${p._base}-${p.id}`}
+              compact
+              tint={BASE_TINT[p._base]}
+              item={{ ...p, price:basePrice }}
+              selected={sel?.id===p.id && sel?._base===p._base}
+              onClick={()=>setSel((sel?.id===p.id && sel?._base===p._base) ? null : p)}
+            />
+          ))}
         </div>
       </div>
 
@@ -174,7 +226,7 @@ function PizzaPanel({ orderType, onAdd }: { orderType:OrderType; onAdd:(item:any
           background: sel ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : '#1f2937',
           color: sel ? '#000' : '#374151', fontSize:14, fontWeight:800, cursor: sel?'pointer':'not-allowed',
         }}>
-          {sel ? `➕ ${sel.name} ${size==='senior'?'Senior':'Mega'} — ${price.toFixed(2)}€` : 'Sélectionnez une pizza'}
+          {sel ? `➕ ${sel.name} ${PIZZA_SIZES.find(s=>s.id===size)!.label} — ${price.toFixed(2)}€` : 'Sélectionnez une pizza'}
         </button>
       </div>
     </div>
@@ -326,8 +378,121 @@ function SimplePanel({ categorySlug, title, onAdd }: { categorySlug:string; titl
   );
 }
 
+// ── Settings panel (theme / colors) ──────────────────────────────────────────
+function SettingsPanel({ onClose }: { onClose:()=>void }) {
+  useThemeBump();
+  const setColor = (k:ThemeKey, v:string) => { (S as any)[k] = v; saveTheme(); notifyTheme(); };
+  const resetAll = () => { Object.assign(S, DEFAULT_THEME); saveTheme(); notifyTheme(); };
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
+      <div onClick={e=>e.stopPropagation()} style={{ width:340, height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, padding:'18px 20px', overflow:'auto' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+          <div style={{ fontSize:16, fontWeight:800, color:S.text }}>⚙️ Personnalisation</div>
+          <button onClick={onClose} style={{ ...S.btn, padding:'5px 12px' }}>✕</button>
+        </div>
+        <div style={{ fontSize:12, color:S.muted, marginBottom:14 }}>Changez les couleurs de l'application. Sauvegarde automatique.</div>
+        {(Object.keys(DEFAULT_THEME) as ThemeKey[]).map(k => (
+          <div key={k} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:`1px solid ${S.border}` }}>
+            <span style={{ fontSize:13, color:S.text }}>{THEME_LABELS[k]}</span>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:11, color:S.muted, fontFamily:'monospace' }}>{(S as any)[k]}</span>
+              <input type="color" value={(S as any)[k]} onChange={e=>setColor(k, e.target.value)}
+                style={{ width:38, height:28, border:'none', background:'none', cursor:'pointer', borderRadius:6 }} />
+            </div>
+          </div>
+        ))}
+        <button onClick={resetAll} style={{ ...S.btn, width:'100%', marginTop:18, padding:'10px', fontWeight:700 }}>
+          ↺ Réinitialiser les couleurs
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Facture modal (custom invoice → ethernet printer) ─────────────────────────
+function FactureModal({ initialTotal, onClose }: { initialTotal:number; onClose:()=>void }) {
+  const [repas,   setRepas]   = useState(1);
+  const [unit,    setUnit]    = useState(initialTotal > 0 ? initialTotal : 0);
+  const [label,   setLabel]   = useState('Repas');
+  const [tvaRate, setTvaRate] = useState(10);
+  const [client,  setClient]  = useState('');
+  const [printing, setPrinting] = useState(false);
+
+  const totalTTC = repas * unit;
+  const totalHT  = totalTTC / (1 + tvaRate / 100);
+  const tvaAmt   = totalTTC - totalHT;
+
+  const print = async () => {
+    if (totalTTC <= 0) { toast.error('Montant invalide'); return; }
+    setPrinting(true);
+    try {
+      const d = new Date();
+      const invoiceNumber = `FA-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(Math.floor(Math.random()*900)+100)}`;
+      const res = await fetch(`${PRINT_SERVER}/print-custom-invoice`, {
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          invoiceNumber, invoiceDate: d.toISOString().slice(0,10),
+          clientName: client.trim() || undefined,
+          items: [{ description: label.trim() || 'Repas', quantity: repas, unitPrice: unit }],
+          tvaRate,
+        }),
+      });
+      const data = await res.json().catch(()=>({}));
+      if (res.ok && data.success) { toast.success(`✅ Facture ${invoiceNumber} imprimée`); onClose(); }
+      else throw new Error(data.error || `HTTP ${res.status}`);
+    } catch (e:any) {
+      toast.error(e.message?.includes('fetch') ? '❌ Serveur impression hors ligne' : '❌ ' + e.message);
+    } finally { setPrinting(false); }
+  };
+
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div onClick={e=>e.stopPropagation()} style={{ width:380, background:S.panel, border:`1px solid ${S.border}`, borderRadius:14, padding:'20px 22px' }}>
+        <div style={{ fontSize:17, fontWeight:800, color:S.accent, marginBottom:4 }}>🧾 Facture client</div>
+        <div style={{ fontSize:12, color:S.muted, marginBottom:16 }}>SIRET 942 617 358 00018 · TVA FR28942617358</div>
+
+        <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Désignation</label>
+        <input value={label} onChange={e=>setLabel(e.target.value)} style={{ ...S.input, margin:'4px 0 12px' }} />
+
+        <div style={{ display:'flex', gap:10, marginBottom:12 }}>
+          <div style={{ flex:1 }}>
+            <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Nb repas</label>
+            <input type="number" min={1} value={repas} onChange={e=>setRepas(Math.max(1,parseInt(e.target.value)||1))} style={{ ...S.input, marginTop:4 }} />
+          </div>
+          <div style={{ flex:1 }}>
+            <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Prix unit. (€)</label>
+            <input type="number" min={0} step={0.5} value={unit||''} onChange={e=>setUnit(parseFloat(e.target.value)||0)} style={{ ...S.input, marginTop:4 }} />
+          </div>
+          <div style={{ width:80 }}>
+            <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>TVA %</label>
+            <input type="number" min={0} value={tvaRate} onChange={e=>setTvaRate(parseFloat(e.target.value)||0)} style={{ ...S.input, marginTop:4 }} />
+          </div>
+        </div>
+
+        <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Client (optionnel)</label>
+        <input value={client} onChange={e=>setClient(e.target.value)} placeholder="Nom / Société" style={{ ...S.input, margin:'4px 0 14px' }} />
+
+        <div style={{ background:S.card, borderRadius:8, padding:'10px 12px', marginBottom:14, fontSize:12, color:S.muted }}>
+          <div style={{ display:'flex', justifyContent:'space-between' }}><span>Total HT</span><span>{totalHT.toFixed(2)} €</span></div>
+          <div style={{ display:'flex', justifyContent:'space-between' }}><span>TVA {tvaRate}%</span><span>{tvaAmt.toFixed(2)} €</span></div>
+          <div style={{ display:'flex', justifyContent:'space-between', color:S.accent, fontWeight:800, fontSize:15, marginTop:4 }}><span>TOTAL TTC</span><span>{totalTTC.toFixed(2)} €</span></div>
+        </div>
+
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={onClose} style={{ ...S.btn, flex:1, padding:'11px', fontWeight:700 }}>Annuler</button>
+          <button onClick={print} disabled={printing} style={{
+            flex:2, padding:'11px', borderRadius:8, border:'none', fontWeight:800, cursor:printing?'wait':'pointer',
+            background: printing ? '#374151' : 'linear-gradient(135deg,#f59e0b,#ef4444)', color: printing?'#6b7280':'#000',
+          }}>{printing ? '⏳ Impression...' : '🖨️ Imprimer la facture'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main POS content ──────────────────────────────────────────────────────────
 function POSContent() {
+  useThemeBump();
   const { cart, clearCart, getTotal, setOrderType: setCtxOrderType } = useOrder();
   const { data: categories = [] } = useCategories();
   const createOrder = useCreateOrder();
@@ -342,6 +507,17 @@ function POSContent() {
   const [discount, setDiscount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [lastOrder,  setLastOrder]  = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showFacture,  setShowFacture]  = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const leftRef = useRef<ImperativePanelHandle>(null);
+
+  const toggleLeft = () => {
+    const p = leftRef.current;
+    if (!p) return;
+    if (p.isCollapsed()) { p.expand(); setLeftCollapsed(false); }
+    else { p.collapse(); setLeftCollapsed(true); }
+  };
 
   const needsInfo = orderType === 'livraison';
 
@@ -411,12 +587,13 @@ function POSContent() {
       style={{ height:'100vh', background:S.bg, color:S.text, fontFamily:'Segoe UI,system-ui,sans-serif' }}
     >
 
-      {/* ── LEFT (resizable) ── */}
-      <Panel defaultSize={72} minSize={45}>
+      {/* ── LEFT (resizable + collapsible) ── */}
+      <Panel ref={leftRef} collapsible collapsedSize={0} defaultSize={72} minSize={35}
+        onCollapse={()=>setLeftCollapsed(true)} onExpand={()=>setLeftCollapsed(false)}>
       <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, overflow:'hidden' }}>
 
-        {/* Order type bar */}
-        <div style={{ display:'flex', gap:8, padding:'10px 14px', background:'#111827', borderBottom:`1px solid ${S.border}`, alignItems:'center', flexShrink:0 }}>
+        {/* Order type bar + settings + collapse */}
+        <div style={{ display:'flex', gap:8, padding:'10px 14px', background:S.panel, borderBottom:`1px solid ${S.border}`, alignItems:'center', flexShrink:0 }}>
           {(['surplace','emporter','livraison'] as OrderType[]).map(t => (
             <button key={t} onClick={()=>handleOrderType(t)} style={{
               padding:'7px 14px', borderRadius:8, border:'none', cursor:'pointer', fontSize:12, fontWeight:700,
@@ -424,29 +601,36 @@ function POSContent() {
               color:      orderType===t ? '#000'   : S.muted,
             }}>{TYPE_LABELS[t]}</button>
           ))}
-          {lastOrder && <span style={{ marginLeft:'auto', background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>✅ #{lastOrder}</span>}
+          {lastOrder && <span style={{ background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>✅ #{lastOrder}</span>}
+          <button title="Personnaliser" onClick={()=>setShowSettings(true)} style={{ ...S.btn, marginLeft:'auto', padding:'6px 10px', fontSize:14 }}>⚙️</button>
+          <button title="Replier le panneau" onClick={toggleLeft} style={{ ...S.btn, padding:'6px 10px', fontSize:14 }}>⟨</button>
         </div>
 
-        {/* Category tabs — ALWAYS VISIBLE */}
-        <div style={{ display:'flex', gap:6, padding:'10px 14px', background:S.bg, borderBottom:`1px solid ${S.border}`, flexShrink:0, overflowX:'auto', flexWrap:'wrap' }}>
-          {categories.map(cat => (
-            <button key={cat.id} onClick={() => setActiveCat(activeCategory === cat.slug ? null : cat.slug)} style={{
-              display:'flex', alignItems:'center', gap:6,
-              padding:'8px 14px', borderRadius:99, border:'none', cursor:'pointer', fontSize:12, fontWeight:700, transition:'all .12s', whiteSpace:'nowrap',
-              background: activeCategory===cat.slug ? S.accent+'22' : '#1a2234',
-              color:      activeCategory===cat.slug ? S.accent     : '#9ca3af',
-              outline:    activeCategory===cat.slug ? `1px solid ${S.accent}44` : 'none',
-            }}>
-              <span style={{ fontSize:16 }}>{CAT_ICON[cat.slug] || '🍽️'}</span>
-              {cat.name}
-            </button>
-          ))}
-        </div>
-
-        {/* Product area — fills remaining space */}
-        <div style={{ flex:1, minHeight:0, overflow:'hidden', display:'flex', flexDirection:'column' }}>
-          {renderPanel()}
-        </div>
+        {/* Vertical resizable: upper (categories) | lower (products) */}
+        <PanelGroup direction="vertical" autoSaveId="pos-left-v" style={{ flex:1, minHeight:0 }}>
+          <Panel defaultSize={20} minSize={10} maxSize={65}>
+            <div style={{ display:'flex', gap:6, padding:'10px 14px', background:S.bg, height:'100%', overflow:'auto', flexWrap:'wrap', alignContent:'flex-start' }}>
+              {categories.map(cat => (
+                <button key={cat.id} onClick={() => setActiveCat(activeCategory === cat.slug ? null : cat.slug)} style={{
+                  display:'flex', alignItems:'center', gap:6, height:'fit-content',
+                  padding:'8px 14px', borderRadius:99, border:'none', cursor:'pointer', fontSize:12, fontWeight:700, transition:'all .12s', whiteSpace:'nowrap',
+                  background: activeCategory===cat.slug ? S.accent+'22' : S.card,
+                  color:      activeCategory===cat.slug ? S.accent     : '#9ca3af',
+                  outline:    activeCategory===cat.slug ? `1px solid ${S.accent}44` : 'none',
+                }}>
+                  <span style={{ fontSize:16 }}>{CAT_ICON[cat.slug] || '🍽️'}</span>
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          </Panel>
+          <ResizeBar vertical />
+          <Panel minSize={20}>
+            <div style={{ height:'100%', minHeight:0, overflow:'hidden', display:'flex', flexDirection:'column', borderTop:`1px solid ${S.border}` }}>
+              {renderPanel()}
+            </div>
+          </Panel>
+        </PanelGroup>
       </div>
       </Panel>
 
@@ -455,8 +639,9 @@ function POSContent() {
 
       {/* ── RIGHT: Caisse (resizable, always visible) ── */}
       <Panel defaultSize={28} minSize={20} maxSize={50}>
-      <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'#111827' }}>
+      <div style={{ height:'100%', display:'flex', flexDirection:'column', background:S.panel }}>
         <div style={{ padding:'12px 14px', borderBottom:`1px solid ${S.border}`, fontSize:14, fontWeight:800, display:'flex', alignItems:'center', gap:8 }}>
+          {leftCollapsed && <button title="Ouvrir le panneau produits" onClick={toggleLeft} style={{ ...S.btn, padding:'4px 9px', fontSize:14 }}>⟩</button>}
           🛒 Caisse
           {cart.length > 0 && <span style={{ background:S.accent, color:'#000', borderRadius:99, fontSize:11, fontWeight:800, padding:'1px 8px' }}>{cart.reduce((s,i)=>s+i.quantity,0)}</span>}
         </div>
@@ -476,7 +661,7 @@ function POSContent() {
             : cart.map((item, idx) => {
                 const price = (item.calculatedPrice||item.item.price)*item.quantity;
                 const c = item.customization as any;
-                const details = [c?.size, c?.meats?.join(', '), c?.sauces?.join(', ')].filter(Boolean).join(' · ');
+                const details = [c?.sizeLabel || c?.size, c?.base, c?.meats?.join(', '), c?.sauces?.join(', ')].filter(Boolean).join(' · ');
                 return (
                   <div key={idx} style={{ display:'flex', gap:8, padding:'6px 0', borderBottom:`1px solid ${S.border}`, fontSize:12 }}>
                     <span style={{ fontWeight:700, color:S.accent }}>{item.quantity}x</span>
@@ -529,12 +714,23 @@ function POSContent() {
           }}>
             {submitting ? '⏳...' : cart.length ? `✅ Valider — ${total.toFixed(2)}€` : 'Panier vide'}
           </button>
+          {/* Facture — print invoice to ethernet printer */}
+          <button onClick={()=>setShowFacture(true)} style={{
+            width:'100%', marginTop:6, padding:'10px', borderRadius:10, border:`1px solid ${S.accent}55`,
+            background:S.accent+'18', color:S.accent, fontSize:13, fontWeight:800, cursor:'pointer',
+          }}>
+            🧾 Facture client
+          </button>
           <button onClick={()=>{clearCart();setDiscount(0);}} style={{width:'100%',marginTop:6,padding:'7px',borderRadius:8,border:`1px solid ${S.border}`,background:'none',color:S.muted,cursor:'pointer',fontSize:11}}>
             🗑️ Vider
           </button>
         </div>
       </div>
       </Panel>
+
+      {/* ── Overlays ── */}
+      {showSettings && <SettingsPanel onClose={()=>setShowSettings(false)} />}
+      {showFacture && <FactureModal initialTotal={total} onClose={()=>setShowFacture(false)} />}
     </PanelGroup>
   );
 }
