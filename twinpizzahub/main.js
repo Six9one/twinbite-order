@@ -50,46 +50,92 @@ function initSupabase() {
   }
 }
 
-// ─── Realtime: listen for new orders ─────────────────────────────────────────
+// ─── Order tracking (in-memory, per session) ──────────────────────────────────
+const seenOrders     = new Set(); // for UI badge + system notification (once)
+const messagedOrders = new Set(); // for WhatsApp confirmation (once, when connected)
+const appStartTime   = Date.now(); // don't WhatsApp orders from before this session
+let ordersChannel    = null;
+let ordersPollTimer  = null;
+
+// Handle one order: UI + notification (once) and WhatsApp (once, when connected)
+function handleIncomingOrder(order) {
+  if (!order || !order.id) return;
+
+  // ── UI + notification — only the first time we see this order ──
+  if (!seenOrders.has(order.id)) {
+    seenOrders.add(order.id);
+    console.log('🔔 New order:', order.order_number);
+
+    Object.values(windows).forEach(w => {
+      if (!w.isDestroyed()) w.webContents.send('new-order', order);
+    });
+    if (launcherWin && !launcherWin.isDestroyed()) {
+      launcherWin.webContents.send('new-order', order);
+    }
+    try {
+      new Notification({
+        title: '🍕 Nouvelle Commande!',
+        body: `#${order.order_number} — ${order.order_type?.toUpperCase()} — ${order.total}€`,
+      }).show();
+    } catch(_) {}
+  }
+
+  // ── WhatsApp confirmation — only once, and only if WhatsApp is connected ──
+  if (messagedOrders.has(order.id)) return;
+  // Don't re-message orders from before this app session started (avoids
+  // re-spamming customers if the Hub is restarted).
+  const createdAt = order.created_at ? new Date(order.created_at).getTime() : Date.now();
+  if (createdAt < appStartTime - 60000) { messagedOrders.add(order.id); return; }
+  const realPhone = order.customer_phone && !['borne','pos','POS'].includes(order.customer_phone);
+  if (!realPhone) { messagedOrders.add(order.id); return; } // nothing to send, mark done
+  if (whatsappStatus !== 'connected') return; // not connected yet — polling will retry
+
+  messagedOrders.add(order.id); // mark before send to avoid double-send race
+  const msg = generateOrderMessage(order);
+  sendWhatsAppMessage(order.customer_phone, msg)
+    .then(() => { console.log('✅ WhatsApp confirmation sent for', order.order_number); scheduleReviewMessage(order); })
+    .catch(e => { console.error('WhatsApp send failed:', e.message); messagedOrders.delete(order.id); }); // allow retry
+}
+
+// ─── Realtime: listen for new orders (with auto-reconnect) ────────────────────
 function listenForOrders() {
   if (!supabase) return;
-  supabase
-    .channel('new-orders')
+  if (ordersChannel) { try { supabase.removeChannel(ordersChannel); } catch(_) {} }
+
+  ordersChannel = supabase
+    .channel('hub-orders-' + Date.now()) // unique name forces a fresh connection
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
-      const order = payload.new;
-      console.log('🔔 New order received:', order.order_number);
-
-      // Broadcast to all open Electron windows
-      Object.values(windows).forEach(w => {
-        if (!w.isDestroyed()) w.webContents.send('new-order', order);
-      });
-      if (launcherWin && !launcherWin.isDestroyed()) {
-        launcherWin.webContents.send('new-order', order);
-      }
-
-      // System notification
-      try {
-        new Notification({
-          title: '🍕 Nouvelle Commande!',
-          body: `#${order.order_number} — ${order.order_type?.toUpperCase()} — ${order.total}€`,
-        }).show();
-      } catch(_) {}
-
-      // WhatsApp confirmation + scheduled Google review (40 min later)
-      const realPhone = order.customer_phone && !['borne','pos','POS'].includes(order.customer_phone);
-      if (realPhone && whatsappStatus === 'connected') {
-        const msg = generateOrderMessage(order);
-        sendWhatsAppMessage(order.customer_phone, msg)
-          .then(() => scheduleReviewMessage(order))
-          .catch(e => console.error('WhatsApp send failed:', e.message));
-      }
-
-      // Auto-print handled by the existing print server on localhost:3001
-      // (no duplicate printing needed)
+      handleIncomingOrder(payload.new);
     })
-    .subscribe();
+    .subscribe((status) => {
+      console.log('📡 Orders realtime status:', status);
+      if (status === 'CHANNEL_ERROR' || status === 'CLOSED' || status === 'TIMED_OUT') {
+        console.log('🔄 Orders realtime dropped — reconnecting in 5s...');
+        setTimeout(listenForOrders, 5000);
+      }
+    });
 
+  // Polling fallback — catches anything realtime missed (also retries WhatsApp
+  // for orders that arrived before WhatsApp was connected).
+  if (!ordersPollTimer) {
+    ordersPollTimer = setInterval(pollRecentOrders, 15000);
+    console.log('🔍 Order polling fallback active (every 15s)');
+  }
   console.log('👂 Listening for new orders via Supabase Realtime');
+}
+
+// Poll the last 15 minutes of orders and process any not yet handled
+async function pollRecentOrders() {
+  if (!supabase) return;
+  try {
+    const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from('orders').select('*')
+      .gte('created_at', since)
+      .order('created_at', { ascending: true });
+    if (error) return;
+    (data || []).forEach(handleIncomingOrder);
+  } catch(_) {}
 }
 
 // ─── WhatsApp (Baileys — FREE, no Meta API) ───────────────────────────────────
