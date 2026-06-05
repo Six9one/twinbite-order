@@ -86,21 +86,13 @@ if not exist "%~dp0print-server\node_modules\express" (
 :: ===================================================
 echo.
 echo  [3/4] Verification du build...
-if not exist "%~dp0dist\index.html" (
-    echo  Construction de l'application (2-4 min)...
-    call npm install
-    call npm run build
-    if errorlevel 1 (
-        echo.
-        echo  ============================================================
-        echo   ERREUR : La construction a echoue !
-        echo   Verifiez les messages ci-dessus.
-        echo  ============================================================
-        pause
-        exit /b 1
-    )
-    echo  OK  Application construite.
-)
+if exist "%~dp0dist\index.html" goto :build_ok
+echo  Construction de l'application (2-4 min)...
+call npm install
+call npm run build
+if errorlevel 1 goto :build_error
+echo  OK  Application construite.
+:build_ok
 echo  OK  Build present.
 
 :: ===================================================
@@ -150,3 +142,12 @@ echo  ============================================================
 echo.
 pause
 exit /b !EXIT_CODE!
+
+:build_error
+echo.
+echo  ============================================================
+echo   ERREUR : La construction a echoue !
+echo   Verifiez les messages ci-dessus.
+echo  ============================================================
+pause
+exit /b 1
