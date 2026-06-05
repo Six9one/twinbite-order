@@ -33,7 +33,17 @@ import POSPage from "./pages/POSPage";
 // Components
 import ErrorBoundary from "./components/ErrorBoundary";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            staleTime: 1000 * 60 * 5,   // 5 min default — no refetch for 5 min
+            gcTime:    1000 * 60 * 60,   // keep in memory 1 h
+            refetchOnWindowFocus: false, // don't re-fetch when clicking back to window
+            refetchOnReconnect: false,   // don't re-fetch on network reconnect
+            retry: 1,                    // only retry once on error
+        },
+    },
+});
 
 const App = () => (
     <ErrorBoundary>

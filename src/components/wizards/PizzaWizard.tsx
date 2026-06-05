@@ -286,7 +286,7 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
           <div className="p-4 bg-gradient-to-b from-slate-50 to-white flex justify-center">
             <div className="w-32 h-32 rounded-full overflow-hidden bg-white shadow-md border-4 border-orange-100">
               {imageUrl ? (
-                <img src={imageUrl} alt={pizza.name} loading="lazy" decoding="async" className="w-full h-full object-contain" style={{ transform: `scale(${imageZoom})` }} />
+                <img src={imageUrl} alt={pizza.name} loading="eager" decoding="async" className="w-full h-full object-contain" style={{ transform: `scale(${imageZoom})` }} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50">
                   <Pizza className="w-12 h-12 text-primary/30" />

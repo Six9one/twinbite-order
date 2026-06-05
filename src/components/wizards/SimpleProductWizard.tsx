@@ -87,7 +87,7 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
                         <img
                           src={imageUrl}
                           alt={item.name}
-                          loading="lazy"
+                          loading="eager"
                           decoding="async"
                           className="w-full h-full object-cover"
                         />
@@ -139,7 +139,7 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
             <img
               src={selectedImageUrl}
               alt={selectedItem.name}
-              loading="lazy"
+              loading="eager"
               decoding="async"
               className="w-full h-full object-cover"
             />

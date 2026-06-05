@@ -21,9 +21,15 @@ interface WizardImageSetting {
 /**
  * Hook to fetch wizard image for a specific product type
  */
+const WIZARD_CACHE = {
+    staleTime: 1000 * 60 * 60, // 1 hour — images never change during a shift
+    gcTime:    1000 * 60 * 60 * 4,
+};
+
 export function useWizardImage(productType: WizardProductType) {
     return useQuery({
         queryKey: ['wizard_image', productType],
+        ...WIZARD_CACHE,
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('admin_settings')
@@ -45,6 +51,7 @@ export function useWizardImage(productType: WizardProductType) {
 export function usePizzaFormatImages() {
     return useQuery({
         queryKey: ['wizard_images', 'pizza_format'],
+        ...WIZARD_CACHE,
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('admin_settings')
@@ -75,6 +82,7 @@ export function usePizzaFormatImages() {
 export function useMenuOptionImages() {
     return useQuery({
         queryKey: ['wizard_images', 'menu_options'],
+        ...WIZARD_CACHE,
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('admin_settings')
@@ -107,6 +115,7 @@ export function useMenuOptionImages() {
 export function useAllWizardImages() {
     return useQuery({
         queryKey: ['wizard_images', 'all'],
+        ...WIZARD_CACHE,
         queryFn: async () => {
             const productTypes: WizardProductType[] = [
                 'soufflet', 'tacos', 'makloub', 'mlawi', 'panini', 'pizza_senior', 'pizza_mega',
