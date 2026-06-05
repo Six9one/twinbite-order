@@ -11,17 +11,11 @@ echo  +--------------------------------------------------------------+
 echo.
 
 :: ===================================================
-:: ETAPE 0 - Creer les fichiers .env si absents
-:: (fait a chaque lancement pour etre sur)
+:: ETAPE 1 - Toujours ecrire les fichiers .env
+:: (fait a chaque lancement - ne jamais sauter cette etape)
 :: ===================================================
-echo  Verification des fichiers de configuration...
+echo  [1/4] Ecriture des fichiers de configuration...
 
-if not exist "%~dp0.env" goto :write_root_env
-for %%A in ("%~dp0.env") do if %%~zA LSS 20 goto :write_root_env
-goto :check_printenv
-
-:write_root_env
-echo  Creation du fichier .env principal...
 (
 echo VITE_SUPABASE_PROJECT_ID=hsylnrzxeyqxczdalurj
 echo VITE_SUPABASE_URL=https://hsylnrzxeyqxczdalurj.supabase.co
@@ -31,76 +25,85 @@ echo VITE_MAPBOX_PUBLIC_TOKEN=pk.eyJ1Ijoic2FwaG91dSIsImEiOiJjbWxkeGx3ZnExZGd6M2d
 echo PRINTER_IP=192.168.1.100
 echo PRINTER_PORT=9100
 ) > "%~dp0.env"
-echo  OK  .env cree.
 
-:check_printenv
-if not exist "%~dp0print-server\.env" goto :write_printenv
-for %%A in ("%~dp0print-server\.env") do if %%~zA LSS 20 goto :write_printenv
-goto :check_node
-
-:write_printenv
-echo  Creation de print-server/.env...
 (
 echo SUPABASE_URL=https://hsylnrzxeyqxczdalurj.supabase.co
 echo SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzeWxucnp4ZXlxeGN6ZGFsdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4ODIzMDksImV4cCI6MjA4MTQ1ODMwOX0.LmDeLvw6vHO7mjHi2qWeWwIEaNDutZ1spsahUGxEAnc
-echo PRINTER_IPS=192.168.1.1,192.168.1.200
+echo PRINTER_IPS=192.168.1.200
 echo PRINTER_PORT=9100
 echo USB_PRINTER_NAME=
 ) > "%~dp0print-server\.env"
-echo  OK  print-server/.env cree.
+
+echo  OK  Fichiers .env ecrits.
 
 :: ===================================================
-:: ETAPE 1 - Verifier Node.js
+:: ETAPE 2 - Verifier Node.js et packages
 :: ===================================================
-:check_node
+echo.
+echo  [2/4] Verification Node.js et packages...
 node --version >nul 2>&1
 if errorlevel 1 goto :no_node
 
-:: ===================================================
-:: ETAPE 2 - Installer packages si manquants
-:: ===================================================
-if not exist "%~dp0twinpizzahub\node_modules\electron" goto :install_hub
-if not exist "%~dp0print-server\node_modules\express" goto :install_print
-goto :check_build
-
-:install_hub
-echo  Installation des packages Hub (premiere fois)...
-cd /d "%~dp0twinpizzahub"
-call npm install
-cd /d "%~dp0"
-
-:install_print
-if exist "%~dp0print-server\package.json" (
-    echo  Installation packages impression (premiere fois)...
+if not exist "%~dp0twinpizzahub\node_modules\electron" (
+    echo  Installation packages Hub...
+    cd /d "%~dp0twinpizzahub"
+    call npm install
+    cd /d "%~dp0"
+)
+if not exist "%~dp0print-server\node_modules\express" (
+    echo  Installation packages impression...
     cd /d "%~dp0print-server"
     call npm install
     cd /d "%~dp0"
 )
+echo  OK  Packages presents.
 
 :: ===================================================
 :: ETAPE 3 - Build si absent
 :: ===================================================
-:check_build
-if exist "%~dp0dist\index.html" goto :launch
-echo  Premiere utilisation - Construction de l'application (2-4 min)...
-call npm install
-call npm run build
-if errorlevel 1 goto :build_error
-echo  OK  Application construite.
+echo.
+echo  [3/4] Verification du build...
+if not exist "%~dp0dist\index.html" (
+    echo  Construction de l'application (2-4 min, premiere fois)...
+    call npm install
+    call npm run build
+    if errorlevel 1 goto :build_error
+    echo  OK  Application construite.
+)
+echo  OK  Build present.
 
 :: ===================================================
-:: LANCEMENT
+:: ETAPE 4 - Demarrer le serveur d'impression
+:: puis lancer Electron
 :: ===================================================
-:launch
-echo  OK  Tout est pret. Lancement de TwinPizza Hub...
 echo.
-echo  (La fenetre Hub s'ouvre dans quelques secondes)
-echo  (Ne fermez pas cette fenetre noire)
+echo  [4/4] Demarrage des serveurs...
+
+:: Tuer un eventuel ancien serveur d'impression
+taskkill /FI "WINDOWTITLE eq TwinPizza-PrintServer" /F >nul 2>&1
+
+:: Demarrer le serveur d'impression en arriere-plan (fenetre minimisee)
+echo  Demarrage serveur d'impression (port 3001)...
+start "TwinPizza-PrintServer" /min cmd /c "cd /d "%~dp0print-server" && node server.js"
+
+:: Attendre 3 secondes que le serveur demarre
+timeout /t 3 /nobreak >nul
+
+:: Lancer TwinPizza Hub
+echo  Lancement TwinPizza Hub...
+echo.
+echo  (La fenetre Hub s'ouvre maintenant)
+echo  (Cette fenetre peut etre minimisee)
 echo.
 cd /d "%~dp0twinpizzahub"
 "%~dp0twinpizzahub\node_modules\electron\dist\electron.exe" .
 set EXIT_CODE=%ERRORLEVEL%
 cd /d "%~dp0"
+
+:: Quand Electron se ferme, arreter le serveur d'impression aussi
+echo  Fermeture du serveur d'impression...
+taskkill /FI "WINDOWTITLE eq TwinPizza-PrintServer" /F >nul 2>&1
+
 if !EXIT_CODE! NEQ 0 (
     echo.
     echo  ERREUR : L'application a quitte avec le code !EXIT_CODE!
