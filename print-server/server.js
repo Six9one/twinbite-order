@@ -75,6 +75,21 @@ const ESCPOS = {
     DOUBLE_LINE_32: '='.repeat(32) + '\n',
 };
 
+// Reverse ticket line order so title stays on top for wall-mounted upside-down printer.
+// ESC{ rotates each character 180°; this reversal corrects the line order.
+function reverseTicketLines(raw) {
+    const initSeq = ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252 + ESCPOS.UPSIDE_DOWN_ON;
+    const tailSeq = '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
+    let body = raw;
+    if (body.startsWith(initSeq)) body = body.slice(initSeq.length);
+    if (body.endsWith(tailSeq))   body = body.slice(0, -tailSeq.length);
+    const lines = body.split('\n');
+    lines.reverse();
+    // Remove leading blanks that appear after reversal
+    while (lines.length && lines[0] === '') lines.shift();
+    return initSeq + lines.join('\n') + tailSeq;
+}
+
 // Convert French accented characters to Code Page 1252 bytes
 function convertToCP1252(text) {
     if (!text) return '';
@@ -382,7 +397,7 @@ function formatKitchenTicket(order) {
     });
 
     t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
-    return convertToCP1252(t);
+    return convertToCP1252(reverseTicketLines(t));
 }
 
 // ============================================
@@ -611,7 +626,7 @@ function formatCounterTicket(order, loyaltyText) {
     t += 'Merci de votre visite!\n';
     t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
-    return convertToCP1252(t);
+    return convertToCP1252(reverseTicketLines(t));
 }
 
 // Legacy wrapper for backward compatibility (HACCP endpoints etc.)
@@ -799,7 +814,7 @@ function formatUnifiedTicket(order, loyaltyText) {
     t += '\nMerci de votre visite!\n';
     t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
-    return convertToCP1252(t);
+    return convertToCP1252(reverseTicketLines(t));
 }
 
 // Send data to printer via TCP
@@ -1479,7 +1494,7 @@ function formatDateLabel(data) {
     ticket += ESCPOS.FEED;
     ticket += ESCPOS.PARTIAL_CUT;
 
-    return convertToCP1252(ticket);
+    return convertToCP1252(reverseTicketLines(ticket));
 }
 // Format FREEZER/CONGÉLATION ticket for ESC/POS printing
 // Shows product info scanned from the original label + freezing details
@@ -1565,7 +1580,7 @@ function formatFreezerTicket(data) {
     ticket += ESCPOS.FEED;
     ticket += ESCPOS.PARTIAL_CUT;
 
-    return convertToCP1252(ticket);
+    return convertToCP1252(reverseTicketLines(ticket));
 }
 
 // Format HACCP ticket for ESC/POS printing
@@ -1641,7 +1656,7 @@ function formatHACCPTicket(data) {
     ticket += ESCPOS.FEED;
     ticket += ESCPOS.PARTIAL_CUT;
 
-    return convertToCP1252(ticket);
+    return convertToCP1252(reverseTicketLines(ticket));
 }
 
 // Setup Express HTTP server

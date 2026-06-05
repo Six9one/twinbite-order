@@ -25,6 +25,12 @@ contextBridge.exposeInMainWorld('twinHub', {
   // WhatsApp message actually sent (confirmation or review) — with full details
   onWhatsAppMessageSent: (cb) => ipcRenderer.on('whatsapp-message-sent', (_, data) => cb(data)),
 
+  // WhatsApp conversations
+  getWAChats:    ()             => ipcRenderer.invoke('get-wa-chats'),
+  getWAMessages: (jid)          => ipcRenderer.invoke('get-wa-messages', jid),
+  sendWAMessage: (jid, text)    => ipcRenderer.invoke('send-wa-message', { jid, text }),
+  onWANewMessage:(cb)           => ipcRenderer.on('wa-new-message', (_, data) => cb(data)),
+
   platform: process.platform,
   appUrl: process.argv.includes('--dev') ? 'http://localhost:8080' : 'http://localhost:3456',
 });

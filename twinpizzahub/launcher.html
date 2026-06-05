@@ -287,56 +287,78 @@ webview.active { display:flex; }
 
   <!-- WhatsApp panel -->
   <div class="panel" id="panel-whatsapp">
-    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
 
-      <!-- Left: QR + status -->
-      <div style="min-width:280px;flex:1;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-          <div style="font-size:18px;font-weight:800;">💬 WhatsApp</div>
-          <span class="wa-status-pill" id="wa-pill" style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44;">⏳ Connexion...</span>
+    <!-- Top row: status + auto-message info -->
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+      <div style="font-size:18px;font-weight:800;">💬 WhatsApp</div>
+      <span class="wa-status-pill" id="wa-pill" style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44;">⏳ Connexion...</span>
+      <div id="wa-auto-info" style="display:none;font-size:11.5px;color:#86efac;background:#22c55e11;border:1px solid #22c55e33;border-radius:8px;padding:4px 10px;">
+        ✅ Envoi automatique actif — Confirmation immédiate + Avis Google 40min après chaque commande
+      </div>
+    </div>
+
+    <!-- Main layout: left=QR/status, center=chats, right=messages -->
+    <div style="display:flex;gap:14px;height:calc(100vh - 180px);min-height:400px;">
+
+      <!-- Col 1: QR / Connected -->
+      <div style="width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;">
+
+        <!-- QR box -->
+        <div id="wa-qr-section" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:6px;">📱 Scanner pour connecter</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">WhatsApp → Appareils connectés → Lier un appareil</div>
+          <div id="qr-container" style="display:flex;justify-content:center;align-items:center;min-height:200px;">
+            <div id="qr-loading" style="color:var(--muted);font-size:12px;">⏳ Génération QR...</div>
+            <img id="qr-img" src="" alt="QR Code" style="display:none;border-radius:8px;width:200px;height:200px;" />
+          </div>
         </div>
 
-        <!-- QR box — visible when disconnected -->
-        <div id="wa-qr-section" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;margin-bottom:16px;">
-          <div style="font-size:15px;font-weight:700;color:var(--accent);margin-bottom:6px;">📱 Connecter le compte WhatsApp du restaurant</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">
-            Ouvrez WhatsApp sur votre téléphone →<br>
-            <strong style="color:var(--text)">Appareils connectés</strong> → <strong style="color:var(--text)">Lier un appareil</strong> → Scanner ce QR
+        <!-- Connected -->
+        <div id="wa-connected-section" style="display:none;background:#22c55e11;border:1px solid #22c55e33;border-radius:14px;padding:16px;text-align:center;">
+          <div style="font-size:28px;margin-bottom:6px;">✅</div>
+          <div style="font-size:14px;font-weight:700;color:#22c55e;">Connecté</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6;">
+            📨 Confirmation → immédiat<br>⭐ Avis Google → 40 min après
           </div>
-          <div id="qr-container" style="display:flex;justify-content:center;align-items:center;min-height:240px;">
-            <div id="qr-loading" style="color:var(--muted);font-size:13px;">⏳ Génération du QR code...</div>
-            <img id="qr-img" src="" alt="QR Code" style="display:none;border-radius:10px;width:240px;height:240px;" />
-          </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:12px;">Le QR expire après 60 secondes — un nouveau sera généré automatiquement</div>
         </div>
 
-        <!-- Connected info -->
-        <div id="wa-connected-section" style="display:none;background:#22c55e11;border:1px solid #22c55e33;border-radius:14px;padding:20px;margin-bottom:16px;text-align:center;">
-          <div style="font-size:32px;margin-bottom:8px;">✅</div>
-          <div style="font-size:15px;font-weight:700;color:#22c55e;">WhatsApp connecté</div>
-          <div style="height:1px;background:#22c55e33;margin:12px 0;"></div>
-          <div style="text-align:left;font-size:12.5px;color:var(--text);line-height:1.7;">
-            <div>📨 <strong>Confirmation</strong> → immédiat à chaque commande</div>
-            <div>⭐ <strong>Avis Google</strong> → 40 min après chaque commande</div>
-          </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:10px;">
-            Les messages sont envoyés même quand vous êtes sur le Point de Vente.
+        <!-- Auto-send log -->
+        <div class="wa-log" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div class="wa-log-title" style="font-size:11px;">📤 Messages auto envoyés</div>
+          <div id="wa-log-body" style="flex:1;overflow-y:auto;padding:8px;">
+            <div style="text-align:center;color:var(--muted);font-size:11px;padding:16px;">Aucun message pour l'instant.</div>
           </div>
         </div>
       </div>
 
-      <!-- Right: message log -->
-      <div style="flex:1;min-width:260px;">
-        <div class="wa-log">
-          <div class="wa-log-title">Messages envoyés automatiquement</div>
-          <div id="wa-log-body">
-            <div style="text-align:center;color:var(--muted);font-size:12px;padding:24px;">
-              Aucun message envoyé pour l'instant.<br>
-              <span style="font-size:11px;">Les messages apparaîtront ici après chaque commande.</span>
-            </div>
+      <!-- Col 2: Chat list -->
+      <div style="width:220px;flex-shrink:0;background:var(--sidebar);border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:10px 12px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:between;">
+          <span>Conversations</span>
+          <button onclick="loadWAChats()" style="margin-left:auto;background:none;border:none;color:var(--accent);cursor:pointer;font-size:16px;" title="Actualiser">↻</button>
+        </div>
+        <div id="wa-chat-list" style="flex:1;overflow-y:auto;padding:4px;">
+          <div style="text-align:center;color:var(--muted);font-size:11px;padding:20px;">
+            Connectez WhatsApp pour voir les conversations
           </div>
         </div>
       </div>
+
+      <!-- Col 3: Messages view -->
+      <div style="flex:1;background:var(--sidebar);border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div id="wa-conv-header" style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:var(--muted);">
+          ← Sélectionnez une conversation
+        </div>
+        <div id="wa-messages-list" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px;">
+        </div>
+        <div id="wa-send-bar" style="display:none;padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;">
+          <input id="wa-send-input" type="text" placeholder="Écrire un message..."
+            style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;"
+            onkeydown="if(event.key==='Enter')sendWAMsg()" />
+          <button onclick="sendWAMsg()" style="background:var(--green);color:#000;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:13px;">Envoyer</button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -614,9 +636,15 @@ function handleWAStatus(data) {
   if (status === 'connected') {
     if (qrSection)   qrSection.style.display   = 'none';
     if (connSection) connSection.style.display  = 'block';
+    const autoInfo = document.getElementById('wa-auto-info');
+    if (autoInfo) autoInfo.style.display = 'inline-flex';
+    // Load conversations
+    setTimeout(loadWAChats, 1000);
   } else {
     if (qrSection)   qrSection.style.display   = 'block';
     if (connSection) connSection.style.display  = 'none';
+    const autoInfo = document.getElementById('wa-auto-info');
+    if (autoInfo) autoInfo.style.display = 'none';
   }
 
   if (qr) handleWAQR(qr);
@@ -714,6 +742,112 @@ function renderWALog() {
 // Back-compat shim (older calls)
 function logWAMessage(order, success, type) {
   recordWAMessage({ order_number: order.order_number, customer_name: order.customer_name, success, type, time: Date.now() });
+}
+
+// ── WhatsApp Conversations ─────────────────────────────────────────────────
+let activeJid = null;
+
+async function loadWAChats() {
+  if (!window.twinHub) return;
+  const chats = await window.twinHub.getWAChats().catch(() => []);
+  const list = document.getElementById('wa-chat-list');
+  if (!list) return;
+  if (!chats || !chats.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:11px;padding:20px;">Aucune conversation pour l\'instant.</div>';
+    return;
+  }
+  list.innerHTML = chats.map(c => {
+    const name = escapeHtml(c.name && c.name !== c.id ? c.name.split('@')[0] : c.id.split('@')[0]);
+    const preview = escapeHtml((c.lastMsg || '').substring(0, 40));
+    const time = c.lastTs ? new Date(c.lastTs).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) : '';
+    const unread = c.unread > 0 ? `<span style="background:var(--green);color:#000;border-radius:50%;width:16px;height:16px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;">${c.unread}</span>` : '';
+    return `<div onclick="openChat('${c.id.replace(/'/g,"\\'")}','${name.replace(/'/g,"\\'")}','${c.id.endsWith('@g.us')?'group':''}') "
+      style="padding:10px;border-radius:8px;cursor:pointer;border-bottom:1px solid var(--border)40;${activeJid===c.id?'background:var(--card);':''}">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:18px;">${c.id.endsWith('@g.us') ? '👥' : '👤'}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+          <div style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+          <span style="font-size:9px;color:var(--muted);">${time}</span>
+          ${unread}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function openChat(jid, name) {
+  activeJid = jid;
+  const header = document.getElementById('wa-conv-header');
+  if (header) header.innerHTML = `<span style="color:var(--text);">${escapeHtml(name)}</span><span style="font-size:10px;color:var(--muted);margin-left:8px;">${jid.replace('@s.whatsapp.net','').replace('@g.us',' (groupe)')}</span>`;
+  const sendBar = document.getElementById('wa-send-bar');
+  if (sendBar) sendBar.style.display = 'flex';
+  // Refresh chat list to highlight active
+  loadWAChats();
+  // Load messages
+  const msgs = await window.twinHub.getWAMessages(jid).catch(() => []);
+  renderMessages(msgs);
+}
+
+function renderMessages(msgs) {
+  const el = document.getElementById('wa-messages-list');
+  if (!el) return;
+  if (!msgs || !msgs.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:24px;">Aucun message chargé.<br><span style="font-size:10px;">Les nouveaux messages apparaîtront en temps réel.</span></div>';
+    return;
+  }
+  el.innerHTML = msgs.map(m => {
+    const time = m.ts ? new Date(m.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
+    const bg = m.fromMe ? '#f59e0b22' : 'var(--card)';
+    const align = m.fromMe ? 'flex-end' : 'flex-start';
+    return `<div style="display:flex;justify-content:${align};">
+      <div style="max-width:75%;background:${bg};border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--text);">
+        ${escapeHtml(m.text || '')}
+        <div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:right;">${time}${m.fromMe?' ✓':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendWAMsg() {
+  if (!activeJid) return;
+  const input = document.getElementById('wa-send-input');
+  const text = (input?.value || '').trim();
+  if (!text) return;
+  input.value = '';
+  const result = await window.twinHub.sendWAMessage(activeJid, text).catch(() => ({ success: false, error: 'Erreur réseau' }));
+  if (!result.success) {
+    alert('Erreur envoi: ' + (result.error || 'Inconnu'));
+    return;
+  }
+  // Refresh messages
+  const msgs = await window.twinHub.getWAMessages(activeJid).catch(() => []);
+  renderMessages(msgs);
+}
+
+// Listen for new incoming messages in real time
+if (window.twinHub && window.twinHub.onWANewMessage) {
+  window.twinHub.onWANewMessage(({ jid, message }) => {
+    // Refresh chat list badge
+    loadWAChats();
+    // If this chat is open, append message
+    if (jid === activeJid) {
+      const el = document.getElementById('wa-messages-list');
+      if (el) {
+        const time = message.ts ? new Date(message.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
+        el.insertAdjacentHTML('beforeend', `<div style="display:flex;justify-content:flex-start;">
+          <div style="max-width:75%;background:var(--card);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--text);">
+            ${escapeHtml(message.text || '')}
+            <div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:right;">${time}</div>
+          </div>
+        </div>`);
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+  });
 }
 
 // ── Printer ────────────────────────────────────────────────────────────────

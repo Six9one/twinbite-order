@@ -25,6 +25,22 @@ let whatsappStatus = 'disconnected'; // disconnected | connecting | connected | 
 let lastQR         = null; // store last QR so we can re-send it when panel opens
 let supabase       = null;
 
+// ─── WhatsApp chat / message store (in-memory) ───────────────────────────────
+const waChats    = new Map(); // jid → { id, name, unread, lastMsg, lastTs }
+const waMessages = new Map(); // jid → [{ id, text, fromMe, ts }]
+
+function normalizeMsg(m) {
+  const text = m.message?.conversation
+    || m.message?.extendedTextMessage?.text
+    || m.message?.imageMessage?.caption
+    || m.message?.videoMessage?.caption
+    || (m.message?.imageMessage ? '[Image]' : '')
+    || (m.message?.stickerMessage ? '[Sticker]' : '')
+    || (m.message?.audioMessage ? '[Audio]' : '')
+    || '[Message]';
+  return { id: m.key.id, text, fromMe: !!m.key.fromMe, ts: (m.messageTimestamp || 0) * 1000 };
+}
+
 // ─── Google review timers (in-memory) ──────────────────────────────────────────
 // orderId -> setTimeout handle. Fires 40 min after a confirmation is sent.
 const reviewTimers = new Map();
@@ -222,6 +238,49 @@ async function initWhatsApp() {
     });
 
     whatsappClient.ev.on('creds.update', saveCreds);
+
+    // ── In-memory chat + message store ──────────────────────────────────────
+    whatsappClient.ev.on('messaging-history.set', ({ chats, messages }) => {
+      (chats || []).forEach(c => {
+        if (!waChats.has(c.id)) waChats.set(c.id, { id: c.id, name: c.name || c.id, unread: c.unreadCount || 0, lastMsg: '', lastTs: 0 });
+      });
+      (messages || []).forEach(m => {
+        if (!waMessages.has(m.key.remoteJid)) waMessages.set(m.key.remoteJid, []);
+        waMessages.get(m.key.remoteJid).push(normalizeMsg(m));
+      });
+      broadcastWA(whatsappStatus === 'connected' ? 'connected' : whatsappStatus);
+    });
+
+    whatsappClient.ev.on('chats.upsert', chats => {
+      chats.forEach(c => {
+        const existing = waChats.get(c.id) || {};
+        waChats.set(c.id, { ...existing, id: c.id, name: c.name || existing.name || c.id, unread: c.unreadCount || 0 });
+      });
+    });
+
+    whatsappClient.ev.on('messages.upsert', ({ messages: msgs, type }) => {
+      msgs.forEach(m => {
+        if (!m.message) return;
+        const jid = m.key.remoteJid;
+        if (!waMessages.has(jid)) waMessages.set(jid, []);
+        const arr = waMessages.get(jid);
+        const norm = normalizeMsg(m);
+        // Avoid duplicates
+        if (!arr.find(x => x.id === norm.id)) arr.push(norm);
+        // Keep last 200 per chat
+        if (arr.length > 200) arr.splice(0, arr.length - 200);
+        // Update chat metadata
+        const chat = waChats.get(jid) || { id: jid, name: jid, unread: 0, lastMsg: '', lastTs: 0 };
+        chat.lastMsg = norm.text;
+        chat.lastTs  = norm.ts;
+        if (!m.key.fromMe) chat.unread = (chat.unread || 0) + 1;
+        waChats.set(jid, chat);
+        // Notify UI of new incoming message
+        [launcherWin, ...Object.values(windows)].forEach(w => {
+          if (w && !w.isDestroyed()) w.webContents.send('wa-new-message', { jid, message: norm });
+        });
+      });
+    });
 
   } catch(err) {
     console.error('WhatsApp init error:', err.message);
@@ -516,6 +575,35 @@ ipcMain.handle('get-whatsapp-status', () => {
 ipcMain.handle('send-whatsapp', async (_, { phone, message }) => {
   try { await sendWhatsAppMessage(phone, message); return { success: true }; }
   catch(e) { return { success: false, message: e.message }; }
+});
+
+// ─── WhatsApp chat/conversation IPC ──────────────────────────────────────────
+ipcMain.handle('get-wa-chats', () => {
+  const list = Array.from(waChats.values())
+    .filter(c => !c.id.endsWith('@g.us') || true) // include groups too
+    .sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0))
+    .slice(0, 100);
+  return list;
+});
+
+ipcMain.handle('get-wa-messages', (_, jid) => {
+  const msgs = waMessages.get(jid) || [];
+  return msgs.slice(-100); // last 100 messages
+});
+
+ipcMain.handle('send-wa-message', async (_, { jid, text }) => {
+  try {
+    if (!whatsappClient || whatsappStatus !== 'connected') throw new Error('WhatsApp non connecté');
+    await whatsappClient.sendMessage(jid, { text });
+    // Store it locally
+    const norm = { id: Date.now() + '', text, fromMe: true, ts: Date.now() };
+    if (!waMessages.has(jid)) waMessages.set(jid, []);
+    waMessages.get(jid).push(norm);
+    const chat = waChats.get(jid) || { id: jid, name: jid, unread: 0, lastMsg: '', lastTs: 0 };
+    chat.lastMsg = text; chat.lastTs = Date.now();
+    waChats.set(jid, chat);
+    return { success: true };
+  } catch(e) { return { success: false, error: e.message }; }
 });
 
 const PRINT_SERVER = 'http://localhost:3001';

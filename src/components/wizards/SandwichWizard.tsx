@@ -61,6 +61,16 @@ const supplementEmojis: Record<string, string> = {
 // Default crudités that come pre-selected (user can remove them)
 const DEFAULT_CRUDITES = ['Salade', 'Tomate', 'Oignon'];
 
+// Static fallback sandwiches (used when DB table is empty)
+const FALLBACK_SANDWICHES: SandwichType[] = [
+  { id: 'sw-poulet',    name: 'Sandwich Poulet',    description: 'Escalope de poulet grillé',       base_price: 6.50, image_url: null, display_order: 1, is_active: true, created_at: null },
+  { id: 'sw-merguez',   name: 'Sandwich Merguez',   description: 'Merguez grillées maison',          base_price: 6.50, image_url: null, display_order: 2, is_active: true, created_at: null },
+  { id: 'sw-mixte',     name: 'Sandwich Mixte',     description: 'Poulet + merguez',                 base_price: 7.00, image_url: null, display_order: 3, is_active: true, created_at: null },
+  { id: 'sw-steak',     name: 'Sandwich Steak',     description: 'Steak haché maison',               base_price: 7.00, image_url: null, display_order: 4, is_active: true, created_at: null },
+  { id: 'sw-thon',      name: 'Sandwich Thon',      description: 'Thon, maïs, salade',               base_price: 6.00, image_url: null, display_order: 5, is_active: true, created_at: null },
+  { id: 'sw-kefta',     name: 'Sandwich Kefta',     description: 'Brochettes de kefta épicées',      base_price: 7.00, image_url: null, display_order: 6, is_active: true, created_at: null },
+];
+
 interface SandwichWizardProps {
   onClose: () => void;
 }
@@ -74,7 +84,8 @@ function getOptionEmoji(name: string, map: Record<string, string>): string {
 
 export function SandwichWizard({ onClose }: SandwichWizardProps) {
   const { addToCart } = useOrder();
-  const { data: sandwichTypes, isLoading: loadingSandwiches } = useSandwichTypes();
+  const { data: sandwichTypesRaw, isLoading: loadingSandwiches } = useSandwichTypes();
+  const sandwichTypes = (sandwichTypesRaw && sandwichTypesRaw.length > 0) ? sandwichTypesRaw : (!loadingSandwiches ? FALLBACK_SANDWICHES : []);
   const { data: cruditeOptions } = useCruditeOptions();
   const { data: sauceOptionsData } = useSauceOptions();
   const { data: supplementOptionsData } = useSupplementOptions();
