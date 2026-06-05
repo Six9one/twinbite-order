@@ -283,8 +283,7 @@ function generateOrderMessage(order) {
 function generateReviewMessage(order) {
   const name  = getFirstName(order);
   const hello = name ? ` ${name}` : '';
-  // TODO: remplace par le vrai lien Google Maps du restaurant
-  const reviewLink = 'https://g.page/r/PLACEHOLDER_GOOGLE_REVIEW_ID/review';
+  const reviewLink = 'https://g.page/r/CXpZZnzoTBFREBM/review';
 
   let msg = `Bonjour${hello} ! 😊\n\n`;
   msg += `Votre commande était bonne ?\n`;
