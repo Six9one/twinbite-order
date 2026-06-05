@@ -125,38 +125,28 @@ echo  (La fenetre Hub s'ouvre maintenant)
 echo  (Cette fenetre peut etre minimisee)
 echo.
 
-:: Lancer Electron et capturer sa sortie dans un log
+:: Lancer Electron — sortie visible dans cette fenetre
 cd /d "%~dp0twinpizzahub"
-set START_TIME=%TIME%
-"!ELECTRON_EXE!" . --enable-logging 2>"!LOG_FILE!"
+"!ELECTRON_EXE!" . --enable-logging
 set EXIT_CODE=!ERRORLEVEL!
 cd /d "%~dp0"
 
 :: Arreter le serveur d'impression
 taskkill /FI "WINDOWTITLE eq TwinPizza-PrintServer" /F >nul 2>&1
 
-:: Calculer duree (si exit trop rapide = crash)
+echo.
+echo  ============================================================
 if !EXIT_CODE! NEQ 0 (
-    echo.
-    echo  ============================================================
     echo   ERREUR : TwinPizza Hub a quitte avec le code !EXIT_CODE!
     echo.
-    echo   DERNIERS LOGS D'ERREUR :
-    echo  ============================================================
-    if exist "!LOG_FILE!" (
-        type "!LOG_FILE!"
-    ) else (
-        echo   (aucun log disponible)
-    )
-    echo  ============================================================
-    echo.
-    echo  Solutions :
+    echo   Solutions :
     echo    1. Relancer ce fichier
     echo    2. Executer METTRE_A_JOUR.bat
     echo    3. Executer INSTALLER.bat si le probleme persiste
-    echo.
-    pause
-    exit /b !EXIT_CODE!
+) else (
+    echo   TwinPizza Hub ferme normalement. Code: !EXIT_CODE!
 )
-
-exit /b 0
+echo  ============================================================
+echo.
+pause
+exit /b !EXIT_CODE!
