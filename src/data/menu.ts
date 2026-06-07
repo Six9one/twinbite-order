@@ -507,6 +507,7 @@ export const sauceOptions = [
   { id: "mayonnaise", name: "Mayonnaise", price: 0 },
   { id: "bbq", name: "Barbecue", price: 0 },
   { id: "curry", name: "Curry", price: 0 },
+  { id: "sauce-fromager", name: "Sauce Fromagère", price: 0 },
 ];
 
 // Garnitures for Soufflet (Pomme de terre, Oignon, Olive)

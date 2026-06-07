@@ -4,6 +4,7 @@ import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
 import { useCategories, useProductsByCategory } from '@/hooks/useProducts';
 import { usePizzasByBase } from '@/hooks/useProducts';
 import { useMeatOptions, useSauceOptions, useSupplementOptions, useGarnitureOptions, useCruditesOptions } from '@/hooks/useCustomizationOptions';
+import { useSandwichTypes } from '@/hooks/useSandwiches';
 import { calculateTVA, applyPizzaPromotions } from '@/utils/promotions';
 import { pizzaPrices, cheeseSupplementOptions, menuOptionPrices } from '@/data/menu';
 import { wizardSizePrices } from '@/data/pricing';
@@ -75,19 +76,19 @@ function useThemeBump() {
 function ProductTile({ item, selected, onClick, badge, compact, tint }: { item:any; selected:boolean; onClick:()=>void; badge?:string; compact?:boolean; tint?:string }) {
   // Support both camelCase (imageUrl) and snake_case (image_url from DB)
   const img = item.imageUrl || item.image_url;
-  const imgSize = compact ? 52 : 72;
+  const imgSize = compact ? 44 : 64;
   const borderColor = selected ? S.accent : (tint || '#2d3748');
   return (
     <button onClick={onClick} style={{
       background: selected ? '#f59e0b22' : (tint ? tint + '14' : S.card),
       border:     `${selected ? 2 : tint ? 2 : 1}px solid ${borderColor}`,
-      borderRadius:10, padding: compact ? '6px 5px' : '10px 8px', cursor:'pointer', textAlign:'center',
+      borderRadius:8, padding: compact ? '4px 3px' : '8px 6px', cursor:'pointer', textAlign:'center',
       transition:'all .12s', position:'relative',
     }}>
       {badge && <span style={{ position:'absolute', top:4, left:4, background:'#ef4444', color:'#fff', fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:99 }}>{badge}</span>}
       {selected && <span style={{ position:'absolute', top:4, right:4, background:S.accent, color:'#000', fontSize:10, fontWeight:800, width:18, height:18, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center' }}>✓</span>}
       {img
-        ? <img src={img} alt={item.name} style={{ width:imgSize, height:imgSize, borderRadius:8, objectFit:'cover', display:'block', margin:`0 auto ${compact?4:6}px` }} />
+        ? <img src={img} alt={item.name} loading="lazy" style={{ width:imgSize, height:imgSize, borderRadius:8, objectFit:'cover', display:'block', margin:`0 auto ${compact?4:6}px`, background:'#1f2937' }} />
         : <div style={{ width:imgSize, height:imgSize, borderRadius:8, background:'#111827', display:'flex', alignItems:'center', justifyContent:'center', fontSize:compact?22:28, margin:`0 auto ${compact?4:6}px` }}>{CAT_ICON[item.category||''] || '🍽️'}</div>
       }
       <div style={{ fontSize: compact?10:11, fontWeight:700, color: selected ? S.accent : S.text, lineHeight:1.15, marginBottom:2 }}>{item.name}</div>
@@ -136,11 +137,12 @@ function Chip({ label, active, onClick, extra }: { label:string; active:boolean;
   );
 }
 
-// ── Pizza sizes (Senior / Mega / Menu Midi) ──────────────────────────────────
+// ── Pizza sizes (Senior / Mega / Menu Midi Senior / Menu Midi Mega) ──────────
 const PIZZA_SIZES = [
-  { id:'senior',    label:'Senior',    price:pizzaPrices.senior,         color:'#3b82f6' },
-  { id:'mega',      label:'Mega',      price:pizzaPrices.mega,           color:'#8b5cf6' },
-  { id:'menu_midi', label:'Menu Midi', price:pizzaPrices.menuMidiSenior, color:'#22c55e' },
+  { id:'senior',         label:'Senior',      price:pizzaPrices.senior,         color:'#3b82f6' },
+  { id:'mega',           label:'Mega',        price:pizzaPrices.mega,           color:'#8b5cf6' },
+  { id:'menu_midi',      label:'Midi Senior', price:pizzaPrices.menuMidiSenior, color:'#22c55e' },
+  { id:'menu_midi_mega', label:'Midi Mega',   price:pizzaPrices.menuMidiMega,   color:'#16a34a' },
 ] as const;
 type PizzaSizeId = typeof PIZZA_SIZES[number]['id'];
 
@@ -170,7 +172,7 @@ function PizzaPanel({ orderType, onAdd }: { orderType:OrderType; onAdd:(item:any
     const sizeLabel = PIZZA_SIZES.find(s => s.id === size)!.label;
     onAdd(
       { id:sel.id, name:sel.name, price:basePrice, category:'pizzas', description:'' },
-      { size, sizeLabel, base:sel._base, supplements:supps, note, isMenuMidi: size==='menu_midi' },
+      { size, sizeLabel, base:sel._base, supplements:supps, note, isMenuMidi: size==='menu_midi' || size==='menu_midi_mega' },
       price
     );
     setSel(null); setSupps([]); setNote('');
@@ -198,8 +200,8 @@ function PizzaPanel({ orderType, onAdd }: { orderType:OrderType; onAdd:(item:any
       </div>
 
       {/* Grid — ONE page: tomate=red tiles, creme=blue tiles */}
-      <div style={{ flex:1, overflow:'auto', padding:'10px 12px' }}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(82px,1fr))', gap:6 }}>
+      <div style={{ flex:1, overflow:'auto', padding:'8px 10px' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:4 }}>
           {allPizzas.map((p:any) => (
             <ProductTile
               key={`${p._base}-${p.id}`}
@@ -358,7 +360,7 @@ const WIZ_CFG: Record<WizType, { maxMeats:number; garniture:boolean; supplements
   makloub: { maxMeats:3, garniture:true,  supplements:true,  menu:true,  crudite:true  },
   mlawi:   { maxMeats:3, garniture:true,  supplements:true,  menu:true,  crudite:true  },
   tacos:   { maxMeats:3, garniture:false, supplements:true,  menu:true,  crudite:false }, // frites incluses, pas de garniture
-  panini:  { maxMeats:1, garniture:false, supplements:false, menu:false, crudite:false }, // just meat + sauce, 5€
+  panini:  { maxMeats:1, garniture:false, supplements:true,  menu:true,  crudite:false }, // meat + sauce + suppléments + option frites/boisson
 };
 const FREE_SAUCES = 2, EXTRA_SAUCE = 0.30;
 
@@ -377,7 +379,7 @@ function OptTile({ name, img, emoji, selected, isDefaultRemovable, price, disabl
         background: isDefaultRemovable ? '#ef4444' : S.accent, color:'#fff', fontSize:9, fontWeight:800,
         display:'flex', alignItems:'center', justifyContent:'center' }}>{isDefaultRemovable?'✕':'✓'}</span>}
       {img
-        ? <img src={img} alt={name} style={{ width:46, height:46, borderRadius:7, objectFit:'cover', display:'block', margin:'0 auto 3px' }} />
+        ? <img src={img} alt={name} loading="lazy" style={{ width:46, height:46, borderRadius:7, objectFit:'cover', display:'block', margin:'0 auto 3px', background:'#1f2937' }} />
         : <div style={{ width:46, height:46, borderRadius:7, background:'#0d1117', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, margin:'0 auto 3px' }}>{emoji||'•'}</div>}
       <div style={{ fontSize:10, fontWeight:700, color: selected?(isDefaultRemovable?'#22c55e':S.accent):S.text, lineHeight:1.1 }}>{name}</div>
       {price !== undefined && price > 0 && <div style={{ fontSize:9, color:S.accent, fontWeight:800 }}>+{price.toFixed(2)}€</div>}
@@ -564,9 +566,23 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
   );
 }
 
+// Static sandwich fallback for when the DB table is empty
+const FALLBACK_SANDWICHES_POS = [
+  { id:'sw-vegetarien', name:'Végétarien',  base_price:6.50, image_url:null, is_active:true, description:'Œuf, champignons, galette de pomme de terre, crudités' },
+  { id:'sw-steaky',     name:'Steaky',      base_price:8.50, image_url:null, is_active:true, description:'2 steaks hachés, mozzarella, galette de pommes de terre, crudités' },
+  { id:'sw-special',    name:'Spécial',     base_price:8.50, image_url:null, is_active:true, description:'Escalope de poulet, 2 steaks hachés, cheddar, crudités' },
+  { id:'sw-royal-bacon',name:'Royal Bacon', base_price:8.50, image_url:null, is_active:true, description:'2 steaks hachés, œuf, bacon, crudités' },
+  { id:'sw-cowboy',     name:'Cow Boy',     base_price:8.50, image_url:null, is_active:true, description:'2 steaks hachés, cordon bleu, cheddar, crudités' },
+  { id:'sw-chicken',    name:'Chicken',     base_price:7.50, image_url:null, is_active:true, description:'Escalope de poulet, cheddar, crudités' },
+  { id:'sw-tenders',    name:'Tenders',     base_price:8.50, image_url:null, is_active:true, description:'Tenders de poulet (2 pièces), œuf, crudités' },
+  { id:'sw-normand',    name:'Normand',     base_price:8.50, image_url:null, is_active:true, description:'Escalope de poulet, lardons, champignons, crudités' },
+];
+
 // ── Sandwich panel: pick sandwich → sauce + crudités (no meat) ───────────────
 function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>void }) {
-  const { data: products = [] } = useProductsByCategory('sandwiches');
+  // Lit depuis sandwich_types (même table que le site web et la borne)
+  const { data: dbProducts = [], isLoading: loadingSw } = useSandwichTypes();
+  const products = (!loadingSw && dbProducts.length === 0) ? FALLBACK_SANDWICHES_POS : dbProducts;
   const { data: dbSauces = [] } = useSauceOptions();
   const { data: dbCrud = [] }   = useCruditesOptions();
 
@@ -669,6 +685,270 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
           background: sel?'linear-gradient(135deg,#f59e0b,#ef4444)':'#1f2937',
           color: sel?'#000':'#374151', fontSize:14, fontWeight:800, cursor:sel?'pointer':'not-allowed',
         }}>{sel ? `➕ ${sel.name} — ${price.toFixed(2)}€` : 'Choisissez un sandwich'}</button>
+      </div>
+    </div>
+  );
+}
+
+// ── TexMex panel — Snacks (dégressif) + Frites (fixe) + Croques (fixe) ───────
+interface TxProduct { id:string; name:string; unit_price:number; image_url:string|null; category?:'snack'|'frites'|'croque'; }
+
+const TX_SNACKS:TxProduct[] = [
+  { id:'wings',      name:'Wings',        unit_price:1.40, image_url:null, category:'snack'  },
+  { id:'tenders-tx', name:'Tenders',      unit_price:1.40, image_url:null, category:'snack'  },
+  { id:'nuggets-tx', name:'Nuggets',      unit_price:1.40, image_url:null, category:'snack'  },
+  { id:'mozzastick', name:'Mozza Stick',  unit_price:1.20, image_url:null, category:'snack'  },
+  { id:'jalapenos',  name:'Jalapeños',    unit_price:1.20, image_url:null, category:'snack'  },
+  { id:'onionrings', name:'Onion Rings',  unit_price:1.20, image_url:null, category:'snack'  },
+];
+const TX_FRITES:TxProduct[] = [
+  { id:'petite-barquette', name:'Petite Barquette', unit_price:3.00, image_url:null, category:'frites' },
+  { id:'grande-barquette', name:'Grande Barquette', unit_price:5.00, image_url:null, category:'frites' },
+];
+const TX_CROQUES:TxProduct[] = [
+  { id:'croque-monsieur', name:'Croque Monsieur', unit_price:3.00, image_url:null, category:'croque' },
+  { id:'croque-madame',   name:'Croque Madame',   unit_price:4.00, image_url:null, category:'croque' },
+];
+
+function txGroupOf(name:string):'A'|'B' {
+  const n = name.toLowerCase().replace(/[^a-z]/g,'');
+  return ['wings','tenders','nuggets'].includes(n) ? 'A' : 'B';
+}
+function txGroupPrice(qty:number, grp:'A'|'B'):number {
+  if (qty <= 0) return 0;
+  const [unit,p5,p10] = grp==='A' ? [1.40,7.00,13.00] : [1.20,6.00,10.00];
+  const n10 = Math.floor(qty/10); let r = qty%10;
+  const n5  = Math.floor(r/5);   r %= 5;
+  return n10*p10 + n5*p5 + r*unit;
+}
+
+function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void }) {
+  const [products, setProducts] = useState<TxProduct[]>([]);
+  const [qtys, setQtys] = useState<Record<string,number>>({});
+
+  useEffect(()=>{
+    import('@/integrations/supabase/client').then(({ supabase }) => {
+      supabase.from('texmex_products' as any).select('*').eq('is_active',true).order('display_order')
+        .then(({ data, error }) => {
+          if (error || !data || !(data as any[]).length) {
+            setProducts([...TX_SNACKS,...TX_FRITES,...TX_CROQUES]); return;
+          }
+          const raw = data as unknown as TxProduct[];
+          const hasSnack  = raw.some(p=>(p.category??'snack')==='snack');
+          const hasFrites = raw.some(p=>p.category==='frites');
+          const hasCroque = raw.some(p=>p.category==='croque');
+          setProducts([
+            ...(hasSnack  ? raw.filter(p=>(p.category??'snack')==='snack') : TX_SNACKS),
+            ...(hasFrites ? raw.filter(p=>p.category==='frites')           : TX_FRITES),
+            ...(hasCroque ? raw.filter(p=>p.category==='croque')           : TX_CROQUES),
+          ]);
+        });
+    });
+  },[]);
+
+  const change = (id:string, delta:number) =>
+    setQtys(prev => { const n = Math.max(0,(prev[id]||0)+delta); const next={...prev}; if(n===0) delete next[id]; else next[id]=n; return next; });
+
+  const snacks  = products.filter(p=>(p.category??'snack')==='snack');
+  const frites  = products.filter(p=>p.category==='frites');
+  const croques = products.filter(p=>p.category==='croque');
+
+  const total = (()=>{
+    let qA=0,qB=0,fixed=0;
+    Object.entries(qtys).forEach(([id,qty])=>{
+      const p = products.find(x=>x.id===id); if(!p||qty<=0) return;
+      if(p.category==='frites'||p.category==='croque') fixed += p.unit_price*qty;
+      else { const g = txGroupOf(p.name); if(g==='A') qA+=qty; else qB+=qty; }
+    });
+    return txGroupPrice(qA,'A')+txGroupPrice(qB,'B')+fixed;
+  })();
+
+  const hasItems = Object.values(qtys).some(q=>q>0);
+
+  const handleAdd = () => {
+    if (!hasItems) { toast.error('Sélectionnez au moins un article'); return; }
+    const lines = Object.entries(qtys)
+      .filter(([,q])=>q>0)
+      .map(([id,q])=>{ const p=products.find(x=>x.id===id)!; return `${q}x ${p.name}`; });
+    onAdd(
+      { id:`texmex-${Date.now()}`, name:`Tex-Mex (${lines.length} article${lines.length>1?'s':''})`, price:total, category:'texmex', description:lines.join(', ') },
+      { items:lines, note:'' },
+      total
+    );
+    setQtys({});
+  };
+
+  const catEmoji = (cat?:string) => cat==='frites' ? '🍟' : cat==='croque' ? '🥪' : '🌶️';
+  const catGrad  = (cat?:string) => cat==='frites' ? 'linear-gradient(135deg,#f59e0b,#d97706)'
+    : cat==='croque' ? 'linear-gradient(135deg,#a16207,#78350f)'
+    : 'linear-gradient(135deg,#ef4444,#f97316)';
+
+  // Single image tile
+  const TxTile = ({ p }:{ p:TxProduct }) => {
+    const q = qtys[p.id]||0;
+    const isFixed = p.category==='frites'||p.category==='croque';
+    return (
+      <div style={{
+        display:'flex', flexDirection:'column', borderRadius:10,
+        border:`2px solid ${q>0 ? '#f59e0b' : S.border}`,
+        background: q>0 ? 'rgba(245,158,11,0.10)' : S.card,
+        overflow:'hidden', position:'relative',
+        transition:'border-color 0.15s, background 0.15s',
+      }}>
+        {/* Image area — 4:3 ratio */}
+        <div style={{ position:'relative', width:'100%', paddingTop:'75%', overflow:'hidden', flexShrink:0 }}>
+          {p.image_url ? (
+            <img src={p.image_url} alt={p.name} style={{
+              position:'absolute', top:0, left:0, width:'100%', height:'100%', objectFit:'cover',
+            }} />
+          ) : (
+            <div style={{
+              position:'absolute', top:0, left:0, width:'100%', height:'100%',
+              background: catGrad(p.category),
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:28,
+            }}>{catEmoji(p.category)}</div>
+          )}
+          {/* Qty badge */}
+          {q > 0 && (
+            <div style={{
+              position:'absolute', top:4, right:4,
+              background:'#f59e0b', color:'#000', borderRadius:'50%',
+              width:20, height:20, display:'flex', alignItems:'center', justifyContent:'center',
+              fontSize:11, fontWeight:900, lineHeight:1,
+            }}>{q}</div>
+          )}
+        </div>
+        {/* Name + price */}
+        <div style={{ padding:'4px 5px 3px', flex:1 }}>
+          <div style={{ fontSize:10, fontWeight:800, color:S.text, lineHeight:1.25, marginBottom:1, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{p.name}</div>
+          <div style={{ fontSize:9, color:S.accent, fontWeight:600 }}>
+            {isFixed ? `${p.unit_price.toFixed(2)}€` : `${p.unit_price.toFixed(2)}€/p.`}
+          </div>
+        </div>
+        {/* +/- controls */}
+        <div style={{ display:'flex', borderTop:`1px solid ${S.border}`, flexShrink:0 }}>
+          <button
+            onClick={(e)=>{ e.stopPropagation(); change(p.id,-1); }}
+            disabled={q===0}
+            style={{ flex:1, padding:'4px 0', border:'none', background:'transparent',
+              color: q ? '#ef4444' : '#374151', cursor: q ? 'pointer' : 'not-allowed',
+              fontSize:15, fontWeight:900, borderRight:`1px solid ${S.border}`,
+            }}>−</button>
+          <button
+            onClick={(e)=>{ e.stopPropagation(); change(p.id,+1); }}
+            style={{ flex:1, padding:'4px 0', border:'none', background:'transparent',
+              color:'#22c55e', cursor:'pointer', fontSize:15, fontWeight:900,
+            }}>+</button>
+        </div>
+      </div>
+    );
+  };
+
+  // Section label spanning full grid width + tiles
+  const renderSection = (emoji:string, title:string, items:TxProduct[]) => items.length===0 ? null : (
+    <>
+      <div style={{
+        gridColumn:'1 / -1', fontSize:10, fontWeight:900, color:S.accent,
+        textTransform:'uppercase', letterSpacing:1.2, marginTop:4,
+      }}>{emoji} {title}</div>
+      {items.map(p=><TxTile key={p.id} p={p} />)}
+    </>
+  );
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
+      <div style={{ flex:1, overflow:'auto', padding:'6px 8px' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:5 }}>
+          {renderSection('🌶️','Snacks', snacks)}
+          {renderSection('🍟','Frites', frites)}
+          {renderSection('🥪','Croques',croques)}
+        </div>
+      </div>
+      {/* Dégressif info + Add button */}
+      <div style={{ padding:'7px 8px', borderTop:`1px solid ${S.border}`, background:S.panel, flexShrink:0 }}>
+        {hasItems && (
+          <div style={{ fontSize:9, color:S.muted, marginBottom:4, textAlign:'center' }}>
+            Snacks: A (Wings/Tenders/Nuggets) 1.40€ · 5=7€ · 10=13€ &nbsp;|&nbsp; B (autres) 1.20€ · 5=6€ · 10=10€
+          </div>
+        )}
+        <button onClick={handleAdd} disabled={!hasItems} style={{
+          width:'100%', padding:'10px', borderRadius:9, border:'none',
+          background:hasItems?'linear-gradient(135deg,#f59e0b,#ef4444)':'#1f2937',
+          color:hasItems?'#000':'#374151', fontSize:14, fontWeight:800, cursor:hasItems?'pointer':'not-allowed',
+        }}>➕ Ajouter au panier — {total.toFixed(2)}€</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Boissons panel — canette/bouteille avec note + quantité ──────────────────
+const BOISSON_ITEMS = [
+  { id:'canette',   name:'Canette au choix',   price:1.50, hasNote:true  },
+  { id:'bouteille', name:'Grande Bouteille',   price:3.50, hasNote:true  },
+  { id:'eau-mini',  name:'Eau Mini (50cl)',     price:1.00, hasNote:false },
+  { id:'eau-grand', name:'Eau Grand (1.5L)',    price:1.50, hasNote:false },
+];
+function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void }) {
+  const [qtys,  setQtys]  = useState<Record<string,number>>({});
+  const [notes, setNotes] = useState<Record<string,string>>({});
+
+  const changeQty = (id:string, d:number) =>
+    setQtys(p => { const n=Math.max(0,(p[id]||0)+d); const r={...p}; if(n===0) delete r[id]; else r[id]=n; return r; });
+
+  const total = BOISSON_ITEMS.reduce((s,b)=>s+(qtys[b.id]||0)*b.price, 0);
+  const hasItems = Object.values(qtys).some(q=>q>0);
+
+  const handleAdd = () => {
+    if (!hasItems) { toast.error('Sélectionnez au moins une boisson'); return; }
+    const lines = BOISSON_ITEMS
+      .filter(b=>(qtys[b.id]||0)>0)
+      .map(b=>{ const n=notes[b.id]; return `${qtys[b.id]}x ${b.name}${n?` (${n})`:''}`; });
+    // Add each boisson as separate cart item for clarity
+    BOISSON_ITEMS.filter(b=>(qtys[b.id]||0)>0).forEach(b=>{
+      const q = qtys[b.id]; const n = notes[b.id];
+      onAdd(
+        { id:`boisson-${b.id}-${Date.now()}`, name:b.name+(n?` (${n})`:''), price:b.price, category:'boissons', description:'' },
+        { note:n||'' },
+        b.price * q
+      );
+    });
+    setQtys({}); setNotes({});
+  };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
+      <div style={{ flex:1, overflow:'auto', padding:'10px 14px' }}>
+        {BOISSON_ITEMS.map(b=>{
+          const q = qtys[b.id]||0;
+          return (
+            <div key={b.id} style={{ background:S.card, borderRadius:9, padding:'8px 12px', marginBottom:8, border:`1px solid ${q>0?S.accent:S.border}` }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom: b.hasNote?6:0 }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:S.text }}>{b.name}</div>
+                  <div style={{ fontSize:11, color:S.accent, fontWeight:800 }}>{b.price.toFixed(2)}€</div>
+                </div>
+                <button onClick={()=>changeQty(b.id,-1)} disabled={q===0} style={{ width:28,height:28,borderRadius:7,border:`1px solid ${S.border}`,background:S.panel,color:q?S.text:'#374151',cursor:q?'pointer':'not-allowed',fontSize:16,fontWeight:800 }}>−</button>
+                <span style={{ width:24, textAlign:'center', fontSize:13, fontWeight:800, color:q?S.accent:S.muted }}>{q||'·'}</span>
+                <button onClick={()=>changeQty(b.id,+1)} style={{ width:28,height:28,borderRadius:7,border:`1px solid ${q?S.accent:S.border}`,background:q?S.accent+'22':S.panel,color:S.accent,cursor:'pointer',fontSize:16,fontWeight:800 }}>+</button>
+              </div>
+              {b.hasNote && (
+                <input
+                  value={notes[b.id]||''}
+                  onChange={e=>setNotes(p=>({...p,[b.id]:e.target.value}))}
+                  placeholder={b.id==='canette'?'Ex: Coca-Cola, Fanta, Sprite…':'Ex: Coca 1.5L, eau gazeuse…'}
+                  style={{ ...S.input, fontSize:11, padding:'5px 8px', marginTop:2 }}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ padding:'10px 14px', borderTop:`1px solid ${S.border}`, background:S.panel, flexShrink:0 }}>
+        <button onClick={handleAdd} disabled={!hasItems} style={{
+          width:'100%', padding:'11px', borderRadius:9, border:'none',
+          background:hasItems?'linear-gradient(135deg,#3b82f6,#06b6d4)':'#1f2937',
+          color:hasItems?'#fff':'#374151', fontSize:14, fontWeight:800, cursor:hasItems?'pointer':'not-allowed',
+        }}>🥤 Ajouter — {total.toFixed(2)}€</button>
       </div>
     </div>
   );
@@ -829,6 +1109,226 @@ function FactureModal({ initialTotal, onClose }: { initialTotal:number; onClose:
   );
 }
 
+// ── Editable cart item row ────────────────────────────────────────────────────
+function CartItemRow({ ci, onUpdate, onRemove }: { ci:any; onUpdate:(u:any)=>void; onRemove:()=>void }) {
+  const [open, setOpen] = useState(false);
+  const c = ci.customization as any;
+  const unitPrice = ci.calculatedPrice || ci.item.price;
+  const totalPrice = unitPrice * ci.quantity;
+
+  // Toggle a string in a customization array field
+  const toggleField = (field: string, val: string) => {
+    const arr: string[] = (c?.[field] || []).filter(Boolean);
+    const updated = arr.includes(val) ? arr.filter((x:string)=>x!==val) : [...arr, val];
+    onUpdate({ customization: { ...c, [field]: updated } });
+  };
+
+  const ChipEdit = ({ val, field }: { val:string; field:string }) => (
+    <button onClick={()=>toggleField(field, val)} title="Retirer" style={{
+      display:'inline-flex', alignItems:'center', gap:3,
+      padding:'2px 7px', borderRadius:99, border:`1px solid ${S.border}`,
+      background:'#22c55e18', color:'#22c55e', fontSize:10, fontWeight:700, cursor:'pointer',
+    }}>{val} <span style={{ color:'#ef4444', fontSize:10 }}>✕</span></button>
+  );
+
+  // Summary line for closed state
+  const summary = c ? [
+    c.sizeLabel || c.size,
+    c.base,
+    c.meats?.slice(0,2).join('+'),
+    c.sauces?.slice(0,2).join('+'),
+    c.note,
+  ].filter(Boolean).join(' · ') : ci.item.description || '';
+
+  return (
+    <div style={{ borderBottom:`1px solid ${S.border}11` }}>
+      {/* Collapsed row — click to expand/collapse */}
+      <div onClick={()=>setOpen(o=>!o)} style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 0', cursor:'pointer', userSelect:'none' }}>
+        <span style={{ fontSize:11, fontWeight:800, color:S.accent, minWidth:18 }}>{ci.quantity}×</span>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:S.text, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{ci.item.name}</div>
+          {summary && <div style={{ fontSize:9, color:S.muted, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{summary}</div>}
+        </div>
+        <span style={{ fontSize:11, fontWeight:700, color:S.text, flexShrink:0 }}>{totalPrice.toFixed(2)}€</span>
+        <span style={{ fontSize:9, color:S.muted, flexShrink:0 }}>{open ? '▲' : '▼'}</span>
+      </div>
+
+      {/* Expanded edit panel */}
+      {open && (
+        <div style={{ background:'#111827', borderRadius:8, padding:'8px 10px', marginBottom:6 }}>
+
+          {/* Quantity + delete */}
+          <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+            <span style={{ fontSize:10, color:S.muted, flex:1 }}>Quantité</span>
+            <button onClick={()=>onUpdate({quantity:ci.quantity-1})} style={{ width:24,height:24,borderRadius:6,border:`1px solid ${S.border}`,background:S.card,color:S.text,cursor:'pointer',fontSize:14,fontWeight:800,lineHeight:1 }}>−</button>
+            <span style={{ fontSize:12,fontWeight:800,color:S.accent,minWidth:18,textAlign:'center' }}>{ci.quantity}</span>
+            <button onClick={()=>onUpdate({quantity:ci.quantity+1})} style={{ width:24,height:24,borderRadius:6,border:`1px solid ${S.accent}`,background:S.accent+'22',color:S.accent,cursor:'pointer',fontSize:14,fontWeight:800,lineHeight:1 }}>+</button>
+            <button onClick={onRemove} title="Supprimer" style={{ marginLeft:'auto',padding:'3px 8px',borderRadius:6,border:`1px solid #ef444444`,background:'#ef444411',color:'#ef4444',cursor:'pointer',fontSize:11,fontWeight:700 }}>🗑️</button>
+          </div>
+
+          {/* Meats */}
+          {c?.meats?.filter(Boolean).length > 0 && (
+            <div style={{ marginBottom:6 }}>
+              <div style={{ fontSize:9,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Viandes</div>
+              <div style={{ display:'flex',flexWrap:'wrap',gap:3 }}>
+                {c.meats.filter(Boolean).map((m:string)=><ChipEdit key={m} val={m} field="meats" />)}
+              </div>
+            </div>
+          )}
+
+          {/* Sauces */}
+          {c?.sauces?.filter(Boolean).length > 0 && (
+            <div style={{ marginBottom:6 }}>
+              <div style={{ fontSize:9,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Sauces</div>
+              <div style={{ display:'flex',flexWrap:'wrap',gap:3 }}>
+                {c.sauces.filter(Boolean).map((s:string)=><ChipEdit key={s} val={s} field="sauces" />)}
+              </div>
+            </div>
+          )}
+
+          {/* Garnitures */}
+          {c?.garnitures?.filter(Boolean).length > 0 && (
+            <div style={{ marginBottom:6 }}>
+              <div style={{ fontSize:9,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Garnitures</div>
+              <div style={{ display:'flex',flexWrap:'wrap',gap:3 }}>
+                {c.garnitures.filter(Boolean).map((g:string)=><ChipEdit key={g} val={g} field="garnitures" />)}
+              </div>
+            </div>
+          )}
+
+          {/* Supplements */}
+          {c?.supplements?.filter(Boolean).length > 0 && (
+            <div style={{ marginBottom:6 }}>
+              <div style={{ fontSize:9,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Suppléments</div>
+              <div style={{ display:'flex',flexWrap:'wrap',gap:3 }}>
+                {c.supplements.filter(Boolean).map((s:string)=><ChipEdit key={s} val={s} field="supplements" />)}
+              </div>
+            </div>
+          )}
+
+          {/* Menu option */}
+          {c?.menuOption !== undefined && (
+            <div style={{ marginBottom:6 }}>
+              <div style={{ fontSize:9,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Option menu</div>
+              <div style={{ display:'flex',gap:4 }}>
+                {(['none','frites','boisson','menu'] as const).map(opt=>(
+                  <button key={opt} onClick={()=>onUpdate({customization:{...c,menuOption:opt}})} style={{
+                    padding:'2px 7px',borderRadius:99,border:`1px solid ${c.menuOption===opt?S.accent:S.border}`,
+                    background:c.menuOption===opt?S.accent+'22':'transparent',
+                    color:c.menuOption===opt?S.accent:S.muted,fontSize:9,fontWeight:700,cursor:'pointer',
+                  }}>{opt==='none'?'Sans':opt==='frites'?'🍟 Frites':opt==='boisson'?'🥤 Boisson':'🍔 Menu'}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Note */}
+          <div>
+            <div style={{ fontSize:9,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Note</div>
+            <input
+              value={c?.note || ''}
+              onChange={e=>onUpdate({customization:{...c,note:e.target.value}})}
+              placeholder="Note, instruction spéciale..."
+              style={{ ...S.input, fontSize:10, padding:'4px 8px' }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Caisse side panel ─────────────────────────────────────────────────────────
+function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName, phone, setPhone, address, setAddress, notes, setNotes, discount, setDiscount, payMethod, setPayMethod, pizzaPromo, pizzaSaving, discountAmt, ht, tva, total, submitting, handleSubmit, clearCart, setShowFacture }: any) {
+  const { updateCartItem, removeFromCart } = useOrder();
+
+  return (
+    <div style={{ height:'100%', display:'flex', flexDirection:'column', background:S.panel }}>
+      {/* Header — compact */}
+      <div style={{ padding:'7px 12px', borderBottom:`1px solid ${S.border}`, fontSize:13, fontWeight:800, display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
+        {leftCollapsed && <button onClick={toggleLeft} style={{ ...S.btn, padding:'3px 7px', fontSize:13 }}>⟩</button>}
+        🛒 Caisse
+        {cart.length > 0 && <span style={{ background:S.accent, color:'#000', borderRadius:99, fontSize:10, fontWeight:800, padding:'1px 7px' }}>{cart.reduce((s:number,i:any)=>s+i.quantity,0)}</span>}
+      </div>
+
+      {/* Client info — compact */}
+      <div style={{ padding:'6px 12px', borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
+        {needsInfo && <input value={name} onChange={(e:any)=>setName(e.target.value)} placeholder="Nom *" style={{...S.input,marginBottom:4,padding:'4px 8px',fontSize:11}} />}
+        <input value={phone} onChange={(e:any)=>setPhone(e.target.value)} placeholder="Téléphone" style={{...S.input,marginBottom:needsInfo?4:0,padding:'4px 8px',fontSize:11}} />
+        {needsInfo && <input value={address} onChange={(e:any)=>setAddress(e.target.value)} placeholder="Adresse *" style={{...S.input,marginBottom:4,padding:'4px 8px',fontSize:11}} />}
+        {needsInfo && <input value={notes} onChange={(e:any)=>setNotes(e.target.value)} placeholder="Notes livraison..." style={{...S.input,padding:'4px 8px',fontSize:11}} />}
+      </div>
+
+      {/* Cart items — editable */}
+      <div style={{ flex:1, overflow:'auto', padding:'4px 12px' }}>
+        {cart.length === 0
+          ? <div style={{ textAlign:'center', color:'#374151', fontSize:11, paddingTop:16 }}>Panier vide</div>
+          : cart.map((ci:any) => (
+              <CartItemRow
+                key={ci.id}
+                ci={ci}
+                onUpdate={(upd:any) => updateCartItem(ci.id, upd)}
+                onRemove={() => removeFromCart(ci.id)}
+              />
+            ))
+        }
+      </div>
+
+      {/* Totals + actions — compact */}
+      <div style={{ padding:'8px 12px', borderTop:`1px solid ${S.border}`, flexShrink:0 }}>
+        {pizzaPromo?.promoDescription && pizzaSaving > 0 && (
+          <div style={{ background:'#f59e0b11', border:'1px solid #f59e0b33', borderRadius:6, padding:'4px 8px', marginBottom:6, fontSize:10 }}>
+            <span style={{ color:S.accent, fontWeight:700 }}>🎁 {pizzaPromo.promoDescription} </span>
+            <span style={{ color:'#22c55e' }}>-{pizzaSaving.toFixed(2)}€</span>
+          </div>
+        )}
+        {/* Remise */}
+        <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4 }}>
+          <span style={{ fontSize:10, color:S.muted, flex:1 }}>Remise (€)</span>
+          <input type="number" value={discount||''} onChange={(e:any)=>setDiscount(Math.max(0,parseFloat(e.target.value)||0))}
+            placeholder="0" style={{...S.input, width:56, textAlign:'right', padding:'3px 6px', fontSize:10}} />
+        </div>
+        {/* HT / TVA */}
+        <div style={{ fontSize:10, color:S.muted, display:'flex', justifyContent:'space-between', marginBottom:1 }}><span>HT</span><span>{ht.toFixed(2)}€</span></div>
+        <div style={{ fontSize:10, color:S.muted, display:'flex', justifyContent:'space-between', marginBottom:5 }}><span>TVA 10%</span><span>{tva.toFixed(2)}€</span></div>
+        {/* TOTAL */}
+        <div style={{ fontSize:18, fontWeight:800, color:S.accent, display:'flex', justifyContent:'space-between', marginBottom:7, paddingTop:5, borderTop:`1px solid ${S.border}` }}>
+          <span>TOTAL</span><span>{total.toFixed(2)}€</span>
+        </div>
+        {/* Payment methods */}
+        <div style={{ display:'flex', gap:4, marginBottom:7 }}>
+          {(['especes','cb'] as PayMethod[]).map((m:PayMethod) => (
+            <button key={m} onClick={()=>setPayMethod(m)} style={{
+              flex:1, padding:'5px 4px', borderRadius:7, border:'none', cursor:'pointer', fontSize:10, fontWeight:700,
+              background: payMethod===m ? '#3b82f622' : '#1f2937',
+              color:      payMethod===m ? '#3b82f6'   : S.muted,
+              outline:    payMethod===m ? '1px solid #3b82f644' : 'none',
+            }}>{PAY_LABELS[m]}</button>
+          ))}
+        </div>
+        {/* Valider */}
+        <button onClick={handleSubmit} disabled={submitting||cart.length===0} style={{
+          width:'100%', padding:'9px', borderRadius:8, border:'none',
+          background: cart.length ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : '#1f2937',
+          color: cart.length?'#000':'#374151', fontSize:12, fontWeight:800,
+          cursor:cart.length?'pointer':'not-allowed', opacity:submitting?0.6:1,
+        }}>
+          {submitting ? '⏳...' : cart.length ? `✅ Valider — ${total.toFixed(2)}€` : 'Panier vide'}
+        </button>
+        {/* Facture + Vider */}
+        <div style={{ display:'flex', gap:4, marginTop:5 }}>
+          <button onClick={()=>setShowFacture(true)} style={{ flex:2, padding:'6px', borderRadius:7, border:`1px solid ${S.accent}44`, background:S.accent+'14', color:S.accent, fontSize:10, fontWeight:800, cursor:'pointer' }}>
+            🧾 Facture
+          </button>
+          <button onClick={()=>{clearCart();setDiscount(0);}} style={{ flex:1, padding:'6px', borderRadius:7, border:`1px solid ${S.border}`, background:'none', color:S.muted, cursor:'pointer', fontSize:10 }}>
+            🗑️ Vider
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main POS content ──────────────────────────────────────────────────────────
 function POSContent() {
   useThemeBump();
@@ -918,8 +1418,12 @@ function POSContent() {
     if (WIZARD_MAP[activeCategory]) return <WizardPanel categorySlug={activeCategory} onAdd={handleAdd} />;
     // Sandwich: pick sandwich → sauce + crudités (no meat)
     if (activeCategory === 'sandwiches') return <SandwichPanel onAdd={handleAdd} />;
-    // Product-based customizable (Tex-Mex, Croques): pick product then customize
-    const CUSTOMIZABLE = ['texmex','croques'];
+    // Tex-Mex: dedicated panel with Snacks/Frites/Croques sections
+    if (activeCategory === 'texmex')   return <TexMexPanel  onAdd={handleAdd} />;
+    // Boissons: canette/bouteille avec note + quantité
+    if (activeCategory === 'boissons') return <BoissonPanel onAdd={handleAdd} />;
+    // Product-based customizable (Croques): pick product then customize
+    const CUSTOMIZABLE = ['croques'];
     if (CUSTOMIZABLE.includes(activeCategory)) return <CustomizablePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
     return <SimplePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
   };
@@ -942,45 +1446,43 @@ function POSContent() {
         onCollapse={()=>setLeftCollapsed(true)} onExpand={()=>setLeftCollapsed(false)}>
       <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, overflow:'hidden' }}>
 
-        {/* Order type bar + settings + collapse */}
-        <div style={{ display:'flex', gap:8, padding:'10px 14px', background:S.panel, borderBottom:`1px solid ${S.border}`, alignItems:'center', flexShrink:0 }}>
-          {(['surplace','emporter','livraison'] as OrderType[]).map(t => (
-            <button key={t} onClick={()=>handleOrderType(t)} style={{
-              padding:'7px 14px', borderRadius:8, border:'none', cursor:'pointer', fontSize:12, fontWeight:700,
-              background: orderType===t ? S.accent : '#1f2937',
-              color:      orderType===t ? '#000'   : S.muted,
-            }}>{TYPE_LABELS[t]}</button>
-          ))}
-          {lastOrder && <span style={{ background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>✅ #{lastOrder}</span>}
-          <button title="Personnaliser" onClick={()=>setShowSettings(true)} style={{ ...S.btn, marginLeft:'auto', padding:'6px 10px', fontSize:14 }}>⚙️</button>
-          <button title="Replier le panneau" onClick={toggleLeft} style={{ ...S.btn, padding:'6px 10px', fontSize:14 }}>⟨</button>
+        {/* ── Compact top bar: order type + categories on same row ── */}
+        <div style={{ display:'flex', flexDirection:'column', background:S.panel, borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
+          {/* Row 1: order type + icons */}
+          <div style={{ display:'flex', gap:6, padding:'6px 14px', alignItems:'center' }}>
+            {(['surplace','emporter','livraison'] as OrderType[]).map(t => (
+              <button key={t} onClick={()=>handleOrderType(t)} style={{
+                padding:'5px 12px', borderRadius:7, border:'none', cursor:'pointer', fontSize:11, fontWeight:700,
+                background: orderType===t ? S.accent : '#1f2937',
+                color:      orderType===t ? '#000'   : S.muted,
+              }}>{TYPE_LABELS[t]}</button>
+            ))}
+            {lastOrder && <span style={{ background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'2px 8px', borderRadius:99, fontSize:10, fontWeight:700 }}>✅ #{lastOrder}</span>}
+            <button title="Personnaliser" onClick={()=>setShowSettings(true)} style={{ ...S.btn, marginLeft:'auto', padding:'4px 8px', fontSize:13 }}>⚙️</button>
+            <button title="Replier" onClick={toggleLeft} style={{ ...S.btn, padding:'4px 8px', fontSize:13 }}>⟨</button>
+          </div>
+          {/* Row 2: categories — single scrollable row */}
+          <div style={{ display:'flex', gap:5, padding:'5px 14px 6px', overflowX:'auto', overflowY:'hidden', flexWrap:'nowrap' }}>
+            {categories.filter(cat => cat.slug !== 'salades').map(cat => (
+              <button key={cat.id} onClick={() => setActiveCat(activeCategory === cat.slug ? null : cat.slug)} style={{
+                display:'flex', alignItems:'center', gap:4, flexShrink:0,
+                padding:'5px 10px', borderRadius:99, border:'none', cursor:'pointer', fontSize:11, fontWeight:700, transition:'all .12s', whiteSpace:'nowrap',
+                background: activeCategory===cat.slug ? S.accent+'22' : S.card,
+                color:      activeCategory===cat.slug ? S.accent     : '#9ca3af',
+                outline:    activeCategory===cat.slug ? `1px solid ${S.accent}44` : 'none',
+              }}>
+                <span style={{ fontSize:14 }}>{CAT_ICON[cat.slug] || '🍽️'}</span>
+                {cat.name}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Vertical resizable: upper (categories) | lower (products) */}
-        <PanelGroup direction="vertical" autoSaveId="pos-left-v" style={{ flex:1, minHeight:0 }}>
-          <Panel defaultSize={20} minSize={10} maxSize={65}>
-            <div style={{ display:'flex', gap:6, padding:'10px 14px', background:S.bg, height:'100%', overflow:'auto', flexWrap:'wrap', alignContent:'flex-start' }}>
-              {categories.map(cat => (
-                <button key={cat.id} onClick={() => setActiveCat(activeCategory === cat.slug ? null : cat.slug)} style={{
-                  display:'flex', alignItems:'center', gap:6, height:'fit-content',
-                  padding:'8px 14px', borderRadius:99, border:'none', cursor:'pointer', fontSize:12, fontWeight:700, transition:'all .12s', whiteSpace:'nowrap',
-                  background: activeCategory===cat.slug ? S.accent+'22' : S.card,
-                  color:      activeCategory===cat.slug ? S.accent     : '#9ca3af',
-                  outline:    activeCategory===cat.slug ? `1px solid ${S.accent}44` : 'none',
-                }}>
-                  <span style={{ fontSize:16 }}>{CAT_ICON[cat.slug] || '🍽️'}</span>
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-          </Panel>
-          <ResizeBar vertical />
-          <Panel minSize={20}>
-            <div style={{ height:'100%', minHeight:0, overflow:'hidden', display:'flex', flexDirection:'column', borderTop:`1px solid ${S.border}` }}>
-              {renderPanel()}
-            </div>
-          </Panel>
-        </PanelGroup>
+        {/* Products area — takes all remaining height */}
+        <div style={{ flex:1, minHeight:0, overflow:'hidden', display:'flex', flexDirection:'column' }}>
+          {renderPanel()}
+        </div>
+
       </div>
       </Panel>
 
@@ -989,93 +1491,21 @@ function POSContent() {
 
       {/* ── RIGHT: Caisse (resizable, always visible) ── */}
       <Panel defaultSize={28} minSize={20} maxSize={50}>
-      <div style={{ height:'100%', display:'flex', flexDirection:'column', background:S.panel }}>
-        <div style={{ padding:'12px 14px', borderBottom:`1px solid ${S.border}`, fontSize:14, fontWeight:800, display:'flex', alignItems:'center', gap:8 }}>
-          {leftCollapsed && <button title="Ouvrir le panneau produits" onClick={toggleLeft} style={{ ...S.btn, padding:'4px 9px', fontSize:14 }}>⟩</button>}
-          🛒 Caisse
-          {cart.length > 0 && <span style={{ background:S.accent, color:'#000', borderRadius:99, fontSize:11, fontWeight:800, padding:'1px 8px' }}>{cart.reduce((s,i)=>s+i.quantity,0)}</span>}
-        </div>
-
-        {/* Client info */}
-        <div style={{ padding:'10px 14px', borderBottom:`1px solid ${S.border}` }}>
-          {needsInfo && <input value={name} onChange={e=>setName(e.target.value)} placeholder="Nom *" style={{...S.input,marginBottom:6}} />}
-          <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Téléphone" style={{...S.input,marginBottom:6}} />
-          {needsInfo && <input value={address} onChange={e=>setAddress(e.target.value)} placeholder="Adresse *" style={{...S.input,marginBottom:6}} />}
-          <input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Notes..." style={S.input} />
-        </div>
-
-        {/* Cart items */}
-        <div style={{ flex:1, overflow:'auto', padding:'8px 14px' }}>
-          {cart.length === 0
-            ? <div style={{ textAlign:'center', color:'#374151', fontSize:12, paddingTop:20 }}>Panier vide</div>
-            : cart.map((item, idx) => {
-                const price = (item.calculatedPrice||item.item.price)*item.quantity;
-                const c = item.customization as any;
-                const details = [c?.sizeLabel || c?.size, c?.base, c?.meats?.join(', '), c?.sauces?.join(', ')].filter(Boolean).join(' · ');
-                return (
-                  <div key={idx} style={{ display:'flex', gap:8, padding:'6px 0', borderBottom:`1px solid ${S.border}`, fontSize:12 }}>
-                    <span style={{ fontWeight:700, color:S.accent }}>{item.quantity}x</span>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontWeight:600 }}>{item.item.name}</div>
-                      {details && <div style={{ fontSize:10, color:S.muted }}>{details}</div>}
-                    </div>
-                    <span style={{ fontWeight:700 }}>{price.toFixed(2)}€</span>
-                  </div>
-                );
-              })
-          }
-        </div>
-
-        {/* Totals + pay + submit */}
-        <div style={{ padding:'12px 14px', borderTop:`1px solid ${S.border}` }}>
-          {pizzaPromo.promoDescription && pizzaSaving > 0 && (
-            <div style={{ background:'#f59e0b11', border:'1px solid #f59e0b33', borderRadius:8, padding:'7px 10px', marginBottom:10, fontSize:11 }}>
-              <div style={{ color:S.accent, fontWeight:700 }}>🎁 {pizzaPromo.promoDescription}</div>
-              <div style={{ color:'#22c55e' }}>Économie: -{pizzaSaving.toFixed(2)}€</div>
-            </div>
-          )}
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-            <span style={{ fontSize:11, color:S.muted, flex:1 }}>Remise (€)</span>
-            <input type="number" value={discount||''} onChange={e=>setDiscount(Math.max(0,parseFloat(e.target.value)||0))}
-              placeholder="0" style={{...S.input, width:70, textAlign:'right', padding:'5px 8px'}} />
-          </div>
-          {pizzaSaving > 0 && <div style={{ fontSize:11, color:'#22c55e', display:'flex', justifyContent:'space-between', marginBottom:3 }}><span>🎁 Réduction pizza</span><span>-{pizzaSaving.toFixed(2)}€</span></div>}
-          {discountAmt > 0 && <div style={{ fontSize:11, color:'#22c55e', display:'flex', justifyContent:'space-between', marginBottom:3 }}><span>Remise</span><span>-{discountAmt.toFixed(2)}€</span></div>}
-          <div style={{ fontSize:11, color:S.muted, display:'flex', justifyContent:'space-between', marginBottom:2 }}><span>HT</span><span>{ht.toFixed(2)}€</span></div>
-          <div style={{ fontSize:11, color:S.muted, display:'flex', justifyContent:'space-between', marginBottom:8 }}><span>TVA 10%</span><span>{tva.toFixed(2)}€</span></div>
-          <div style={{ fontSize:20, fontWeight:800, color:S.accent, display:'flex', justifyContent:'space-between', marginBottom:10, paddingTop:8, borderTop:`1px solid ${S.border}` }}>
-            <span>TOTAL</span><span>{total.toFixed(2)}€</span>
-          </div>
-          <div style={{ display:'flex', gap:5, marginBottom:10 }}>
-            {(['especes','cb'] as PayMethod[]).map(m => (
-              <button key={m} onClick={()=>setPayMethod(m)} style={{
-                flex:1, padding:'6px 4px', borderRadius:8, border:'none', cursor:'pointer', fontSize:10, fontWeight:700,
-                background: payMethod===m ? '#3b82f622' : '#1f2937',
-                color:      payMethod===m ? '#3b82f6'   : S.muted,
-                outline:    payMethod===m ? '1px solid #3b82f644' : 'none',
-              }}>{PAY_LABELS[m]}</button>
-            ))}
-          </div>
-          <button onClick={handleSubmit} disabled={submitting||cart.length===0} style={{
-            width:'100%', padding:'10px', borderRadius:9, border:'none',
-            background: cart.length ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : '#1f2937',
-            color: cart.length?'#000':'#374151', fontSize:13, fontWeight:800,
-            cursor:cart.length?'pointer':'not-allowed', opacity:submitting?.6:1,
-          }}>
-            {submitting ? '⏳...' : cart.length ? `✅ Valider — ${total.toFixed(2)}€` : 'Panier vide'}
-          </button>
-          {/* Facture — print invoice to ethernet printer */}
-          <button onClick={()=>setShowFacture(true)} style={{
-            width:'100%', marginTop:6, padding:'8px', borderRadius:9, border:`1px solid ${S.accent}55`,
-            background:S.accent+'18', color:S.accent, fontSize:12, fontWeight:800, cursor:'pointer',
-          }}>
-            🧾 Facture client
-          </button>
-          <button onClick={()=>{clearCart();setDiscount(0);}} style={{width:'100%',marginTop:6,padding:'7px',borderRadius:8,border:`1px solid ${S.border}`,background:'none',color:S.muted,cursor:'pointer',fontSize:11}}>
-            🗑️ Vider
-          </button>
-        </div>
-      </div>
+      <CaissePanel
+        leftCollapsed={leftCollapsed} toggleLeft={toggleLeft}
+        cart={cart} needsInfo={needsInfo}
+        name={name} setName={setName}
+        phone={phone} setPhone={setPhone}
+        address={address} setAddress={setAddress}
+        notes={notes} setNotes={setNotes}
+        discount={discount} setDiscount={setDiscount}
+        payMethod={payMethod} setPayMethod={setPayMethod}
+        pizzaPromo={pizzaPromo} pizzaSaving={pizzaSaving}
+        discountAmt={discountAmt} ht={ht} tva={tva} total={total}
+        submitting={submitting} handleSubmit={handleSubmit}
+        clearCart={clearCart}
+        setShowFacture={setShowFacture}
+      />
       </Panel>
 
       {/* ── Overlays ── */}

@@ -29,7 +29,8 @@ export function getMenuMidiRemainingTime(): { hours: number; minutes: number; se
 // Calculate pizza price based on customization
 export function calculatePizzaPrice(customization: PizzaCustomization): number {
   if (customization.isMenuMidi) {
-    return customization.size === 'senior'
+    // size is 'menu_midi' for Senior, 'menu_midi_mega' for Mega
+    return customization.size === 'menu_midi'
       ? pizzaPrices.menuMidiSenior
       : pizzaPrices.menuMidiMega;
   }
@@ -41,7 +42,8 @@ export function calculatePizzaPrice(customization: PizzaCustomization): number {
 // Get base pizza price WITHOUT supplements
 function getBasePizzaPrice(customization: PizzaCustomization): number {
   if (customization.isMenuMidi) {
-    return customization.size === 'senior'
+    // size id is 'menu_midi' for Midi Senior, 'menu_midi_mega' for Midi Mega
+    return customization.size === 'menu_midi'
       ? pizzaPrices.menuMidiSenior
       : pizzaPrices.menuMidiMega;
   }

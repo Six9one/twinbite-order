@@ -11,6 +11,7 @@ interface OrderContextType {
   addToCart: (item: MenuItem, quantity?: number, customization?: ProductCustomization | SouffletOrder, calculatedPrice?: number) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
+  updateCartItem: (id: string, updates: { quantity?: number; customization?: any; calculatedPrice?: number }) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
@@ -29,7 +30,8 @@ const calculateItemPrice = (item: MenuItem, customization?: ProductCustomization
     const pizzaCustom = customization as PizzaCustomization;
     
     if (pizzaCustom.isMenuMidi) {
-      price = pizzaCustom.size === 'senior' ? pizzaPrices.menuMidiSenior : pizzaPrices.menuMidiMega;
+      // size id is 'menu_midi' for Midi Senior, 'menu_midi_mega' for Midi Mega
+      price = pizzaCustom.size === 'menu_midi' ? pizzaPrices.menuMidiSenior : pizzaPrices.menuMidiMega;
     } else {
       price = pizzaCustom.size === 'senior' ? pizzaPrices.senior : pizzaPrices.mega;
     }
@@ -159,6 +161,16 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateCartItem = (id: string, updates: { quantity?: number; customization?: any; calculatedPrice?: number }) => {
+    if (updates.quantity !== undefined && updates.quantity <= 0) { removeFromCart(id); return; }
+    setCart(prev => prev.map(ci => ci.id !== id ? ci : {
+      ...ci,
+      ...(updates.quantity     !== undefined ? { quantity:        updates.quantity     } : {}),
+      ...(updates.customization !== undefined ? { customization:  updates.customization } : {}),
+      ...(updates.calculatedPrice !== undefined ? { calculatedPrice: updates.calculatedPrice } : {}),
+    }));
+  };
+
   const clearCart = () => setCart([]);
 
   const getTotal = () => {
@@ -182,6 +194,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       addToCart,
       removeFromCart,
       updateQuantity,
+      updateCartItem,
       clearCart,
       getTotal,
       getItemCount,

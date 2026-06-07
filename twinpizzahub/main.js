@@ -25,9 +25,39 @@ let whatsappStatus = 'disconnected'; // disconnected | connecting | connected | 
 let lastQR         = null; // store last QR so we can re-send it when panel opens
 let supabase       = null;
 
-// ─── WhatsApp chat / message store (in-memory) ───────────────────────────────
+// ─── WhatsApp chat / message store (in-memory + persisted to disk) ──────────
 const waChats    = new Map(); // jid → { id, name, unread, lastMsg, lastTs }
 const waMessages = new Map(); // jid → [{ id, text, fromMe, ts }]
+
+function getWAHistoryPath() {
+  return path.join(app.getPath('userData'), 'wa-history.json');
+}
+function loadWAHistory() {
+  try {
+    const p = getWAHistoryPath();
+    if (!fs.existsSync(p)) return;
+    const { chats, messages } = JSON.parse(fs.readFileSync(p, 'utf8'));
+    (chats    || []).forEach(c  => waChats.set(c.id, c));
+    Object.entries(messages || {}).forEach(([jid, msgs]) => waMessages.set(jid, msgs));
+    console.log(`✅ WA history loaded: ${waChats.size} chats`);
+  } catch(e) { console.warn('WA history load error:', e.message); }
+}
+let _waSaveTimer = null;
+function saveWAHistory() {
+  if (_waSaveTimer) return; // debounce — save at most once per 5 s
+  _waSaveTimer = setTimeout(() => {
+    _waSaveTimer = null;
+    try {
+      const messages = {};
+      waMessages.forEach((arr, jid) => { messages[jid] = arr.slice(-150); });
+      fs.writeFileSync(getWAHistoryPath(), JSON.stringify({
+        chats: [...waChats.values()],
+        messages,
+        savedAt: Date.now(),
+      }));
+    } catch(e) { console.warn('WA history save error:', e.message); }
+  }, 5000);
+}
 
 function normalizeMsg(m) {
   const text = m.message?.conversation
@@ -194,7 +224,7 @@ async function initWhatsApp() {
 
     whatsappClient = makeWASocket({
       auth: state,
-      browser: ['Twin Pizza Hub', 'Desktop', '1.0.0'],
+      browser: ['Twin Pizza', 'Desktop', '1.0.0'],
       logger: silentLogger,
       ...(waVersion ? { version: waVersion } : {}),
     });
@@ -272,6 +302,7 @@ async function initWhatsApp() {
         if (!arr.find(x => x.id === norm.id)) arr.push(norm);
         // Keep last 200 per chat
         if (arr.length > 200) arr.splice(0, arr.length - 200);
+        saveWAHistory();
         // Update chat metadata
         const chat = waChats.get(jid) || { id: jid, name: jid, unread: 0, lastMsg: '', lastTs: 0 };
         chat.lastMsg = norm.text;
@@ -523,9 +554,12 @@ function createWindow(name, { route, display, fullscreen = false, width = 1366, 
     width: fullscreen ? bounds.width : width,
     height: fullscreen ? bounds.height : height,
     fullscreen, autoHideMenuBar: true,
+    show: false,              // no black flash
+    backgroundColor: '#0d1117',
     icon: path.join(__dirname, '..', 'public', 'favicon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
+  win.once('ready-to-show', () => win.show());
   win.loadURL(getUrl(route));
   win.on('closed', () => { delete windows[name]; });
   windows[name] = win;
@@ -536,8 +570,10 @@ function createWindow(name, { route, display, fullscreen = false, width = 1366, 
 function createLauncher() {
   if (launcherWin && !launcherWin.isDestroyed()) { launcherWin.focus(); return; }
   launcherWin = new BrowserWindow({
-    title: 'TwinPizza Hub', width: 1400, height: 860, minWidth: 1100, minHeight: 700,
+    title: 'Twin Pizza', width: 1400, height: 860, minWidth: 1100, minHeight: 700,
     center: true, autoHideMenuBar: true,
+    show: false,              // don't show until ready — no black flash
+    backgroundColor: '#0d1117', // dark bg matches the app — no white blinking
     icon: path.join(__dirname, '..', 'public', 'favicon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -546,6 +582,7 @@ function createLauncher() {
     },
   });
   launcherWin.loadFile(path.join(__dirname, 'launcher.html'));
+  launcherWin.once('ready-to-show', () => launcherWin.show()); // show only when fully painted
   // Re-send QR and printer status once window finishes loading
   launcherWin.webContents.once('did-finish-load', () => {
     setTimeout(() => {
@@ -680,9 +717,9 @@ function createTray() {
   try {
     const icon = nativeImage.createFromPath(path.join(__dirname, '..', 'public', 'favicon.png')).resize({ width: 16, height: 16 });
     tray = new Tray(icon);
-    tray.setToolTip('TwinPizza Hub');
+    tray.setToolTip('Twin Pizza');
     tray.setContextMenu(Menu.buildFromTemplate([
-      { label: '🍕 TwinPizza Hub', enabled: false },
+      { label: '🍕 Twin Pizza', enabled: false },
       { type: 'separator' },
       { label: 'Launcher', click: createLauncher },
       { label: 'POS / Admin', click: () => ipcMain.emit('open-window', null, 'admin') },
@@ -705,7 +742,7 @@ app.whenReady().then(async () => {
       await startFileServer();
     }
   } catch(err) {
-    dialog.showErrorBox('TwinPizza Hub',
+    dialog.showErrorBox('Twin Pizza',
       'Le site n\'est pas compilé.\n\nLancez d\'abord:\nnpm run build\n\ndans le dossier twinbite-order, puis relancez.\n\nErreur: ' + err.message);
     app.quit();
     return;
@@ -735,6 +772,7 @@ app.whenReady().then(async () => {
   broadcastPrinterStatus();
   setInterval(broadcastPrinterStatus, 15000);
 
+  loadWAHistory(); // restore chats + messages from previous session
   initSupabase();
   initWhatsApp();
 

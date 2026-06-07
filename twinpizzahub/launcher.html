@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
-<title>TwinPizza Hub</title>
+<title>Twin Pizza</title>
 <!-- Embedded minimal QR encoder (no CDN needed) -->
 <script>
 !function(){var e=function(e,t){this._el=e,this._htOption=t;var n=this._android()?"svg":"canvas";this._oDrawing=new(n==="canvas"?l:a)(e,t);var r=t.text;r&&this.makeCode(r)};e.prototype._android=function(){return/android/i.test(navigator.userAgent)&&/2\./.test(navigator.userAgent)};e.prototype.makeCode=function(e){this._oDrawing.draw(e)};e.CorrectLevel={L:1,M:0,Q:3,H:2};window.QRCodeMin=e;
@@ -170,6 +170,35 @@ webview.active { display:flex; }
 .ip-row input { flex:1; background:#111; border:1px solid var(--border); color:#fff; padding:7px 10px; border-radius:8px; font-size:12px; }
 .ip-row input:focus { outline:none; border-color:var(--accent); }
 
+/* ── Webview base — dark bg prevents white flash while React loads ── */
+webview {
+  background: #0d1117;
+}
+
+/* ── POS loading overlay (shown while webview loads the React app) ── */
+#wv-loading {
+  position: absolute; inset: 0;
+  background: #0d1117;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 14px;
+  z-index: 20;
+  transition: opacity .35s ease;
+  pointer-events: none;
+}
+#wv-loading.hidden { opacity: 0; }
+#wv-loading.gone   { display: none; }
+.spinner {
+  width: 44px; height: 44px;
+  border: 3px solid #2d3748;
+  border-top-color: #f59e0b;
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-logo { font-size: 40px; }
+.loading-title { font-size: 14px; font-weight: 800; color: #f59e0b; letter-spacing: .5px; }
+.loading-sub   { font-size: 11px; color: #6b7280; }
+
 /* ── Sleep overlay ── */
 #sleep-overlay {
   position:fixed; inset:0; background:#0d1117;
@@ -196,6 +225,150 @@ webview.active { display:flex; }
 .s-preparing { background:#3b82f622; color:#3b82f6; }
 .s-ready     { background:#22c55e22; color:#22c55e; }
 .s-completed { background:#6b728022; color:#6b7280; }
+
+/* ── WhatsApp redesign ── */
+#panel-whatsapp { padding:0; display:none; flex-direction:column; overflow:hidden; }
+#panel-whatsapp.active { display:flex; }
+.wa2-topbar {
+  display:flex; align-items:center; gap:12px;
+  padding:10px 18px; background:#075e54;
+  flex-shrink:0; min-height:52px;
+}
+.wa2-topbar .wa2-title { font-size:15px; font-weight:800; color:#fff; }
+.wa2-topbar .wa2-sub   { font-size:10px; color:#9de0d2; }
+.wa2-body {
+  display:flex; flex:1; overflow:hidden;
+  border-top:1px solid #1a3030;
+}
+/* Left sidebar */
+.wa2-sidebar {
+  width:300px; flex-shrink:0;
+  background:#111b21;
+  display:flex; flex-direction:column;
+  border-right:1px solid #2a3942;
+  overflow:hidden;
+}
+.wa2-sidebar-header {
+  padding:10px 12px; background:#202c33;
+  border-bottom:1px solid #2a3942; flex-shrink:0;
+}
+.wa2-search {
+  width:100%; background:#2a3942; border:none; border-radius:8px;
+  padding:8px 14px; color:#d1d7db; font-size:12.5px; outline:none;
+}
+.wa2-search::placeholder { color:#8696a0; }
+/* Chat list items */
+#wa-chat-list { flex:1; overflow-y:auto; }
+.wa2-chat-item {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 14px; cursor:pointer;
+  border-bottom:1px solid #2a394222;
+  transition:background .1s;
+}
+.wa2-chat-item:hover    { background:#2a3942; }
+.wa2-chat-item.selected { background:#2a3942; }
+.wa2-avatar {
+  width:40px; height:40px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:700; color:#fff;
+}
+.wa2-chat-info { flex:1; min-width:0; }
+.wa2-chat-name { font-size:13px; font-weight:600; color:#e9edef; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wa2-chat-preview { font-size:11.5px; color:#8696a0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.wa2-chat-meta { display:flex; flex-direction:column; align-items:flex-end; gap:3px; flex-shrink:0; }
+.wa2-chat-time  { font-size:10px; color:#8696a0; }
+.wa2-chat-unread { background:#25d366; color:#111b21; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; }
+
+/* Right conversation area */
+.wa2-main {
+  flex:1; display:flex; flex-direction:column;
+  background:#0b141a; overflow:hidden;
+}
+.wa2-conv-header {
+  display:flex; align-items:center; gap:12px;
+  padding:8px 16px; background:#202c33;
+  border-bottom:1px solid #2a3942; flex-shrink:0; min-height:52px;
+}
+.wa2-conv-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:#fff; flex-shrink:0; }
+.wa2-conv-name   { font-size:14px; font-weight:600; color:#e9edef; }
+.wa2-conv-sub    { font-size:11px; color:#8696a0; }
+#wa-messages-list {
+  flex:1; overflow-y:auto; padding:12px 16px;
+  display:flex; flex-direction:column; gap:3px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect fill='%230b141a' width='400' height='400'/%3E%3C/svg%3E");
+}
+.wa2-bubble-wrap { display:flex; margin:1px 0; }
+.wa2-bubble-wrap.mine  { justify-content:flex-end; }
+.wa2-bubble-wrap.theirs{ justify-content:flex-start; }
+.wa2-bubble {
+  max-width:68%; padding:7px 12px 20px;
+  border-radius:8px; position:relative;
+  font-size:13px; line-height:1.45; color:#e9edef;
+  word-break:break-word;
+}
+.wa2-bubble.mine   { background:#005c4b; border-radius:8px 0 8px 8px; }
+.wa2-bubble.theirs { background:#202c33; border-radius:0 8px 8px 8px; }
+.wa2-bubble .wa2-time {
+  position:absolute; bottom:4px; right:9px;
+  font-size:9.5px; color:#8696a0; white-space:nowrap;
+}
+.wa2-bubble.mine .wa2-time { color:#9de0d2; }
+/* Send bar */
+#wa-send-bar {
+  padding:8px 12px; background:#202c33;
+  border-top:1px solid #2a3942;
+  display:flex; align-items:center; gap:8px; flex-shrink:0;
+}
+#wa-send-input {
+  flex:1; background:#2a3942; border:none; border-radius:24px;
+  padding:10px 18px; color:#e9edef; font-size:13.5px; outline:none;
+}
+#wa-send-input::placeholder { color:#8696a0; }
+.wa2-send-btn {
+  width:42px; height:42px; border-radius:50%;
+  background:#25d366; border:none; cursor:pointer;
+  font-size:18px; color:#111b21; display:flex; align-items:center;
+  justify-content:center; flex-shrink:0;
+  transition: background .15s;
+}
+.wa2-send-btn:hover { background:#20ba5a; }
+/* WA status strip */
+.wa2-qr-wrap {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:14px;
+  padding:20px; text-align:center;
+}
+/* Auto-log at bottom of sidebar */
+.wa2-log-toggle {
+  padding:9px 14px; border-top:1px solid #2a3942;
+  font-size:11px; color:#8696a0; cursor:pointer;
+  background:#111b21; flex-shrink:0;
+  transition:background .1s;
+}
+.wa2-log-toggle:hover { background:#1a2930; color:#25d366; }
+.wa2-log-panel {
+  background:#111b21; border-top:1px solid #2a3942;
+  overflow-y:auto; flex-shrink:0;
+  max-height:0; transition:max-height .3s ease;
+}
+.wa2-log-panel.open { max-height:220px; }
+.wa2-log-entry {
+  padding:9px 14px; border-bottom:1px solid #2a394233;
+  font-size:11px; color:#8696a0;
+}
+.wa2-log-entry .name  { font-weight:700; color:#e9edef; }
+.wa2-log-entry .badge { padding:1px 6px; border-radius:4px; font-size:10px; }
+.wa2-log-entry .ok  { background:#25d36622; color:#25d366; }
+.wa2-log-entry .err { background:#ef444422; color:#ef4444; }
+/* Empty state */
+.wa2-empty {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:12px;
+  background:#0b141a;
+}
+.wa2-empty .big { font-size:64px; opacity:.15; }
+.wa2-empty .txt { font-size:18px; font-weight:600; color:#e9edef; opacity:.5; }
+.wa2-empty .sub { font-size:12px; color:#8696a0; }
 </style>
 </head>
 <body>
@@ -213,15 +386,12 @@ webview.active { display:flex; }
   <div class="logo">
     <img src="../public/favicon.png" alt="logo" onerror="this.style.display='none'" />
     <div>
-      <div class="logo-text">TwinPizza Hub</div>
+      <div class="logo-text">Twin Pizza</div>
       <div class="logo-sub">All in one</div>
     </div>
   </div>
   <div class="header-date" id="header-date"></div>
-  <div class="stat-block">
-    <div class="stat-val" id="stat-orders">0</div>
-    <div class="stat-label">Commandes</div>
-  </div>
+  <!-- stat-orders hidden (removed per request) -->
 </header>
 
 <div class="body-wrap">
@@ -234,9 +404,6 @@ webview.active { display:flex; }
   <div class="nav-item" onclick="goTo('admin')" id="nav-admin">
     <span class="icon">⚙️</span> Admin Panel
   </div>
-  <div class="nav-item" onclick="popoutScreen('tv')" id="nav-tv" title="Ouvre l'écran cuisine sur le 2e écran">
-    <span class="icon">📺</span> Écran Cuisine ⧉
-  </div>
   <div class="nav-item" onclick="goTo('kitchen')" id="nav-kitchen">
     <span class="icon">🌡️</span> HACCP
   </div>
@@ -245,7 +412,8 @@ webview.active { display:flex; }
 
   <div class="nav-item" onclick="goTo('whatsapp')" id="nav-whatsapp">
     <span class="icon">💬</span> WhatsApp
-    <span class="nav-status s-amber" id="wa-dot"></span>
+    <span class="nav-status s-amber" id="wa-dot" style="display:none;"></span>
+    <span class="nav-status s-amber" id="nav-wa-status"></span>
   </div>
   <div class="nav-item" onclick="goTo('printer')" id="nav-printer">
     <span class="icon">🖨️</span> Imprimante
@@ -276,6 +444,14 @@ webview.active { display:flex; }
     </div>
   </div>
 
+  <!-- Loading overlay — shown while the POS React app initialises -->
+  <div id="wv-loading">
+    <div class="loading-logo">🍕</div>
+    <div class="spinner"></div>
+    <div class="loading-title">Point de Vente</div>
+    <div class="loading-sub">Chargement en cours…</div>
+  </div>
+
   <!-- Webviews for each screen -->
   <webview id="wv-pos"     src="about:blank" allowpopups></webview>
   <webview id="wv-admin"   src="about:blank" allowpopups></webview>
@@ -285,81 +461,99 @@ webview.active { display:flex; }
   <webview id="wv-crew"    src="about:blank" allowpopups></webview>
   <webview id="wv-website" src="about:blank" allowpopups></webview>
 
-  <!-- WhatsApp panel -->
+  <!-- WhatsApp panel (full WhatsApp Web style) -->
   <div class="panel" id="panel-whatsapp">
 
-    <!-- Top row: status + auto-message info -->
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
-      <div style="font-size:18px;font-weight:800;">💬 WhatsApp</div>
-      <span class="wa-status-pill" id="wa-pill" style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44;">⏳ Connexion...</span>
-      <div id="wa-auto-info" style="display:none;font-size:11.5px;color:#86efac;background:#22c55e11;border:1px solid #22c55e33;border-radius:8px;padding:4px 10px;">
-        ✅ Envoi automatique actif — Confirmation immédiate + Avis Google 40min après chaque commande
+    <!-- Green top bar -->
+    <div class="wa2-topbar">
+      <span style="font-size:22px;">💬</span>
+      <div style="flex:1;">
+        <div class="wa2-title">WhatsApp</div>
+        <span id="wa-pill" class="wa2-sub">⏳ Connexion en cours...</span>
+      </div>
+      <div id="wa-auto-info" style="display:none;font-size:11px;color:#9de0d2;background:#ffffff18;border-radius:6px;padding:4px 10px;">
+        ✅ Confirmation auto + Avis Google 40 min
       </div>
     </div>
 
-    <!-- Main layout: left=QR/status, center=chats, right=messages -->
-    <div style="display:flex;gap:14px;height:calc(100vh - 180px);min-height:400px;">
+    <!-- Body: sidebar + conversation -->
+    <div class="wa2-body">
 
-      <!-- Col 1: QR / Connected -->
-      <div style="width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;">
+      <!-- ── LEFT SIDEBAR ── -->
+      <div class="wa2-sidebar">
 
-        <!-- QR box -->
-        <div id="wa-qr-section" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;">
-          <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:6px;">📱 Scanner pour connecter</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">WhatsApp → Appareils connectés → Lier un appareil</div>
-          <div id="qr-container" style="display:flex;justify-content:center;align-items:center;min-height:200px;">
-            <div id="qr-loading" style="color:var(--muted);font-size:12px;">⏳ Génération QR...</div>
-            <img id="qr-img" src="" alt="QR Code" style="display:none;border-radius:8px;width:200px;height:200px;" />
+        <!-- QR section (shown when not connected) -->
+        <div id="wa-qr-section" class="wa2-qr-wrap">
+          <div style="font-size:36px;">📱</div>
+          <div style="font-size:13px;font-weight:700;color:#25d366;">Scanner pour connecter</div>
+          <div style="font-size:11px;color:#8696a0;line-height:1.6;">
+            WhatsApp sur votre téléphone<br>→ Appareils connectés → Lier un appareil
+          </div>
+          <div id="qr-container" style="display:flex;justify-content:center;align-items:center;min-height:220px;">
+            <div id="qr-loading" style="color:#8696a0;font-size:12px;">⏳ Génération du QR...</div>
+            <img id="qr-img" src="" alt="QR Code" style="display:none;border-radius:10px;width:220px;height:220px;background:white;padding:6px;" />
           </div>
         </div>
 
-        <!-- Connected -->
-        <div id="wa-connected-section" style="display:none;background:#22c55e11;border:1px solid #22c55e33;border-radius:14px;padding:16px;text-align:center;">
-          <div style="font-size:28px;margin-bottom:6px;">✅</div>
-          <div style="font-size:14px;font-weight:700;color:#22c55e;">Connecté</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6;">
-            📨 Confirmation → immédiat<br>⭐ Avis Google → 40 min après
+        <!-- Connected: search + chat list -->
+        <div id="wa-connected-section" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+          <!-- Search bar -->
+          <div class="wa2-sidebar-header">
+            <input id="wa-search" class="wa2-search" placeholder="🔍 Rechercher ou démarrer une conversation"
+              oninput="filterChats(this.value)" />
+          </div>
+          <!-- Chat list -->
+          <div id="wa-chat-list" style="flex:1;overflow-y:auto;">
+            <div style="text-align:center;color:#8696a0;font-size:12px;padding:28px 14px;">Chargement des conversations...</div>
           </div>
         </div>
 
-        <!-- Auto-send log -->
-        <div class="wa-log" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
-          <div class="wa-log-title" style="font-size:11px;">📤 Messages auto envoyés</div>
-          <div id="wa-log-body" style="flex:1;overflow-y:auto;padding:8px;">
-            <div style="text-align:center;color:var(--muted);font-size:11px;padding:16px;">Aucun message pour l'instant.</div>
+        <!-- Auto-log toggle button -->
+        <div class="wa2-log-toggle" id="wa2-log-toggle" onclick="toggleWALog()" style="display:none;">
+          📤 <span id="wa2-log-count">0</span> messages auto envoyés ▸
+        </div>
+        <!-- Auto-log expandable panel -->
+        <div class="wa2-log-panel" id="wa2-log-panel">
+          <div id="wa-log-body" style="padding:4px 0;">
+            <div style="padding:12px 14px;color:#8696a0;font-size:11px;">Aucun message envoyé pour l'instant.</div>
           </div>
         </div>
-      </div>
 
-      <!-- Col 2: Chat list -->
-      <div style="width:220px;flex-shrink:0;background:var(--sidebar);border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
-        <div style="padding:10px 12px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:between;">
-          <span>Conversations</span>
-          <button onclick="loadWAChats()" style="margin-left:auto;background:none;border:none;color:var(--accent);cursor:pointer;font-size:16px;" title="Actualiser">↻</button>
-        </div>
-        <div id="wa-chat-list" style="flex:1;overflow-y:auto;padding:4px;">
-          <div style="text-align:center;color:var(--muted);font-size:11px;padding:20px;">
-            Connectez WhatsApp pour voir les conversations
+      </div><!-- end sidebar -->
+
+      <!-- ── RIGHT AREA ── -->
+      <div class="wa2-main">
+
+        <!-- Conversation header (replaced by JS when chat is opened) -->
+        <div id="wa-conv-header" class="wa2-conv-header">
+          <div class="wa2-empty" style="flex:none;flex-direction:row;gap:0;">
+            <span style="font-size:13px;color:#8696a0;">← Sélectionnez une conversation</span>
           </div>
         </div>
-      </div>
 
-      <!-- Col 3: Messages view -->
-      <div style="flex:1;background:var(--sidebar);border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
-        <div id="wa-conv-header" style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:var(--muted);">
-          ← Sélectionnez une conversation
+        <!-- Empty state (shown until a chat is opened) -->
+        <div id="wa2-no-chat" class="wa2-empty">
+          <div class="big">💬</div>
+          <div class="txt">Twin Pizza Messages</div>
+          <div class="sub">Sélectionnez une conversation pour lire vos messages</div>
         </div>
-        <div id="wa-messages-list" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px;">
-        </div>
-        <div id="wa-send-bar" style="display:none;padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;">
+
+        <!-- Messages container -->
+        <div id="wa-messages-list" style="display:none;flex:1;overflow-y:auto;padding:12px 18px;flex-direction:column;gap:3px;background:#0b141a;"></div>
+
+        <!-- Send bar (shown when chat open) -->
+        <div id="wa-send-bar" style="display:none;padding:8px 12px;background:#202c33;border-top:1px solid #2a3942;align-items:center;gap:8px;flex-shrink:0;">
           <input id="wa-send-input" type="text" placeholder="Écrire un message..."
-            style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;"
             onkeydown="if(event.key==='Enter')sendWAMsg()" />
-          <button onclick="sendWAMsg()" style="background:var(--green);color:#000;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:13px;">Envoyer</button>
+          <button class="wa2-send-btn" onclick="sendWAMsg()" title="Envoyer">➤</button>
         </div>
-      </div>
 
-    </div>
+      </div><!-- end main -->
+
+    </div><!-- end body -->
+
+    <!-- Dummy elements for backwards-compat with existing JS (not visible) -->
+    <span id="wa-dot" class="nav-status s-amber" style="position:absolute;opacity:0;pointer-events:none;"></span>
   </div>
 
   <!-- Printer panel -->
@@ -441,9 +635,25 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('keydown', resetSleepTimer);
   document.addEventListener('mousemove', resetSleepTimer);
 
-  // Default screen = Point de Vente (Commandes tab was removed)
+  // Default screen = Point de Vente — pre-load immediately
   goTo('pos');
   applyZoom();
+
+  // Hide the loading overlay once the POS webview has rendered its first frame
+  const wvPos = document.getElementById('wv-pos');
+  const loadingOverlay = document.getElementById('wv-loading');
+
+  function hidePosLoading() {
+    loadingOverlay.classList.add('hidden');
+    setTimeout(() => loadingOverlay.classList.add('gone'), 380);
+  }
+
+  // did-stop-loading fires after all resources finish — React has painted by then.
+  // We add 300ms extra so the first React frame is fully composited.
+  wvPos.addEventListener('did-stop-loading', () => setTimeout(hidePosLoading, 300), { once: true });
+
+  // Safety: hide overlay after 12s max even if event never fires
+  setTimeout(hidePosLoading, 12000);
 });
 
 // ── Clock & date ───────────────────────────────────────────────────────────
@@ -482,7 +692,7 @@ function popoutScreen(name) {
   if (window.twinHub && window.twinHub.openWindow) {
     window.twinHub.openWindow(name);
   } else {
-    alert('Indisponible — ouvrez via l\'application TwinPizza Hub.');
+    alert('Indisponible — ouvrez via l\'application Twin Pizza.');
   }
 }
 
@@ -616,35 +826,40 @@ function updateStats() {
 function handleWAStatus(data) {
   const status = typeof data === 'string' ? data : (data.status || 'disconnected');
   const qr = data.qr || null;
+
+  // Update nav dot
   const dot  = document.getElementById('wa-dot');
+  const navDotEl = document.getElementById('nav-wa-status');
+  const dotClass = { connected:'s-green', qr:'s-amber', connecting:'s-amber', disconnected:'s-red', error:'s-red' }[status] || 's-grey';
+  if (dot)      dot.className      = 'nav-status ' + dotClass;
+  if (navDotEl) navDotEl.className = 'nav-status ' + dotClass;
+
+  // Update pill text in WA topbar
   const pill = document.getElementById('wa-pill');
+  const pillCfg = {
+    connected:    { color:'#9de0d2', text:'✅ Connecté' },
+    connecting:   { color:'#fcd34d', text:'⏳ Connexion...' },
+    qr:           { color:'#fcd34d', text:'📱 Scanner le QR Code' },
+    disconnected: { color:'#fca5a5', text:'🔴 Déconnecté' },
+    error:        { color:'#fca5a5', text:'❌ Erreur de connexion' },
+  }[status] || { color:'#8696a0', text:status };
+  if (pill) { pill.style.color = pillCfg.color; pill.textContent = pillCfg.text; }
 
-  const cfg = {
-    connected:    { dot:'s-green', pill:'background:#22c55e22;color:#22c55e;border:1px solid #22c55e44', text:'✅ Connecté' },
-    connecting:   { dot:'s-amber', pill:'background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44', text:'⏳ Connexion...' },
-    qr:           { dot:'s-amber', pill:'background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44', text:'📱 Scanner le QR' },
-    disconnected: { dot:'s-red',   pill:'background:#ef444422;color:#ef4444;border:1px solid #ef444444', text:'🔴 Déconnecté' },
-    error:        { dot:'s-red',   pill:'background:#ef444422;color:#ef4444;border:1px solid #ef444444', text:'❌ Erreur' },
-  }[status] || { dot:'s-grey', pill:'background:#6b728022;color:#6b7280;border:1px solid #6b728044', text:status };
-
-  if (dot) { dot.className = 'nav-status ' + cfg.dot; }
-  if (pill) { pill.style.cssText = cfg.pill; pill.textContent = cfg.text; }
-
-  // Show/hide sections
-  const qrSection  = document.getElementById('wa-qr-section');
+  const qrSection   = document.getElementById('wa-qr-section');
   const connSection = document.getElementById('wa-connected-section');
+  const autoInfo    = document.getElementById('wa-auto-info');
+  const logToggle   = document.getElementById('wa2-log-toggle');
+
   if (status === 'connected') {
-    if (qrSection)   qrSection.style.display   = 'none';
-    if (connSection) connSection.style.display  = 'block';
-    const autoInfo = document.getElementById('wa-auto-info');
-    if (autoInfo) autoInfo.style.display = 'inline-flex';
-    // Load conversations
-    setTimeout(loadWAChats, 1000);
+    if (qrSection)   { qrSection.style.display   = 'none'; }
+    if (connSection) { connSection.style.display  = 'flex'; }
+    if (autoInfo)    { autoInfo.style.display     = 'block'; }
+    if (logToggle)   { logToggle.style.display    = 'block'; }
+    setTimeout(loadWAChats, 800);
   } else {
-    if (qrSection)   qrSection.style.display   = 'block';
-    if (connSection) connSection.style.display  = 'none';
-    const autoInfo = document.getElementById('wa-auto-info');
-    if (autoInfo) autoInfo.style.display = 'none';
+    if (qrSection)   { qrSection.style.display   = 'flex'; }
+    if (connSection) { connSection.style.display  = 'none'; }
+    if (autoInfo)    { autoInfo.style.display     = 'none'; }
   }
 
   if (qr) handleWAQR(qr);
@@ -652,52 +867,31 @@ function handleWAStatus(data) {
 
 function handleWAQR(qr) {
   if (!qr) return;
-
-  // Show QR section
-  const qrSection   = document.getElementById('wa-qr-section');
-  const connSection = document.getElementById('wa-connected-section');
-  if (qrSection)   qrSection.style.display  = 'block';
-  if (connSection) connSection.style.display = 'none';
-
-  const container = document.getElementById('qr-container');
-  if (!container) return;
-
   const loading = document.getElementById('qr-loading');
   const img     = document.getElementById('qr-img');
-
+  if (!img) return;
   if (loading) loading.style.display = 'none';
-
-  // Always render via QR image API — works 100% of the time with internet
-  const qrRaw = qr.startsWith('data:') ? null : qr;
-  if (qrRaw && img) {
-    img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=10&data=' + encodeURIComponent(qrRaw);
-    img.style.cssText = 'display:block;width:260px;height:260px;border-radius:12px;';
-    img.onerror = () => {
-      img.style.display = 'none';
-      container.innerHTML = '<div style="color:#f59e0b;font-size:13px;padding:20px;text-align:center;">QR généré ✅<br><span style="font-size:11px;color:#6b7280;">Regardez le terminal pour le QR en texte</span></div>';
-    };
-  } else if (qr.startsWith('data:image') && img) {
+  const isDataUrl = qr.startsWith('data:image');
+  if (isDataUrl) {
     img.src = qr;
     img.style.display = 'block';
+  } else {
+    img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=' + encodeURIComponent(qr);
+    img.style.display = 'block';
+    img.onerror = () => {
+      img.style.display = 'none';
+      if (loading) { loading.textContent = '✅ QR prêt — regardez le terminal'; loading.style.display = 'block'; }
+    };
   }
-
-  const dot = document.getElementById('wa-dot');
-  if (dot) dot.className = 'nav-status s-amber';
 }
 
 // ── Persistent WhatsApp message log ──────────────────────────────────────────
-// Loads history from localStorage so you always see who was messaged + content.
-function loadWALog() {
-  try { return JSON.parse(localStorage.getItem('wa-log') || '[]'); } catch(_) { return []; }
-}
-function saveWALog() {
-  try { localStorage.setItem('wa-log', JSON.stringify(waLog.slice(0, 100))); } catch(_) {}
-}
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 }
-
-// Record a REAL sent message (called from main via IPC)
+function saveWALog() {
+  try { localStorage.setItem('wa-log', JSON.stringify(waLog.slice(0, 150))); } catch(_) {}
+}
 function recordWAMessage(data) {
   const d = new Date(data.time || Date.now());
   waLog.unshift({
@@ -712,37 +906,65 @@ function recordWAMessage(data) {
   saveWALog();
   renderWALog();
 }
-
 function renderWALog() {
-  const body = document.getElementById('wa-log-body');
+  const body  = document.getElementById('wa-log-body');
+  const count = document.getElementById('wa2-log-count');
+  if (count) count.textContent = waLog.length;
   if (!body) return;
   if (!waLog.length) {
-    body.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:24px;">Aucun message envoyé pour l\'instant.<br><span style="font-size:11px;">Les messages apparaîtront ici après chaque commande.</span></div>';
+    body.innerHTML = '<div style="padding:12px 14px;color:#8696a0;font-size:11px;">Aucun message envoyé pour l\'instant.</div>';
     return;
   }
-  const typeBadge = (t) => t === 'review'
-    ? '<span style="font-size:10px;background:#f59e0b22;color:#f59e0b;padding:1px 6px;border-radius:4px;">⭐ Avis Google</span>'
-    : '<span style="font-size:10px;background:#22c55e22;color:#22c55e;padding:1px 6px;border-radius:4px;">✅ Confirmation</span>';
-  body.innerHTML = waLog.slice(0, 60).map(m => `
-    <div style="padding:10px 0;border-bottom:1px solid var(--border);">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span style="font-size:11px;color:var(--muted);">${m.time}</span>
-        ${typeBadge(m.type)}
-        <span class="${m.success ? 'badge-ok' : 'badge-err'}">${m.success ? 'Envoyé' : 'Échec'}</span>
+  body.innerHTML = waLog.slice(0, 80).map(m => {
+    const typeBadge = m.type === 'review'
+      ? '<span class="badge" style="background:#f59e0b22;color:#f59e0b;border-radius:4px;padding:1px 6px;font-size:10px;">⭐ Avis Google</span>'
+      : '<span class="badge" style="background:#25d36622;color:#25d366;border-radius:4px;padding:1px 6px;font-size:10px;">✅ Confirmation</span>';
+    const statusBadge = m.success
+      ? '<span style="color:#25d366;font-size:10px;">✓ Envoyé</span>'
+      : '<span style="color:#ef4444;font-size:10px;">✗ Échec</span>';
+    return `<div class="wa2-log-entry">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:3px;">
+        <span style="font-size:10px;color:#8696a0;">${m.time}</span>
+        ${typeBadge} ${statusBadge}
       </div>
-      <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:4px;">
-        ${m.type === 'review' ? '⭐' : '📨'} ${escapeHtml(m.name) || 'Client'}
-        ${m.phone ? `<span style="font-weight:400;color:var(--accent);">· ${escapeHtml(m.phone)}</span>` : ''}
-        ${m.order ? `<span style="font-weight:400;color:var(--muted);">· #${m.order}</span>` : ''}
+      <div style="font-size:12px;color:#e9edef;">
+        ${m.type==='review'?'⭐':'📨'} <span class="name">${escapeHtml(m.name)||'Client'}</span>
+        ${m.phone ? `<span style="color:#25d366;"> · ${escapeHtml(m.phone)}</span>` : ''}
+        ${m.order ? `<span style="color:#8696a0;"> · #${m.order}</span>` : ''}
       </div>
-      ${m.message ? `<div style="font-size:11.5px;color:var(--muted);margin-top:4px;white-space:pre-wrap;background:var(--card);border-radius:8px;padding:8px 10px;">${escapeHtml(m.message)}</div>` : ''}
-    </div>`).join('');
+      ${m.message ? `<div style="font-size:11px;color:#8696a0;margin-top:4px;white-space:pre-wrap;background:#1a2930;border-radius:6px;padding:6px 10px;max-height:60px;overflow:hidden;">${escapeHtml(m.message)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+// Back-compat
+function logWAMessage(order, success, type) {
+  recordWAMessage({ order_number:order.order_number, customer_name:order.customer_name, success, type, time:Date.now() });
 }
 
-// Back-compat shim (older calls)
-function logWAMessage(order, success, type) {
-  recordWAMessage({ order_number: order.order_number, customer_name: order.customer_name, success, type, time: Date.now() });
+// ── Toggle auto-log panel ──────────────────────────────────────────────────
+function toggleWALog() {
+  const p = document.getElementById('wa2-log-panel');
+  const t = document.getElementById('wa2-log-toggle');
+  if (!p) return;
+  const open = p.classList.toggle('open');
+  if (t) t.textContent = `📤 ${waLog.length} messages auto ` + (open ? '▾' : '▸');
 }
+
+// ── Chat filter (search) ───────────────────────────────────────────────────
+let _allChats = [];
+function filterChats(q) {
+  const lq = q.toLowerCase();
+  const filtered = lq ? _allChats.filter(c => (c.name||'').toLowerCase().includes(lq) || c.id.includes(lq)) : _allChats;
+  renderChatList(filtered);
+}
+
+// ── Avatar helpers ─────────────────────────────────────────────────────────
+const AVATAR_COLORS = ['#25d366','#128c7e','#075e54','#34b7f1','#0063cb','#8e44ad','#e67e22','#e74c3c'];
+function avatarColor(s) {
+  let h = 0; for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+function avatarLetter(name) { return (name||'?')[0].toUpperCase(); }
 
 // ── WhatsApp Conversations ─────────────────────────────────────────────────
 let activeJid = null;
@@ -750,29 +972,38 @@ let activeJid = null;
 async function loadWAChats() {
   if (!window.twinHub) return;
   const chats = await window.twinHub.getWAChats().catch(() => []);
+  _allChats = chats || [];
+  renderChatList(_allChats);
+}
+
+function renderChatList(chats) {
   const list = document.getElementById('wa-chat-list');
   if (!list) return;
-  if (!chats || !chats.length) {
-    list.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:11px;padding:20px;">Aucune conversation pour l\'instant.</div>';
+  if (!chats.length) {
+    list.innerHTML = '<div style="text-align:center;color:#8696a0;font-size:12px;padding:28px 14px;">Aucune conversation.<br><span style="font-size:11px;">Elles apparaîtront dès le premier échange.</span></div>';
     return;
   }
   list.innerHTML = chats.map(c => {
-    const name = escapeHtml(c.name && c.name !== c.id ? c.name.split('@')[0] : c.id.split('@')[0]);
-    const preview = escapeHtml((c.lastMsg || '').substring(0, 40));
-    const time = c.lastTs ? new Date(c.lastTs).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) : '';
-    const unread = c.unread > 0 ? `<span style="background:var(--green);color:#000;border-radius:50%;width:16px;height:16px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;">${c.unread}</span>` : '';
-    return `<div onclick="openChat('${c.id.replace(/'/g,"\\'")}','${name.replace(/'/g,"\\'")}','${c.id.endsWith('@g.us')?'group':''}') "
-      style="padding:10px;border-radius:8px;cursor:pointer;border-bottom:1px solid var(--border)40;${activeJid===c.id?'background:var(--card);':''}">
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span style="font-size:18px;">${c.id.endsWith('@g.us') ? '👥' : '👤'}</span>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
-          <div style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
-          <span style="font-size:9px;color:var(--muted);">${time}</span>
-          ${unread}
-        </div>
+    const isGroup  = c.id.endsWith('@g.us');
+    const rawName  = c.name && c.name !== c.id ? c.name : c.id.split('@')[0];
+    const name     = escapeHtml(rawName);
+    const preview  = escapeHtml((c.lastMsg || '').substring(0, 42));
+    const time     = c.lastTs ? new Date(c.lastTs).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
+    const unread   = c.unread > 0 ? `<div class="wa2-chat-unread">${c.unread > 9 ? '9+' : c.unread}</div>` : '';
+    const isActive = activeJid === c.id ? 'selected' : '';
+    const avatarBg = isGroup ? '#1a3a3a' : avatarColor(rawName);
+    const avatarContent = isGroup ? '👥' : avatarLetter(rawName);
+    const jidSafe = c.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const nameSafe = name.replace(/'/g,"\\'");
+    return `<div class="wa2-chat-item ${isActive}" onclick="openChat('${jidSafe}','${nameSafe}')">
+      <div class="wa2-avatar" style="background:${avatarBg};">${avatarContent}</div>
+      <div class="wa2-chat-info">
+        <div class="wa2-chat-name">${name}</div>
+        <div class="wa2-chat-preview">${preview || '<em style="color:#4a5568">Pas encore de message</em>'}</div>
+      </div>
+      <div class="wa2-chat-meta">
+        <div class="wa2-chat-time">${time}</div>
+        ${unread}
       </div>
     </div>`;
   }).join('');
@@ -780,12 +1011,36 @@ async function loadWAChats() {
 
 async function openChat(jid, name) {
   activeJid = jid;
+
+  // Update header
   const header = document.getElementById('wa-conv-header');
-  if (header) header.innerHTML = `<span style="color:var(--text);">${escapeHtml(name)}</span><span style="font-size:10px;color:var(--muted);margin-left:8px;">${jid.replace('@s.whatsapp.net','').replace('@g.us',' (groupe)')}</span>`;
+  const rawName = name || jid.split('@')[0];
+  const isGroup = jid.endsWith('@g.us');
+  const avatarBg = isGroup ? '#1a3a3a' : avatarColor(rawName);
+  if (header) {
+    header.className = 'wa2-conv-header';
+    header.innerHTML = `
+      <div class="wa2-conv-avatar" style="background:${avatarBg};">${isGroup?'👥':avatarLetter(rawName)}</div>
+      <div>
+        <div class="wa2-conv-name">${escapeHtml(rawName)}</div>
+        <div class="wa2-conv-sub">${jid.replace('@s.whatsapp.net','').replace('@g.us',' (groupe)')}</div>
+      </div>`;
+  }
+
+  // Show messages area, hide empty state
+  const noChat  = document.getElementById('wa2-no-chat');
+  const msgList = document.getElementById('wa-messages-list');
   const sendBar = document.getElementById('wa-send-bar');
+  if (noChat)  noChat.style.display  = 'none';
+  if (msgList) { msgList.style.display = 'flex'; }
   if (sendBar) sendBar.style.display = 'flex';
+
+  // Focus input
+  setTimeout(() => { const inp = document.getElementById('wa-send-input'); if(inp) inp.focus(); }, 100);
+
   // Refresh chat list to highlight active
-  loadWAChats();
+  renderChatList(_allChats);
+
   // Load messages
   const msgs = await window.twinHub.getWAMessages(jid).catch(() => []);
   renderMessages(msgs);
@@ -795,17 +1050,18 @@ function renderMessages(msgs) {
   const el = document.getElementById('wa-messages-list');
   if (!el) return;
   if (!msgs || !msgs.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:24px;">Aucun message chargé.<br><span style="font-size:10px;">Les nouveaux messages apparaîtront en temps réel.</span></div>';
+    el.innerHTML = '<div style="text-align:center;color:#8696a0;font-size:12px;padding:32px;">Aucun message chargé.<br><span style="font-size:10px;">Les nouveaux messages apparaîtront en temps réel.</span></div>';
+    el.scrollTop = el.scrollHeight;
     return;
   }
   el.innerHTML = msgs.map(m => {
     const time = m.ts ? new Date(m.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
-    const bg = m.fromMe ? '#f59e0b22' : 'var(--card)';
-    const align = m.fromMe ? 'flex-end' : 'flex-start';
-    return `<div style="display:flex;justify-content:${align};">
-      <div style="max-width:75%;background:${bg};border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--text);">
+    const cls  = m.fromMe ? 'mine' : 'theirs';
+    const tick = m.fromMe ? ' ✓' : '';
+    return `<div class="wa2-bubble-wrap ${cls}">
+      <div class="wa2-bubble ${cls}">
         ${escapeHtml(m.text || '')}
-        <div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:right;">${time}${m.fromMe?' ✓':''}</div>
+        <div class="wa2-time">${time}${tick}</div>
       </div>
     </div>`;
   }).join('');
@@ -818,33 +1074,42 @@ async function sendWAMsg() {
   const text = (input?.value || '').trim();
   if (!text) return;
   input.value = '';
-  const result = await window.twinHub.sendWAMessage(activeJid, text).catch(() => ({ success: false, error: 'Erreur réseau' }));
-  if (!result.success) {
-    alert('Erreur envoi: ' + (result.error || 'Inconnu'));
-    return;
+  // Optimistically append the bubble
+  const el = document.getElementById('wa-messages-list');
+  if (el) {
+    const time = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    el.insertAdjacentHTML('beforeend', `<div class="wa2-bubble-wrap mine">
+      <div class="wa2-bubble mine">${escapeHtml(text)}<div class="wa2-time">${time} ✓</div></div>
+    </div>`);
+    el.scrollTop = el.scrollHeight;
   }
-  // Refresh messages
-  const msgs = await window.twinHub.getWAMessages(activeJid).catch(() => []);
-  renderMessages(msgs);
+  const result = await window.twinHub.sendWAMessage(activeJid, text).catch(() => ({ success:false, error:'Erreur réseau' }));
+  if (!result.success) {
+    // Mark last bubble as failed
+    const last = el?.querySelector('.wa2-bubble-wrap.mine:last-child .wa2-time');
+    if (last) last.innerHTML = '<span style="color:#ef4444">✗ Échec</span>';
+  }
 }
 
-// Listen for new incoming messages in real time
+// ── Real-time incoming messages ────────────────────────────────────────────
 if (window.twinHub && window.twinHub.onWANewMessage) {
   window.twinHub.onWANewMessage(({ jid, message }) => {
-    // Refresh chat list badge
-    loadWAChats();
-    // If this chat is open, append message
+    // Refresh chat list unread badge
+    const c = _allChats.find(x=>x.id===jid);
+    if (c) { c.lastMsg = message.text; c.lastTs = message.ts; if (!message.fromMe) c.unread = (c.unread||0)+1; }
+    else  { _allChats.unshift({ id:jid, name:jid.split('@')[0], unread:1, lastMsg:message.text, lastTs:message.ts }); }
+    renderChatList(_allChats);
+    // If this chat is open, append bubble
     if (jid === activeJid) {
       const el = document.getElementById('wa-messages-list');
       if (el) {
         const time = message.ts ? new Date(message.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
-        el.insertAdjacentHTML('beforeend', `<div style="display:flex;justify-content:flex-start;">
-          <div style="max-width:75%;background:var(--card);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--text);">
-            ${escapeHtml(message.text || '')}
-            <div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:right;">${time}</div>
-          </div>
+        el.insertAdjacentHTML('beforeend', `<div class="wa2-bubble-wrap theirs">
+          <div class="wa2-bubble theirs">${escapeHtml(message.text||'')}<div class="wa2-time">${time}</div></div>
         </div>`);
         el.scrollTop = el.scrollHeight;
+        // Mark chat as read
+        if (c) c.unread = 0;
       }
     }
   });
