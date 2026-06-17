@@ -606,6 +606,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               <Label htmlFor="name" className="text-base sm:text-base font-semibold">Nom *</Label>
               <Input
                 id="name"
+                autoComplete="name"
                 value={customerInfo.name}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
                 placeholder="Votre nom"
@@ -617,7 +618,8 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               <Input
                 id="phone"
                 type="tel"
-                inputMode="numeric"
+                inputMode="tel"
+                autoComplete="tel"
                 value={customerInfo.phone}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
                 placeholder="06 XX XX XX XX"
@@ -629,6 +631,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 <Label htmlFor="address" className="text-base font-semibold">Adresse de livraison *</Label>
                 <Textarea
                   id="address"
+                  autoComplete="street-address"
                   value={customerInfo.address}
                   onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
                   placeholder="Votre adresse complète"
@@ -652,53 +655,56 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         {step === 'payment' && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Mode de paiement</h2>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {/* Online Payment - Only show if enabled */}
               {paymentSettings?.online_payments_enabled && (
-                <Card
-                  className={`p-4 cursor-pointer transition-all ${paymentMethod === 'en_ligne' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === 'en_ligne'}
+                  className={`w-full flex items-center gap-4 p-4 min-h-[72px] rounded-xl border-2 transition-all text-left ${paymentMethod === 'en_ligne' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/40 hover:bg-muted/40'}`}
                   onClick={() => setPaymentMethod('en_ligne')}
                 >
-                  <div className="flex items-center gap-3">
-                    <Globe className="w-8 h-8 text-purple-600" />
-                    <div className="flex-1">
-                      <h3 className="font-semibold">Payer maintenant (Stripe)</h3>
-                      <p className="text-xs text-muted-foreground">Paiement sécurisé par carte</p>
-                    </div>
-                    {paymentMethod === 'en_ligne' && <Check className="w-5 h-5 text-primary" />}
+                  <Globe className="w-8 h-8 text-purple-600 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold">Payer maintenant (Stripe)</h3>
+                    <p className="text-xs text-muted-foreground">Paiement sécurisé par carte</p>
                   </div>
-                </Card>
+                  {paymentMethod === 'en_ligne' && <Check className="w-5 h-5 text-primary flex-shrink-0" />}
+                </button>
               )}
-              <Card
-                className={`p-4 cursor-pointer transition-all ${paymentMethod === 'cb' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={paymentMethod === 'cb'}
+                className={`w-full flex items-center gap-4 p-4 min-h-[72px] rounded-xl border-2 transition-all text-left ${paymentMethod === 'cb' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/40 hover:bg-muted/40'}`}
                 onClick={() => setPaymentMethod('cb')}
               >
-                <div className="flex items-center gap-3">
-                  <CreditCard className="w-8 h-8 text-primary" />
-                  <div className="flex-1">
-                    <h3 className="font-semibold">Carte Bancaire</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {orderType === 'livraison' ? 'À la livraison' : 'Sur place'}
-                    </p>
-                  </div>
-                  {paymentMethod === 'cb' && <Check className="w-5 h-5 text-primary" />}
+                <CreditCard className="w-8 h-8 text-primary flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-semibold">Carte Bancaire</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {orderType === 'livraison' ? 'À la livraison' : 'Sur place'}
+                  </p>
                 </div>
-              </Card>
-              <Card
-                className={`p-4 cursor-pointer transition-all ${paymentMethod === 'especes' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                {paymentMethod === 'cb' && <Check className="w-5 h-5 text-primary flex-shrink-0" />}
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={paymentMethod === 'especes'}
+                className={`w-full flex items-center gap-4 p-4 min-h-[72px] rounded-xl border-2 transition-all text-left ${paymentMethod === 'especes' ? 'border-green-500 bg-green-500/5 shadow-sm' : 'border-border hover:border-green-400/40 hover:bg-muted/40'}`}
                 onClick={() => setPaymentMethod('especes')}
               >
-                <div className="flex items-center gap-3">
-                  <Banknote className="w-8 h-8 text-green-600" />
-                  <div className="flex-1">
-                    <h3 className="font-semibold">Espèces</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {orderType === 'livraison' ? 'À la livraison' : 'Sur place'}
-                    </p>
-                  </div>
-                  {paymentMethod === 'especes' && <Check className="w-5 h-5 text-primary" />}
+                <Banknote className="w-8 h-8 text-green-600 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-semibold">Espèces</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {orderType === 'livraison' ? 'À la livraison' : 'Sur place'}
+                  </p>
                 </div>
-              </Card>
+                {paymentMethod === 'especes' && <Check className="w-5 h-5 text-green-600 flex-shrink-0" />}
+              </button>
             </div>
 
             {/* Delivery info for non-delivery orders WITHOUT pizza - CLICKABLE */}

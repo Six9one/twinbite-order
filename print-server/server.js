@@ -23,6 +23,8 @@ const SUPABASE_URL      = (process.env.SUPABASE_URL      || process.env.VITE_SUP
 const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').replace(/['"]/g, '').trim();
 const PRINTER_IPS = (process.env.PRINTER_IPS || process.env.PRINTER_IP || '').split(',').map(ip => ip.trim()).filter(Boolean);
 const PRINTER_PORT = parseInt(process.env.PRINTER_PORT || '9100', 10);
+// Star TSP100 USB (PC restaurant / caisse) — ticket client avec prix
+const COUNTER_PRINTER_NAME = (process.env.COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME || '').trim();
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 const SETTINGS_REFRESH_INTERVAL = 300000;
@@ -951,13 +953,12 @@ async function sendToAllPrinters(ticketData, label) {
     return success;
 }
 
-// Print order ticket (QUEUED) — formats and sends to all printers
+// Print order ticket (QUEUED) — dual: cuisine (Ethernet) + caisse (USB)
 async function printWithRetry(order, loyaltyText) {
     const label = `Order #${order.order_number}`;
     return enqueuePrintJob(async () => {
-        const ticketData = formatUnifiedTicket(order, loyaltyText || '');
-        console.log(`🖨️  Printing ticket #${order.order_number}...`);
-        return sendToAllPrinters(ticketData, label);
+        console.log(`🖨️  Impression double ticket #${order.order_number}...`);
+        return printDualTickets(order, loyaltyText || '');
     }, label);
 }
 
@@ -967,6 +968,50 @@ async function printRawWithRetry(ticketData, label) {
         console.log(`🖨️  Printing [${label}]...`);
         return sendToAllPrinters(ticketData, label);
     }, label);
+}
+
+// ── DUAL PRINT (direct — do NOT wrap in enqueuePrintJob, already called from one) ──
+// Ticket 1 → Ethernet cuisine : formatKitchenTicket (items seulement, sans prix)
+// Ticket 2 → Star TSP100 USB  : formatCounterTicket (reçu complet client)
+async function printDualTickets(order, loyaltyText) {
+    let kitchenOk  = false;
+    let counterOk  = false;
+
+    // ── 1. TICKET CUISINE → Ethernet ────────────────────────────────────────
+    if (PRINTER_IPS.length > 0) {
+        try {
+            const data = formatKitchenTicket(order);
+            const results = await Promise.allSettled(
+                PRINTER_IPS.map(ip => printToSinglePrinter(data, ip, `Cuisine #${order.order_number}`))
+            );
+            kitchenOk = results.some(r => r.status === 'fulfilled' && r.value === true);
+            if (kitchenOk) console.log(`✅ Ticket cuisine → ${PRINTER_IPS.join(', ')}`);
+        } catch (err) {
+            console.error(`❌ Ticket cuisine erreur: ${err.message}`);
+        }
+    } else {
+        console.log('⚠️  Aucun PRINTER_IPS configuré — ticket cuisine ignoré');
+    }
+
+    // Pause courte entre les deux imprimantes
+    await new Promise(r => setTimeout(r, 300));
+
+    // ── 2. TICKET CAISSE → Star TSP100 USB ──────────────────────────────────
+    if (COUNTER_PRINTER_NAME) {
+        try {
+            const data = formatCounterTicket(order, loyaltyText || '');
+            await sendToUSBPrinter(data, COUNTER_PRINTER_NAME);
+            console.log(`✅ Ticket caisse → "${COUNTER_PRINTER_NAME}"`);
+            counterOk = true;
+        } catch (err) {
+            console.error(`❌ Imprimante caisse "${COUNTER_PRINTER_NAME}" échouée: ${err.message}`);
+            console.error('   → Vérifier COUNTER_PRINTER_NAME dans print-server/.env');
+        }
+    } else {
+        console.log('⚠️  COUNTER_PRINTER_NAME non configuré dans .env — ticket caisse ignoré');
+    }
+
+    return kitchenOk || counterOk;
 }
 
 // Orders currently being printed (in-flight guard — prevents the 10s poll and
@@ -985,61 +1030,63 @@ async function handleNewOrder(order, force = false) {
     }
     processingOrders.add(order.id);
 
+    // ── MARQUER IMMÉDIATEMENT pour éviter la duplication ──────────────────────
+    // Si realtime rejoue l'événement OU si le polling tourne pendant l'impression,
+    // le deuxième appel sera bloqué par printedOrders.has() ci-dessus.
+    if (!force) {
+        printedOrders.set(order.id, Date.now());
+        savePrintedOrders();
+    }
+
     console.log(`\n${'='.repeat(50)}`);
-    console.log(`📦 NEW ORDER: ${order.order_number}`);
-    console.log(`   Type: ${order.order_type}`);
-    console.log(`   Client: ${order.customer_name}`);
-    console.log(`   Total: ${order.total}€`);
+    console.log(`📦 NOUVELLE COMMANDE: ${order.order_number}`);
+    console.log(`   Type   : ${order.order_type}`);
+    console.log(`   Client : ${order.customer_name}`);
+    console.log(`   Total  : ${order.total}€`);
     console.log(`${'='.repeat(50)}\n`);
 
     try {
-
-    // Fetch loyalty info (Only used for counter printer)
-    let loyaltyText = '';
-    try {
-        if (order.customer_phone) {
-            const { data: customer } = await supabase
-                .from('loyalty_customers')
-                .select('points')
-                .eq('phone', order.customer_phone)
-                .single();
-
-            if (customer) {
-                const points = customer.points;
-                const pointsNeeded = 9;
-
-                if (points >= pointsNeeded) {
-                    loyaltyText = '\n' + ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT +
-                        '*** 10eme OFFERTE ! ***\n(Valeur 10 EUR)\n' +
-                        ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF +
-                        `Solde: ${points} Tampons\n`;
-                } else {
-                    loyaltyText = '\n' + ESCPOS.CENTER + ESCPOS.BOLD_ON +
-                        `FIDELITE: ${points}/${pointsNeeded}\n` +
-                        ESCPOS.BOLD_OFF +
-                        `Plus que ${pointsNeeded - points} pour la gratuite!\n`;
+        // Fetch loyalty (utilisé uniquement sur le ticket caisse)
+        let loyaltyText = '';
+        try {
+            if (order.customer_phone) {
+                const { data: customer } = await supabase
+                    .from('loyalty_customers')
+                    .select('points')
+                    .eq('phone', order.customer_phone)
+                    .single();
+                if (customer) {
+                    const points = customer.points;
+                    const pointsNeeded = 9;
+                    if (points >= pointsNeeded) {
+                        loyaltyText = '\n' + ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT +
+                            '*** 10eme OFFERTE ! ***\n(Valeur 10 EUR)\n' +
+                            ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF +
+                            `Solde: ${points} Tampons\n`;
+                    } else {
+                        loyaltyText = '\n' + ESCPOS.CENTER + ESCPOS.BOLD_ON +
+                            `FIDELITE: ${points}/${pointsNeeded}\n` +
+                            ESCPOS.BOLD_OFF +
+                            `Plus que ${pointsNeeded - points} pour la gratuite!\n`;
+                    }
                 }
             }
+        } catch (err) {
+            console.error('Erreur fidélité:', err.message);
         }
-    } catch (err) {
-        console.error('Error fetching loyalty for ticket:', err.message);
-    }
 
-    const success = await printWithRetry(order, loyaltyText);
+        // Impression double (cuisine Ethernet + caisse USB) via la queue
+        const success = await enqueuePrintJob(async () => {
+            return printDualTickets(order, loyaltyText);
+        }, `Order #${order.order_number}`);
 
-    // CRITICAL: mark the order as handled in BOTH cases so the 10s poll can
-    // never re-catch it and reprint forever. A genuine failure is recorded in
-    // the DB (printed=false) and can be reprinted via "Récupérer les manqués".
-    printedOrders.set(order.id, Date.now());
-    savePrintedOrders();
-
-    if (success) {
-        await markOrderPrinted(order.id);
-        console.log(`✅ Order ${order.order_number} printed + cached`);
-    } else {
-        await markPrintAttempt(order.id, 'Print failed after retries');
-        console.log(`⚠️ Order ${order.order_number} print FAILED — marked, will NOT auto-reprint (use Récupérer les manqués)`);
-    }
+        if (success) {
+            await markOrderPrinted(order.id);
+            console.log(`✅ Commande ${order.order_number} — 2 tickets imprimés`);
+        } else {
+            await markPrintAttempt(order.id, 'Impression échouée (les 2 imprimantes)');
+            console.log(`⚠️  Commande ${order.order_number} — ÉCHEC impression. Utiliser "Récupérer les manqués"`);
+        }
     } finally {
         processingOrders.delete(order.id);
     }

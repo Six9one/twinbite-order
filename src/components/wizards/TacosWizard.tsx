@@ -7,6 +7,7 @@ import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { useProductsByCategory, Product } from '@/hooks/useProducts';
 import { useMeatOptions, useSauceOptions } from '@/hooks/useCustomizationOptions';
 import { useWizardImage, useMenuOptionImages } from '@/hooks/useWizardImages';
+import { useSwipeToDismiss } from '@/hooks/useSwipeToDismiss';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -166,6 +167,7 @@ function getOptionEmoji(name: string, map: Record<string, string>): string {
 
 export function TacosWizard({ onClose }: TacosWizardProps) {
   const { addToCart } = useOrder();
+  const { containerRef, onTouchStart, onTouchMove, onTouchEnd } = useSwipeToDismiss(onClose);
   const [step, setStep] = useState(1);
   const [size, setSize] = useState<TacosSize>('solo');
   const [selectedMeats, setSelectedMeats] = useState<string[]>([]);
@@ -510,9 +512,18 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-4 py-4">
+    <div ref={containerRef} className="min-h-screen bg-background pb-24">
+      <div
+        className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        {/* Mobile drag handle */}
+        <div className="flex justify-center pt-2 pb-0 sm:hidden cursor-grab">
+          <div className="w-10 h-1.5 rounded-full bg-muted-foreground/30" />
+        </div>
+        <div className="container mx-auto px-4 py-3">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => step > 1 ? setStep(step - 1) : onClose()}>
               <ArrowLeft className="w-5 h-5" />

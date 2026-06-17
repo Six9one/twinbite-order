@@ -34,6 +34,8 @@ const sauceEmojis: Record<string, string> = {
   'BBQ': '🔥',
   'Curry': '🟠',
   'Moutarde': '🌻',
+  'Fromagère': '🧀',
+  'Fromager': '🧀',
 };
 
 // Emoji fallbacks for crudités
@@ -63,12 +65,14 @@ const DEFAULT_CRUDITES = ['Salade', 'Tomate', 'Oignon'];
 
 // Static fallback sandwiches (used when DB table is empty)
 const FALLBACK_SANDWICHES: SandwichType[] = [
-  { id: 'sw-poulet',    name: 'Sandwich Poulet',    description: 'Escalope de poulet grillé',       base_price: 6.50, image_url: null, display_order: 1, is_active: true, created_at: null },
-  { id: 'sw-merguez',   name: 'Sandwich Merguez',   description: 'Merguez grillées maison',          base_price: 6.50, image_url: null, display_order: 2, is_active: true, created_at: null },
-  { id: 'sw-mixte',     name: 'Sandwich Mixte',     description: 'Poulet + merguez',                 base_price: 7.00, image_url: null, display_order: 3, is_active: true, created_at: null },
-  { id: 'sw-steak',     name: 'Sandwich Steak',     description: 'Steak haché maison',               base_price: 7.00, image_url: null, display_order: 4, is_active: true, created_at: null },
-  { id: 'sw-thon',      name: 'Sandwich Thon',      description: 'Thon, maïs, salade',               base_price: 6.00, image_url: null, display_order: 5, is_active: true, created_at: null },
-  { id: 'sw-kefta',     name: 'Sandwich Kefta',     description: 'Brochettes de kefta épicées',      base_price: 7.00, image_url: null, display_order: 6, is_active: true, created_at: null },
+  { id: 'sw-vegetarien',  name: 'Végétarien',   description: 'Œuf, champignons, galette de pomme de terre, crudités',          base_price: 6.50, image_url: null, display_order: 1, is_active: true, created_at: null },
+  { id: 'sw-steaky',      name: 'Steaky',        description: '2 steaks hachés, mozzarella, galette de pommes de terre, crudités', base_price: 8.50, image_url: null, display_order: 2, is_active: true, created_at: null },
+  { id: 'sw-special',     name: 'Spécial',       description: 'Escalope de poulet, 2 steaks hachés, cheddar, crudités',          base_price: 8.50, image_url: null, display_order: 3, is_active: true, created_at: null },
+  { id: 'sw-royal-bacon', name: 'Royal Bacon',   description: '2 steaks hachés, œuf, bacon, crudités',                           base_price: 8.50, image_url: null, display_order: 4, is_active: true, created_at: null },
+  { id: 'sw-cowboy',      name: 'Cow Boy',        description: '2 steaks hachés, cordon bleu, cheddar, crudités',                 base_price: 8.50, image_url: null, display_order: 5, is_active: true, created_at: null },
+  { id: 'sw-chicken',     name: 'Chicken',        description: 'Escalope de poulet, cheddar, crudités',                           base_price: 7.50, image_url: null, display_order: 6, is_active: true, created_at: null },
+  { id: 'sw-tenders',     name: 'Tenders',        description: 'Tenders de poulet (2 pièces), œuf, crudités',                    base_price: 8.50, image_url: null, display_order: 7, is_active: true, created_at: null },
+  { id: 'sw-normand',     name: 'Normand',         description: 'Escalope de poulet, lardons, champignons, crudités',             base_price: 8.50, image_url: null, display_order: 8, is_active: true, created_at: null },
 ];
 
 interface SandwichWizardProps {

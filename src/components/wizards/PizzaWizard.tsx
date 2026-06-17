@@ -6,6 +6,7 @@ import { useOrder } from '@/context/OrderContext';
 import { usePizzasByBase, Product } from '@/hooks/useProducts';
 import { usePizzaFormatImages } from '@/hooks/useWizardImages';
 import { trackProductView, trackAddToCart } from '@/hooks/useProductAnalytics';
+import { useSwipeToDismiss } from '@/hooks/useSwipeToDismiss';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
@@ -30,6 +31,7 @@ interface PizzaWizardProps {
 
 export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
   const { addToCart, orderType } = useOrder();
+  const { containerRef, onTouchStart, onTouchMove, onTouchEnd } = useSwipeToDismiss(onClose);
 
   // If lockedSize is set (loyalty free pizza), skip format selection
   const initialStep: WizardStep = lockedSize ? 'SELECT_PIZZA' : 'SELECT_FORMAT';
@@ -144,9 +146,18 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
   // ============================================================
   if (step === 'SELECT_FORMAT') {
     return (
-      <div className="min-h-screen bg-background pb-4">
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-          <div className="container mx-auto px-4 py-4">
+      <div ref={containerRef} className="min-h-screen bg-background pb-4">
+        <div
+          className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          {/* Mobile drag handle */}
+          <div className="flex justify-center pt-2 pb-0 sm:hidden cursor-grab">
+            <div className="w-10 h-1.5 rounded-full bg-muted-foreground/30" />
+          </div>
+          <div className="container mx-auto px-4 py-3">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={onClose} className="w-10 h-10">
                 <ArrowLeft className="w-5 h-5" />

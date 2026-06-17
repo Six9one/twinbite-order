@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   croques,
   frites,
@@ -105,9 +105,23 @@ function mapProductsToMenuItems(
 export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLockedSize }: CategoryMenuProps) {
   const { orderType, getItemCount, getTotal } = useOrder();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const itemCount = getItemCount();
   const { getImageOrEmoji, getDisplayName } = useCategoryImages();
   const { isCategoryDisabled } = useDisabledCategories();
+  const prevItemCount = useRef(itemCount);
+  const [badgePulse, setBadgePulse] = useState(false);
+
+  // Pulse badge animation on new item added to cart
+  useEffect(() => {
+    if (itemCount > prevItemCount.current) {
+      setBadgePulse(true);
+      const t = setTimeout(() => setBadgePulse(false), 700);
+      prevItemCount.current = itemCount;
+      return () => clearTimeout(t);
+    }
+    prevItemCount.current = itemCount;
+  }, [itemCount]);
 
   // Auto-redirect to pizzas if coming from checkout to pick a free pizza
   useEffect(() => {
@@ -297,14 +311,47 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
               )}
             </div>
           )}
+
+          {/* Search Bar */}
+          <div className="mt-3">
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Rechercher un produit..."
+                className="w-full pl-9 pr-4 py-2.5 text-sm bg-muted/60 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Products Grid */}
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        <h2 className="text-lg sm:text-xl font-display font-bold mb-3 sm:mb-4 text-foreground">🍽️ Nos Produits</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          {productCategoryOrder.map((category) => {
+        {(() => {
+          const query = searchQuery.trim().toLowerCase();
+          const filteredProducts = query
+            ? productCategoryOrder.filter(cat => {
+                const label = (getDisplayName(cat) || allCategoryLabels[cat] || '').toLowerCase();
+                return label.includes(query);
+              })
+            : productCategoryOrder;
+          const filteredDesserts = query
+            ? dessertCategoryOrder.filter(cat => {
+                const label = (getDisplayName(cat) || allCategoryLabels[cat] || '').toLowerCase();
+                return label.includes(query);
+              })
+            : dessertCategoryOrder;
+
+          return (
+            <>
+              {filteredProducts.length > 0 && (
+                <>
+                  <h2 className="text-lg sm:text-xl font-display font-bold mb-3 sm:mb-4 text-foreground">🍽️ Nos Produits</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+                    {filteredProducts.map((category) => {
             const imageData = getImageOrEmoji(category);
             const displayName = getDisplayName(category) || allCategoryLabels[category]?.split(' ').slice(1).join(' ');
             const isUnavailable = isCategoryDisabled(category);
@@ -352,12 +399,15 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
               </Card>
             );
           })}
-        </div>
+                  </div>
+                </>
+              )}
 
-        {/* Desserts Grid */}
-        <h2 className="text-lg sm:text-xl font-display font-bold mb-3 sm:mb-4 text-foreground">🍨 Desserts & Boissons</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          {dessertCategoryOrder.map((category) => {
+              {filteredDesserts.length > 0 && (
+                <>
+                  <h2 className="text-lg sm:text-xl font-display font-bold mb-3 sm:mb-4 text-foreground">🍨 Desserts & Boissons</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                    {filteredDesserts.map((category) => {
             const imageData = getImageOrEmoji(category);
             const displayName = getDisplayName(category) || allCategoryLabels[category]?.split(' ').slice(1).join(' ');
             const isUnavailable = isCategoryDisabled(category);
@@ -402,21 +452,42 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
               </Card>
             );
           })}
-        </div>
+                  </div>
+                </>
+              )}
+
+              {filteredProducts.length === 0 && filteredDesserts.length === 0 && (
+                <div className="text-center py-16 text-muted-foreground col-span-full">
+                  <p className="text-4xl mb-3">🔍</p>
+                  <p className="font-medium">Aucun résultat pour "{searchQuery}"</p>
+                  <p className="text-sm mt-1">Essayez pizzas, tacos, sandwich...</p>
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
-      {/* Floating Cart Button (Mobile) */}
-      {itemCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-background/95 backdrop-blur border-t border-border md:hidden safe-bottom">
+      {/* Floating Cart Button (Mobile) — always visible */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-background/95 backdrop-blur border-t border-border md:hidden safe-bottom">
+        {itemCount > 0 ? (
           <Button
-            className="w-full h-14 text-base sm:text-lg shadow-lg rounded-xl"
+            className="w-full h-14 text-base sm:text-lg shadow-lg rounded-xl relative"
             onClick={onOpenCart}
           >
             <ShoppingCart className="w-5 h-5 mr-2" />
             Voir le panier ({itemCount}) - {getTotal().toFixed(2)}€
+            {badgePulse && (
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-accent rounded-full animate-ping" />
+            )}
           </Button>
-        </div>
-      )}
+        ) : (
+          <div className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-muted/60 text-muted-foreground text-sm">
+            <ShoppingCart className="w-4 h-4" />
+            Choisissez un produit pour commencer
+          </div>
+        )}
+      </div>
     </div>
   );
 }

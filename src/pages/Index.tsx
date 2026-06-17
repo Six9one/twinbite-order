@@ -147,24 +147,24 @@ function MainApp() {
       <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
 
       {/* Hero Section - optimized height */}
-      <section className="relative min-h-[60vh] sm:min-h-[70vh] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[55vh] sm:min-h-[70vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroPizza})` }} />
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-background" />
 
-        <div className="relative z-10 container mx-auto px-3 sm:px-4 py-8">
+        <div className="relative z-10 container mx-auto px-3 sm:px-4 py-6">
           <div className="text-center mb-6 sm:mb-8 animate-fade-in">
             <div className="mb-4">
               <a href="/" className="hover:opacity-80 transition-opacity">
-                <h1 className="text-3xl sm:text-5xl md:text-7xl font-medium tracking-wide whitespace-nowrap">
+                <h1 className="text-2xl sm:text-5xl md:text-7xl font-medium tracking-wide whitespace-nowrap">
                   <span className="text-amber-400">Twin</span>
                   <span className="text-white ml-2 sm:ml-3">Pizza</span>
                 </h1>
               </a>
             </div>
-            <p className="text-base sm:text-lg mb-1 sm:mb-2 font-sans font-extrabold md:text-xl text-secondary">
+            <p className="text-sm sm:text-lg mb-1 sm:mb-2 font-sans font-extrabold md:text-xl text-secondary">
               Grand-Couronne
             </p>
-            <p className="text-sm sm:text-base md:text-lg max-w-lg mx-auto text-orange-400 px-4 sm:px-0">
+            <p className="text-xs sm:text-base md:text-lg max-w-lg mx-auto text-orange-400 px-4 sm:px-0">
               Pizzas • Soufflés • Makloub • Mlawi • Tacos • Sandwiches et plus encore...
             </p>
           </div>
