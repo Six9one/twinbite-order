@@ -32,6 +32,7 @@ import POSPage from "./pages/POSPage";
 
 // Components
 import ErrorBoundary from "./components/ErrorBoundary";
+import { UmamiTracker } from "./components/UmamiTracker";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -50,6 +51,7 @@ const App = () => (
         <QueryClientProvider client={queryClient}>
             <LanguageProvider>
                 <TooltipProvider>
+                        <UmamiTracker />
                         <Toaster />
                         <Sonner />
                         <OfflineIndicator />
