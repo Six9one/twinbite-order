@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrders, useUpdateOrderStatus, Order } from '@/hooks/useSupabaseData';
+import { useAdminSetting } from '@/hooks/useAdminSettings';
+import { compileTicketHtml } from '@/utils/ticketCompiler';
 import { ProductCategoryManager } from '@/components/admin/ProductCategoryManager';
 import { PizzaManager } from '@/components/admin/PizzaManager';
 import { SandwichManager } from '@/components/admin/SandwichManager';
@@ -86,109 +88,12 @@ const playOrderSound = () => {
   }
 };
 
-// Auto-print ticket function - PLAIN TEXT format for thermal printers
-const autoPrintOrderTicket = (order: Order) => {
+// Auto-print ticket function using database templates
+const autoPrintOrderTicket = (order: Order, settings: any) => {
   console.log('🖨️ Auto-printing order:', order.order_number);
 
-  const header = localStorage.getItem('ticketHeader') || 'TWIN PIZZA';
-  const subheader = localStorage.getItem('ticketSubheader') || 'Grand-Couronne';
-  const phone = localStorage.getItem('ticketPhone') || '02 32 11 26 13';
-  const footer = localStorage.getItem('ticketFooter') || 'Merci de votre visite!';
-
-  const orderTypeLabels: Record<string, string> = {
-    livraison: '🚗 LIVRAISON',
-    emporter: '🛍️ A EMPORTER',
-    surplace: '🍽️ SUR PLACE'
-  };
-
-  const paymentLabels: Record<string, string> = {
-    en_ligne: '✅ PAYEE EN LIGNE',
-    cb: '💳 CB - A PAYER',
-    especes: '💵 ESPECES - A PAYER'
-  };
-
-  // Build items text
-  const items = Array.isArray(order.items) ? order.items : [];
-  let itemsText = '';
-  items.forEach((cartItem: any) => {
-    const productName = cartItem.item?.name || cartItem.name || 'Produit';
-    const price = cartItem.totalPrice?.toFixed(2) || '0.00';
-    const customization = cartItem.customization;
-    let details: string[] = [];
-    // Size is NOT shown - it's already in product name
-    if (customization?.meats?.length) details.push(customization.meats.join(', '));
-    if (customization?.sauces?.length) details.push(customization.sauces.join(', '));
-    if (customization?.supplements?.length) details.push(customization.supplements.join(', '));
-    if (customization?.menuOption && customization.menuOption !== 'none') details.push(customization.menuOption);
-
-    itemsText += `${cartItem.quantity}x ${productName} - ${price}€\n`;
-    if (details.length > 0) {
-      itemsText += `   ${details.join(' | ')}\n`;
-    }
-  });
-
-  const dateStr = new Date(order.created_at || '').toLocaleString('fr-FR');
-  const line = '================================';
-  const dash = '--------------------------------';
-
-  // Build plain text ticket
-  const ticketText = `
-${line}
-        ${header}
-      ${subheader}
-       ${phone}
-${line}
-${order.order_number}
-${dateStr}
-${line}
-    ${orderTypeLabels[order.order_type] || order.order_type.toUpperCase()}
-${line}
-Client: ${order.customer_name}
-Tel: ${order.customer_phone || '-'}
-${order.customer_address ? `Adresse: ${order.customer_address}` : ''}
-${order.customer_notes ? `Note: ${order.customer_notes}` : ''}
-${dash}
-${itemsText}${dash}
-Sous-total: ${order.subtotal?.toFixed(2) || '0.00'}€
-TVA (10%): ${order.tva?.toFixed(2) || '0.00'}€
-TOTAL: ${order.total?.toFixed(2) || '0.00'}€
-${line}
-   ${paymentLabels[order.payment_method] || order.payment_method}
-${line}
-${footer}
-🍕 ${header} 🍕
-
-
-
-
-`;
-
-  const ticketHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Ticket ${order.order_number}</title>
-      <style>
-        @page { size: 80mm auto; margin: 0; }
-        @media print { body { width: 80mm; margin: 0; } }
-        body { 
-          font-family: 'Courier New', Courier, monospace; 
-          font-size: 14px; 
-          font-weight: bold;
-          color: #000000 !important;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-          width: 80mm; 
-          margin: 0;
-          padding: 2mm;
-          white-space: pre-wrap;
-          line-height: 1.4;
-        }
-      </style>
-    </head>
-    <body>${ticketText}</body>
-    </html>
-  `;
+  const activeTemplate = settings.activeTemplate || 'counter';
+  const ticketHtml = compileTicketHtml(order, settings, activeTemplate);
 
   // Create hidden iframe for printing
   const existingFrame = document.getElementById('admin-print-frame');
@@ -225,6 +130,72 @@ ${footer}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+
+  // Ticket Settings from DB
+  const { data: ticketSettingsData } = useAdminSetting('ticket_templates');
+  const ticketSettings = useMemo(() => {
+    if (ticketSettingsData?.setting_value) {
+      return ticketSettingsData.setting_value as any;
+    }
+    return {
+      activeTemplate: 'counter',
+      paperWidth: '80mm',
+      fontSize: 'medium',
+      autoPrint: false,
+      kitchenTemplate: {
+        header: 'TWIN PIZZA - CUISINE',
+        subheader: '',
+        footer: '',
+        showLogo: false,
+        showOrderNumber: true,
+        showDateTime: true,
+        showCustomerInfo: true,
+        showCustomerPhone: false,
+        showDeliveryAddress: true,
+        showItemDetails: true,
+        showItemNotes: true,
+        showPaymentMethod: false,
+        showPaymentStatus: true,
+        showSubtotal: false,
+        showTva: false,
+        showDeliveryFee: false,
+        showTotal: false,
+        showCustomerNotes: true,
+        showScheduledTime: true,
+        customCss: '',
+        bodyTemplate: `{{#items}}\n<b>{{quantity}}x {{name}}</b>\n{{#size}}<center>📏 {{size}}</center>{{/size}}\n{{#meats}}<center>🥩 {{meats}}</center>{{/meats}}\n{{#sauces}}<center>🥫 {{sauces}}</center>{{/sauces}}\n{{#garnitures}}<center>🥬 {{garnitures}}</center>{{/garnitures}}\n{{#supplements}}<center>➕ {{supplements}}</center>{{/supplements}}\n{{#note}}<i>📝 {{note}}</i>{{/note}}\n---\n{{/items}}`
+      },
+      counterTemplate: {
+        header: 'TWIN PIZZA',
+        subheader: 'Grand-Couronne\n60 Rue Georges Clemenceau',
+        footer: 'Merci de votre commande!\n🍕 À bientôt! 🍕',
+        showLogo: true,
+        showOrderNumber: true,
+        showDateTime: true,
+        showCustomerInfo: true,
+        showCustomerPhone: true,
+        showDeliveryAddress: true,
+        showItemDetails: true,
+        showItemNotes: true,
+        showPaymentMethod: true,
+        showPaymentStatus: true,
+        showSubtotal: true,
+        showTva: true,
+        showDeliveryFee: true,
+        showTotal: true,
+        showCustomerNotes: true,
+        showScheduledTime: true,
+        customCss: '',
+        bodyTemplate: `{{#items}}\n<div class="item">\n  <span>{{quantity}}x {{name}}</span>\n  <span>{{price}}€</span>\n</div>\n{{#details}}<div class="details">{{details}}</div>{{/details}}\n{{#note}}<div class="note">📝 {{note}}</div>{{/note}}\n{{/items}}`
+      }
+    };
+  }, [ticketSettingsData]);
+
+  const ticketSettingsRef = useRef(ticketSettings);
+  useEffect(() => {
+    ticketSettingsRef.current = ticketSettings;
+  }, [ticketSettings]);
+
   const [activeTab, setActiveTab] = useState<AdminTab>('pizzas');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10));
@@ -317,7 +288,7 @@ export default function AdminDashboard() {
             // Auto-print if enabled
             if (autoPrintRef.current) {
               console.log('🖨️ Auto-print enabled, printing order:', newOrder.order_number);
-              autoPrintOrderTicket(newOrder);
+              autoPrintOrderTicket(newOrder, ticketSettingsRef.current);
               toast.success(`🖨️ Impression automatique: ${newOrder.order_number}`);
             }
           }
@@ -495,59 +466,12 @@ export default function AdminDashboard() {
     return html;
   };
 
-  const printTicket = (order: Order) => {
+  const printTicket = (order: Order, type?: 'counter' | 'kitchen') => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const itemsHtml = Array.isArray(order.items) ? order.items.map(formatItemForPrint).join('') : '';
-
-    const ticketHTML = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Ticket ${escapeHtml(order.order_number)}</title>
-        <style>
-          body { font-family: monospace; width: 80mm; margin: 0; padding: 10px; }
-          .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; }
-          .header h1 { margin: 0; font-size: 24px; }
-          .info { margin: 10px 0; }
-          .items { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 10px 0; }
-          .item { display: flex; justify-content: space-between; margin: 5px 0; }
-          .total { font-size: 18px; font-weight: bold; text-align: right; margin-top: 10px; }
-          .note { background: #f0f0f0; padding: 5px; margin: 5px 0; font-style: italic; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>TWIN PIZZA</h1>
-          <p>Grand-Couronne</p>
-        </div>
-        <div class="info">
-          <p><strong>Commande:</strong> ${escapeHtml(order.order_number)}</p>
-          <p><strong>Type:</strong> ${escapeHtml(order.order_type.toUpperCase())}</p>
-          <p><strong>Client:</strong> ${escapeHtml(order.customer_name)}</p>
-          <p><strong>Tél:</strong> ${escapeHtml(order.customer_phone)}</p>
-          ${order.customer_address ? `<p><strong>Adresse:</strong> ${escapeHtml(order.customer_address)}</p>` : ''}
-          <p><strong>Heure:</strong> ${new Date(order.created_at).toLocaleString('fr-FR')}</p>
-        </div>
-        <div class="items">
-          ${itemsHtml}
-        </div>
-        <div class="total">
-          <p>Sous-total: ${order.subtotal.toFixed(2)}€</p>
-          <p>TVA (10%): ${order.tva.toFixed(2)}€</p>
-          ${order.delivery_fee > 0 ? `<p>Livraison: ${order.delivery_fee.toFixed(2)}€</p>` : ''}
-          <p style="font-size: 24px;">TOTAL: ${order.total.toFixed(2)}€</p>
-          <p>Paiement: ${order.payment_method === 'en_ligne' ? 'EN LIGNE (PAYÉ)' : order.payment_method === 'cb' ? 'Carte (NON PAYÉ)' : 'Espèces (NON PAYÉ)'}</p>
-        </div>
-        ${order.customer_notes ? `<div class="note"><strong>Note client:</strong> ${escapeHtml(order.customer_notes)}</div>` : ''}
-        <div style="text-align: center; margin-top: 20px; border-top: 2px dashed #000; padding-top: 10px;">
-          <p>Merci de votre commande!</p>
-          <p>🍕 TWIN PIZZA 🍕</p>
-        </div>
-      </body>
-      </html>
-    `;
+    const activeTemplateType = type || ticketSettings.activeTemplate || 'counter';
+    const ticketHTML = compileTicketHtml(order, ticketSettings, activeTemplateType);
 
     printWindow.document.write(ticketHTML);
     printWindow.document.close();
@@ -999,7 +923,7 @@ function OrderCard({
 }: {
   order: Order;
   onStatusUpdate: (id: string, status: Order['status']) => void;
-  onPrint: (order: Order) => void;
+  onPrint: (order: Order, type: 'counter' | 'kitchen') => void;
 }) {
   const config = statusConfig[order.status];
   const Icon = config.icon;
@@ -1136,9 +1060,13 @@ function OrderCard({
         </div>
 
         <div className="flex flex-wrap gap-2 pt-2">
-          <Button variant="outline" size="sm" onClick={() => onPrint(order)}>
+          <Button variant="outline" size="sm" onClick={() => onPrint(order, 'counter')}>
             <Printer className="w-4 h-4 mr-1" />
-            Imprimer
+            Ticket Client
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => onPrint(order, 'kitchen')}>
+            <ChefHat className="w-4 h-4 mr-1" />
+            Ticket Cuisine
           </Button>
 
           {order.status === 'pending' && (
