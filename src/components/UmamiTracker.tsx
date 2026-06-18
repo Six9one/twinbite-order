@@ -17,7 +17,7 @@ export function UmamiTracker() {
       const existingScript = document.querySelector(`script[data-website-id="${websiteId}"]`);
       if (!existingScript) {
         const script = document.createElement('script');
-        script.async = true;
+        script.defer = true;
         script.src = scriptUrl;
         script.setAttribute('data-website-id', websiteId);
         
