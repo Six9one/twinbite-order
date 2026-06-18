@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 const logoImage = '/favicon.png';
 
-type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture';
+type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture' | 'analytics-web';
 
 
 
@@ -974,6 +974,18 @@ export default function AdminDashboard() {
           {activeTab === 'ai-receptionist' && <AIReceptionistManager />}
 
           {activeTab === 'facture' && <FactureManager />}
+
+          {/* Web Analytics (Umami) */}
+          {activeTab === 'analytics-web' && (
+            <Card className="w-full h-[82vh] overflow-hidden border border-border/50 shadow-md">
+              <iframe
+                src={import.meta.env.VITE_UMAMI_SHARE_URL || 'https://cloud.umami.is/share/TGhYfWRFyDGkVfoa'}
+                className="w-full h-full border-none"
+                title="Umami Live Analytics"
+                sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups"
+              />
+            </Card>
+          )}
         </main>
       </div>
     </div>

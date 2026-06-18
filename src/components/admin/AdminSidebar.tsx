@@ -67,6 +67,7 @@ const navItems: NavItem[] = [
     icon: TrendingUp,
     children: [
       { label: 'Mode TV', icon: Tv, href: '/tv' },
+      { label: 'Visites Site', icon: BarChart3, value: 'analytics-web' },
       { label: 'Avis Clients', icon: MessageSquare, value: 'reviews' },
     ]
   },
