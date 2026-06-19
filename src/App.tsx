@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { runAutoReleve } from "@/lib/kitchenAutoReleve";
 
 // Contexts
 import { LanguageProvider } from "@/context/LanguageContext";
@@ -46,45 +48,51 @@ const queryClient = new QueryClient({
     },
 });
 
-const App = () => (
-    <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-            <LanguageProvider>
-                <TooltipProvider>
-                        <UmamiTracker />
-                        <Toaster />
-                        <Sonner />
-                        <OfflineIndicator />
-                        <UpdateChecker />
-                        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                            <Routes>
-                                <Route path="/" element={<Index />} />
-                                <Route path="/admin" element={<AdminLogin />} />
-                                <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                                <Route path="/tv" element={<TVDashboard />} />
-                                <Route path="/crew" element={<CrewDashboard />} />
-                                <Route path="/payment-success" element={<PaymentSuccess />} />
-                                <Route path="/payment-cancel" element={<PaymentCancel />} />
-                                <Route path="/tickets" element={<TicketPortal />} />
-                                <Route path="/ticket" element={<TicketPortal />} />
-                                <Route path="/kitchen" element={<KitchenDashboard />} />
-                                {/* Legal pages */}
-                                <Route path="/mentions-legales" element={<MentionsLegales />} />
-                                <Route path="/confidentialite" element={<Confidentialite />} />
-                                <Route path="/cgv" element={<CGV />} />
-                                <Route path="/avis" element={<SpinWheel />} />
-                                <Route path="/spin" element={<SpinPage />} />
-                                <Route path="/kiosk" element={<KioskPage />} />
-                                <Route path="/pos" element={<POSPage />} />
-                                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                                <Route path="*" element={<NotFound />} />
-                            </Routes>
-                            <PWAInstallPrompt />
-                        </BrowserRouter>
-                </TooltipProvider>
-            </LanguageProvider>
-        </QueryClientProvider>
-    </ErrorBoundary>
-);
+const App = () => {
+    useEffect(() => {
+        runAutoReleve().catch(err => console.error("Error in auto-releve:", err));
+    }, []);
+
+    return (
+        <ErrorBoundary>
+            <QueryClientProvider client={queryClient}>
+                <LanguageProvider>
+                    <TooltipProvider>
+                            <UmamiTracker />
+                            <Toaster />
+                            <Sonner />
+                            <OfflineIndicator />
+                            <UpdateChecker />
+                            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                                <Routes>
+                                    <Route path="/" element={<Index />} />
+                                    <Route path="/admin" element={<AdminLogin />} />
+                                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                                    <Route path="/tv" element={<TVDashboard />} />
+                                    <Route path="/crew" element={<CrewDashboard />} />
+                                    <Route path="/payment-success" element={<PaymentSuccess />} />
+                                    <Route path="/payment-cancel" element={<PaymentCancel />} />
+                                    <Route path="/tickets" element={<TicketPortal />} />
+                                    <Route path="/ticket" element={<TicketPortal />} />
+                                    <Route path="/kitchen" element={<KitchenDashboard />} />
+                                    {/* Legal pages */}
+                                    <Route path="/mentions-legales" element={<MentionsLegales />} />
+                                    <Route path="/confidentialite" element={<Confidentialite />} />
+                                    <Route path="/cgv" element={<CGV />} />
+                                    <Route path="/avis" element={<SpinWheel />} />
+                                    <Route path="/spin" element={<SpinPage />} />
+                                    <Route path="/kiosk" element={<KioskPage />} />
+                                    <Route path="/pos" element={<POSPage />} />
+                                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                                    <Route path="*" element={<NotFound />} />
+                                </Routes>
+                                <PWAInstallPrompt />
+                            </BrowserRouter>
+                    </TooltipProvider>
+                </LanguageProvider>
+            </QueryClientProvider>
+        </ErrorBoundary>
+    );
+};
 
 export default App;
