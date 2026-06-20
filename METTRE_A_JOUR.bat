@@ -25,6 +25,9 @@ echo.
 echo  [1/3] Telechargement des derniers changements (git pull)...
 git checkout -- twinpizzahub/package-lock.json >nul 2>&1
 git checkout -- package-lock.json >nul 2>&1
+git checkout -- .env >nul 2>&1
+git checkout -- print-server/printed_orders.json >nul 2>&1
+git stash >nul 2>&1
 git pull
 if errorlevel 1 (
     echo  ATTENTION : git pull a echoue. On continue avec la version locale.

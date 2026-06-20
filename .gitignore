@@ -40,3 +40,6 @@ print-server/node_modules/
 # WhatsApp & Local App
 testsprite_tests/tmp/
 code_summary.json
+
+# Runtime data files — change locally, must not block git pull
+print-server/printed_orders.json

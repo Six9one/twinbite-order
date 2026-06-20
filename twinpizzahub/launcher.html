@@ -120,6 +120,106 @@ body.nav-hidden nav { display:none; }
 }
 .fold-btn:hover { background:var(--border); }
 
+/* ── MAJ (Mise à Jour) button in nav ── */
+#maj-btn {
+  display:flex; align-items:center; gap:6px;
+  padding:6px 13px; border-radius:8px; cursor:pointer;
+  font-size:12px; font-weight:700; white-space:nowrap; flex-shrink:0;
+  border:1px solid var(--border); background:var(--card); color:var(--text);
+  transition:all .15s; position:relative;
+}
+#maj-btn:hover { background:var(--accent); color:#000; border-color:var(--accent); }
+#maj-btn.has-update { background:#22c55e22; border-color:#22c55e88; color:#22c55e; animation:maj-glow 2s ease-in-out infinite; }
+@keyframes maj-glow { 0%,100%{box-shadow:0 0 0 0 #22c55e44} 50%{box-shadow:0 0 0 6px #22c55e11} }
+#maj-update-dot {
+  display:none; position:absolute; top:-4px; right:-4px;
+  width:10px; height:10px; border-radius:50%; background:#22c55e;
+  box-shadow:0 0 0 2px var(--sidebar); animation:pulse 1.5s infinite;
+}
+#maj-btn.has-update #maj-update-dot { display:block; }
+
+/* ── MAJ Modal ── */
+#maj-modal-backdrop {
+  display:none; position:fixed; inset:0; z-index:9000;
+  background:#00000088; backdrop-filter:blur(4px);
+  align-items:center; justify-content:center;
+}
+#maj-modal-backdrop.open { display:flex; }
+#maj-modal {
+  background:var(--sidebar); border:1px solid var(--border);
+  border-radius:16px; width:560px; max-height:85vh;
+  display:flex; flex-direction:column;
+  box-shadow:0 24px 80px #000a;
+  animation:maj-slide-in .2s ease;
+}
+@keyframes maj-slide-in { from{transform:translateY(-14px);opacity:0} to{transform:none;opacity:1} }
+.maj-header {
+  display:flex; align-items:center; gap:12px;
+  padding:18px 20px 14px; border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.maj-header-icon { font-size:26px; }
+.maj-header-info { flex:1; }
+.maj-header-title { font-size:16px; font-weight:800; color:var(--text); }
+.maj-header-sub   { font-size:11px; color:var(--muted); margin-top:2px; }
+.maj-close { width:30px; height:30px; border-radius:7px; border:none; cursor:pointer; background:var(--card); color:var(--text); font-size:16px; }
+.maj-close:hover { background:var(--red); color:#fff; }
+.maj-body { flex:1; overflow-y:auto; padding:16px 20px; }
+.maj-status-bar {
+  display:flex; align-items:center; gap:10px;
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:12px 14px; margin-bottom:14px; font-size:12px;
+}
+.maj-status-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.maj-section-title {
+  font-size:10px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:1.5px; margin:14px 0 8px;
+}
+.maj-commit-list { display:flex; flex-direction:column; gap:6px; }
+.maj-commit {
+  background:var(--card); border:1px solid var(--border); border-radius:9px;
+  padding:10px 14px; display:flex; align-items:flex-start; gap:10px;
+}
+.maj-commit.pending { border-color:#22c55e44; background:#22c55e08; }
+.maj-commit-hash { font-size:10px; font-family:monospace; color:var(--accent); flex-shrink:0; margin-top:2px; }
+.maj-commit-info { flex:1; min-width:0; }
+.maj-commit-msg  { font-size:12px; font-weight:600; color:var(--text); word-break:break-word; }
+.maj-commit-meta { font-size:10px; color:var(--muted); margin-top:3px; }
+.maj-commit-new-badge { font-size:10px; font-weight:700; background:#22c55e22; color:#22c55e; border:1px solid #22c55e44; padding:1px 7px; border-radius:99px; flex-shrink:0; margin-top:1px; }
+.maj-empty { text-align:center; padding:28px 16px; color:var(--muted); font-size:12px; }
+.maj-footer {
+  padding:14px 20px 16px; border-top:1px solid var(--border);
+  display:flex; gap:10px; align-items:center; flex-shrink:0;
+}
+#maj-do-update-btn {
+  flex:1; padding:11px 20px; border-radius:9px; border:none; cursor:pointer;
+  font-size:13px; font-weight:800; letter-spacing:.3px;
+  background:linear-gradient(90deg,#22c55e,#16a34a); color:#fff;
+  transition:all .15s;
+}
+#maj-do-update-btn:hover:not(:disabled) { filter:brightness(1.1); transform:translateY(-1px); box-shadow:0 4px 14px #22c55e44; }
+#maj-do-update-btn:disabled { background:#2d3748; color:var(--muted); cursor:not-allowed; transform:none; }
+#maj-refresh-btn {
+  padding:10px 16px; border-radius:9px; border:1px solid var(--border);
+  background:var(--card); color:var(--text); cursor:pointer; font-size:12px; font-weight:600;
+}
+#maj-refresh-btn:hover { background:var(--border); }
+
+/* ── MAJ Progress overlay ── */
+#maj-progress-overlay {
+  display:none; position:absolute; inset:0; z-index:10;
+  background:#0d1117ee; border-radius:16px;
+  flex-direction:column; align-items:center; justify-content:center; gap:16px;
+}
+#maj-modal { position:relative; overflow:hidden; }
+#maj-progress-overlay.open { display:flex; }
+.maj-progress-spinner {
+  width:48px; height:48px; border:3px solid #2d3748;
+  border-top-color:#22c55e; border-radius:50%;
+  animation:spin .75s linear infinite;
+}
+.maj-progress-msg { font-size:13px; color:var(--text); font-weight:600; text-align:center; max-width:340px; line-height:1.5; }
+.maj-progress-sub { font-size:11px; color:var(--muted); }
+
 /* ── Main content ── */
 main { flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative; }
 
@@ -419,7 +519,58 @@ webview {
     <span class="icon">🖨️</span> Imprimante
     <span class="nav-status s-grey" id="printer-dot"></span>
   </div>
+
+  <!-- MAJ button -->
+  <div id="maj-btn" onclick="openMAJ()" title="Mises à jour disponibles">
+    <span style="font-size:14px;">🔄</span>
+    <span>Mise à Jour</span>
+    <span id="maj-update-dot"></span>
+  </div>
 </nav>
+
+<!-- MAJ Modal -->
+<div id="maj-modal-backdrop" onclick="closeMAJIfBackdrop(event)">
+  <div id="maj-modal">
+    <!-- Progress overlay -->
+    <div id="maj-progress-overlay">
+      <div class="maj-progress-spinner"></div>
+      <div class="maj-progress-msg" id="maj-progress-msg">Mise à jour en cours...</div>
+      <div class="maj-progress-sub">Ne pas fermer l'application</div>
+    </div>
+    <!-- Header -->
+    <div class="maj-header">
+      <div class="maj-header-icon">🔄</div>
+      <div class="maj-header-info">
+        <div class="maj-header-title">Mises à Jour</div>
+        <div class="maj-header-sub" id="maj-branch-info">Chargement...</div>
+      </div>
+      <button class="maj-close" onclick="closeMAJ()">✕</button>
+    </div>
+    <!-- Body -->
+    <div class="maj-body">
+      <!-- Status bar -->
+      <div class="maj-status-bar" id="maj-status-bar">
+        <div class="maj-status-dot" id="maj-status-dot" style="background:var(--muted)"></div>
+        <div id="maj-status-text" style="color:var(--muted);">Vérification en cours...</div>
+      </div>
+      <!-- Pending updates -->
+      <div id="maj-pending-section" style="display:none;">
+        <div class="maj-section-title">🆕 Nouvelles mises à jour disponibles</div>
+        <div class="maj-commit-list" id="maj-pending-list"></div>
+      </div>
+      <!-- Local commits -->
+      <div id="maj-local-section">
+        <div class="maj-section-title">📋 Dernières modifications installées</div>
+        <div class="maj-commit-list" id="maj-local-list"><div class="maj-empty">Chargement...</div></div>
+      </div>
+    </div>
+    <!-- Footer -->
+    <div class="maj-footer">
+      <button id="maj-refresh-btn" onclick="checkMAJ()">🔍 Vérifier</button>
+      <button id="maj-do-update-btn" onclick="doUpdate()" disabled>⬇️ Mettre à Jour</button>
+    </div>
+  </div>
+</div>
 
 <!-- Main area -->
 <main>
@@ -1161,6 +1312,164 @@ if (window.twinHub && window.twinHub.onWhatsAppMessageSent) {
   window.twinHub.onWhatsAppMessageSent((data) => {
     recordWAMessage(data);
   });
+}
+
+// ── Mise à Jour (MAJ) ──────────────────────────────────────────────────────
+let _majUpdateAvailable = false;
+
+function openMAJ() {
+  document.getElementById('maj-modal-backdrop').classList.add('open');
+  checkMAJ();
+}
+function closeMAJ() {
+  document.getElementById('maj-modal-backdrop').classList.remove('open');
+}
+function closeMAJIfBackdrop(e) {
+  if (e.target === document.getElementById('maj-modal-backdrop')) closeMAJ();
+}
+
+async function checkMAJ() {
+  if (!window.twinHub) return;
+  const refreshBtn = document.getElementById('maj-refresh-btn');
+  refreshBtn.disabled = true;
+  refreshBtn.textContent = '⏳ Vérification...';
+  setMAJStatus('checking');
+
+  try {
+    const res = await window.twinHub.checkForUpdates();
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = '🔍 Vérifier';
+
+    if (!res || !res.success) {
+      setMAJStatus('error', res?.error || 'Impossible de vérifier les mises à jour');
+      document.getElementById('maj-branch-info').textContent = 'Erreur de connexion Git';
+      return;
+    }
+
+    // Branch + current commit info
+    document.getElementById('maj-branch-info').textContent =
+      `Branche : ${res.branch || 'main'}  •  Version actuelle : ${res.current?.hash || '?'}`;
+
+    // Pending updates section
+    const pendingSection = document.getElementById('maj-pending-section');
+    const pendingList    = document.getElementById('maj-pending-list');
+    const doBtn          = document.getElementById('maj-do-update-btn');
+
+    if (res.updateAvailable && res.aheadCommits && res.aheadCommits.length > 0) {
+      _majUpdateAvailable = true;
+      pendingSection.style.display = 'block';
+      pendingList.innerHTML = res.aheadCommits
+        .filter(c => c.hash)
+        .map(c => `
+          <div class="maj-commit pending">
+            <div class="maj-commit-hash">${escapeHtml(c.hash)}</div>
+            <div class="maj-commit-info">
+              <div class="maj-commit-msg">${escapeHtml(c.msg || '(sans titre)')}</div>
+              <div class="maj-commit-meta">${escapeHtml(c.author || '')} · ${escapeHtml(c.date || '')}</div>
+            </div>
+            <div class="maj-commit-new-badge">NOUVEAU</div>
+          </div>`).join('');
+      setMAJStatus('update-available', `${res.aheadCommits.length} mise(s) à jour disponible(s)`);
+      doBtn.disabled = false;
+      doBtn.textContent = `⬇️ Installer ${res.aheadCommits.length} mise(s) à jour`;
+      // Glow the nav button
+      document.getElementById('maj-btn').classList.add('has-update');
+    } else {
+      _majUpdateAvailable = false;
+      pendingSection.style.display = 'none';
+      setMAJStatus('up-to-date', 'Application à jour ✅');
+      doBtn.disabled = true;
+      doBtn.textContent = '✅ À jour';
+      document.getElementById('maj-btn').classList.remove('has-update');
+    }
+
+    // Local commits — show last 8
+    const localList = document.getElementById('maj-local-list');
+    if (res.current && res.current.hash) {
+      // Fetch recent local history via a second git log call
+      // We only have current commit from check-for-updates; show it plus note
+      localList.innerHTML = `
+        <div class="maj-commit">
+          <div class="maj-commit-hash">${escapeHtml(res.current.hash)}</div>
+          <div class="maj-commit-info">
+            <div class="maj-commit-msg">${escapeHtml(res.current.msg || '(sans titre)')}</div>
+            <div class="maj-commit-meta">${escapeHtml(res.current.author || '')} · ${escapeHtml(res.current.date || '')}</div>
+          </div>
+        </div>
+        <div class="maj-empty" style="padding:12px 0;font-size:11px;">← Dernier commit installé</div>`;
+    } else {
+      localList.innerHTML = '<div class="maj-empty">Aucun historique disponible</div>';
+    }
+
+  } catch(e) {
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = '🔍 Vérifier';
+    setMAJStatus('error', e.message || 'Erreur inattendue');
+  }
+}
+
+function setMAJStatus(type, msg) {
+  const dot  = document.getElementById('maj-status-dot');
+  const text = document.getElementById('maj-status-text');
+  const colors = { checking:'#f59e0b', 'update-available':'#22c55e', 'up-to-date':'#22c55e', error:'#ef4444' };
+  const msgs   = { checking:'Vérification des mises à jour...', 'update-available':'', 'up-to-date':'', error:'' };
+  dot.style.background = colors[type] || 'var(--muted)';
+  text.textContent = msg || msgs[type] || '';
+  text.style.color  = colors[type] || 'var(--muted)';
+}
+
+async function doUpdate() {
+  if (!window.twinHub) return;
+  if (!confirm('Lancer la mise à jour ?\n\nL\'application va télécharger les modifications, reconstruire et redémarrer automatiquement.')) return;
+
+  const overlay = document.getElementById('maj-progress-overlay');
+  const progressMsg = document.getElementById('maj-progress-msg');
+  overlay.classList.add('open');
+  document.getElementById('maj-do-update-btn').disabled = true;
+
+  // Listen for progress messages
+  const removeListener = window.twinHub.onUpdateStatus((data) => {
+    if (data && data.message) progressMsg.textContent = data.message;
+    if (data && data.status === 'error') {
+      overlay.classList.remove('open');
+      document.getElementById('maj-do-update-btn').disabled = false;
+      alert('❌ Erreur lors de la mise à jour :\n' + data.message);
+      if (typeof removeListener === 'function') removeListener();
+    }
+  });
+
+  try {
+    await window.twinHub.triggerUpdate();
+    // App will relaunch — progress overlay stays visible
+  } catch(e) {
+    overlay.classList.remove('open');
+    document.getElementById('maj-do-update-btn').disabled = false;
+    alert('❌ Erreur : ' + e.message);
+    if (typeof removeListener === 'function') removeListener();
+  }
+}
+
+// Auto-check for updates every 10 minutes (silently)
+if (window.twinHub) {
+  setTimeout(async () => {
+    try {
+      const res = await window.twinHub.checkForUpdates();
+      if (res && res.success && res.updateAvailable) {
+        document.getElementById('maj-btn').classList.add('has-update');
+      }
+    } catch(_) {}
+  }, 4000); // Initial check 4s after load
+
+  setInterval(async () => {
+    try {
+      const res = await window.twinHub.checkForUpdates();
+      if (res && res.success && res.updateAvailable) {
+        document.getElementById('maj-btn').classList.add('has-update');
+      } else if (res && res.success) {
+        document.getElementById('maj-btn').classList.remove('has-update');
+      }
+    } catch(_) {}
+  }, 10 * 60 * 1000);
 }
 </script>
 </body>

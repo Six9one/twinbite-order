@@ -794,10 +794,15 @@ ipcMain.handle('trigger-update', async () => {
   try {
     sendStatus('Initialisation de la mise à jour...');
     
-    // 1. Reset package-locks
+    // 1. Reset package-locks + local runtime files that must not block the pull
     sendStatus('Nettoyage des fichiers locaux...');
     await execPromise('git checkout -- twinpizzahub/package-lock.json');
     await execPromise('git checkout -- package-lock.json');
+    // These files change at runtime and must never block git pull
+    await execPromise('git checkout -- .env').catch(() => {});
+    await execPromise('git checkout -- print-server/printed_orders.json').catch(() => {});
+    // Stash any other leftover local changes so pull always succeeds
+    await execPromise('git stash').catch(() => {});
     
     // 2. Git pull
     sendStatus('Téléchargement de la dernière version (git pull)...');

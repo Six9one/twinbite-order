@@ -12,18 +12,23 @@ const { app } = require('electron');
 // ─── ESC/POS helpers ─────────────────────────────────────────────────────────
 const ESC = '\x1B', GS = '\x1D';
 const CMD = {
-  INIT:     ESC + '@',
-  CENTER:   ESC + 'a\x01',
-  LEFT:     ESC + 'a\x00',
-  RIGHT:    ESC + 'a\x02',
-  BOLD_ON:  ESC + 'E\x01',
-  BOLD_OFF: ESC + 'E\x00',
-  BIG:      GS  + '!\x11',
-  TALL:     GS  + '!\x01',
-  NORMAL:   GS  + '!\x00',
-  CUT:      GS  + 'V\x00',
-  NL:       '\n',
-  SEP:      '--------------------------------\n',
+  INIT:          ESC + '@',
+  CENTER:        ESC + 'a\x01',
+  LEFT:          ESC + 'a\x00',
+  RIGHT:         ESC + 'a\x02',
+  BOLD_ON:       ESC + 'E\x01',
+  BOLD_OFF:      ESC + 'E\x00',
+  BIG:           GS  + '!\x11',
+  TALL:          GS  + '!\x01',
+  NORMAL:        GS  + '!\x00',
+  CUT:           GS  + 'V\x00',
+  NL:            '\n',
+  SEP:           '--------------------------------\n',
+  // ── Flip ticket 180° (upside-down mode) ──
+  // ESC { 1  = activate upside-down printing
+  // ESC { 0  = deactivate upside-down printing
+  UPSIDE_ON:     ESC + '{\x01',
+  UPSIDE_OFF:    ESC + '{\x00',
 };
 
 function buildTicket(order) {
@@ -32,6 +37,8 @@ function buildTicket(order) {
   const items = Array.isArray(order.items) ? order.items : [];
 
   let t = CMD.INIT;
+  // ── Flip ticket 180° so it reads correctly when attached to the printer ──
+  t += CMD.UPSIDE_ON;
   t += CMD.CENTER + CMD.BIG  + 'TWIN PIZZA' + CMD.NORMAL + CMD.NL;
   t += CMD.CENTER + '60 Rue G. Clemenceau' + CMD.NL;
   t += CMD.CENTER + '76530 Grand-Couronne' + CMD.NL;
@@ -96,6 +103,8 @@ function buildTicket(order) {
   t += CMD.NL + CMD.CENTER + 'Merci de votre confiance !' + CMD.NL;
   t += CMD.CENTER + 'www.twinpizza.fr' + CMD.NL;
   t += CMD.NL + CMD.NL + CMD.NL;
+  // ── End of upside-down zone — restore normal before cut ──
+  t += CMD.UPSIDE_OFF;
   t += CMD.CUT;
 
   return Buffer.from(t, 'binary');
