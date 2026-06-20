@@ -620,6 +620,11 @@ const SLEEP_AFTER = 15 * 60 * 1000; // 15 minutes
 window.addEventListener('DOMContentLoaded', async () => {
   if (window.twinHub) {
     appUrl = window.twinHub.appUrl || appUrl;
+    if (window.twinHub.preloadPath) {
+      document.querySelectorAll('webview').forEach(wv => {
+        wv.setAttribute('preload', window.twinHub.preloadPath);
+      });
+    }
     window.twinHub.onWhatsAppStatus(handleWAStatus);
     window.twinHub.onWhatsAppQR(handleWAQR);
     window.twinHub.onPrinterStatus(handlePrinterStatus);

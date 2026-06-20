@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const path = require('path');
 
 contextBridge.exposeInMainWorld('twinHub', {
   // Windows
@@ -40,6 +41,7 @@ contextBridge.exposeInMainWorld('twinHub', {
     return () => ipcRenderer.removeListener('update-status', listener);
   },
 
+  preloadPath: path.join(__dirname, 'preload.js'),
   platform: process.platform,
   appUrl: process.argv.includes('--dev') ? 'http://localhost:8080' : 'http://localhost:3456',
 });
