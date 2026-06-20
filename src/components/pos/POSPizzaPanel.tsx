@@ -3,6 +3,7 @@ import { useOrder } from '@/context/OrderContext';
 import { usePizzasByBase } from '@/hooks/useProducts';
 import { pizzaPrices, cheeseSupplementOptions } from '@/data/menu';
 import { toast } from 'sonner';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
 
 type PizzaSize = 'senior' | 'mega';
 type PizzaBase = 'tomate' | 'creme';
@@ -127,8 +128,10 @@ export function POSPizzaPanel({ onBack }: Props) {
               }}>
                 {/* Image */}
                 {pizza.image_url ? (
-                  <img src={pizza.image_url} alt={pizza.name}
-                    style={{ width:64, height:64, borderRadius:8, objectFit:'cover', marginBottom:6, display:'block', margin:'0 auto 6px' }} />
+                  <OptimizedImage src={pizza.image_url} alt={pizza.name}
+                    style={{ width:64, height:64, borderRadius:8, objectFit:'cover', marginBottom:6, display:'block', margin:'0 auto 6px' }}
+                    containerClassName="w-16 h-16 rounded-lg overflow-hidden mb-1.5 mx-auto"
+                    showSkeleton={true} />
                 ) : (
                   <div style={{ width:64, height:64, borderRadius:8, background:'#1f2937', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, margin:'0 auto 6px' }}>🍕</div>
                 )}

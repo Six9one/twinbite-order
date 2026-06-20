@@ -121,15 +121,18 @@ export function useAllProducts() {
   });
 }
 
+import { compressImage } from '@/utils/imageCompressor';
+
 // Upload product image
 export async function uploadProductImage(file: File, productId: string): Promise<string | null> {
-  const fileExt = file.name.split('.').pop();
+  const compressedFile = await compressImage(file, { maxWidth: 1024, maxHeight: 1024, quality: 0.8 });
+  const fileExt = compressedFile.name.split('.').pop();
   const fileName = `${productId}-${Date.now()}.${fileExt}`;
   const filePath = `products/${fileName}`;
 
   const { error: uploadError } = await supabase.storage
     .from('product-images')
-    .upload(filePath, file, { upsert: true });
+    .upload(filePath, compressedFile, { cacheControl: '31536000', upsert: true });
 
   if (uploadError) {
     console.error('Upload error:', uploadError);

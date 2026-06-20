@@ -31,6 +31,15 @@ contextBridge.exposeInMainWorld('twinHub', {
   sendWAMessage: (jid, text)    => ipcRenderer.invoke('send-wa-message', { jid, text }),
   onWANewMessage:(cb)           => ipcRenderer.on('wa-new-message', (_, data) => cb(data)),
 
+  // Updates
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  triggerUpdate:   () => ipcRenderer.invoke('trigger-update'),
+  onUpdateStatus:  (cb) => {
+    const listener = (_, data) => cb(data);
+    ipcRenderer.on('update-status', listener);
+    return () => ipcRenderer.removeListener('update-status', listener);
+  },
+
   platform: process.platform,
   appUrl: process.argv.includes('--dev') ? 'http://localhost:8080' : 'http://localhost:3456',
 });

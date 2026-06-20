@@ -21,6 +21,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { isMenuMidiTime } from '@/utils/promotions';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
 import { MenuItem, MenuCategory } from '@/types/order';
 import { useProductsByCategory, Product } from '@/hooks/useProducts';
 import { useCategoryImages } from '@/hooks/useCategoryImages';
@@ -378,12 +379,12 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
                 {/* Image or Emoji */}
                 <div className="w-14 h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 mx-auto mb-2 sm:mb-3 rounded-full overflow-hidden border-3 sm:border-4 border-amber-400/30 bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
                   {imageData.type === 'image' ? (
-                    <img
+                    <OptimizedImage
                       src={imageData.value}
                       alt={displayName}
-                      loading="lazy"
-                      decoding="async"
                       className="w-full h-full object-cover"
+                      containerClassName="w-full h-full"
+                      showSkeleton={true}
                     />
                   ) : (
                     <span className="text-2xl sm:text-3xl md:text-4xl">{imageData.value}</span>
@@ -434,12 +435,12 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
                 {/* Image or Emoji */}
                 <div className="w-14 h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 mx-auto mb-2 sm:mb-3 rounded-full overflow-hidden border-3 sm:border-4 border-amber-400/30 bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
                   {imageData.type === 'image' ? (
-                    <img
+                    <OptimizedImage
                       src={imageData.value}
                       alt={displayName}
-                      loading="lazy"
-                      decoding="async"
                       className="w-full h-full object-cover"
+                      containerClassName="w-full h-full"
+                      showSkeleton={true}
                     />
                   ) : (
                     <span className="text-2xl sm:text-3xl md:text-4xl">{imageData.value}</span>

@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, screen, Menu, Tray, nativeImage, Notificati
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { PrinterManager } = require('./printer');
 
@@ -462,10 +462,21 @@ function startFileServer() {
     fileServer = http.createServer((req, res) => {
       let p = path.join(distPath, req.url.split('?')[0]);
       if (!fs.existsSync(p) || fs.statSync(p).isDirectory()) p = path.join(distPath, 'index.html');
-      const ct = mime[path.extname(p).toLowerCase()] || 'application/octet-stream';
+      const ext = path.extname(p).toLowerCase();
+      const ct = mime[ext] || 'application/octet-stream';
+      
+      const headers = { 'Content-Type': ct };
+      if (ext === '.html') {
+        headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, proxy-revalidate';
+      } else if (['.js', '.css', '.woff', '.woff2'].includes(ext)) {
+        headers['Cache-Control'] = 'public, max-age=31536000, immutable';
+      } else if (['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif', '.ico'].includes(ext)) {
+        headers['Cache-Control'] = 'public, max-age=604800'; // 1 week
+      }
+
       fs.readFile(p, (err, data) => {
         if (err) { res.writeHead(404); res.end(); return; }
-        res.writeHead(200, { 'Content-Type': ct });
+        res.writeHead(200, headers);
         res.end(data);
       });
     });
@@ -711,6 +722,133 @@ ipcMain.handle('retry-print-queue', async () => {
 
 ipcMain.handle('clear-print-queue', () => true); // handled by print server
 ipcMain.handle('update-printer-ip', (_, { ip, port }) => true); // handled by print server config
+
+// Helper to run commands in the project root folder
+function execPromise(cmd, options = {}) {
+  return new Promise((resolve) => {
+    exec(cmd, { cwd: path.join(__dirname, '..'), ...options }, (error, stdout, stderr) => {
+      if (error) {
+        resolve({ error, stdout: stdout.trim(), stderr: stderr.trim() });
+      } else {
+        resolve({ stdout: stdout.trim(), stderr: stderr.trim() });
+      }
+    });
+  });
+}
+
+// IPC handler to check for git updates
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    // 1. Fetch remote changes
+    await execPromise('git fetch');
+    
+    // 2. Get current branch name
+    const branchRes = await execPromise('git rev-parse --abbrev-ref HEAD');
+    const branch = branchRes.stdout || 'main';
+    
+    // 3. Get current commit details
+    const currentRes = await execPromise('git log -1 --format="%H|%s|%an|%ad" --date=short');
+    const [currentHash, currentMsg, currentAuthor, currentDate] = currentRes.stdout.split('|');
+    
+    // 4. Get remote commits ahead
+    const aheadRes = await execPromise(`git log HEAD..origin/${branch} --format="%H|%s|%an|%ad" --date=short`);
+    const aheadCommits = aheadRes.stdout
+      ? aheadRes.stdout.split('\n').map(line => {
+          const [hash, msg, author, date] = line.split('|');
+          return { hash: hash ? hash.substring(0, 7) : '', msg, author, date };
+        })
+      : [];
+      
+    return {
+      success: true,
+      branch,
+      current: {
+        hash: currentHash ? currentHash.substring(0, 7) : '',
+        fullHash: currentHash,
+        msg: currentMsg,
+        author: currentAuthor,
+        date: currentDate
+      },
+      updateAvailable: aheadCommits.length > 0,
+      aheadCommits
+    };
+  } catch (error) {
+    console.error('Check for updates error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler to pull changes, npm install, npm build, and relaunch app
+ipcMain.handle('trigger-update', async () => {
+  const sendStatus = (msg) => {
+    Object.values(windows).forEach(win => {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('update-status', { status: 'progress', message: msg });
+      }
+    });
+    if (launcherWin && !launcherWin.isDestroyed()) {
+      launcherWin.webContents.send('update-status', { status: 'progress', message: msg });
+    }
+  };
+
+  try {
+    sendStatus('Initialisation de la mise à jour...');
+    
+    // 1. Reset package-locks
+    sendStatus('Nettoyage des fichiers locaux...');
+    await execPromise('git checkout -- twinpizzahub/package-lock.json');
+    await execPromise('git checkout -- package-lock.json');
+    
+    // 2. Git pull
+    sendStatus('Téléchargement de la dernière version (git pull)...');
+    const pullRes = await execPromise('git pull');
+    if (pullRes.error) {
+      console.warn('Git pull warning:', pullRes.error, pullRes.stderr);
+    }
+    
+    // 3. Install packages in root
+    sendStatus('Mise à jour des dépendances principales (npm install)...');
+    const npmRoot = await execPromise('npm install');
+    if (npmRoot.error) {
+      console.error('NPM Root error:', npmRoot.stderr);
+    }
+    
+    // 4. Install packages in twinpizzahub
+    sendStatus('Mise à jour des dépendances de l\'application (twinpizzahub)...');
+    const npmHub = await execPromise('npm install', { cwd: path.join(__dirname) });
+    if (npmHub.error) {
+      console.error('NPM Hub error:', npmHub.stderr);
+    }
+
+    // 5. Build Vite frontend
+    sendStatus('Reconstruction de l\'application (npm run build)...');
+    const buildRes = await execPromise('npm run build');
+    if (buildRes.error) {
+      throw new Error(`Erreur lors de la reconstruction: ${buildRes.stderr}`);
+    }
+
+    sendStatus('Mise à jour réussie ! Rechargement en cours...');
+    
+    // Relaunch app
+    setTimeout(() => {
+      app.relaunch();
+      app.exit(0);
+    }, 2000);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Update failed:', error);
+    Object.values(windows).forEach(win => {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('update-status', { status: 'error', message: error.message });
+      }
+    });
+    if (launcherWin && !launcherWin.isDestroyed()) {
+      launcherWin.webContents.send('update-status', { status: 'error', message: error.message });
+    }
+    return { success: false, error: error.message };
+  }
+});
 
 // ─── Tray ────────────────────────────────────────────────────────────────────
 function createTray() {

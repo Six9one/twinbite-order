@@ -11,6 +11,7 @@ import { wizardSizePrices } from '@/data/pricing';
 import { crepes, gaufres, boissons, frites as staticFrites, croques as staticCroques } from '@/data/menu';
 import { Panel, PanelGroup, PanelResizeHandle, ImperativePanelHandle } from 'react-resizable-panels';
 import { toast } from 'sonner';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
 
 const PRINT_SERVER = 'http://localhost:3001';
 
@@ -88,7 +89,7 @@ function ProductTile({ item, selected, onClick, badge, compact, tint }: { item:a
       {badge && <span style={{ position:'absolute', top:4, left:4, background:'#ef4444', color:'#fff', fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:99 }}>{badge}</span>}
       {selected && <span style={{ position:'absolute', top:4, right:4, background:S.accent, color:'#000', fontSize:10, fontWeight:800, width:18, height:18, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center' }}>✓</span>}
       {img
-        ? <img src={img} alt={item.name} loading="lazy" style={{ width:imgSize, height:imgSize, borderRadius:8, objectFit:'cover', display:'block', margin:`0 auto ${compact?4:6}px`, background:'#1f2937' }} />
+        ? <OptimizedImage src={img} alt={item.name} style={{ width:imgSize, height:imgSize, borderRadius:8, objectFit:'cover', display:'block', margin:`0 auto ${compact?4:6}px` }} containerClassName="mx-auto mb-1 rounded-lg overflow-hidden flex items-center justify-center bg-[#1f2937]" showSkeleton={true} />
         : <div style={{ width:imgSize, height:imgSize, borderRadius:8, background:'#111827', display:'flex', alignItems:'center', justifyContent:'center', fontSize:compact?22:28, margin:`0 auto ${compact?4:6}px` }}>{CAT_ICON[item.category||''] || '🍽️'}</div>
       }
       <div style={{ fontSize: compact?10:11, fontWeight:700, color: selected ? S.accent : S.text, lineHeight:1.15, marginBottom:2 }}>{item.name}</div>
@@ -1028,6 +1029,150 @@ function SettingsPanel({ onClose }: { onClose:()=>void }) {
   );
 }
 
+// ── Update Panel (git pull, npm install, npm run build, relaunch) ─────────────
+function UpdatePanel({ onClose }: { onClose:()=>void }) {
+  const [checking, setChecking] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<any>(null);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [updating, setUpdating] = useState(false);
+  const [error, setError] = useState('');
+
+  const check = async () => {
+    if (typeof window === 'undefined' || !('twinHub' in window)) return;
+    setChecking(true);
+    setError('');
+    try {
+      const res = await (window as any).twinHub.checkForUpdates();
+      if (res.success) {
+        setUpdateInfo(res);
+      } else {
+        setError(res.error || 'Erreur lors de la vérification');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Erreur de communication avec le serveur local');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    check();
+
+    if (typeof window !== 'undefined' && 'twinHub' in window) {
+      const cleanup = (window as any).twinHub.onUpdateStatus((data: any) => {
+        if (data.status === 'progress') {
+          setStatusMessage(data.message);
+        } else if (data.status === 'error') {
+          setError(data.message);
+          setUpdating(false);
+        }
+      });
+      return () => {
+        if (typeof cleanup === 'function') cleanup();
+      };
+    }
+  }, []);
+
+  const triggerUpdate = async () => {
+    if (typeof window === 'undefined' || !('twinHub' in window)) return;
+    setUpdating(true);
+    setError('');
+    setStatusMessage('Démarrage de la mise à jour...');
+    try {
+      const res = await (window as any).twinHub.triggerUpdate();
+      if (!res.success) {
+        setError(res.error || 'La mise à jour a échoué');
+        setUpdating(false);
+      }
+    } catch (e: any) {
+      setError(e.message || 'La mise à jour a échoué');
+      setUpdating(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display: 'flex', justifyContent: 'flex-end' }}>
+      <div onClick={e=>e.stopPropagation()} style={{ width:360, height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, padding:'18px 20px', overflow:'auto', display:'flex', flexDirection:'column' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexShrink:0 }}>
+          <div style={{ fontSize:16, fontWeight:800, color:S.text }}>🔄 Mise à jour</div>
+          <button onClick={onClose} disabled={updating} style={{ ...S.btn, padding:'5px 12px' }}>✕</button>
+        </div>
+
+        {updating ? (
+          <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16, textAlign:'center' }}>
+            <div style={{ width:40, height:40, border:'4px solid #f59e0b22', borderTop:'4px solid #f59e0b', borderRadius:'50%', animation:'spin 1s linear infinite' }} />
+            <style>{`
+              @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            `}</style>
+            <div style={{ fontSize:14, fontWeight:700, color:S.text }}>Mise à jour en cours...</div>
+            <div style={{ fontSize:12, color:S.muted, padding:'0 10px' }}>{statusMessage}</div>
+            <div style={{ fontSize:11, color: '#ef4444' }}>Ne fermez pas l'application.</div>
+          </div>
+        ) : (
+          <div style={{ flex:1, display:'flex', flexDirection:'column', gap:16 }}>
+            {error && (
+              <div style={{ background:'#ef444415', border:'1px solid #ef444433', color:'#ef4444', padding:10, borderRadius:8, fontSize:12 }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            <div style={{ background:S.card, border:`1px solid ${S.border}`, padding:12, borderRadius:8 }}>
+              <div style={{ fontSize:11, color:S.muted, textTransform:'uppercase', fontWeight:700, marginBottom:6 }}>Version Actuelle</div>
+              {updateInfo ? (
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:S.text }}>Branche: {updateInfo.branch}</div>
+                  <div style={{ fontSize:11, fontFamily:'monospace', color:S.accent, marginTop:2 }}>Commit: {updateInfo.current?.hash}</div>
+                  <div style={{ fontSize:12, color:S.text, marginTop:4 }}>"{updateInfo.current?.msg}"</div>
+                  <div style={{ fontSize:11, color:S.muted, marginTop:4 }}>Par: {updateInfo.current?.author} ({updateInfo.current?.date})</div>
+                </div>
+              ) : checking ? (
+                <div style={{ fontSize:12, color:S.muted }}>Vérification...</div>
+              ) : (
+                <div style={{ fontSize:12, color:S.muted }}>Version locale non disponible</div>
+              )}
+            </div>
+
+            {updateInfo?.updateAvailable ? (
+              <div style={{ display:'flex', flexDirection:'column', gap:10, flex:1, minHeight:0 }}>
+                <div style={{ background:'#22c55e15', border:'1px solid #22c55e33', color:'#22c55e', padding:10, borderRadius:8, fontSize:12, fontWeight:700 }}>
+                  🎉 Nouvelle mise à jour disponible !
+                </div>
+                
+                <div style={{ fontSize:11, color:S.muted, textTransform:'uppercase', fontWeight:700 }}>Détails des modifications</div>
+                <div style={{ flex:1, overflow:'auto', border:`1px solid ${S.border}`, borderRadius:8, background:'#0d1117' }}>
+                  {updateInfo.aheadCommits.map((c: any) => (
+                    <div key={c.hash} style={{ padding:'8px 10px', borderBottom:`1px solid ${S.border}`, fontSize:11 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', color:S.accent, fontWeight:700 }}>
+                        <span>Commit: {c.hash}</span>
+                        <span style={{ color:S.muted }}>{c.date}</span>
+                      </div>
+                      <div style={{ color:S.text, marginTop:2, fontWeight:500 }}>{c.msg}</div>
+                      <div style={{ color:S.muted, fontSize:10, marginTop:1 }}>Par: {c.author}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <button onClick={triggerUpdate} style={{ ...S.btn, width:'100%', background:'linear-gradient(135deg,#f59e0b,#ef4444)', border:'none', color:'#000', padding:'12px', fontWeight:800, fontSize:13, borderRadius:9, cursor:'pointer', marginTop:'auto' }}>
+                  🚀 Installer la mise à jour
+                </button>
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:12, alignItems:'center', justifyContent:'center', padding:'30px 10px', textAlign:'center', flex:1 }}>
+                <div style={{ fontSize:32 }}>✨</div>
+                <div style={{ fontSize:13, fontWeight:700, color:S.text }}>Votre application est à jour !</div>
+                <div style={{ fontSize:12, color:S.muted }}>Aucune nouvelle modification disponible sur la branche {updateInfo?.branch || 'principale'}.</div>
+                <button onClick={check} disabled={checking} style={{ ...S.btn, padding:'6px 14px', marginTop:10, fontSize:11 }}>
+                  {checking ? 'Vérification...' : '🔄 Re-vérifier'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Facture modal (custom invoice → ethernet printer) ─────────────────────────
 function FactureModal({ initialTotal, onClose }: { initialTotal:number; onClose:()=>void }) {
   const [repas,   setRepas]   = useState(1);
@@ -1348,6 +1493,8 @@ function POSContent() {
   const [lastOrder,  setLastOrder]  = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showFacture,  setShowFacture]  = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const leftRef = useRef<ImperativePanelHandle>(null);
 
@@ -1359,6 +1506,16 @@ function POSContent() {
   };
 
   const needsInfo = orderType === 'livraison';
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'twinHub' in window) {
+      (window as any).twinHub.checkForUpdates().then((res: any) => {
+        if (res && res.success && res.updateAvailable) {
+          setUpdateAvailable(true);
+        }
+      }).catch((e: any) => console.error('Auto update check failed:', e));
+    }
+  }, []);
 
   const handleOrderType = (t: OrderType) => { setOrderType(t); setCtxOrderType(t as any); };
 
@@ -1458,7 +1615,35 @@ function POSContent() {
               }}>{TYPE_LABELS[t]}</button>
             ))}
             {lastOrder && <span style={{ background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'2px 8px', borderRadius:99, fontSize:10, fontWeight:700 }}>✅ #{lastOrder}</span>}
-            <button title="Personnaliser" onClick={()=>setShowSettings(true)} style={{ ...S.btn, marginLeft:'auto', padding:'4px 8px', fontSize:13 }}>⚙️</button>
+            {typeof window !== 'undefined' && 'twinHub' in window && (
+              <button
+                title="Mise à jour"
+                onClick={() => { setShowUpdateModal(true); setUpdateAvailable(false); }}
+                style={{
+                  ...S.btn,
+                  marginLeft: 'auto',
+                  padding: '4px 8px',
+                  fontSize: 13,
+                  position: 'relative',
+                  border: updateAvailable ? `1px solid ${S.accent}` : S.btn.border,
+                }}
+              >
+                🔄
+                {updateAvailable && (
+                  <span style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    background: '#ef4444',
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    border: '1.5px solid #111827'
+                  }} />
+                )}
+              </button>
+            )}
+            <button title="Personnaliser" onClick={()=>setShowSettings(true)} style={{ ...S.btn, marginLeft: (typeof window !== 'undefined' && 'twinHub' in window) ? undefined : 'auto', padding:'4px 8px', fontSize:13 }}>⚙️</button>
             <button title="Replier" onClick={toggleLeft} style={{ ...S.btn, padding:'4px 8px', fontSize:13 }}>⟨</button>
           </div>
           {/* Row 2: categories — single scrollable row */}
@@ -1511,6 +1696,7 @@ function POSContent() {
       {/* ── Overlays ── */}
       {showSettings && <SettingsPanel onClose={()=>setShowSettings(false)} />}
       {showFacture && <FactureModal initialTotal={total} onClose={()=>setShowFacture(false)} />}
+      {showUpdateModal && <UpdatePanel onClose={()=>setShowUpdateModal(false)} />}
     </PanelGroup>
   );
 }

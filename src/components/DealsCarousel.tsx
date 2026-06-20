@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles, Flame, Star } from 'lucide-react';
-import deal1 from '@/assets/deal-1.png';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
+import deal1 from '@/assets/deal-1.jpg';
 import deal2 from '@/assets/deal-2.jpg';
 import deal3 from '@/assets/deal-3.jpg';
 const creativeDeals = [{
@@ -48,7 +49,7 @@ export function DealsCarousel() {
       {creativeDeals.map((deal, index) => {
         const IconComponent = deal.icon;
         return <div key={deal.id} className={`absolute inset-0 transition-all duration-700 ease-out ${index === currentIndex ? 'opacity-100 translate-x-0 scale-100' : index < currentIndex ? 'opacity-0 -translate-x-full scale-95' : 'opacity-0 translate-x-full scale-95'}`}>
-          <img src={deal.image} alt={deal.title} loading={index === 0 ? "eager" : "lazy"} decoding="async" className="w-full h-full object-cover" />
+          <OptimizedImage src={deal.image} alt={deal.title} eager={index === 0} className="w-full h-full object-cover" containerClassName="w-full h-full" showSkeleton={true} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 text-white">
             <div className="flex items-center gap-2 mb-1">

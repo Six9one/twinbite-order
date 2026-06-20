@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Image, Plus, Trash2, GripVertical, Save } from 'lucide-react';
+import { compressImage } from '@/utils/imageCompressor';
 
 interface CarouselImage {
   id: string;
@@ -97,12 +98,13 @@ export function CarouselManager() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const fileExt = file.name.split('.').pop();
+    const compressedFile = await compressImage(file, { maxWidth: 1600, maxHeight: 900, quality: 0.8 });
+    const fileExt = compressedFile.name.split('.').pop();
     const fileName = `carousel-${Date.now()}.${fileExt}`;
 
     const { data, error } = await supabase.storage
       .from('product-images')
-      .upload(fileName, file);
+      .upload(fileName, compressedFile, { cacheControl: '31536000', upsert: true });
 
     if (error) {
       toast.error('Erreur lors de l\'upload');

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { Image, Upload, Trash2, Save, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { compressImage } from '@/utils/imageCompressor';
 
 interface CategoryImage {
     id: string;
@@ -43,12 +44,13 @@ export function CategoryImagesManager() {
 
     const handleImageUpload = async (categoryId: string, file: File) => {
         setUploading(categoryId);
-        const fileExt = file.name.split('.').pop();
+        const compressedFile = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.8 });
+        const fileExt = compressedFile.name.split('.').pop();
         const fileName = `category-${categoryId}-${Date.now()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
             .from('product-images')
-            .upload(fileName, file);
+            .upload(fileName, compressedFile, { cacheControl: '31536000', upsert: true });
 
         if (uploadError) {
             toast.error('Erreur upload image');

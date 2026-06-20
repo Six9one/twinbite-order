@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { compressImage } from '@/utils/imageCompressor';
 
 // Storage bucket names for kitchen SCP
 export const KITCHEN_BUCKETS = {
@@ -40,15 +41,16 @@ export async function uploadToKitchenStorage(
 
             uploadData = new Blob([byteArray], { type: `image/${extension}` });
         } else {
-            uploadData = file;
-            extension = file.name.split('.').pop() || 'jpg';
+            const compressedFile = await compressImage(file, { maxWidth: 1024, maxHeight: 1024, quality: 0.8 });
+            uploadData = compressedFile;
+            extension = compressedFile.name.split('.').pop() || 'jpg';
         }
 
         const filePath = `${name}.${extension}`;
 
         const { error } = await supabase.storage
             .from(bucket)
-            .upload(filePath, uploadData, { cacheControl: '3600', upsert: true });
+            .upload(filePath, uploadData, { cacheControl: '31536000', upsert: true });
 
         if (error) {
             console.error(`Error uploading to ${bucket}:`, error);

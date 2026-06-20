@@ -1,6 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
 import { useCategoryImages } from '@/hooks/useCategoryImages';
 import { useDisabledCategories } from '@/hooks/useDisabledCategories';
 
@@ -67,11 +68,12 @@ export function KioskCategories({ onSelectCategory, onBack }: KioskCategoriesPro
                 {/* Image */}
                 <div className="w-20 h-20 mx-auto mb-3 rounded-full overflow-hidden border-3 border-amber-400/30 bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
                     {imageData.type === 'image' ? (
-                        <img
+                        <OptimizedImage
                             src={imageData.value}
                             alt={displayName}
-                            loading="lazy"
                             className="w-full h-full object-cover"
+                            containerClassName="w-full h-full"
+                            showSkeleton={true}
                         />
                     ) : (
                         <span className="text-4xl">{imageData.value}</span>

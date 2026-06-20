@@ -1,17 +1,19 @@
 import { supabase } from '@/integrations/supabase/client';
+import { compressImage } from './imageCompressor';
 
 /**
  * Upload an image file to Supabase Storage (product-images bucket)
  * Stub replacement for missing Cloudinary integration
  */
 export async function uploadToCloudinary(file: File): Promise<string> {
+    const compressedFile = await compressImage(file, { maxWidth: 1024, maxHeight: 1024, quality: 0.8 });
     const timestamp = Date.now();
-    const ext = file.name.split('.').pop() || 'jpg';
+    const ext = compressedFile.name.split('.').pop() || 'jpg';
     const filePath = `uploads/${timestamp}_${Math.random().toString(36).substring(7)}.${ext}`;
 
     const { error } = await supabase.storage
         .from('product-images')
-        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+        .upload(filePath, compressedFile, { cacheControl: '31536000', upsert: true });
 
     if (error) {
         console.error('Upload error details:', error);
