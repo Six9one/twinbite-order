@@ -1383,22 +1383,32 @@ async function checkMAJ() {
       document.getElementById('maj-btn').classList.remove('has-update');
     }
 
-    // Local commits — show last 8
+    // Local commits — show last 8 (always available, no network needed)
     const localList = document.getElementById('maj-local-list');
-    if (res.current && res.current.hash) {
-      // Fetch recent local history via a second git log call
-      // We only have current commit from check-for-updates; show it plus note
-      localList.innerHTML = `
-        <div class="maj-commit">
-          <div class="maj-commit-hash">${escapeHtml(res.current.hash)}</div>
-          <div class="maj-commit-info">
-            <div class="maj-commit-msg">${escapeHtml(res.current.msg || '(sans titre)')}</div>
-            <div class="maj-commit-meta">${escapeHtml(res.current.author || '')} · ${escapeHtml(res.current.date || '')}</div>
-          </div>
-        </div>
-        <div class="maj-empty" style="padding:12px 0;font-size:11px;">← Dernier commit installé</div>`;
+    const commits = res.localCommits || (res.current?.hash ? [res.current] : []);
+
+    if (!res.fetchOk) {
+      // Show a small warning that network check was skipped
+      const noNetWarn = `<div style="background:#f59e0b11;border:1px solid #f59e0b33;border-radius:8px;padding:8px 12px;font-size:11px;color:#f59e0b;margin-bottom:8px;">
+        ⚠️ Pas de connexion Internet — vérification des MAJ distantes impossible. Commits locaux affichés.
+      </div>`;
+      localList.innerHTML = noNetWarn;
     } else {
-      localList.innerHTML = '<div class="maj-empty">Aucun historique disponible</div>';
+      localList.innerHTML = '';
+    }
+
+    if (commits.length > 0) {
+      localList.innerHTML += commits.filter(c => c.hash).map((c, i) => `
+        <div class="maj-commit">
+          <div class="maj-commit-hash">${escapeHtml(c.hash)}</div>
+          <div class="maj-commit-info">
+            <div class="maj-commit-msg">${escapeHtml(c.msg || '(sans titre)')}</div>
+            <div class="maj-commit-meta">${escapeHtml(c.author || '')} · ${escapeHtml(c.date || '')}</div>
+          </div>
+          ${i === 0 ? '<div style="font-size:10px;color:#22c55e;font-weight:700;flex-shrink:0;">ACTUEL</div>' : ''}
+        </div>`).join('');
+    } else {
+      localList.innerHTML += '<div class="maj-empty">Aucun historique disponible</div>';
     }
 
   } catch(e) {

@@ -725,51 +725,74 @@ ipcMain.handle('update-printer-ip', (_, { ip, port }) => true); // handled by pr
 
 // Helper to run commands in the project root folder
 function execPromise(cmd, options = {}) {
+  const timeoutMs = options.timeout || 30000; // default 30s
+  delete options.timeout;
   return new Promise((resolve) => {
-    exec(cmd, { cwd: path.join(__dirname, '..'), ...options }, (error, stdout, stderr) => {
+    const child = exec(cmd, { cwd: path.join(__dirname, '..'), ...options }, (error, stdout, stderr) => {
       if (error) {
-        resolve({ error, stdout: stdout.trim(), stderr: stderr.trim() });
+        resolve({ error, stdout: (stdout||'').trim(), stderr: (stderr||'').trim() });
       } else {
-        resolve({ stdout: stdout.trim(), stderr: stderr.trim() });
+        resolve({ stdout: (stdout||'').trim(), stderr: (stderr||'').trim() });
       }
     });
+    // Hard timeout — kills the process if it hangs
+    const timer = setTimeout(() => {
+      try { child.kill(); } catch(_) {}
+      resolve({ error: new Error(`Timeout: ${cmd}`), stdout: '', stderr: 'timeout' });
+    }, timeoutMs);
+    child.on('close', () => clearTimeout(timer));
   });
 }
 
 // IPC handler to check for git updates
 ipcMain.handle('check-for-updates', async () => {
   try {
-    // 1. Fetch remote changes
-    await execPromise('git fetch');
-    
-    // 2. Get current branch name
-    const branchRes = await execPromise('git rev-parse --abbrev-ref HEAD');
-    const branch = branchRes.stdout || 'main';
-    
-    // 3. Get current commit details
-    const currentRes = await execPromise('git log -1 --format="%H|%s|%an|%ad" --date=short');
-    const [currentHash, currentMsg, currentAuthor, currentDate] = currentRes.stdout.split('|');
-    
-    // 4. Get remote commits ahead
-    const aheadRes = await execPromise(`git log HEAD..origin/${branch} --format="%H|%s|%an|%ad" --date=short`);
-    const aheadCommits = aheadRes.stdout
-      ? aheadRes.stdout.split('\n').map(line => {
+    // 1. Get current branch name (fast, local)
+    const branchRes = await execPromise('git rev-parse --abbrev-ref HEAD', { timeout: 5000 });
+    const branch = (branchRes.stdout || 'main').trim();
+
+    // 2. Get last 8 local commits (always works, no network needed)
+    const localRes = await execPromise(
+      'git log -8 --format="%H|%s|%an|%ad" --date=short', { timeout: 5000 }
+    );
+    const localCommits = localRes.stdout
+      ? localRes.stdout.split('\n').filter(Boolean).map(line => {
           const [hash, msg, author, date] = line.split('|');
-          return { hash: hash ? hash.substring(0, 7) : '', msg, author, date };
+          return { hash: hash ? hash.substring(0, 7) : '', fullHash: hash, msg, author, date };
         })
       : [];
-      
+    const current = localCommits[0] || {};
+
+    // 3. Try git fetch with short timeout (8s) — non-blocking if no internet
+    let fetchOk = false;
+    try {
+      const fetchRes = await execPromise('git fetch --quiet', { timeout: 8000 });
+      fetchOk = !fetchRes.error;
+    } catch(_) { fetchOk = false; }
+
+    // 4. Check remote commits ahead (only if fetch succeeded)
+    let aheadCommits = [];
+    let updateAvailable = false;
+    if (fetchOk) {
+      const aheadRes = await execPromise(
+        `git log HEAD..origin/${branch} --format="%H|%s|%an|%ad" --date=short`, { timeout: 5000 }
+      );
+      if (aheadRes.stdout) {
+        aheadCommits = aheadRes.stdout.split('\n').filter(Boolean).map(line => {
+          const [hash, msg, author, date] = line.split('|');
+          return { hash: hash ? hash.substring(0, 7) : '', msg, author, date };
+        });
+        updateAvailable = aheadCommits.length > 0;
+      }
+    }
+
     return {
       success: true,
       branch,
-      current: {
-        hash: currentHash ? currentHash.substring(0, 7) : '',
-        fullHash: currentHash,
-        msg: currentMsg,
-        author: currentAuthor,
-        date: currentDate
-      },
-      updateAvailable: aheadCommits.length > 0,
+      fetchOk,
+      current,
+      localCommits,
+      updateAvailable,
       aheadCommits
     };
   } catch (error) {
