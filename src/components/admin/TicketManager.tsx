@@ -37,7 +37,12 @@ interface Order {
     order_number: string;
     customer_name: string;
     customer_phone: string;
+    customer_address: string | null;
+    customer_notes: string | null;
     total: number;
+    subtotal: number;
+    tva: number;
+    delivery_fee: number | null;
     status: string;
     created_at: string;
     items: OrderItem[];
@@ -251,102 +256,168 @@ export function TicketManager() {
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto px-6 py-4 bg-muted/30">
-                        {viewingOrder && (
-                            <div className="bg-white border shadow-sm rounded-lg p-6 font-mono text-sm space-y-4">
-                                <div className="text-center border-b pb-4">
-                                    <h3 className="font-bold text-xl">TWIN PIZZA</h3>
-                                    <p className="text-xs">Grand-Couronne</p>
-                                    <p className="text-xs">{format(new Date(viewingOrder.created_at), "dd/MM/yyyy HH:mm")}</p>
-                                </div>
+                        {viewingOrder && (() => {
+                            // Detect order source
+                            const phone = (viewingOrder.customer_phone || '').toLowerCase().trim();
+                            const name = (viewingOrder.customer_name || '').toLowerCase().trim();
+                            const notes = (viewingOrder.customer_notes || '').toLowerCase();
+                            let orderSource: 'POS' | 'BORNE' | 'WEBSITE' = 'WEBSITE';
+                            if (phone === 'pos' || name.startsWith('[pos]')) orderSource = 'POS';
+                            else if (phone === 'borne' || notes.includes('[borne]')) orderSource = 'BORNE';
 
-                                <div className="space-y-1 pb-4 border-b">
-                                    <p><strong>Client:</strong> {viewingOrder.customer_name}</p>
-                                    <p><strong>Tél:</strong> {viewingOrder.customer_phone}</p>
-                                    <p><strong>Type:</strong> {viewingOrder.order_type.toUpperCase()}</p>
-                                    <p><strong>Paiement:</strong> {viewingOrder.payment_method.toUpperCase()}</p>
-                                </div>
+                            const sourceColors: Record<string, string> = {
+                                POS: 'bg-blue-600 text-white',
+                                BORNE: 'bg-purple-600 text-white',
+                                WEBSITE: 'bg-green-600 text-white',
+                            };
+                            const sourceLabels: Record<string, string> = {
+                                POS: '🖥️ CAISSE / POS',
+                                BORNE: '📲 BORNE TACTILE',
+                                WEBSITE: '🌐 SITE WEB',
+                            };
 
-                                <div className="space-y-3 pb-4 border-b">
-                                    <p className="font-bold underline">Articles:</p>
-                                    {viewingOrder.items.map((item: any, idx) => {
-                                        // Extract name from various possible structures
-                                        const itemName = item.item?.name || item.name || 'Article';
-                                        // Extract price from various possible structures
-                                        const unitPrice = item.item?.price || item.calculatedPrice || item.totalPrice || item.price || 0;
-                                        const quantity = item.quantity || 1;
-                                        const lineTotal = typeof item.totalPrice === 'number' ? item.totalPrice : (unitPrice * quantity);
-                                        const customization = item.customization;
+                            // Clean display values
+                            const displayName = (viewingOrder.customer_name || '').replace(/^\[pos\]\s*/i, '').trim() || '—';
+                            const displayPhone = (phone === 'pos' || phone === 'borne') ? '—' : viewingOrder.customer_phone || '—';
+                            const displayNotes = (viewingOrder.customer_notes || '').replace(/^\[borne\]\s*/i, '').trim();
 
-                                        return (
-                                            <div key={idx} className="space-y-1">
-                                                <div className="flex justify-between font-bold">
-                                                    <span>{quantity}x {itemName}</span>
-                                                    <span>{lineTotal.toFixed(2)}€</span>
-                                                </div>
-                                                {customization && (
-                                                    <div className="text-[10px] text-muted-foreground ml-4 space-y-0.5">
-                                                        {customization.size && <div>Taille: {customization.size}</div>}
-                                                        {customization.meat && <div>Viande: {customization.meat}</div>}
-                                                        {customization.meats?.length > 0 && <div>Viandes: {customization.meats.join(', ')}</div>}
-                                                        {customization.sauces?.length > 0 && <div>Sauces: {customization.sauces.join(', ')}</div>}
-                                                        {customization.garnitures?.length > 0 && <div>Garnitures: {customization.garnitures.join(', ')}</div>}
-                                                        {customization.supplements?.length > 0 && <div>Suppléments: {customization.supplements.join(', ')}</div>}
-                                                        {customization.menuOption !== undefined && (customization.menuOption !== 'none' || itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini') || item.item?.category === 'panini' || item.category === 'panini') && (
-                                                            <div className="text-green-600 font-bold">
-                                                                🍟 {(() => {
-                                                                    const itemCategory = item.item?.category || item.category || '';
-                                                                    const isSandwichOrPanini = itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini') || itemCategory === 'panini';
-                                                                    if (customization.menuOption === 'none') return 'SANS FRITES';
-                                                                    const parts = customization.menuOption.split(',').map((o: string) => o.trim()).filter(Boolean);
-                                                                    const labels: string[] = [];
-                                                                    if (isSandwichOrPanini) {
-                                                                        if (parts.includes('frites')) {
-                                                                            labels.push('FRITES INCLUSES');
-                                                                        } else {
-                                                                            labels.push('SANS FRITES');
-                                                                        }
-                                                                    } else {
-                                                                        if (parts.includes('frites')) {
+                            const typeLabels: Record<string, string> = {
+                                livraison: '🚗 LIVRAISON',
+                                emporter: '🛍️ À EMPORTER',
+                                surplace: '🍽️ SUR PLACE',
+                            };
+                            const payLabels: Record<string, string> = {
+                                en_ligne: '✅ Payé en ligne',
+                                cb: '💳 Carte Bancaire',
+                                especes: '💵 Espèces',
+                            };
+
+                            return (
+                                <div className="bg-white border shadow-sm rounded-lg p-6 font-mono text-sm space-y-4">
+                                    {/* Header */}
+                                    <div className="text-center border-b pb-4">
+                                        <h3 className="font-bold text-xl">TWIN PIZZA</h3>
+                                        <p className="text-xs">60 Rue Georges Clemenceau — Grand-Couronne</p>
+                                        <p className="text-xs">02 32 11 26 13</p>
+                                        <p className="text-xs mt-1">{format(new Date(viewingOrder.created_at), "dd/MM/yyyy HH:mm")}</p>
+                                    </div>
+
+                                    {/* Order Source — Bold & Prominent */}
+                                    <div className={`text-center font-bold text-sm py-2 px-4 rounded ${sourceColors[orderSource]}`}>
+                                        {sourceLabels[orderSource]}
+                                    </div>
+
+                                    {/* Order Info */}
+                                    <div className="space-y-1 pb-3 border-b">
+                                        <p><strong>Commande:</strong> #{viewingOrder.order_number}</p>
+                                        <p><strong>Type:</strong> {typeLabels[viewingOrder.order_type] || viewingOrder.order_type?.toUpperCase()}</p>
+                                        <p><strong>Client:</strong> {displayName}</p>
+                                        <p><strong>Tél:</strong> {displayPhone}</p>
+                                        {viewingOrder.customer_address && (
+                                            <p><strong>Adresse:</strong> {viewingOrder.customer_address}</p>
+                                        )}
+                                        {displayNotes && (
+                                            <p className="italic text-amber-700"><strong>Note:</strong> {displayNotes}</p>
+                                        )}
+                                        <p><strong>Paiement:</strong> {payLabels[viewingOrder.payment_method] || viewingOrder.payment_method}</p>
+                                    </div>
+
+                                    {/* Articles */}
+                                    <div className="space-y-3 pb-3 border-b">
+                                        <p className="font-bold underline">Articles:</p>
+                                        {viewingOrder.items.map((item: any, idx: number) => {
+                                            const itemName = item.item?.name || item.name || 'Article';
+                                            const unitPrice = item.item?.price || item.calculatedPrice || item.totalPrice || item.price || 0;
+                                            const quantity = item.quantity || 1;
+                                            const lineTotal = typeof item.totalPrice === 'number'
+                                                ? item.totalPrice
+                                                : (typeof unitPrice === 'number' ? unitPrice * quantity : 0);
+                                            const perUnit = quantity > 0 ? (lineTotal / quantity) : unitPrice;
+                                            const customization = item.customization;
+
+                                            return (
+                                                <div key={idx} className="space-y-0.5">
+                                                    <div className="flex justify-between font-bold">
+                                                        <span>{quantity}x {itemName}</span>
+                                                        <span>{Number(lineTotal).toFixed(2)}€</span>
+                                                    </div>
+                                                    <div className="text-[10px] text-muted-foreground ml-2">
+                                                        P.U.: {Number(perUnit).toFixed(2)}€
+                                                    </div>
+                                                    {customization && (
+                                                        <div className="text-[10px] text-muted-foreground ml-4 space-y-0.5">
+                                                            {customization.size && <div>Taille: {customization.size}</div>}
+                                                            {customization.meat && <div>Viande: {customization.meat}</div>}
+                                                            {customization.meats?.length > 0 && <div>Viandes: {customization.meats.join(', ')}</div>}
+                                                            {customization.sauces?.length > 0 && <div>Sauces: {customization.sauces.join(', ')}</div>}
+                                                            {customization.garnitures?.length > 0 && <div>Garnitures: {customization.garnitures.join(', ')}</div>}
+                                                            {customization.supplements?.length > 0 && <div>Suppléments: {customization.supplements.join(', ')}</div>}
+                                                            {customization.removedIngredients?.length > 0 && (
+                                                                <div className="text-red-600">Sans: {customization.removedIngredients.join(', ')}</div>
+                                                            )}
+                                                            {customization.menuOption !== undefined && (
+                                                                <div className="text-green-600 font-bold">
+                                                                    🍟 {(() => {
+                                                                        const itemCategory = item.item?.category || item.category || '';
+                                                                        const isSandwichOrPanini = itemName.toLowerCase().includes('sandwich') || itemName.toLowerCase().includes('panini') || itemCategory === 'panini';
+                                                                        if (customization.menuOption === 'none') return 'SANS FRITES';
+                                                                        const parts = customization.menuOption.split(',').map((o: string) => o.trim()).filter(Boolean);
+                                                                        const labels: string[] = [];
+                                                                        if (isSandwichOrPanini) {
+                                                                            labels.push(parts.includes('frites') ? 'FRITES INCLUSES' : 'SANS FRITES');
+                                                                        } else if (parts.includes('frites')) {
                                                                             labels.push('FRITES');
                                                                         }
-                                                                    }
-                                                                    if (parts.includes('boisson')) {
-                                                                        labels.push('BOISSON');
-                                                                    }
-                                                                    if (parts.includes('supp_frites')) {
-                                                                        labels.push('SUPPLÉMENT FRITES');
-                                                                    }
-                                                                    if (parts.includes('menu')) {
-                                                                        labels.push('MENU COMPLET');
-                                                                    }
-                                                                    parts.forEach((p: string) => {
-                                                                        if (!['frites', 'boisson', 'supp_frites', 'menu'].includes(p)) {
-                                                                            labels.push(p.toUpperCase());
-                                                                        }
-                                                                    });
-                                                                    return labels.join(' + ');
-                                                                })()}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                                                        if (parts.includes('boisson')) labels.push('BOISSON');
+                                                                        if (parts.includes('supp_frites')) labels.push('SUPPLÉMENT FRITES');
+                                                                        if (parts.includes('menu')) labels.push('MENU COMPLET');
+                                                                        parts.forEach((p: string) => {
+                                                                            if (!['frites', 'boisson', 'supp_frites', 'menu'].includes(p)) labels.push(p.toUpperCase());
+                                                                        });
+                                                                        return labels.join(' + ') || customization.menuOption;
+                                                                    })()}
+                                                                </div>
+                                                            )}
+                                                            {customization.note && <div className="italic">📝 {customization.note}</div>}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
 
-                                <div className="space-y-1 text-right">
-                                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                                        <span>TOTAL:</span>
-                                        <span>{viewingOrder.total.toFixed(2)}€</span>
+                                    {/* Totals */}
+                                    <div className="space-y-1">
+                                        {viewingOrder.subtotal != null && (
+                                            <div className="flex justify-between text-sm">
+                                                <span>Sous-total HT:</span>
+                                                <span>{Number(viewingOrder.subtotal || 0).toFixed(2)}€</span>
+                                            </div>
+                                        )}
+                                        {viewingOrder.tva != null && (
+                                            <div className="flex justify-between text-sm">
+                                                <span>TVA (10%):</span>
+                                                <span>{Number(viewingOrder.tva || 0).toFixed(2)}€</span>
+                                            </div>
+                                        )}
+                                        {(viewingOrder.delivery_fee ?? 0) > 0 && (
+                                            <div className="flex justify-between text-sm">
+                                                <span>Livraison:</span>
+                                                <span>{Number(viewingOrder.delivery_fee).toFixed(2)}€</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                                            <span>TOTAL TTC:</span>
+                                            <span>{viewingOrder.total.toFixed(2)}€</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-center pt-4 border-t text-xs italic">
+                                        Merci de votre confiance! 🍕
                                     </div>
                                 </div>
-
-                                <div className="text-center pt-4 border-t text-xs italic">
-                                    Merci de votre confiance!
-                                </div>
-                            </div>
-                        )}
+                            );
+                        })()}
                     </div>
 
                     <div className="p-4 border-t bg-muted/30 flex justify-end">

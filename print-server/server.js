@@ -79,6 +79,36 @@ const ESCPOS = {
 };
 
 
+// Detect order source channel (pos, borne, website)
+function detectOrderSource(order) {
+    const phone = (order.customer_phone || '').toLowerCase().trim();
+    const name  = (order.customer_name  || '').toLowerCase().trim();
+    const notes = (order.customer_notes || '').toLowerCase();
+    if (phone === 'pos' || name.startsWith('[pos]'))  return 'POS';
+    if (phone === 'borne' || notes.includes('[borne]')) return 'BORNE';
+    return 'WEBSITE';
+}
+
+// Source label for ticket
+function getSourceLabel(order) {
+    const src = detectOrderSource(order);
+    if (src === 'POS')     return '[ CAISSE / POS ]';
+    if (src === 'BORNE')   return '[ BORNE TACTILE ]';
+    return                         '[ SITE WEB ]';
+}
+
+// Clean customer name (remove [POS] prefix)
+function cleanCustomerName(name) {
+    return (name || '').replace(/^\[pos\]\s*/i, '').trim();
+}
+
+// Clean customer phone (return empty string if it's a system placeholder)
+function cleanCustomerPhone(phone) {
+    const p = (phone || '').toLowerCase().trim();
+    if (p === 'pos' || p === 'borne') return '';
+    return phone || '';
+}
+
 // Convert French accented characters to Code Page 1252 bytes
 function convertToCP1252(text) {
     if (!text) return '';
@@ -342,9 +372,10 @@ function formatKitchenTicket(order) {
     // Client (au-dessus des notes)
     if (order.order_type === 'livraison') {
         t += ESCPOS.LEFT + ESCPOS.BOLD_ON;
-        t += 'Client: ' + order.customer_name + '\n';
+        t += 'Client: ' + cleanCustomerName(order.customer_name) + '\n';
         t += ESCPOS.BOLD_OFF;
-        if (order.customer_phone) t += 'Tel: ' + order.customer_phone + '\n';
+        const kitchenPhone = cleanCustomerPhone(order.customer_phone);
+        if (kitchenPhone) t += 'Tel: ' + kitchenPhone + '\n';
         if (order.customer_address) t += 'Adresse: ' + order.customer_address + '\n';
         t += LINE;
     }
@@ -361,6 +392,9 @@ function formatKitchenTicket(order) {
     // Date/Heure
     const orderDate = new Date(order.created_at);
     t += orderDate.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' }) + '\n';
+
+    // Source channel
+    t += ESCPOS.BOLD_ON + getSourceLabel(order) + '\n' + ESCPOS.BOLD_OFF;
 
     // Numero Commande + Type (en haut a la lecture)
     const typeLabels = { livraison: 'LIVR', emporter: 'EMP', surplace: 'SUR PL' };
@@ -525,10 +559,13 @@ function formatCounterTicket(order, loyaltyText) {
 
     // Client
     t += ESCPOS.LEFT;
-    if (order.customer_notes) t += ESCPOS.BOLD_ON + 'Note: ' + order.customer_notes + '\n' + ESCPOS.BOLD_OFF;
+    const clientNotes = (order.customer_notes || '').replace(/^\[BORNE\]\s*/i, '').trim();
+    const clientPhone = cleanCustomerPhone(order.customer_phone);
+    const clientName  = cleanCustomerName(order.customer_name);
+    if (clientNotes)           t += ESCPOS.BOLD_ON + 'Note: ' + clientNotes + '\n' + ESCPOS.BOLD_OFF;
     if (order.customer_address) t += 'Adresse: ' + order.customer_address + '\n';
-    if (order.customer_phone) t += 'Tel: ' + order.customer_phone + '\n';
-    if (order.customer_name) t += ESCPOS.BOLD_ON + 'Client: ' + ESCPOS.BOLD_OFF + order.customer_name + '\n';
+    if (clientPhone)           t += 'Tel: ' + clientPhone + '\n';
+    if (clientName)            t += ESCPOS.BOLD_ON + 'Client: ' + ESCPOS.BOLD_OFF + clientName + '\n';
     t += LINE;
 
     // ════ HAUT DU TICKET (imprime en dernier) ════
@@ -538,6 +575,8 @@ function formatCounterTicket(order, loyaltyText) {
     }
     const orderDate = new Date(order.created_at);
     t += orderDate.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' }) + '\n';
+    // Show source channel prominently
+    t += ESCPOS.BOLD_ON + getSourceLabel(order) + '\n' + ESCPOS.BOLD_OFF;
     t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
     t += '#' + order.order_number + '  ' + (typeLabels[order.order_type] || (order.order_type || '').toUpperCase()) + '\n';
     t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + LINE;
