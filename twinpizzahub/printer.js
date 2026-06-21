@@ -37,76 +37,70 @@ function buildTicket(order) {
   const items = Array.isArray(order.items) ? order.items : [];
 
   let t = CMD.INIT;
-  t += CMD.UPSIDE_ON;  // Imprimante montée à l'envers sur le mur → ticket retourné 180°
-  t += CMD.CENTER + CMD.BIG  + 'TWIN PIZZA' + CMD.NORMAL + CMD.NL;
-  t += CMD.CENTER + '60 Rue G. Clemenceau' + CMD.NL;
-  t += CMD.CENTER + '76530 Grand-Couronne' + CMD.NL;
-  t += CMD.CENTER + 'Tel: 02 32 11 26 13' + CMD.NL;
+  t += CMD.UPSIDE_ON; // Imprimante montee a l'envers sur le mur
+
+  // ══════════════════════════════════════════
+  // BAS DU TICKET (imprime en premier)
+  // ══════════════════════════════════════════
+  t += CMD.NL + CMD.NL;
+  t += CMD.CENTER + 'Merci de votre confiance !' + CMD.NL;
+  t += CMD.CENTER + 'www.twinpizza.fr' + CMD.NL;
   t += CMD.CENTER + CMD.SEP;
 
-  // Order number BIG
-  t += CMD.CENTER + CMD.BOLD_ON + CMD.TALL;
-  t += 'Cmd #' + (order.order_number || '---');
-  t += CMD.NORMAL + CMD.BOLD_OFF + CMD.NL;
-
-  // Type
-  t += CMD.CENTER + CMD.BOLD_ON;
-  t += types[order.order_type] || (order.order_type || '').toUpperCase();
-  t += CMD.BOLD_OFF + CMD.NL;
-
-  // Date/time
-  const now = new Date();
-  t += CMD.CENTER + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  t += '  ' + now.toLocaleDateString('fr-FR') + CMD.NL;
-  t += CMD.CENTER + CMD.SEP;
-
-  // Customer
-  t += CMD.LEFT;
-  t += 'Client : ' + CMD.BOLD_ON + (order.customer_name || 'Client') + CMD.BOLD_OFF + CMD.NL;
-  if (order.customer_phone && order.customer_phone !== 'borne') {
-    t += 'Tel    : ' + order.customer_phone + CMD.NL;
-  }
-  if (order.customer_address && order.order_type === 'livraison') {
-    t += 'Adresse: ' + order.customer_address + CMD.NL;
-  }
-  if (order.customer_notes) {
-    t += CMD.BOLD_ON + 'Notes  : ' + order.customer_notes + CMD.BOLD_OFF + CMD.NL;
-  }
-  t += CMD.SEP;
-
-  // Items
-  items.forEach(item => {
-    const name  = item.item?.name || item.name || 'Produit';
-    const qty   = item.quantity || 1;
-    const price = (item.totalPrice || item.calculatedPrice || item.item?.price || 0).toFixed(2);
-    t += CMD.BOLD_ON + qty + 'x ' + name + CMD.BOLD_OFF;
-    t += '  ' + price + 'E' + CMD.NL;
-    const c = item.customization;
-    if (c?.size)              t += '   > ' + c.size.toUpperCase() + CMD.NL;
-    if (c?.meats?.length)     t += '   > ' + c.meats.join(', ') + CMD.NL;
-    if (c?.sauces?.length)    t += '   > ' + c.sauces.join(', ') + CMD.NL;
-    if (c?.supplements?.length) t += '   + ' + c.supplements.join(', ') + CMD.NL;
-  });
-
-  if ((order.delivery_fee || 0) > 0) {
-    t += 'Livraison: ' + Number(order.delivery_fee).toFixed(2) + 'E' + CMD.NL;
-  }
-  t += CMD.SEP;
-
-  // Total
+  // TOTAL (en bas)
   t += CMD.CENTER + CMD.BIG;
   t += 'TOTAL: ' + (order.total || 0).toFixed(2) + ' EUR';
   t += CMD.NORMAL + CMD.NL;
-  t += CMD.CENTER + CMD.BOLD_ON + (pays[order.payment_method] || order.payment_method || '') + CMD.BOLD_OFF + CMD.NL;
+  t += CMD.CENTER + CMD.BOLD_ON;
+  t += (pays[order.payment_method] || order.payment_method || '').toUpperCase();
+  t += CMD.BOLD_OFF + CMD.NL;
+  if ((order.delivery_fee || 0) > 0) {
+    t += CMD.LEFT + 'Livraison : ' + Number(order.delivery_fee).toFixed(2) + 'E' + CMD.NL;
+  }
+  t += CMD.CENTER + CMD.SEP;
 
-  t += CMD.NL + CMD.CENTER + 'Merci de votre confiance !' + CMD.NL;
-  t += CMD.CENTER + 'www.twinpizza.fr' + CMD.NL;
-  t += CMD.NL + CMD.NL + CMD.NL;
-  t += CMD.UPSIDE_OFF;  // Fin de la zone retournée
+  // ── ARTICLES (inverses, pour lire dans l'ordre) ──────────────────
+  [...items].reverse().forEach(item => {
+    const name  = item.item?.name || item.name || 'Produit';
+    const qty   = item.quantity || 1;
+    const price = (item.totalPrice || item.calculatedPrice || item.item?.price || 0).toFixed(2);
+    const c = item.customization;
+    // Details (en bas de chaque article a la lecture)
+    if (c?.supplements?.length) t += '   + ' + c.supplements.join(', ') + CMD.NL;
+    if (c?.sauces?.length)    t += '   > ' + c.sauces.join(', ') + CMD.NL;
+    if (c?.meats?.length)     t += '   > ' + c.meats.join(', ') + CMD.NL;
+    if (c?.size)              t += '   (' + c.size.toUpperCase() + ')' + CMD.NL;
+    // Nom + prix (en haut de l'article a la lecture)
+    t += CMD.BOLD_ON + qty + 'x ' + name.toUpperCase() + CMD.BOLD_OFF;
+    t += '  ' + price + 'E' + CMD.NL;
+    t += CMD.CENTER + CMD.SEP;
+  });
+
+  // ── INFOS CLIENT ─────────────────────────────────────────────────
+  if (order.customer_notes) t += CMD.BOLD_ON + '! Note : ' + order.customer_notes + CMD.BOLD_OFF + CMD.NL;
+  if (order.customer_address && order.order_type === 'livraison') t += 'Adresse : ' + order.customer_address + CMD.NL;
+  if (order.customer_phone && order.customer_phone !== 'borne') t += 'Tel     : ' + order.customer_phone + CMD.NL;
+  t += 'Client  : ' + CMD.BOLD_ON + (order.customer_name || 'Client') + CMD.BOLD_OFF + CMD.NL;
+  t += CMD.CENTER + CMD.SEP;
+
+  // ══════════════════════════════════════════
+  // HAUT DU TICKET (imprime en dernier)
+  // ══════════════════════════════════════════
+  const now = new Date();
+  t += CMD.CENTER + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  t += '  ' + now.toLocaleDateString('fr-FR') + CMD.NL;
+  t += CMD.CENTER + CMD.BOLD_ON + (types[order.order_type] || (order.order_type || '').toUpperCase()) + CMD.BOLD_OFF + CMD.NL;
+  t += CMD.CENTER + CMD.BOLD_ON + CMD.TALL + 'Cmd #' + (order.order_number || '---') + CMD.NORMAL + CMD.BOLD_OFF + CMD.NL;
+  t += CMD.CENTER + CMD.SEP;
+  t += CMD.CENTER + 'Tel : 02 32 11 26 13' + CMD.NL;
+  t += CMD.CENTER + '76530 Grand-Couronne' + CMD.NL;
+  t += CMD.CENTER + '60 Rue G. Clemenceau' + CMD.NL;
+  t += CMD.CENTER + CMD.BIG + 'TWIN PIZZA' + CMD.NORMAL + CMD.NL;
+  t += CMD.NL;
   t += CMD.CUT;
-
   return Buffer.from(t, 'binary');
 }
+
 
 // ─── Printer Manager Class ────────────────────────────────────────────────────
 class PrinterManager {
