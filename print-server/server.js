@@ -73,7 +73,11 @@ const ESCPOS = {
     LINE_32: '-'.repeat(32) + '\n',
     DOUBLE_LINE_42: '='.repeat(42) + '\n',
     DOUBLE_LINE_32: '='.repeat(32) + '\n',
+    // ── Imprimante montée à l'envers sur le mur → rotation 180° ──
+    UPSIDE_ON:  ESC + '{' + '\x01',   // Activer impression retournée
+    UPSIDE_OFF: ESC + '{' + '\x00',   // Désactiver impression retournée
 };
+
 
 // Convert French accented characters to Code Page 1252 bytes
 function convertToCP1252(text) {
@@ -243,6 +247,7 @@ function formatKitchenTicket(order) {
     const LINE = getLine();
     let t = '';
     t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
+    t += ESCPOS.UPSIDE_ON;
 
     // Order number + type on same line (like the photo)
     const typeLabels = { livraison: 'LIVR', emporter: 'EMP', surplace: 'SUR PL' };
@@ -394,6 +399,7 @@ function formatCounterTicket(order, loyaltyText) {
     const TVA_RATE = 10;
     let t = '';
     t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
+    t += ESCPOS.UPSIDE_ON;
 
     // === HEADER: Business info ===
     t += ESCPOS.CENTER;
@@ -628,6 +634,7 @@ function formatUnifiedTicket(order, loyaltyText) {
     const TVA_RATE = 10;
     let t = '';
     t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
+    t += ESCPOS.UPSIDE_ON;
 
     // === HEADER ===
     t += ESCPOS.CENTER;
@@ -1465,6 +1472,7 @@ function formatDateLabel(data) {
 
     // Initialize printer and set code page for French characters
     ticket += ESCPOS.INIT;
+    ticket += ESCPOS.UPSIDE_ON;
     ticket += ESCPOS.SET_CODEPAGE_1252;
 
 
@@ -1533,6 +1541,7 @@ function formatFreezerTicket(data) {
 
     let ticket = '';
     ticket += ESCPOS.INIT;
+    ticket += ESCPOS.UPSIDE_ON;
     ticket += ESCPOS.SET_CODEPAGE_1252;
 
 
@@ -1621,6 +1630,7 @@ function formatHACCPTicket(data) {
 
     // Initialize printer and set code page for French characters
     ticket += ESCPOS.INIT;
+    ticket += ESCPOS.UPSIDE_ON;
     ticket += ESCPOS.SET_CODEPAGE_1252;
 
 
@@ -1871,6 +1881,7 @@ function setupHttpServer() {
 
             let ticket = '';
             ticket += ESCPOS.INIT;
+    ticket += ESCPOS.UPSIDE_ON;
             ticket += ESCPOS.SET_CODEPAGE_1252;
 
             ticket += ESCPOS.CENTER;
@@ -1977,6 +1988,7 @@ function setupHttpServer() {
 
             let ticket = '';
             ticket += ESCPOS.INIT;
+    ticket += ESCPOS.UPSIDE_ON;
             ticket += ESCPOS.SET_CODEPAGE_1252;
 
             // Header
@@ -2131,6 +2143,7 @@ function setupHttpServer() {
             const LINE = ESCPOS.LINE_42;
             let t = '';
             t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
+    t += ESCPOS.UPSIDE_ON;
 
             // Header — business info
             t += ESCPOS.CENTER;
