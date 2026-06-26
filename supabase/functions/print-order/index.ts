@@ -304,6 +304,30 @@ function formatOrderForPrint(order: OrderData, ticketSettings: any): string {
         ticket += ESCPOS.LINE;
     }
 
+    // Google Review QR code
+    ticket += ESCPOS.CENTER;
+    ticket += ESCPOS.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS.BOLD_OFF;
+
+    const getQRCodeString = (url: string): string => {
+        const esc = '\x1B';
+        const gs = '\x1D';
+        const len = url.length + 3;
+        const pL = String.fromCharCode(len & 0xFF);
+        const pH = String.fromCharCode((len >> 8) & 0xFF);
+
+        return (
+            esc + 'a' + '\x01' + // center
+            gs + '(' + 'k' + '\x03' + '\x00' + '1' + 'C' + '\x04' + // size: 4
+            gs + '(' + 'k' + '\x03' + '\x00' + '1' + 'E' + '\x30' + // error correction: L
+            gs + '(' + 'k' + pL + pH + '1' + 'P' + '0' + url +      // store
+            gs + '(' + 'k' + '\x03' + '\x00' + '1' + 'Q' + '0' +    // print
+            esc + 'a' + '\x00' // reset left
+        );
+    };
+
+    ticket += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review') + '\n';
+    ticket += ESCPOS.LINE;
+
     // Footer
     ticket += ESCPOS.CENTER;
     ticket += ticketSettings.footer || 'Merci de votre visite!';

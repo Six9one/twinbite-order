@@ -39,7 +39,7 @@ SUPABASE_URL=$url
 SUPABASE_ANON_KEY=$key
 PRINTER_IPS=$ip
 PRINTER_PORT=$port
-USB_PRINTER_NAME=
+USB_PRINTER_NAME=Star TSP100 Cutter (TSP143)
 "@
 
 Set-Content -Path $DestEnv -Value $content -Encoding UTF8

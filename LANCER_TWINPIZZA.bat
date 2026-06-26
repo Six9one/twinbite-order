@@ -30,7 +30,7 @@ echo SUPABASE_URL=https://hsylnrzxeyqxczdalurj.supabase.co
 echo SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzeWxucnp4ZXlxeGN6ZGFsdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4ODIzMDksImV4cCI6MjA4MTQ1ODMwOX0.LmDeLvw6vHO7mjHi2qWeWwIEaNDutZ1spsahUGxEAnc
 echo PRINTER_IPS=192.168.1.200
 echo PRINTER_PORT=9100
-echo USB_PRINTER_NAME=
+echo USB_PRINTER_NAME=Star TSP100 Cutter (TSP143)
 ) > "%~dp0print-server\.env"
 
 echo  OK  Fichiers .env ecrits.

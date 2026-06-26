@@ -436,6 +436,22 @@ function formatKitchenTicket(order) {
     return convertToCP1252(t);
 }
 
+// Helper to build ESC/POS QR code commands as raw string
+function getQRCodeString(url) {
+    const len = url.length + 3;
+    const pL = String.fromCharCode(len & 0xFF);
+    const pH = String.fromCharCode((len >> 8) & 0xFF);
+
+    return (
+        '\x1B' + 'a' + '\x01' + // center
+        '\x1D' + '\x28' + '\x6B' + '\x03' + '\x00' + '\x31' + '\x43' + '\x04' + // size: 4
+        '\x1D' + '\x28' + '\x6B' + '\x03' + '\x00' + '\x31' + '\x45' + '\x30' + // error correction: L
+        '\x1D' + '\x28' + '\x6B' + pL + pH + '\x31' + '\x50' + '\x30' + url +      // store
+        '\x1D' + '\x28' + '\x6B' + '\x03' + '\x00' + '\x31' + '\x51' + '\x30' +    // print
+        '\x1B' + 'a' + '\x00' // reset left
+    );
+}
+
 // ============================================
 // COUNTER/CUSTOMER TICKET — Full receipt (Star TSP100 USB)
 // Logo + header + items grouped by category + TVA + footer
@@ -463,6 +479,11 @@ function formatCounterTicket(order, loyaltyText) {
     t += ESCPOS.CENTER;
     t += 'Merci de votre visite !\n';
     t += ESCPOS.BOLD_ON + 'THANK YOU!\n' + ESCPOS.BOLD_OFF;
+    t += DASH_LINE;
+
+    // Google Review QR code
+    t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS.BOLD_OFF;
+    t += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review') + '\n';
     t += DASH_LINE;
 
     // SIRET / legal footer
@@ -617,7 +638,7 @@ function formatCounterTicket(order, loyaltyText) {
     // Prepend logo (raw bytes) if available, then text
     const textBytes = convertToCP1252(t);
     if (logoBytes) {
-        return Buffer.concat([logoBytes, textBytes]);
+        return Buffer.concat([logoBytes, Buffer.from(textBytes, 'binary')]);
     }
     return textBytes;
 }
