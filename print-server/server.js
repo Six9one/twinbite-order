@@ -403,15 +403,15 @@ function formatKitchenTicket(order, loyaltyText) {
     
     let hasClientBlock = false;
     if (ticketSettings.counterTemplate.showCustomerInfo && clientName) {
-        t += 'Client: ' + clientName + '\n';
+        t += ESCPOS.BOLD_ON + 'Client: ' + clientName + ESCPOS.BOLD_OFF + '\n';
         hasClientBlock = true;
     }
     if (ticketSettings.counterTemplate.showCustomerPhone && clientPhone) {
-        t += 'Tel: ' + clientPhone + '\n';
+        t += ESCPOS.BOLD_ON + 'Tel: ' + clientPhone + ESCPOS.BOLD_OFF + '\n';
         hasClientBlock = true;
     }
     if (ticketSettings.counterTemplate.showDeliveryAddress && order.customer_address) {
-        t += 'Adresse: ' + order.customer_address + '\n';
+        t += ESCPOS.BOLD_ON + 'Adresse: ' + order.customer_address + ESCPOS.BOLD_OFF + '\n';
         hasClientBlock = true;
     }
     if (ticketSettings.counterTemplate.showCustomerNotes && clientNotes) {
@@ -458,14 +458,14 @@ function formatKitchenTicket(order, loyaltyText) {
             const rightPart = price.toFixed(2) + 'E';
             t += ESCPOS.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS.BOLD_OFF + '\n';
 
-            // Indented customizations (using Font A for supplements/notes to make them bigger, note bolded)
+            // Indented customizations (using Font B for smaller size, not bold)
             if (c) {
-                // Size customization in Font B (smaller)
+                t += ESCPOS.FONT_B; // Switch to smaller Font B for all customizations
+
                 if (c.size) {
-                    t += ESCPOS.FONT_B + '   - ' + c.size.toUpperCase() + '\n' + ESCPOS.FONT_A;
+                    t += '   - ' + c.size.toUpperCase() + '\n';
                 }
 
-                // Other options in Font A (standard size, bigger)
                 const otherDetails = [];
                 if (c.meats?.length)  otherDetails.push(...c.meats.map(m => '+ ' + m));
                 if (c.meat)           otherDetails.push('+ ' + c.meat);
@@ -490,10 +490,11 @@ function formatKitchenTicket(order, loyaltyText) {
                     t += '   - ' + d + '\n';
                 });
 
-                // Customer note in Font A and BOLD
                 if (c.note) {
-                    t += ESCPOS.BOLD_ON + '   - Note: ' + c.note + ESCPOS.BOLD_OFF + '\n';
+                    t += '   - Note: ' + c.note + '\n'; // Not bold
                 }
+
+                t += ESCPOS.FONT_A; // Reset back to standard Font A
             }
         });
     });
@@ -663,15 +664,15 @@ function formatCounterTicket(order, loyaltyText) {
     
     let hasClientBlock = false;
     if (ticketSettings.counterTemplate.showCustomerInfo && clientName) {
-        t += 'Client: ' + clientName + '\n';
+        t += ESCPOS.BOLD_ON + 'Client: ' + clientName + ESCPOS.BOLD_OFF + '\n';
         hasClientBlock = true;
     }
     if (ticketSettings.counterTemplate.showCustomerPhone && clientPhone) {
-        t += 'Tel: ' + clientPhone + '\n';
+        t += ESCPOS.BOLD_ON + 'Tel: ' + clientPhone + ESCPOS.BOLD_OFF + '\n';
         hasClientBlock = true;
     }
     if (ticketSettings.counterTemplate.showDeliveryAddress && order.customer_address) {
-        t += 'Adresse: ' + order.customer_address + '\n';
+        t += ESCPOS.BOLD_ON + 'Adresse: ' + order.customer_address + ESCPOS.BOLD_OFF + '\n';
         hasClientBlock = true;
     }
     if (ticketSettings.counterTemplate.showCustomerNotes && clientNotes) {
@@ -718,14 +719,14 @@ function formatCounterTicket(order, loyaltyText) {
             const rightPart = price.toFixed(2) + 'E';
             t += ESCPOS.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS.BOLD_OFF + '\n';
 
-            // Indented customizations (using Font A for supplements/notes to make them bigger, note bolded)
+            // Indented customizations (using Font B for smaller size, not bold)
             if (c) {
-                // Size customization in Font B (smaller)
+                t += ESCPOS.FONT_B; // Switch to smaller Font B for all customizations
+
                 if (c.size) {
-                    t += ESCPOS.FONT_B + '   - ' + c.size.toUpperCase() + '\n' + ESCPOS.FONT_A;
+                    t += '   - ' + c.size.toUpperCase() + '\n';
                 }
 
-                // Other options in Font A (standard size, bigger)
                 const otherDetails = [];
                 if (c.meats?.length)  otherDetails.push(...c.meats.map(m => '+ ' + m));
                 if (c.meat)           otherDetails.push('+ ' + c.meat);
@@ -750,10 +751,11 @@ function formatCounterTicket(order, loyaltyText) {
                     t += '   - ' + d + '\n';
                 });
 
-                // Customer note in Font A and BOLD for maximum visibility
                 if (c.note) {
-                    t += ESCPOS.BOLD_ON + '   - Note: ' + c.note + ESCPOS.BOLD_OFF + '\n';
+                    t += '   - Note: ' + c.note + '\n'; // Not bold
                 }
+
+                t += ESCPOS.FONT_A; // Reset back to standard Font A
             }
         });
     });
