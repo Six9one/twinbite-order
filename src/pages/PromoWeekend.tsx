@@ -100,7 +100,7 @@ export default function PromoWeekend() {
   const totalPizzas = selectedPizzas.length;
   const pairs = Math.floor(totalPizzas / 2);
   const odd = totalPizzas % 2;
-  const promoTotal = (pairs * 16) + (odd * 18); // 16€ per pair, 18€ for odd one
+  const promoTotal = (pairs * 16) + (odd * 16); // 16€ per pair (1 achetée = 1 offerte), odd = 16€
 
   // ─── Add pizza (unlimited) ───
   const handleAddPizza = (pizza: MenuItem) => {
@@ -118,7 +118,7 @@ export default function PromoWeekend() {
   const calculateNewTotal = (count: number) => {
     const p = Math.floor(count / 2);
     const o = count % 2;
-    return `${(p * 16 + o * 18).toFixed(2)} €`;
+    return `${(p * 16 + o * 16).toFixed(2)} €`;
   };
 
   // ─── Remove pizza ───
@@ -195,7 +195,8 @@ export default function PromoWeekend() {
       const recalculatedItems = selectedPizzas.map((p, idx) => {
         const pairIndex = Math.floor(idx / 2);
         const isInCompletePair = idx < pairs * 2;
-        const price = isInCompletePair ? 8 : 18;
+        const isSecondInPair = idx % 2 === 1 && isInCompletePair;
+        const price = isSecondInPair ? 0 : 16; // 16€ paid, 2nd in pair = free
         return {
           id: `promo-${idx}-${Date.now()}`,
           item: p.pizza,
@@ -317,7 +318,8 @@ export default function PromoWeekend() {
             <div className="divide-y divide-stone-800/50 max-h-52 overflow-y-auto">
               {selectedPizzas.map((p, i) => {
                 const isInPair = i < pairs * 2;
-                const price = isInPair ? 8 : 18;
+                const isSecondInPair = i % 2 === 1 && isInPair;
+                const price = isSecondInPair ? 0 : 16;
                 return (
                   <div key={i} className="px-4 py-3 flex items-center justify-between">
                     <div className="min-w-0 flex-1">
@@ -337,7 +339,7 @@ export default function PromoWeekend() {
               </div>
               {pairs > 0 && (
                 <p className="text-[11px] text-green-500 mt-1">
-                  🎉 Vous économisez {(pairs * 20).toFixed(2)} € avec l'offre !
+                  🎉 {pairs} pizza{pairs > 1 ? 's' : ''} offerte{pairs > 1 ? 's' : ''} !
                 </p>
               )}
             </div>
@@ -521,18 +523,18 @@ export default function PromoWeekend() {
 
           {/* Main headline */}
           <h1 className="text-[2.75rem] leading-[1.05] font-black text-white tracking-tight uppercase">
-            2 Pizzas{' '}
+            1 Pizza{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">
               16€
             </span>
           </h1>
 
           <p className="text-lg font-bold text-amber-300 uppercase tracking-wide">
-            1 achetée = 1 offerte
+            1 Achetée = 1 Offerte !
           </p>
 
           <p className="text-stone-300 text-sm leading-relaxed">
-            Seulement <strong className="text-white">8€ la pizza Senior</strong> au lieu de 18€.
+            Achetez 1 pizza Senior à <strong className="text-white">16€</strong>, la 2ème est <strong className="text-green-400">OFFERTE</strong> !
             Retrait à <strong className="text-amber-400">Grand-Couronne</strong>.
             <br/>Ajoutez autant de pizzas que vous voulez !
           </p>
@@ -617,8 +619,8 @@ export default function PromoWeekend() {
                       <h4 className="font-bold text-white text-[15px] leading-tight truncate">{pizza.name}</h4>
                       <p className="text-[11px] text-stone-400 leading-snug mt-0.5 line-clamp-2">{pizza.description}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-amber-400 text-xs font-bold">8€</span>
-                        <span className="text-stone-600 text-[10px] line-through">18€</span>
+                        <span className="text-amber-400 text-xs font-bold">16€</span>
+                        <span className="text-[10px] text-green-500">2ème offerte</span>
                       </div>
                     </div>
 
@@ -715,7 +717,8 @@ export default function PromoWeekend() {
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
                 {selectedPizzas.map((p, i) => {
                   const isInPair = i < pairs * 2;
-                  const price = isInPair ? 8 : 18;
+                  const isSecondInPair = i % 2 === 1 && isInPair;
+                  const price = isSecondInPair ? 0 : 16;
                   
                   return (
                     <div key={i} className="bg-stone-950 rounded-xl border border-stone-800 overflow-hidden">
@@ -728,7 +731,7 @@ export default function PromoWeekend() {
                             <span className="text-sm font-bold text-white truncate">{p.pizza.name}</span>
                           </div>
                           <span className="text-[11px] text-stone-500 ml-6 block">
-                            {p.pizza.base === 'creme' ? 'Crème' : 'Tomate'} • {price.toFixed(2)} €
+                            {p.pizza.base === 'creme' ? 'Crème' : 'Tomate'} • {price === 0 ? 'OFFERTE 🎁' : `${price.toFixed(2)} €`}
                           </span>
                         </div>
 
@@ -774,7 +777,7 @@ export default function PromoWeekend() {
                 {odd > 0 && (
                   <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-3 text-center">
                     <p className="text-xs text-amber-400 font-semibold">
-                      💡 Ajoutez 1 pizza de plus pour profiter de l'offre 2 pour 16€ !
+                      💡 Ajoutez 1 pizza de plus pour avoir la 2ème offerte !
                     </p>
                     <button 
                       onClick={() => { setCartOpen(false); scrollToSelector(); }}
@@ -793,7 +796,7 @@ export default function PromoWeekend() {
                     <span className="text-sm font-bold text-white block">Total</span>
                     {pairs > 0 && (
                       <span className="text-[11px] text-green-500">
-                        Économie: {(pairs * 20).toFixed(2)} €
+                        🎁 {pairs} pizza{pairs > 1 ? 's' : ''} offerte{pairs > 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
