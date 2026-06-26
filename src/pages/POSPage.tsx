@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useRef } from 'react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
-import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
+import { useCreateOrder, generateOrderNumber, useOrders } from '@/hooks/useSupabaseData';
 import { useCategories, useProductsByCategory } from '@/hooks/useProducts';
 import { usePizzasByBase } from '@/hooks/useProducts';
 import { useMeatOptions, useSauceOptions, useSupplementOptions, useGarnitureOptions, useCruditesOptions } from '@/hooks/useCustomizationOptions';
@@ -998,6 +998,295 @@ function SimplePanel({ categorySlug, title, onAdd }: { categorySlug:string; titl
   );
 }
 
+// ── History & Stats panel (past orders today) ──────────────────────────────────
+function HistoryPanel({ onClose }: { onClose:()=>void }) {
+  const d = new Date();
+  const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const { data: orders = [], isLoading, refetch } = useOrders(todayStr);
+
+  const [loadingActions, setLoadingActions] = useState<Record<string, 'reprint' | 'facture' | null>>({});
+
+  const handleReprint = async (orderNumber: string) => {
+    setLoadingActions(prev => ({ ...prev, [orderNumber]: 'reprint' }));
+    try {
+      const res = await fetch(`${PRINT_SERVER}/reprint/${orderNumber}`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        toast.success(`✅ Ticket #${orderNumber} réimprimé`);
+      } else {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+    } catch (e: any) {
+      toast.error(e.message?.includes('fetch') ? '❌ Serveur impression hors ligne' : '❌ ' + e.message);
+    } finally {
+      setLoadingActions(prev => ({ ...prev, [orderNumber]: null }));
+    }
+  };
+
+  const handleFacture = async (orderNumber: string) => {
+    setLoadingActions(prev => ({ ...prev, [orderNumber]: 'facture' }));
+    try {
+      const res = await fetch(`${PRINT_SERVER}/print-invoice/${orderNumber}`);
+      if (res.ok) {
+        toast.success(`✅ Facture imprimée pour #${orderNumber}`);
+      } else {
+        toast.error(`❌ Erreur d'impression de facture`);
+      }
+    } catch (e: any) {
+      toast.error('❌ Serveur impression hors ligne');
+    } finally {
+      setLoadingActions(prev => ({ ...prev, [orderNumber]: null }));
+    }
+  };
+
+  const formatItemsSummary = (items: any[]) => {
+    if (!items || !Array.isArray(items)) return '';
+    return items.map(ci => {
+      const name = ci.item?.name || 'Article';
+      const qty = ci.quantity || 1;
+      const size = ci.customization?.sizeLabel ? ` (${ci.customization.sizeLabel})` : '';
+      return `${qty}x ${name}${size}`;
+    }).join(', ');
+  };
+
+  // Calculations
+  const validOrders = orders.filter(o => o.status !== 'cancelled');
+  const totalSales = validOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const totalCount = validOrders.length;
+
+  const byType = validOrders.reduce((acc, o) => {
+    acc[o.order_type] = (acc[o.order_type] || 0) + (o.total || 0);
+    return acc;
+  }, {} as Record<string, number>);
+
+  const countByType = validOrders.reduce((acc, o) => {
+    acc[o.order_type] = (acc[o.order_type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const byPay = validOrders.reduce((acc, o) => {
+    acc[o.payment_method] = (acc[o.payment_method] || 0) + (o.total || 0);
+    return acc;
+  }, {} as Record<string, number>);
+
+  const countByPay = validOrders.reduce((acc, o) => {
+    acc[o.payment_method] = (acc[o.payment_method] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const getStatusBadge = (status: string) => {
+    const labels: Record<string, string> = {
+      pending: '⏳ En attente',
+      preparing: '🍳 En prép.',
+      ready: '✅ Prêt',
+      completed: '🎉 Terminé',
+      cancelled: '❌ Annulé'
+    };
+    const colors: Record<string, string> = {
+      pending: '#f59e0b',
+      preparing: '#3b82f6',
+      ready: '#10b981',
+      completed: '#10b981',
+      cancelled: '#ef4444'
+    };
+    return (
+      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: (colors[status] || '#6b7280') + '22', color: colors[status] || '#6b7280' }}>
+        {labels[status] || status}
+      </span>
+    );
+  };
+
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
+      <div onClick={e=>e.stopPropagation()} style={{ width:480, maxWidth:'90%', height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, display:'flex', flexDirection:'column' }}>
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
+          <div>
+            <div style={{ fontSize:16, fontWeight:800, color:S.text }}>📊 Historique & Stats</div>
+            <div style={{ fontSize:11, color:S.muted, marginTop:2 }}>
+              Journée du {d.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' })}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ ...S.btn, padding:'5px 12px' }}>✕</button>
+        </div>
+
+        {/* Content Area */}
+        <div style={{ flex:1, overflow:'auto', padding:'16px 20px' }}>
+          {isLoading ? (
+            <div style={{ display:'flex', justifyContent:'center', padding:40, color:S.muted }}>⏳ Chargement des données...</div>
+          ) : (
+            <>
+              {/* Stats Section */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
+                <div style={{ background:S.card, border:`1px solid ${S.border}`, borderRadius:10, padding:'12px 14px' }}>
+                  <div style={{ fontSize:11, color:S.muted, fontWeight:700 }}>CHIFFRE D'AFFAIRES</div>
+                  <div style={{ fontSize:22, fontWeight:800, color:S.accent, marginTop:4 }}>{totalSales.toFixed(2)}€</div>
+                </div>
+                <div style={{ background:S.card, border:`1px solid ${S.border}`, borderRadius:10, padding:'12px 14px' }}>
+                  <div style={{ fontSize:11, color:S.muted, fontWeight:700 }}>COMMANDES TOTALES</div>
+                  <div style={{ fontSize:22, fontWeight:800, color:S.text, marginTop:4 }}>{totalCount}</div>
+                </div>
+              </div>
+
+              {/* Stats Details Grid */}
+              <div style={{ background:S.card, border:`1px solid ${S.border}`, borderRadius:10, padding:'12px 14px', marginBottom:20 }}>
+                <div style={{ fontSize:11, color:S.text, fontWeight:800, borderBottom:`1px solid ${S.border}`, paddingBottom:6, marginBottom:8 }}>
+                  Détail par Type & Paiement
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, fontSize:12 }}>
+                  {/* Types */}
+                  <div>
+                    <div style={{ color:S.muted, fontWeight:700, fontSize:10, textTransform:'uppercase', marginBottom:4 }}>Type de commande</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span>🍽️ Sur place</span>
+                        <span style={{ fontWeight:700 }}>{countByType['surplace']||0} ({ (byType['surplace']||0).toFixed(1) }€)</span>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span>🛍️ À emporter</span>
+                        <span style={{ fontWeight:700 }}>{countByType['emporter']||0} ({ (byType['emporter']||0).toFixed(1) }€)</span>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span>🚗 Livraison</span>
+                        <span style={{ fontWeight:700 }}>{countByType['livraison']||0} ({ (byType['livraison']||0).toFixed(1) }€)</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Payments */}
+                  <div>
+                    <div style={{ color:S.muted, fontWeight:700, fontSize:10, textTransform:'uppercase', marginBottom:4 }}>Moyens de paiement</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span>💵 Espèces</span>
+                        <span style={{ fontWeight:700 }}>{countByPay['especes']||0} ({ (byPay['especes']||0).toFixed(1) }€)</span>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span>💳 Carte bancaire</span>
+                        <span style={{ fontWeight:700 }}>{countByPay['cb']||0} ({ (byPay['cb']||0).toFixed(1) }€)</span>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span>🌐 En ligne</span>
+                        <span style={{ fontWeight:700 }}>{countByPay['en_ligne']||0} ({ (byPay['en_ligne']||0).toFixed(1) }€)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Orders List Section */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                <span style={{ fontSize:12, fontWeight:800, color:S.muted, textTransform:'uppercase', letterSpacing:1 }}>
+                  Historique des commandes ({orders.length})
+                </span>
+                <button onClick={() => refetch()} style={{ ...S.btn, padding:'3px 8px', fontSize:10 }}>🔄 Rafraîchir</button>
+              </div>
+
+              {orders.length === 0 ? (
+                <div style={{ textAlign:'center', color:S.muted, padding:'30px 0', fontSize:12 }}>
+                  Aucune commande enregistrée aujourd'hui.
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  {orders.map(order => {
+                    const actionState = loadingActions[order.order_number];
+                    const isCancelled = order.status === 'cancelled';
+                    return (
+                      <div key={order.id} style={{
+                        background: S.card,
+                        border: `1px solid ${isCancelled ? '#ef444433' : S.border}`,
+                        borderRadius: 10,
+                        padding: '10px 12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
+                        opacity: isCancelled ? 0.6 : 1,
+                      }}>
+                        {/* Row 1: Order Num + Client + Time */}
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                          <span style={{ fontSize:13, fontWeight:800, color:S.text }}>
+                            #{order.order_number}
+                          </span>
+                          <span style={{ fontSize:12, fontWeight:700, color:S.text, marginLeft:8, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {order.customer_name}
+                          </span>
+                          <span style={{ fontSize:11, color:S.muted, marginLeft:8 }}>
+                            {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })}
+                          </span>
+                        </div>
+
+                        {/* Row 2: Badges */}
+                        <div style={{ display:'flex', gap:4, alignItems:'center', flexWrap:'wrap' }}>
+                          {getStatusBadge(order.status)}
+                          <span style={{ fontSize:10, background:'#1f2937', color:'#e5e7eb', padding:'2px 6px', borderRadius:4, fontWeight:700 }}>
+                            {TYPE_LABELS[order.order_type as OrderType] || order.order_type}
+                          </span>
+                          <span style={{ fontSize:10, background:'#1f2937', color:'#e5e7eb', padding:'2px 6px', borderRadius:4, fontWeight:700 }}>
+                            {PAY_LABELS[order.payment_method as PayMethod] || order.payment_method}
+                          </span>
+                        </div>
+
+                        {/* Row 3: Items summary */}
+                        <div style={{ fontSize:11, color:S.muted, lineHeight:1.3 }}>
+                          {formatItemsSummary(order.items)}
+                        </div>
+
+                        {/* Row 4: Total + actions */}
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', borderTop:`1px solid ${S.border}44`, paddingTop:6, marginTop:2 }}>
+                          <span style={{ fontSize:14, fontWeight:800, color:S.accent }}>
+                            {order.total?.toFixed(2)}€
+                          </span>
+                          <div style={{ display:'flex', gap:6 }}>
+                            <button
+                              onClick={() => handleReprint(order.order_number)}
+                              disabled={actionState !== null && actionState !== undefined}
+                              style={{
+                                ...S.btn,
+                                padding: '4px 8px',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                background: actionState === 'reprint' ? '#1f2937' : undefined,
+                                cursor: actionState ? 'wait' : 'pointer'
+                              }}
+                            >
+                              {actionState === 'reprint' ? '⏳...' : '🖨️ Imprimer'}
+                            </button>
+                            <button
+                              onClick={() => handleFacture(order.order_number)}
+                              disabled={actionState !== null && actionState !== undefined}
+                              style={{
+                                ...S.btn,
+                                padding: '4px 8px',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                borderColor: S.accent + '44',
+                                color: S.accent,
+                                background: actionState === 'facture' ? '#1f2937' : S.accent + '0a',
+                                cursor: actionState ? 'wait' : 'pointer'
+                              }}
+                            >
+                              {actionState === 'facture' ? '⏳...' : '🧾 Facture'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Settings panel (theme / colors) ──────────────────────────────────────────
 function SettingsPanel({ onClose }: { onClose:()=>void }) {
   useThemeBump();
@@ -1492,6 +1781,7 @@ function POSContent() {
   const [submitting, setSubmitting] = useState(false);
   const [lastOrder,  setLastOrder]  = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [showFacture,  setShowFacture]  = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -1615,13 +1905,31 @@ function POSContent() {
               }}>{TYPE_LABELS[t]}</button>
             ))}
             {lastOrder && <span style={{ background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'2px 8px', borderRadius:99, fontSize:10, fontWeight:700 }}>✅ #{lastOrder}</span>}
+            <button
+              title="Historique & Statistiques"
+              onClick={() => setShowHistory(true)}
+              style={{
+                ...S.btn,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 8px',
+                fontSize: 11,
+                fontWeight: 800,
+                color: S.accent,
+                borderColor: S.accent + '33',
+                background: S.accent + '11',
+                marginLeft: 'auto',
+              }}
+            >
+              📊 Historique & Stats
+            </button>
             {typeof window !== 'undefined' && 'twinHub' in window && (
               <button
                 title="Mise à jour"
                 onClick={() => { setShowUpdateModal(true); setUpdateAvailable(false); }}
                 style={{
                   ...S.btn,
-                  marginLeft: 'auto',
                   padding: '4px 8px',
                   fontSize: 13,
                   position: 'relative',
@@ -1643,7 +1951,7 @@ function POSContent() {
                 )}
               </button>
             )}
-            <button title="Personnaliser" onClick={()=>setShowSettings(true)} style={{ ...S.btn, marginLeft: (typeof window !== 'undefined' && 'twinHub' in window) ? undefined : 'auto', padding:'4px 8px', fontSize:13 }}>⚙️</button>
+            <button title="Personnaliser" onClick={()=>setShowSettings(true)} style={{ ...S.btn, padding:'4px 8px', fontSize:13 }}>⚙️</button>
             <button title="Replier" onClick={toggleLeft} style={{ ...S.btn, padding:'4px 8px', fontSize:13 }}>⟨</button>
           </div>
           {/* Row 2: categories — single scrollable row */}
@@ -1695,6 +2003,7 @@ function POSContent() {
 
       {/* ── Overlays ── */}
       {showSettings && <SettingsPanel onClose={()=>setShowSettings(false)} />}
+      {showHistory && <HistoryPanel onClose={()=>setShowHistory(false)} />}
       {showFacture && <FactureModal initialTotal={total} onClose={()=>setShowFacture(false)} />}
       {showUpdateModal && <UpdatePanel onClose={()=>setShowUpdateModal(false)} />}
     </PanelGroup>
