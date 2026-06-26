@@ -139,6 +139,7 @@ function convertToCP1252(text) {
         '€': '\x80',
         '°': '\xB0',
         '«': '\xAB', '»': '\xBB',
+        '•': '\x95',
         '–': '-', '—': '-',
         '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"',
         '\u2026': '...',
@@ -493,20 +494,19 @@ function formatKitchenTicket(order) {
     return convertToCP1252(t);
 }
 
-// Helper to build ESC/POS QR code commands as raw string
 function getQRCodeString(url) {
     const len = url.length;
     const pL = String.fromCharCode(len & 0xFF);
     const pH = String.fromCharCode((len >> 8) & 0xFF);
 
     return (
-        '\x1B' + 'a' + '\x01' + // center
+        '\n\x1B' + 'a' + '\x01' + // center
         '\x1B\x1D\x79\x53\x30\x02' + // Set Model 2
         '\x1B\x1D\x79\x53\x31\x00' + // Set Error Correction Level L
         '\x1B\x1D\x79\x53\x32\x05' + // Set Cell Size 5 (larger)
         '\x1B\x1D\x79\x44\x31\x00' + pL + pH + url + // Set Data (Auto setting)
         '\x1B\x1D\x79\x50' + // Print QR Code
-        '\x1B' + 'a' + '\x00' // reset left
+        '\n\x1B' + 'a' + '\x00' // reset left
     );
 }
 
@@ -563,9 +563,9 @@ function formatCounterTicket(order, loyaltyText) {
 
     // 2. ORDER NUMBER + TYPE (BIG)
     if (ticketSettings.counterTemplate.showOrderNumber) {
-        t += ESCPOS.CENTER;
+        t += '\n' + ESCPOS.CENTER;
         t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
-        t += 'CAISSE  #' + order.order_number + '\n';
+        t += '#' + order.order_number + '\n';
         t += typeLabel + '\n';
         t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
         t += DASH_LINE;
@@ -646,16 +646,15 @@ function formatCounterTicket(order, loyaltyText) {
             const unitPrice = qty > 0 ? price / qty : price;
             const c         = ci.customization;
 
-            // Main product line: Qty x Product Name on the left, total price on the right
-            const leftPart = qty + 'x ' + name.toUpperCase();
+            // Main product line: Qty x Product Name on the left, total price on the right (with bullet point prefix)
+            const leftPart = '• ' + qty + 'x ' + name.toUpperCase();
             const rightPart = price.toFixed(2) + 'E';
             t += ESCPOS.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS.BOLD_OFF + '\n';
 
             // Indented customizations
             if (c) {
                 const details = [];
-                if (c.size) details.push('Taille: ' + c.size.toUpperCase());
-                if (c.base) details.push('Base: ' + c.base);
+                if (c.size) details.push(c.size.toUpperCase());
                 if (c.meats?.length)  details.push(...c.meats.map(m => '+ ' + m));
                 if (c.meat)           details.push('+ ' + c.meat);
                 if (c.sauces?.length) details.push(...c.sauces.map(s => 'Sauce: ' + s));
@@ -696,14 +695,8 @@ function formatCounterTicket(order, loyaltyText) {
     t += DASH_LINE;
 
     // 9. PAYMENT
-    const isPaid = order.payment_method === 'en_ligne';
-    if (isPaid) {
-        t += ESCPOS.CENTER + ESCPOS.BOLD_ON + '*** PAYE EN LIGNE ***\n' + ESCPOS.BOLD_OFF;
-        t += ESCPOS.LEFT + (payLabels[order.payment_method] || '') + ' - ' + totalTTC.toFixed(2) + 'E\n';
-    } else {
-        t += ESCPOS.CENTER + ESCPOS.DOUBLE_HEIGHT + ESCPOS.BOLD_ON + 'A PAYER\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
-        t += ESCPOS.LEFT + (payLabels[order.payment_method] || order.payment_method || '') + ' - ' + totalTTC.toFixed(2) + 'E\n';
-    }
+    t += ESCPOS.LEFT;
+    t += 'Reglement: ' + (payLabels[order.payment_method] || order.payment_method || '').toUpperCase() + '\n';
     t += DASH_LINE;
 
     // 10. PIZZA RESERVE / CREDITS
@@ -722,12 +715,7 @@ function formatCounterTicket(order, loyaltyText) {
         t += loyaltyText + '\n' + DASH_LINE;
     }
 
-    // 12. SIRET / LEGAL FOOTER
-    t += ESCPOS.CENTER;
-    t += 'Twin Pizza - Entreprise individuelle\n';
-    t += 'SIRET: 942 617 358 00018\n';
-    t += 'TVA: FR28942617358\n';
-    t += DASH_LINE;
+    // 12. SIRET / LEGAL FOOTER - removed by default for standard ticket
 
     // 13. GOOGLE REVIEW QR CODE (Centered)
     t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS.BOLD_OFF;
