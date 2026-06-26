@@ -500,13 +500,13 @@ function getQRCodeString(url) {
     const pH = String.fromCharCode((len >> 8) & 0xFF);
 
     return (
-        '\x1B' + 'a' + '1' + // center (ASCII '1')
+        '\x1B\x1D' + 'a' + '1' + // center (ESC GS a 1)
         '\x1B\x1D\x79\x53\x30\x02' + // Set Model 2
         '\x1B\x1D\x79\x53\x31\x00' + // Set Error Correction Level L
         '\x1B\x1D\x79\x53\x32\x05' + // Set Cell Size 5 (larger)
         '\x1B\x1D\x79\x44\x31\x00' + pL + pH + url + // Set Data (Auto setting)
         '\x1B\x1D\x79\x50' + // Print QR Code
-        '\x1B' + 'a' + '0' // reset left (ASCII '0')
+        '\x1B\x1D' + 'a' + '0' // reset left (ESC GS a 0)
     );
 }
 
@@ -519,9 +519,9 @@ function formatCounterTicket(order, loyaltyText) {
     const ESCPOS = {
         INIT: ESC + '@',
         SET_CODEPAGE_1252: ESC + 't' + '\x10',
-        CENTER: ESC + 'a' + '1',
-        LEFT: ESC + 'a' + '0',
-        RIGHT: ESC + 'a' + '2',
+        CENTER: ESC + '\x1D' + 'a' + '1', // Star Line Mode Center (ESC GS a 1)
+        LEFT: ESC + '\x1D' + 'a' + '0',   // Star Line Mode Left (ESC GS a 0)
+        RIGHT: ESC + '\x1D' + 'a' + '2',  // Star Line Mode Right (ESC GS a 2)
         BOLD_ON: ESC + 'E' + '\x01',
         BOLD_OFF: ESC + 'E' + '\x00',
         DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
@@ -530,8 +530,8 @@ function formatCounterTicket(order, loyaltyText) {
         NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
         UNDERLINE_ON: ESC + '-' + '\x01',
         UNDERLINE_OFF: ESC + '-' + '\x00',
-        PARTIAL_CUT: '\x1D\x56\x01',
-        FEED: ESC + 'd' + '\x01', // Feed 1 line to reduce whitespace at bottom
+        PARTIAL_CUT: ESC + 'd' + '\x03',  // Feed and partial cut (ESC d 3)
+        FEED: '',                        // Empty because PARTIAL_CUT feeds automatically
         UPSIDE_ON:  '',
         UPSIDE_OFF: '',
         FONT_A: ESC + '\x1E' + 'F' + '\x00', // Standard Font A
