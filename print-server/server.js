@@ -495,16 +495,17 @@ function formatKitchenTicket(order) {
 
 // Helper to build ESC/POS QR code commands as raw string
 function getQRCodeString(url) {
-    const len = url.length + 3;
+    const len = url.length;
     const pL = String.fromCharCode(len & 0xFF);
     const pH = String.fromCharCode((len >> 8) & 0xFF);
 
     return (
         '\x1B' + 'a' + '\x01' + // center
-        '\x1D' + '\x28' + '\x6B' + '\x03' + '\x00' + '\x31' + '\x43' + '\x04' + // size: 4
-        '\x1D' + '\x28' + '\x6B' + '\x03' + '\x00' + '\x31' + '\x45' + '\x30' + // error correction: L
-        '\x1D' + '\x28' + '\x6B' + pL + pH + '\x31' + '\x50' + '\x30' + url +      // store
-        '\x1D' + '\x28' + '\x6B' + '\x03' + '\x00' + '\x31' + '\x51' + '\x30' +    // print
+        '\x1B\x1D\x79\x53\x30\x02' + // Set Model 2
+        '\x1B\x1D\x79\x53\x31\x00' + // Set Error Correction Level L
+        '\x1B\x1D\x79\x53\x32\x04' + // Set Cell Size 4
+        '\x1B\x1D\x79\x44\x31\x00' + pL + pH + url + // Set Data (Auto setting)
+        '\x1B\x1D\x79\x50' + // Print QR Code
         '\x1B' + 'a' + '\x00' // reset left
     );
 }
@@ -514,6 +515,27 @@ function getQRCodeString(url) {
 // Logo + header + items grouped by category + TVA + footer
 // ============================================
 function formatCounterTicket(order, loyaltyText) {
+    // Star Line Mode formatting overrides for Star TSP100 USB printer
+    const ESCPOS = {
+        INIT: ESC + '@',
+        SET_CODEPAGE_1252: ESC + 't' + '\x10',
+        CENTER: ESC + 'a' + '\x01',
+        LEFT: ESC + 'a' + '\x00',
+        RIGHT: ESC + 'a' + '\x02',
+        BOLD_ON: ESC + 'E' + '\x01',
+        BOLD_OFF: ESC + 'E' + '\x00',
+        DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
+        DOUBLE_WIDTH: ESC + 'i' + '\x01' + '\x00',
+        DOUBLE_SIZE: ESC + 'i' + '\x01' + '\x01',
+        NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
+        UNDERLINE_ON: ESC + '-' + '\x01',
+        UNDERLINE_OFF: ESC + '-' + '\x00',
+        PARTIAL_CUT: '\x1D\x56\x01',
+        FEED: ESC + 'd' + '\x03',
+        UPSIDE_ON:  ESC + '{' + '\x01',
+        UPSIDE_OFF: ESC + '{' + '\x00',
+    };
+
     const TVA_RATE   = 10;
     const totalTTC   = order.total || 0;
     const deliveryFee = order.delivery_fee || 0;
@@ -726,12 +748,8 @@ function formatCounterTicket(order, loyaltyText) {
 
     t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
-    // Prepend logo (raw bytes) if available and enabled, then text
-    const textBytes = convertToCP1252(t);
-    if (logoBytes && ticketSettings.counterTemplate.showLogo) {
-        return Buffer.concat([logoBytes, Buffer.from(textBytes, 'binary')]);
-    }
-    return textBytes;
+    // Star TSP100 USB printer does not support GS v 0 logo raw bytes (prints garbage '('), so we skip it
+    return convertToCP1252(t);
 }
 
 // Legacy wrapper for backward compatibility (HACCP endpoints etc.)
@@ -2224,6 +2242,27 @@ function setupHttpServer() {
                 return res.status(400).json({ error: 'No counter printer name configured. Please save a printer name first.' });
             }
 
+            // Star Line Mode formatting overrides for Star TSP100 USB printer
+            const ESCPOS = {
+                INIT: ESC + '@',
+                SET_CODEPAGE_1252: ESC + 't' + '\x10',
+                CENTER: ESC + 'a' + '\x01',
+                LEFT: ESC + 'a' + '\x00',
+                RIGHT: ESC + 'a' + '\x02',
+                BOLD_ON: ESC + 'E' + '\x01',
+                BOLD_OFF: ESC + 'E' + '\x00',
+                DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
+                DOUBLE_WIDTH: ESC + 'i' + '\x01' + '\x00',
+                DOUBLE_SIZE: ESC + 'i' + '\x01' + '\x01',
+                NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
+                UNDERLINE_ON: ESC + '-' + '\x01',
+                UNDERLINE_OFF: ESC + '-' + '\x00',
+                PARTIAL_CUT: '\x1D\x56\x01',
+                FEED: ESC + 'd' + '\x03',
+                UPSIDE_ON:  ESC + '{' + '\x01',
+                UPSIDE_OFF: ESC + '{' + '\x00',
+            };
+
             let t = '';
             t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
             t += ESCPOS.UPSIDE_ON;
@@ -2248,12 +2287,7 @@ function setupHttpServer() {
             t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
             const ticketData = convertToCP1252(t);
-            let printBuffer = ticketData;
-            if (logoBytes) {
-                printBuffer = Buffer.concat([logoBytes, Buffer.from(ticketData, 'binary')]);
-            }
-            
-            await sendToUSBPrinter(printBuffer, COUNTER_PRINTER_NAME);
+            await sendToUSBPrinter(ticketData, COUNTER_PRINTER_NAME);
             console.log(`✅ Test print successfully sent to: "${COUNTER_PRINTER_NAME}"`);
             res.json({ success: true, message: `Test print sent to ${COUNTER_PRINTER_NAME}` });
         } catch (error) {
