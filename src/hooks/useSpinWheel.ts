@@ -21,7 +21,7 @@ export const PRIZES: Prize[] = [
 // Flow: name → google-review → ready → spinning → result → (prize-display | lost)
 export type SpinState = 'loading' | 'name-input' | 'google-review' | 'ready' | 'spinning' | 'prize-display' | 'lost' | 'already-played';
 
-const GOOGLE_REVIEW_URL = 'https://g.page/r/CXpZZnzoTBFREAE/review';
+const GOOGLE_REVIEW_URL = 'https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr';
 
 function generateFingerprint(): string {
     const canvas = document.createElement('canvas');

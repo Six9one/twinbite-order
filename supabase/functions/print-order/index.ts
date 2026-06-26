@@ -325,7 +325,7 @@ function formatOrderForPrint(order: OrderData, ticketSettings: any): string {
         );
     };
 
-    ticket += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review') + '\n';
+    ticket += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr') + '\n';
     ticket += ESCPOS.LINE;
 
     // Footer

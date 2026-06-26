@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrders, useUpdateOrderStatus, Order } from '@/hooks/useSupabaseData';
-import { useAdminSetting } from '@/hooks/useAdminSettings';
+import { useAdminSetting, useUpdateAdminSetting } from '@/hooks/useAdminSettings';
 import { compileTicketHtml } from '@/utils/ticketCompiler';
 import { ProductCategoryManager } from '@/components/admin/ProductCategoryManager';
 import { PizzaManager } from '@/components/admin/PizzaManager';
@@ -1646,41 +1646,61 @@ function VentesSection({ orders }: { orders: Order[] }) {
 
 // Printer Configuration Component
 function PrinterConfig() {
-  const [printerName, setPrinterName] = useState(localStorage.getItem('printerName') || '');
+  const { data: settingsData } = useAdminSetting('ticket_templates');
+  const updateSetting = useUpdateAdminSetting();
+
+  const [printerName, setPrinterName] = useState('');
+  const [availablePrinters, setAvailablePrinters] = useState<string[]>([]);
+  const [loadingPrinters, setLoadingPrinters] = useState(false);
   const [testPrinting, setTestPrinting] = useState(false);
 
-  // Ticket customization
-  const [ticketHeader, setTicketHeader] = useState(localStorage.getItem('ticketHeader') || 'TWIN PIZZA');
-  const [ticketSubheader, setTicketSubheader] = useState(localStorage.getItem('ticketSubheader') || 'Grand-Couronne');
-  const [ticketPhone, setTicketPhone] = useState(localStorage.getItem('ticketPhone') || '02 32 11 26 13');
-  const [ticketFooter, setTicketFooter] = useState(localStorage.getItem('ticketFooter') || 'Merci de votre commande!');
-  const [ticketLogo, setTicketLogo] = useState(localStorage.getItem('ticketLogo') || '🍕 TWIN PIZZA 🍕');
-
-  // Font customization
-  const [ticketFontFamily, setTicketFontFamily] = useState(localStorage.getItem('ticketFontFamily') || 'monospace');
-  const [ticketFontSize, setTicketFontSize] = useState(localStorage.getItem('ticketFontSize') || '12');
-  const [ticketHeaderSize, setTicketHeaderSize] = useState(localStorage.getItem('ticketHeaderSize') || '20');
-
-  // Order number settings
+  // Keep local storage items for orderPrefix and reset just in case
   const [orderPrefix, setOrderPrefix] = useState(localStorage.getItem('orderPrefix') || 'TW');
   const [lastOrderNumber, setLastOrderNumber] = useState(localStorage.getItem('lastOrderNumber') || '0');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  const savePrinterConfig = () => {
-    localStorage.setItem('printerName', printerName);
-    toast.success('Configuration sauvegardée!');
+  const fetchPrinters = async () => {
+    setLoadingPrinters(true);
+    try {
+      const res = await fetch('http://localhost:3001/available-printers');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.printers)) {
+          setAvailablePrinters(data.printers);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch available printers from local print server:', e);
+    } finally {
+      setLoadingPrinters(false);
+    }
   };
 
-  const saveTicketConfig = () => {
-    localStorage.setItem('ticketHeader', ticketHeader);
-    localStorage.setItem('ticketSubheader', ticketSubheader);
-    localStorage.setItem('ticketPhone', ticketPhone);
-    localStorage.setItem('ticketFooter', ticketFooter);
-    localStorage.setItem('ticketLogo', ticketLogo);
-    localStorage.setItem('ticketFontFamily', ticketFontFamily);
-    localStorage.setItem('ticketFontSize', ticketFontSize);
-    localStorage.setItem('ticketHeaderSize', ticketHeaderSize);
-    toast.success('Configuration du ticket sauvegardée!');
+  useEffect(() => {
+    fetchPrinters();
+  }, []);
+
+  useEffect(() => {
+    if (settingsData?.setting_value) {
+      const val = settingsData.setting_value as any;
+      setPrinterName(val.usbPrinterName || '');
+    }
+  }, [settingsData]);
+
+  const savePrinterConfig = async () => {
+    try {
+      const currentVal = settingsData?.setting_value as any || {};
+      await updateSetting.mutateAsync({
+        key: 'ticket_templates',
+        value: {
+          ...currentVal,
+          usbPrinterName: printerName
+        }
+      });
+      toast.success('Configuration sauvegardée dans la base de données!');
+    } catch (err: any) {
+      toast.error('Erreur lors de la sauvegarde: ' + err.message);
+    }
   };
 
   const saveOrderConfig = () => {
@@ -1695,13 +1715,45 @@ function PrinterConfig() {
     toast.success('Numéro de commande réinitialisé à 0!');
   };
 
-  const testPrint = () => {
+  const testPrint = async () => {
     setTestPrinting(true);
+    try {
+      // First save current selection
+      const currentVal = settingsData?.setting_value as any || {};
+      await updateSetting.mutateAsync({
+        key: 'ticket_templates',
+        value: {
+          ...currentVal,
+          usbPrinterName: printerName
+        }
+      });
 
+      // Brief wait for print-server to pick up setting
+      await new Promise(r => setTimeout(r, 600));
+
+      const res = await fetch('http://localhost:3001/print-test', {
+        method: 'POST'
+      });
+      if (res.ok) {
+        toast.success("Test d'impression envoyé à l'imprimante caisse via le serveur local!");
+      } else {
+        const errData = await res.json();
+        throw new Error(errData.error || "Erreur serveur d'impression");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Échec du test d'impression physique: " + err.message);
+      toast.info("Lancement de l'impression test via le navigateur...");
+      runBrowserTestPrint();
+    } finally {
+      setTestPrinting(false);
+    }
+  };
+
+  const runBrowserTestPrint = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast.error("Impossible d'ouvrir la fenêtre d'impression");
-      setTestPrinting(false);
       return;
     }
 
@@ -1711,25 +1763,20 @@ function PrinterConfig() {
       <head>
         <title>Test Imprimante</title>
         <style>
-          body { font-family: ${ticketFontFamily}; font-size: ${ticketFontSize}px; width: 80mm; margin: 0; padding: 10px; }
+          body { font-family: monospace; font-size: 12px; width: 80mm; margin: 0; padding: 10px; }
           .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; }
-          .header h1 { font-size: ${ticketHeaderSize}px; margin: 0; }
+          .header h1 { font-size: 20px; margin: 0; }
           .content { padding: 20px 0; text-align: center; }
         </style>
       </head>
       <body>
         <div class="header">
-          <h1>${ticketHeader}</h1>
-          <p>${ticketSubheader}</p>
-          ${ticketPhone ? `<p>📞 ${ticketPhone}</p>` : ''}
+          <h1>TWIN PIZZA</h1>
+          <p>Test Imprimante</p>
         </div>
         <div class="content">
           <p>✓ L'imprimante fonctionne correctement!</p>
           <p>${new Date().toLocaleString('fr-FR')}</p>
-        </div>
-        <div style="text-align: center; margin-top: 20px; border-top: 2px dashed #000; padding-top: 10px;">
-          <p>${ticketFooter}</p>
-          <p>${ticketLogo}</p>
         </div>
       </body>
       </html>
@@ -1739,11 +1786,6 @@ function PrinterConfig() {
     printWindow.document.close();
     printWindow.print();
     printWindow.close();
-
-    setTimeout(() => {
-      setTestPrinting(false);
-      toast.success("Test d'impression envoyé!");
-    }, 1000);
   };
 
   return (
@@ -1752,104 +1794,6 @@ function PrinterConfig() {
         <Printer className="w-6 h-6" />
         Configuration Imprimante & Tickets
       </h2>
-
-      {/* Ticket Customization */}
-      <div className="bg-card rounded-lg p-6 border space-y-4">
-        <h3 className="font-semibold text-lg flex items-center gap-2">
-          🎫 Personnalisation du Ticket
-        </h3>
-
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">En-tête principal</label>
-            <Input
-              placeholder="TWIN PIZZA"
-              value={ticketHeader}
-              onChange={(e) => setTicketHeader(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Sous-titre</label>
-            <Input
-              placeholder="Grand-Couronne"
-              value={ticketSubheader}
-              onChange={(e) => setTicketSubheader(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Téléphone</label>
-            <Input
-              placeholder="02 32 11 26 13"
-              value={ticketPhone}
-              onChange={(e) => setTicketPhone(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Message de fin</label>
-            <Input
-              placeholder="Merci de votre commande!"
-              value={ticketFooter}
-              onChange={(e) => setTicketFooter(e.target.value)}
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-2">Logo / Signature (avec émojis)</label>
-            <Input
-              placeholder="🍕 TWIN PIZZA 🍕"
-              value={ticketLogo}
-              onChange={(e) => setTicketLogo(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Font Customization */}
-        <div className="border-t pt-4 mt-4">
-          <h4 className="font-medium mb-3">🔤 Police et Taille</h4>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Police</label>
-              <select
-                className="w-full px-3 py-2 border rounded-md bg-background"
-                value={ticketFontFamily}
-                onChange={(e) => setTicketFontFamily(e.target.value)}
-              >
-                <option value="monospace">Monospace (par défaut)</option>
-                <option value="'Courier New', monospace">Courier New</option>
-                <option value="Arial, sans-serif">Arial</option>
-                <option value="'Lucida Console', monospace">Lucida Console</option>
-                <option value="Verdana, sans-serif">Verdana</option>
-                <option value="'Times New Roman', serif">Times New Roman</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Taille texte (px)</label>
-              <Input
-                type="number"
-                min="8"
-                max="24"
-                value={ticketFontSize}
-                onChange={(e) => setTicketFontSize(e.target.value)}
-                placeholder="12"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Taille en-tête (px)</label>
-              <Input
-                type="number"
-                min="14"
-                max="36"
-                value={ticketHeaderSize}
-                onChange={(e) => setTicketHeaderSize(e.target.value)}
-                placeholder="20"
-              />
-            </div>
-          </div>
-        </div>
-
-        <Button onClick={saveTicketConfig}>
-          Sauvegarder le ticket
-        </Button>
-      </div>
 
       {/* Order Number Settings */}
       <div className="bg-card rounded-lg p-6 border space-y-4">
@@ -1905,31 +1849,53 @@ function PrinterConfig() {
         </div>
       </div>
 
-      {/* Printer Setup */}
+      {/* Printer Setup Instructions */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
         <h3 className="font-semibold text-amber-700 mb-2">📋 Instructions de configuration</h3>
         <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
           <li>Connectez votre imprimante thermique au PC via câble USB</li>
           <li>Installez le pilote de l'imprimante sur votre PC</li>
-          <li>Assurez-vous que l'imprimante est définie comme imprimante par défaut</li>
-          <li>Connectez le PC à l'écran TV via HDMI</li>
-          <li>Ouvrez le Dashboard TV sur le navigateur du PC (<code className="bg-black/20 px-1 rounded">/tv</code>)</li>
-          <li>Les tickets s'impriment automatiquement via le bouton "Imprimer" dans les commandes</li>
+          <li>Démarrez le serveur d'impression local (<code className="bg-black/10 px-1 rounded">START_ALL_SERVERS.bat</code>)</li>
+          <li>Sélectionnez l'imprimante dans le menu déroulant ci-dessous, puis cliquez sur Sauvegarder</li>
         </ol>
       </div>
 
+      {/* Printer Setup */}
       <div className="bg-card rounded-lg p-6 border space-y-4">
-        <h3 className="font-semibold text-lg">🖨️ Imprimante</h3>
+        <h3 className="font-semibold text-lg flex items-center justify-between">
+          <span>🖨️ Imprimante Caisse (USB)</span>
+          <button 
+            type="button" 
+            onClick={fetchPrinters} 
+            className="text-xs text-amber-500 hover:text-amber-600 underline font-bold"
+            disabled={loadingPrinters}
+          >
+            {loadingPrinters ? 'Chargement...' : 'Rafraîchir la liste'}
+          </button>
+        </h3>
         <div>
-          <label className="block text-sm font-medium mb-2">Nom de l'imprimante (optionnel)</label>
-          <Input
-            placeholder="Ex: EPSON TM-T20III"
-            value={printerName}
-            onChange={(e) => setPrinterName(e.target.value)}
-            className="max-w-md"
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Pour référence uniquement. L'impression utilise l'imprimante par défaut du système.
+          <label className="block text-sm font-medium mb-2">Sélectionnez l'imprimante connectée</label>
+          {availablePrinters.length > 0 ? (
+            <select
+              value={printerName}
+              onChange={(e) => setPrinterName(e.target.value)}
+              className="w-full max-w-md h-10 px-3 rounded-md border bg-background font-mono text-sm"
+            >
+              <option value="">-- Par défaut du système --</option>
+              {availablePrinters.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          ) : (
+            <Input
+              placeholder="Ex: Star TSP100 Cutter (TSP143)"
+              value={printerName}
+              onChange={(e) => setPrinterName(e.target.value)}
+              className="max-w-md"
+            />
+          )}
+          <p className="text-xs text-muted-foreground mt-2">
+            Sélectionnez la file d'impression Star TSP100 connectée (ex: <code className="bg-black/10 dark:bg-white/10 px-1 rounded">Star TSP100 Cutter (TSP143) (Copie 1)</code>).
           </p>
         </div>
 
@@ -1943,7 +1909,7 @@ function PrinterConfig() {
             disabled={testPrinting}
           >
             <Printer className="w-4 h-4 mr-2" />
-            {testPrinting ? 'Impression...' : "Test d'impression"}
+            {testPrinting ? 'Impression en cours...' : "Test d'impression thermique"}
           </Button>
         </div>
       </div>
@@ -1951,10 +1917,9 @@ function PrinterConfig() {
       <div className="bg-card rounded-lg p-6 border">
         <h3 className="font-semibold mb-4">Imprimantes compatibles recommandées</h3>
         <ul className="text-sm space-y-2 text-muted-foreground">
+          <li>• <strong>Star TSP100 / TSP143</strong> - Connexion USB directe (Recommandée)</li>
           <li>• <strong>EPSON TM-T20III</strong> - Imprimante thermique USB 80mm</li>
-          <li>• <strong>Star TSP143III</strong> - Compatible ESC/POS</li>
-          <li>• <strong>Citizen CT-S310II</strong> - Thermique compacte</li>
-          <li>• Toute imprimante thermique 80mm avec connexion USB</li>
+          <li>• Toute imprimante thermique compatible ESC/POS avec pilote Windows</li>
         </ul>
       </div>
     </div>

@@ -25,7 +25,7 @@ const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUP
 const PRINTER_IPS = (process.env.PRINTER_IPS || process.env.PRINTER_IP || '').split(',').map(ip => ip.trim()).filter(Boolean);
 const PRINTER_PORT = parseInt(process.env.PRINTER_PORT || '9100', 10);
 // Star TSP100 USB (PC restaurant / caisse) — ticket client avec prix
-const COUNTER_PRINTER_NAME = (process.env.COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME || '').trim();
+let COUNTER_PRINTER_NAME = (process.env.COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME || '').trim();
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 const SETTINGS_REFRESH_INTERVAL = 300000;
@@ -259,12 +259,25 @@ async function fetchTicketSettings() {
                 kitchenTemplate: { ...defaultSettings.kitchenTemplate, ...(savedSettings.kitchenTemplate || {}) },
                 counterTemplate: { ...defaultSettings.counterTemplate, ...(savedSettings.counterTemplate || {}) }
             };
+
+            // Dynamic printer update from DB settings
+            if (savedSettings.usbPrinterName) {
+                const newPrinterName = savedSettings.usbPrinterName.trim();
+                if (COUNTER_PRINTER_NAME !== newPrinterName) {
+                    console.log(`🔌 Dynamic printer name updated from DB settings: "${COUNTER_PRINTER_NAME}" ➔ "${newPrinterName}"`);
+                    COUNTER_PRINTER_NAME = newPrinterName;
+                }
+            } else {
+                COUNTER_PRINTER_NAME = (process.env.COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME || '').trim();
+            }
+
             console.log('✅ Ticket settings loaded from database:');
             console.log('   Header:', ticketSettings.counterTemplate.header);
             console.log('   Subheader:', ticketSettings.counterTemplate.subheader);
             console.log('   Footer:', ticketSettings.counterTemplate.footer);
             console.log('   Paper width:', ticketSettings.paperWidth);
             console.log('   Active template:', ticketSettings.activeTemplate);
+            console.log('   USB Printer:', COUNTER_PRINTER_NAME || '(none)');
         } else {
             console.log('⚠️ No ticket_templates found in database, using defaults');
         }
@@ -309,8 +322,17 @@ function formatKitchenTicket(order) {
 
     // Footer — bottom of ticket
     t += '\n\n';
-    t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Twin Pizza' + ESCPOS.BOLD_OFF + ESCPOS.LEFT + '\n';
-    t += DASH_LINE;
+    if (ticketSettings.kitchenTemplate.footer) {
+        t += ESCPOS.CENTER + ESCPOS.BOLD_ON;
+        ticketSettings.kitchenTemplate.footer.split('\n').forEach(line => {
+            t += line.trim() + '\n';
+        });
+        t += ESCPOS.BOLD_OFF + ESCPOS.LEFT + '\n';
+        t += DASH_LINE;
+    } else {
+        t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Twin Pizza' + ESCPOS.BOLD_OFF + ESCPOS.LEFT + '\n';
+        t += DASH_LINE;
+    }
 
     // Articles (reversed — last item printed = top when read)
     const items = Array.isArray(order.items) ? order.items : [];
@@ -372,7 +394,7 @@ function formatKitchenTicket(order) {
     });
 
     // Notes
-    if (order.customer_notes) {
+    if (ticketSettings.kitchenTemplate.showCustomerNotes && order.customer_notes) {
         const note = order.customer_notes.replace(/^\[BORNE\]\s*/i, '').trim();
         if (note) {
             t += ESCPOS.BOLD_ON + '*** NOTE: ' + note + ' ***' + ESCPOS.BOLD_OFF + '\n';
@@ -383,16 +405,28 @@ function formatKitchenTicket(order) {
     // Client info (livraison only)
     if (order.order_type === 'livraison') {
         const phone = cleanCustomerPhone(order.customer_phone);
-        if (order.customer_address) t += 'Adresse: ' + order.customer_address + '\n';
-        if (phone)                  t += 'Tel: ' + phone + '\n';
-        t += ESCPOS.BOLD_ON + 'Client: ' + cleanCustomerName(order.customer_name) + ESCPOS.BOLD_OFF + '\n';
-        t += DASH_LINE;
+        let hasClientInfo = false;
+        if (ticketSettings.kitchenTemplate.showDeliveryAddress && order.customer_address) {
+            t += 'Adresse: ' + order.customer_address + '\n';
+            hasClientInfo = true;
+        }
+        if (ticketSettings.kitchenTemplate.showCustomerPhone && phone) {
+            t += 'Tel: ' + phone + '\n';
+            hasClientInfo = true;
+        }
+        if (ticketSettings.kitchenTemplate.showCustomerInfo) {
+            t += ESCPOS.BOLD_ON + 'Client: ' + cleanCustomerName(order.customer_name) + ESCPOS.BOLD_OFF + '\n';
+            hasClientInfo = true;
+        }
+        if (hasClientInfo) {
+            t += DASH_LINE;
+        }
     }
 
     // ════ HAUT DU TICKET (printed last = top when read) ════
 
     // Scheduled
-    if (order.is_scheduled && order.scheduled_for) {
+    if (ticketSettings.kitchenTemplate.showScheduledTime && order.is_scheduled && order.scheduled_for) {
         const sd = new Date(order.scheduled_for);
         t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
         t += 'PROGRAMME: ' + sd.toLocaleString('fr-FR', {
@@ -403,33 +437,56 @@ function formatKitchenTicket(order) {
     }
 
     // Date + source
-    const orderDate = new Date(order.created_at);
-    t += 'Date et heure : ' + orderDate.toLocaleString('fr-FR', {
-        dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
-    }) + '\n';
-    t += ESCPOS.BOLD_ON + getSourceLabel(order) + ESCPOS.BOLD_OFF + '\n';
+    if (ticketSettings.kitchenTemplate.showDateTime) {
+        const orderDate = new Date(order.created_at);
+        t += 'Date et heure : ' + orderDate.toLocaleString('fr-FR', {
+            dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
+        }) + '\n';
+        t += ESCPOS.BOLD_ON + getSourceLabel(order) + ESCPOS.BOLD_OFF + '\n';
+    }
 
     // Client name, phone number, and total price always on header
+    let hasHeaderBlock = false;
     const clientName = cleanCustomerName(order.customer_name);
-    if (clientName) t += 'Client : ' + clientName + '\n';
+    if (ticketSettings.kitchenTemplate.showCustomerInfo && clientName) {
+        t += 'Client : ' + clientName + '\n';
+        hasHeaderBlock = true;
+    }
 
     const clientPhone = cleanCustomerPhone(order.customer_phone);
-    if (clientPhone) t += 'Tel    : ' + clientPhone + '\n';
+    if (ticketSettings.kitchenTemplate.showCustomerPhone && clientPhone) {
+        t += 'Tel    : ' + clientPhone + '\n';
+        hasHeaderBlock = true;
+    }
 
-    const totalPrice = order.total || 0;
-    t += 'Prix   : ' + totalPrice.toFixed(2) + ' E\n';
-    t += DASH_LINE;
+    if (ticketSettings.kitchenTemplate.showTotal) {
+        const totalPrice = order.total || 0;
+        t += 'Prix   : ' + totalPrice.toFixed(2) + ' E\n';
+        hasHeaderBlock = true;
+    }
+    if (hasHeaderBlock || ticketSettings.kitchenTemplate.showDateTime) {
+        t += DASH_LINE;
+    }
 
     // Order number + type — big and bold
-    const typeLabels = { livraison: 'LIVRAISON', emporter: 'A EMPORTER', surplace: 'SUR PLACE' };
-    const typeLabel  = typeLabels[order.order_type] || (order.order_type || '').toUpperCase();
-    t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
-    t += padLine('CUISINE  #' + order.order_number, typeLabel, 24) + '\n';
-    t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
-    t += DASH_LINE;
+    if (ticketSettings.kitchenTemplate.showOrderNumber) {
+        const typeLabels = { livraison: 'LIVRAISON', emporter: 'A EMPORTER', surplace: 'SUR PLACE' };
+        const typeLabel  = typeLabels[order.order_type] || (order.order_type || '').toUpperCase();
+        t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+        t += padLine('CUISINE  #' + order.order_number, typeLabel, 24) + '\n';
+        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+        t += DASH_LINE;
+    }
 
     // Title of Twin Pizza on top
-    t += ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + 'TWIN PIZZA\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + ESCPOS.LEFT;
+    t += ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE;
+    t += (ticketSettings.kitchenTemplate.header || 'TWIN PIZZA') + '\n';
+    if (ticketSettings.kitchenTemplate.subheader) {
+        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + ticketSettings.kitchenTemplate.subheader + '\n';
+    } else {
+        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    }
+    t += ESCPOS.LEFT;
     t += DASH_LINE;
 
     t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
@@ -477,13 +534,19 @@ function formatCounterTicket(order, loyaltyText) {
 
     // Footer message
     t += ESCPOS.CENTER;
-    t += 'Merci de votre visite !\n';
-    t += ESCPOS.BOLD_ON + 'THANK YOU!\n' + ESCPOS.BOLD_OFF;
+    if (ticketSettings.counterTemplate.footer) {
+        ticketSettings.counterTemplate.footer.split('\n').forEach(line => {
+            t += line.trim() + '\n';
+        });
+    } else {
+        t += 'Merci de votre visite !\n';
+        t += ESCPOS.BOLD_ON + 'THANK YOU!\n' + ESCPOS.BOLD_OFF;
+    }
     t += DASH_LINE;
 
     // Google Review QR code
     t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS.BOLD_OFF;
-    t += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review') + '\n';
+    t += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr') + '\n';
     t += DASH_LINE;
 
     // SIRET / legal footer
@@ -595,16 +658,32 @@ function formatCounterTicket(order, loyaltyText) {
     const clientNotes = (order.customer_notes || '').replace(/^\[BORNE\]\s*/i, '').trim();
     const clientPhone = cleanCustomerPhone(order.customer_phone);
     const clientName  = cleanCustomerName(order.customer_name);
-    if (clientNotes)            t += ESCPOS.BOLD_ON + 'Note: ' + clientNotes + ESCPOS.BOLD_OFF + '\n';
-    if (order.customer_address) t += 'Adresse: ' + order.customer_address + '\n';
-    if (clientPhone)            t += 'Tel: ' + clientPhone + '\n';
-    if (clientName)             t += 'Client : ' + clientName + '\n';
-    t += DASH_LINE;
+    
+    let hasClientBlock = false;
+    if (ticketSettings.counterTemplate.showCustomerNotes && clientNotes) {
+        t += ESCPOS.BOLD_ON + 'Note: ' + clientNotes + ESCPOS.BOLD_OFF + '\n';
+        hasClientBlock = true;
+    }
+    if (ticketSettings.counterTemplate.showDeliveryAddress && order.customer_address) {
+        t += 'Adresse: ' + order.customer_address + '\n';
+        hasClientBlock = true;
+    }
+    if (ticketSettings.counterTemplate.showCustomerPhone && clientPhone) {
+        t += 'Tel: ' + clientPhone + '\n';
+        hasClientBlock = true;
+    }
+    if (ticketSettings.counterTemplate.showCustomerInfo && clientName) {
+        t += 'Client : ' + clientName + '\n';
+        hasClientBlock = true;
+    }
+    if (hasClientBlock) {
+        t += DASH_LINE;
+    }
 
     // ════ HAUT DU TICKET (printed last = top when read) ════
 
     // Scheduled
-    if (order.is_scheduled && order.scheduled_for) {
+    if (ticketSettings.counterTemplate.showScheduledTime && order.is_scheduled && order.scheduled_for) {
         const sd = new Date(order.scheduled_for);
         t += ESCPOS.BOLD_ON + 'PROGRAMME: ' + sd.toLocaleString('fr-FR', {
             weekday: 'short', day: 'numeric', month: 'short',
@@ -613,31 +692,43 @@ function formatCounterTicket(order, loyaltyText) {
     }
 
     // Date/time + source
-    const orderDate = new Date(order.created_at);
-    t += 'Date et heure : ' + orderDate.toLocaleString('fr-FR', {
-        dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
-    }) + '\n';
-    t += ESCPOS.BOLD_ON + getSourceLabel(order) + ESCPOS.BOLD_OFF + '\n';
-    if (clientName) t += 'Client : ' + clientName + '\n';
-    t += DASH_LINE;
+    if (ticketSettings.counterTemplate.showDateTime) {
+        const orderDate = new Date(order.created_at);
+        t += 'Date et heure : ' + orderDate.toLocaleString('fr-FR', {
+            dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
+        }) + '\n';
+        t += ESCPOS.BOLD_ON + getSourceLabel(order) + ESCPOS.BOLD_OFF + '\n';
+    }
+    if (ticketSettings.counterTemplate.showCustomerInfo && clientName) {
+        t += 'Client : ' + clientName + '\n';
+    }
+    if (ticketSettings.counterTemplate.showDateTime || (ticketSettings.counterTemplate.showCustomerInfo && clientName)) {
+        t += DASH_LINE;
+    }
 
     // Order number + type — BIG
-    t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
-    t += padLine('CAISSE  #' + order.order_number, typeLabel, 24) + '\n';
-    t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
-    t += DASH_LINE;
+    if (ticketSettings.counterTemplate.showOrderNumber) {
+        t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+        t += padLine('CAISSE  #' + order.order_number, typeLabel, 24) + '\n';
+        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+        t += DASH_LINE;
+    }
 
     // Restaurant header
     t += ESCPOS.CENTER;
-    t += '02 32 11 26 13\n';
-    t += '60 Rue Georges Clemenceau, 76530 Grand-Couronne\n';
+    const headerTitle = ticketSettings.counterTemplate.header || 'TWIN PIZZA';
+    t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + headerTitle + '\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    const subheaderText = ticketSettings.counterTemplate.subheader || '60 Rue Georges Clemenceau, 76530 Grand-Couronne\n02 32 11 26 13';
+    subheaderText.split('\n').forEach(line => {
+        t += line.trim() + '\n';
+    });
     t += DASH_LINE;
 
     t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
-    // Prepend logo (raw bytes) if available, then text
+    // Prepend logo (raw bytes) if available and enabled, then text
     const textBytes = convertToCP1252(t);
-    if (logoBytes) {
+    if (logoBytes && ticketSettings.counterTemplate.showLogo) {
         return Buffer.concat([logoBytes, Buffer.from(textBytes, 'binary')]);
     }
     return textBytes;
@@ -2093,6 +2184,81 @@ function setupHttpServer() {
         } catch (err) {
             console.error('❌ Custom invoice error:', err.message);
             res.status(500).json({ error: err.message });
+        }
+    });
+
+    // GET available system printers
+    app.get('/available-printers', async (req, res) => {
+        console.log('\n📥 Listing available printers request');
+        try {
+            exec('powershell -Command "Get-Printer | Select-Object Name | ConvertTo-Json"', (err, stdout, stderr) => {
+                if (err) {
+                    console.error('❌ Error listing printers:', err.message);
+                    return res.status(500).json({ error: 'Failed to list printers: ' + err.message });
+                }
+                try {
+                    const printers = JSON.parse(stdout);
+                    const names = Array.isArray(printers)
+                        ? printers.map(p => p.Name).filter(Boolean)
+                        : (printers && printers.Name ? [printers.Name] : []);
+                    console.log(`   Found ${names.length} printers`);
+                    res.json({ success: true, printers: names });
+                } catch (parseErr) {
+                    // Try fallback string parser if JSON parsing failed
+                    const lines = stdout.split('\r\n').map(l => l.trim()).filter(l => l && l !== 'Name' && !l.startsWith('----'));
+                    console.log(`   Found ${lines.length} printers (fallback)`);
+                    res.json({ success: true, printers: lines });
+                }
+            });
+        } catch (error) {
+            console.error('❌ Printer list exception:', error.message);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // POST print-test
+    app.post('/print-test', async (req, res) => {
+        console.log('\n📥 Test print request received');
+        try {
+            if (!COUNTER_PRINTER_NAME) {
+                return res.status(400).json({ error: 'No counter printer name configured. Please save a printer name first.' });
+            }
+
+            let t = '';
+            t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
+            t += ESCPOS.UPSIDE_ON;
+            t += ESCPOS.CENTER;
+            t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + 'TEST IMPRIMANTE\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+            t += 'Star TSP100 USB\n';
+            t += ESCPOS.LINE_42;
+            t += ESCPOS.LEFT;
+            t += 'Date: ' + new Date().toLocaleString('fr-FR') + '\n';
+            t += 'Imprimante: ' + COUNTER_PRINTER_NAME + '\n';
+            t += ESCPOS.LINE_42;
+            t += ESCPOS.CENTER;
+            t += ESCPOS.BOLD_ON + 'STATUT: SUCCES\n' + ESCPOS.BOLD_OFF;
+            t += 'L\'imprimante est correctement configuree !\n';
+            t += ESCPOS.LINE_42;
+            
+            // Google Review QR code
+            t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS.BOLD_OFF;
+            t += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr') + '\n';
+            t += ESCPOS.LINE_42;
+            
+            t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
+
+            const ticketData = convertToCP1252(t);
+            let printBuffer = ticketData;
+            if (logoBytes) {
+                printBuffer = Buffer.concat([logoBytes, Buffer.from(ticketData, 'binary')]);
+            }
+            
+            await sendToUSBPrinter(printBuffer, COUNTER_PRINTER_NAME);
+            console.log(`✅ Test print successfully sent to: "${COUNTER_PRINTER_NAME}"`);
+            res.json({ success: true, message: `Test print sent to ${COUNTER_PRINTER_NAME}` });
+        } catch (error) {
+            console.error('❌ Test print error:', error.message);
+            res.status(500).json({ error: error.message });
         }
     });
 

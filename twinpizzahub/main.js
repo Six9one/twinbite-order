@@ -376,7 +376,7 @@ function generateOrderMessage(order) {
 function generateReviewMessage(order) {
   const name  = getFirstName(order);
   const hello = name ? ` ${name}` : '';
-  const reviewLink = 'https://g.page/r/CXpZZnzoTBFREBM/review';
+  const reviewLink = 'https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr';
 
   let msg = `Bonjour${hello} ! 😊\n\n`;
   msg += `Votre commande était bonne ?\n`;

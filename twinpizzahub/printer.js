@@ -64,7 +64,7 @@ function buildTicket(order) {
       esc + 'a' + '\x00' // reset left
     );
   };
-  t += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review') + CMD.NL;
+  t += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr') + CMD.NL;
   t += CMD.CENTER + CMD.SEP;
 
   // TOTAL (en bas)

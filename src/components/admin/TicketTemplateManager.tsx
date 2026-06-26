@@ -47,6 +47,7 @@ interface TicketSettings {
   autoPrint: boolean;
   paperWidth: '58mm' | '80mm';
   fontSize: 'small' | 'medium' | 'large';
+  usbPrinterName?: string;
 }
 
 const defaultKitchenTemplate: TicketTemplate = {
@@ -121,7 +122,8 @@ const defaultSettings: TicketSettings = {
   activeTemplate: 'counter',
   autoPrint: false,
   paperWidth: '80mm',
-  fontSize: 'medium'
+  fontSize: 'medium',
+  usbPrinterName: ''
 };
 
 const availableVariables = [
@@ -172,6 +174,29 @@ export function TicketTemplateManager() {
   const [settings, setSettings] = useState<TicketSettings>(defaultSettings);
   const [activeTemplateTab, setActiveTemplateTab] = useState<'kitchen' | 'counter'>('counter');
   const [showPreview, setShowPreview] = useState(false);
+  const [availablePrinters, setAvailablePrinters] = useState<string[]>([]);
+  const [loadingPrinters, setLoadingPrinters] = useState(false);
+
+  const fetchPrinters = async () => {
+    setLoadingPrinters(true);
+    try {
+      const res = await fetch('http://localhost:3001/available-printers');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.printers)) {
+          setAvailablePrinters(data.printers);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch available printers from local print server:', e);
+    } finally {
+      setLoadingPrinters(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrinters();
+  }, []);
 
   useEffect(() => {
     if (settingsData?.setting_value) {
@@ -321,7 +346,7 @@ export function TicketTemplateManager() {
         <CardHeader>
           <CardTitle className="text-lg">Paramètres généraux</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
           <div className="space-y-2">
             <Label>Largeur papier</Label>
             <select
@@ -356,12 +381,44 @@ export function TicketTemplateManager() {
               <option value="kitchen">Cuisine</option>
             </select>
           </div>
-          <div className="flex items-center gap-3 pt-6">
+          <div className="space-y-2">
+            <Label className="flex items-center justify-between">
+              <span>Imprimante Caisse (USB)</span>
+              <button 
+                type="button" 
+                onClick={fetchPrinters} 
+                className="text-[10px] text-amber-500 hover:text-amber-600 underline font-bold"
+                disabled={loadingPrinters}
+              >
+                {loadingPrinters ? 'Chargement...' : 'Rafraîchir'}
+              </button>
+            </Label>
+            {availablePrinters.length > 0 ? (
+              <select
+                value={settings.usbPrinterName || ''}
+                onChange={(e) => setSettings(prev => ({ ...prev, usbPrinterName: e.target.value }))}
+                className="w-full h-10 px-3 rounded-md border bg-background font-mono text-xs"
+              >
+                <option value="">-- Par défaut du système --</option>
+                {availablePrinters.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                placeholder="Ex: Star TSP100 Cutter (TSP143)"
+                value={settings.usbPrinterName || ''}
+                onChange={(e) => setSettings(prev => ({ ...prev, usbPrinterName: e.target.value }))}
+              />
+            )}
+          </div>
+          <div className="flex items-center gap-3 h-10">
             <Switch
+              id="auto-print-switch"
               checked={settings.autoPrint}
               onCheckedChange={(checked) => setSettings(prev => ({ ...prev, autoPrint: checked }))}
             />
-            <Label>Impression auto</Label>
+            <Label htmlFor="auto-print-switch" className="cursor-pointer">Impression auto</Label>
           </div>
         </CardContent>
       </Card>
