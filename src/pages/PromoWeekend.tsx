@@ -27,9 +27,13 @@ import {
   MapPin,
   X,
   ChevronUp,
-  PartyPopper
+  PartyPopper,
+  Clock,
+  Lock,
+  Calendar
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useAdminSetting } from '@/hooks/useAdminSettings';
 
 // ─── Per-pizza note tracking ───
 interface PizzaInCart {
@@ -42,6 +46,16 @@ export default function PromoWeekend() {
   const { cart, addToCart, removeFromCart, clearCart } = useOrder();
   const createOrder = useCreateOrder();
   const [view, setView] = useState<'landing' | 'checkout' | 'success'>('landing');
+
+  // Load promo settings
+  const { data: promoSettingsSetting, isLoading: loadingPromoSettings } = useAdminSetting('promo_page_settings');
+  const promoSettings = promoSettingsSetting?.setting_value as {
+    enabled?: boolean;
+    schedule_type?: 'manual' | 'scheduled';
+    scheduled_days?: string[];
+    scheduled_start_time?: string;
+    scheduled_end_time?: string;
+  } | undefined;
 
   // Customer checkout state
   const [name, setName] = useState('');
@@ -492,6 +506,117 @@ export default function PromoWeekend() {
           >
             Nouvelle commande
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading settings state
+  if (loadingPromoSettings) {
+    return (
+      <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-center p-4">
+        <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
+        <p className="text-stone-400 mt-4 text-sm font-medium">Chargement de la page...</p>
+      </div>
+    );
+  }
+
+  // Active check logic
+  const checkPromoActive = () => {
+    if (!promoSettings) return true; // default to active if no setting key exists yet
+    if (promoSettings.enabled === false) return false;
+    if (promoSettings.schedule_type === 'manual') return true;
+
+    if (promoSettings.schedule_type === 'scheduled') {
+      const now = new Date();
+      // Sunday is 0, Monday is 1, etc.
+      const daysOfWeekMap = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const currentDay = daysOfWeekMap[now.getDay()];
+      
+      const isDayActive = promoSettings.scheduled_days?.includes(currentDay);
+      if (!isDayActive) return false;
+
+      // Check current time HH:MM
+      const currentHours = now.getHours().toString().padStart(2, '0');
+      const currentMinutes = now.getMinutes().toString().padStart(2, '0');
+      const currentTime = `${currentHours}:${currentMinutes}`;
+
+      const startTime = promoSettings.scheduled_start_time || '00:00';
+      const endTime = promoSettings.scheduled_end_time || '23:59';
+
+      return currentTime >= startTime && currentTime <= endTime;
+    }
+    return true;
+  };
+
+  const isActive = checkPromoActive();
+
+  if (!isActive) {
+    // Render inactive view
+    // Translate English day names to French for public display
+    const frenchDayNames: Record<string, string> = {
+      'Monday': 'Lundi',
+      'Tuesday': 'Mardi',
+      'Wednesday': 'Mercredi',
+      'Thursday': 'Jeudi',
+      'Friday': 'Vendredi',
+      'Saturday': 'Samedi',
+      'Sunday': 'Dimanche'
+    };
+    const activeDaysText = promoSettings?.scheduled_days
+      ? promoSettings.scheduled_days.map(d => frenchDayNames[d] || d).join(', ')
+      : 'Vendredi, Samedi, Dimanche';
+
+    return (
+      <div className="min-h-screen bg-stone-950 text-stone-100 font-sans flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        {/* Store photo background faded */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20 filter blur-sm scale-105"
+          style={{ backgroundImage: "url('/store-front.jpg')" }}
+        />
+        {/* Dark gradient overlay */}
+        <div className="absolute inset-0 bg-stone-950/90" />
+
+        <div className="relative z-10 max-w-md w-full text-center space-y-8 p-6 bg-stone-905/60 backdrop-blur rounded-[2rem] border border-stone-800 shadow-2xl">
+          <div className="w-20 h-20 bg-amber-500/10 border border-amber-500/25 rounded-full flex items-center justify-center mx-auto text-amber-500">
+            <Lock className="w-10 h-10" />
+          </div>
+          
+          <div className="space-y-3">
+            <h2 className="text-3xl font-black uppercase text-white tracking-tight">Offre Indisponible</h2>
+            <p className="text-stone-400 text-sm leading-relaxed px-2">
+              L'offre promotionnelle n'est pas active actuellement. Nous vous donnons rendez-vous lors des périodes d'ouverture de l'offre !
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-stone-950 border border-stone-850 space-y-3 text-left">
+            <div className="flex items-center gap-3 text-stone-300">
+              <Calendar className="w-5 h-5 text-amber-500 flex-shrink-0" />
+              <div className="text-xs">
+                <p className="font-bold text-stone-400">Jours d'activité :</p>
+                <p className="text-amber-500 font-semibold">{activeDaysText}</p>
+              </div>
+            </div>
+            
+            {promoSettings?.schedule_type === 'scheduled' && (
+              <div className="flex items-center gap-3 text-stone-300 border-t border-stone-900 pt-3">
+                <Clock className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                <div className="text-xs">
+                  <p className="font-bold text-stone-400">Horaires :</p>
+                  <p className="text-amber-500 font-semibold">De {promoSettings.scheduled_start_time} à {promoSettings.scheduled_end_time}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <a href="/" className="block">
+              <Button className="w-full bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold py-4 rounded-xl shadow-lg shadow-amber-500/10 transition-transform active:scale-95">
+                Retourner à l'accueil
+              </Button>
+            </a>
+            <p className="text-[10px] text-stone-500 font-medium">Twin Pizza Grand-Couronne</p>
+          </div>
         </div>
       </div>
     );

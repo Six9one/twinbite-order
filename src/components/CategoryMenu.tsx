@@ -9,6 +9,8 @@ import {
 } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
 import { PizzaWizard } from '@/components/wizards/PizzaWizard';
+import { StreamlinedPizzaWizard } from '@/components/wizards/StreamlinedPizzaWizard';
+import { useAdminSetting } from '@/hooks/useAdminSettings';
 import { TacosWizard } from '@/components/wizards/TacosWizard';
 import { UnifiedProductWizard } from '@/components/wizards/UnifiedProductWizard';
 import { SandwichWizard } from '@/components/wizards/SandwichWizard';
@@ -105,6 +107,8 @@ function mapProductsToMenuItems(
 
 export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLockedSize }: CategoryMenuProps) {
   const { orderType, getItemCount, getTotal } = useOrder();
+  const { data: pizzaOrderingModeSetting } = useAdminSetting('pizza_ordering_mode');
+  const pizzaOrderingMode = (pizzaOrderingModeSetting?.setting_value as { mode?: 'classic' | 'streamlined' })?.mode ?? 'classic';
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const itemCount = getItemCount();
@@ -159,6 +163,17 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
   const renderWizard = () => {
     switch (selectedCategory) {
       case 'pizzas':
+        if (pizzaOrderingMode === 'streamlined') {
+          return (
+            <StreamlinedPizzaWizard
+              onClose={() => {
+                setSelectedCategory(null);
+                if (onClearLockedSize) onClearLockedSize();
+              }}
+              lockedSize={lockedPizzaSize}
+            />
+          );
+        }
         return (
           <PizzaWizard
             onClose={() => {

@@ -133,6 +133,9 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
         }).filter(Boolean);
         if (supNames.length > 0) parts.push(supNames.join(', '));
       }
+      if (pizzaCustom.note) {
+        parts.push(`📝 "${pizzaCustom.note}"`);
+      }
       return parts.join(' • ');
     }
 
