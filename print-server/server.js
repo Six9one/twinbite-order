@@ -315,27 +315,27 @@ function getLogoBytesForTicket() {
 // No prices — big text — quick to read
 // ============================================
 function formatKitchenTicket(order, loyaltyText) {
-    // Star Line Mode formatting overrides for Star SP700 Ethernet printer
+    // Standard ESC/POS formatting commands
     const ESCPOS = {
         INIT: ESC + '@',
         SET_CODEPAGE_1252: ESC + 't' + '\x10',
-        CENTER: ESC + '\x1D' + 'a' + '1', // Star Line Mode Center (ESC GS a 1)
-        LEFT: ESC + '\x1D' + 'a' + '0',   // Star Line Mode Left (ESC GS a 0)
-        RIGHT: ESC + '\x1D' + 'a' + '2',  // Star Line Mode Right (ESC GS a 2)
+        CENTER: ESC + 'a' + '\x01',       // ESC/POS Center
+        LEFT: ESC + 'a' + '\x00',         // ESC/POS Left
+        RIGHT: ESC + 'a' + '\x02',        // ESC/POS Right
         BOLD_ON: ESC + 'E' + '\x01',
         BOLD_OFF: ESC + 'E' + '\x00',
-        DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
-        DOUBLE_WIDTH: ESC + 'i' + '\x01' + '\x00',
-        DOUBLE_SIZE: ESC + 'i' + '\x01' + '\x01',
-        NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
+        DOUBLE_HEIGHT: GS + '!' + '\x01', // ESC/POS Double Height (GS ! 1)
+        DOUBLE_WIDTH: GS + '!' + '\x10',  // ESC/POS Double Width (GS ! 16)
+        DOUBLE_SIZE: GS + '!' + '\x11',   // ESC/POS Double Size (Height & Width) (GS ! 17)
+        NORMAL_SIZE: GS + '!' + '\x00',   // ESC/POS Normal Size (GS ! 0)
         UNDERLINE_ON: ESC + '-' + '\x01',
         UNDERLINE_OFF: ESC + '-' + '\x00',
-        PARTIAL_CUT: ESC + 'd' + '\x03',  // Feed and partial cut (ESC d 3)
-        FEED: '',                        // Empty because PARTIAL_CUT feeds automatically
-        UPSIDE_ON:  '\x0F',              // Star Mode Select Upside-down
-        UPSIDE_OFF: '\x12',              // Star Mode Cancel Upside-down
-        FONT_A: ESC + '\x1E' + 'F' + '\x00', // Standard Font A
-        FONT_B: ESC + '\x1E' + 'F' + '\x01', // Smaller Font B
+        PARTIAL_CUT: GS + 'V' + '\x01',    // ESC/POS Partial Cut
+        FEED: ESC + 'd' + '\x03',         // ESC/POS Feed 3 lines
+        UPSIDE_ON:  ESC + '{' + '\x01',   // ESC/POS Rotation 180° ON
+        UPSIDE_OFF: ESC + '{' + '\x00',   // ESC/POS Rotation 180° OFF
+        FONT_A: ESC + 'M' + '\x00',       // ESC/POS Font A
+        FONT_B: ESC + 'M' + '\x01',       // ESC/POS Font B
     };
 
     const TVA_RATE   = 10;
@@ -456,7 +456,7 @@ function formatKitchenTicket(order, loyaltyText) {
             // Main product line: Qty x Product Name on the left, total price on the right (with bullet point prefix)
             const leftPart = '• ' + qty + 'x ' + cleanedName;
             const rightPart = price.toFixed(2) + 'E';
-            t += ESCPOS.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS.BOLD_OFF + '\n';
+            t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT + padLine(leftPart, rightPart) + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + '\n';
 
             // Indented customizations (using Font B for smaller size, not bold)
             if (c) {
@@ -576,27 +576,27 @@ function getQRCodeString(url) {
 // Logo + header + items grouped by category + TVA + footer
 // ============================================
 function formatCounterTicket(order, loyaltyText) {
-    // Star Line Mode formatting overrides for Star TSP100 USB printer
+    // Standard ESC/POS formatting commands
     const ESCPOS = {
         INIT: ESC + '@',
         SET_CODEPAGE_1252: ESC + 't' + '\x10',
-        CENTER: ESC + '\x1D' + 'a' + '1', // Star Line Mode Center (ESC GS a 1)
-        LEFT: ESC + '\x1D' + 'a' + '0',   // Star Line Mode Left (ESC GS a 0)
-        RIGHT: ESC + '\x1D' + 'a' + '2',  // Star Line Mode Right (ESC GS a 2)
+        CENTER: ESC + 'a' + '\x01',       // ESC/POS Center
+        LEFT: ESC + 'a' + '\x00',         // ESC/POS Left
+        RIGHT: ESC + 'a' + '\x02',        // ESC/POS Right
         BOLD_ON: ESC + 'E' + '\x01',
         BOLD_OFF: ESC + 'E' + '\x00',
-        DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
-        DOUBLE_WIDTH: ESC + 'i' + '\x01' + '\x00',
-        DOUBLE_SIZE: ESC + 'i' + '\x01' + '\x01',
-        NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
+        DOUBLE_HEIGHT: GS + '!' + '\x01', // ESC/POS Double Height (GS ! 1)
+        DOUBLE_WIDTH: GS + '!' + '\x10',  // ESC/POS Double Width (GS ! 16)
+        DOUBLE_SIZE: GS + '!' + '\x11',   // ESC/POS Double Size (Height & Width) (GS ! 17)
+        NORMAL_SIZE: GS + '!' + '\x00',   // ESC/POS Normal Size (GS ! 0)
         UNDERLINE_ON: ESC + '-' + '\x01',
         UNDERLINE_OFF: ESC + '-' + '\x00',
-        PARTIAL_CUT: ESC + 'd' + '\x03',  // Feed and partial cut (ESC d 3)
-        FEED: '',                        // Empty because PARTIAL_CUT feeds automatically
+        PARTIAL_CUT: GS + 'V' + '\x01',    // ESC/POS Partial Cut
+        FEED: ESC + 'd' + '\x03',         // ESC/POS Feed 3 lines
         UPSIDE_ON:  '',
         UPSIDE_OFF: '',
-        FONT_A: ESC + '\x1E' + 'F' + '\x00', // Standard Font A
-        FONT_B: ESC + '\x1E' + 'F' + '\x01', // Smaller Font B
+        FONT_A: ESC + 'M' + '\x00',       // ESC/POS Font A
+        FONT_B: ESC + 'M' + '\x01',       // ESC/POS Font B
     };
 
     const TVA_RATE   = 10;
@@ -717,7 +717,7 @@ function formatCounterTicket(order, loyaltyText) {
             // Main product line: Qty x Product Name on the left, total price on the right (with bullet point prefix)
             const leftPart = '• ' + qty + 'x ' + cleanedName;
             const rightPart = price.toFixed(2) + 'E';
-            t += ESCPOS.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS.BOLD_OFF + '\n';
+            t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT + padLine(leftPart, rightPart) + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + '\n';
 
             // Indented customizations (using Font B for smaller size, not bold)
             if (c) {
