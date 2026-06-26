@@ -531,9 +531,11 @@ function formatCounterTicket(order, loyaltyText) {
         UNDERLINE_ON: ESC + '-' + '\x01',
         UNDERLINE_OFF: ESC + '-' + '\x00',
         PARTIAL_CUT: '\x1D\x56\x01',
-        FEED: ESC + 'd' + '\x03',
+        FEED: ESC + 'd' + '\x01', // Feed 1 line to reduce whitespace at bottom
         UPSIDE_ON:  '',
         UPSIDE_OFF: '',
+        FONT_A: ESC + '\x1E' + 'F' + '\x00', // Standard Font A
+        FONT_B: ESC + '\x1E' + 'F' + '\x01', // Smaller Font B
     };
 
     const TVA_RATE   = 10;
@@ -549,26 +551,25 @@ function formatCounterTicket(order, loyaltyText) {
 
     let t = '';
     t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
-    t += DASH_LINE;
 
     // 1. RESTAURANT HEADER (Centred)
-    t += ESCPOS.CENTER;
+    t += '\n' + ESCPOS.CENTER;
     const headerTitle = ticketSettings.counterTemplate.header || 'TWIN PIZZA';
     t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + headerTitle + '\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
     const subheaderText = ticketSettings.counterTemplate.subheader || '60 Rue Georges Clemenceau, 76530 Grand-Couronne\n02 32 11 26 13';
     subheaderText.split('\n').forEach(line => {
-        t += line.trim() + '\n';
+        t += ESCPOS.CENTER + line.trim() + '\n';
     });
-    t += DASH_LINE;
+    t += ESCPOS.CENTER + DASH_LINE;
 
     // 2. ORDER NUMBER + TYPE (BIG)
     if (ticketSettings.counterTemplate.showOrderNumber) {
         t += '\n' + ESCPOS.CENTER;
         t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
         t += '#' + order.order_number + '\n';
-        t += typeLabel + '\n';
+        t += ESCPOS.CENTER + typeLabel + '\n';
         t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
-        t += DASH_LINE;
+        t += ESCPOS.CENTER + DASH_LINE;
     }
 
     // 3. SCHEDULED TIME
@@ -646,12 +647,18 @@ function formatCounterTicket(order, loyaltyText) {
             const unitPrice = qty > 0 ? price / qty : price;
             const c         = ci.customization;
 
+            // Remove duplicated "PIZZA" word in name if category is pizza
+            let cleanedName = name.toUpperCase();
+            if (cat === 'pizza' || cat === 'pizzas' || cleanedName.startsWith('PIZZA ')) {
+                cleanedName = cleanedName.replace(/^PIZZA\s+/i, '');
+            }
+
             // Main product line: Qty x Product Name on the left, total price on the right (with bullet point prefix)
-            const leftPart = '• ' + qty + 'x ' + name.toUpperCase();
+            const leftPart = '• ' + qty + 'x ' + cleanedName;
             const rightPart = price.toFixed(2) + 'E';
             t += ESCPOS.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS.BOLD_OFF + '\n';
 
-            // Indented customizations
+            // Indented customizations (using Font B for size and ingredients to make them a bit smaller)
             if (c) {
                 const details = [];
                 if (c.size) details.push(c.size.toUpperCase());
@@ -675,9 +682,11 @@ function formatCounterTicket(order, loyaltyText) {
                 if (c.drink) details.push('Boisson: ' + c.drink);
                 if (c.note)  details.push('Note: ' + c.note);
 
+                t += ESCPOS.FONT_B; // switch to smaller font B
                 details.forEach(d => {
                     t += '   - ' + d + '\n';
                 });
+                t += ESCPOS.FONT_A; // restore standard font A
             }
         });
         t += DASH_LINE;
@@ -689,7 +698,9 @@ function formatCounterTicket(order, loyaltyText) {
         t += padLine('Livraison:', deliveryFee.toFixed(2) + 'E') + '\n';
     }
     t += padLine('TVA ' + TVA_RATE + '%:', tvaAmount.toFixed(2) + 'E') + '\n';
-    t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+    
+    // Final price in bold & double size
+    t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE;
     t += padLine('TOTAL:', totalTTC.toFixed(2) + 'E', 24) + '\n';
     t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
     t += DASH_LINE;
@@ -718,19 +729,19 @@ function formatCounterTicket(order, loyaltyText) {
     // 12. SIRET / LEGAL FOOTER - removed by default for standard ticket
 
     // 13. GOOGLE REVIEW QR CODE (Centered)
-    t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS.BOLD_OFF;
+    t += '\n' + ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS.BOLD_OFF;
     t += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr') + '\n';
-    t += DASH_LINE;
+    t += ESCPOS.CENTER + DASH_LINE;
 
     // 14. FOOTER MESSAGE
-    t += ESCPOS.CENTER;
+    t += '\n' + ESCPOS.CENTER;
     if (ticketSettings.counterTemplate.footer) {
         ticketSettings.counterTemplate.footer.split('\n').forEach(line => {
-            t += line.trim() + '\n';
+            t += ESCPOS.CENTER + line.trim() + '\n';
         });
     } else {
-        t += 'Merci de votre visite !\n';
-        t += ESCPOS.BOLD_ON + 'THANK YOU!\n' + ESCPOS.BOLD_OFF;
+        t += ESCPOS.CENTER + 'Merci de votre visite !\n';
+        t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'THANK YOU!\n' + ESCPOS.BOLD_OFF;
     }
 
     t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
