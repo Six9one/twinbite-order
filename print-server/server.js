@@ -315,30 +315,100 @@ function getLogoBytesForTicket() {
 // No prices — big text — quick to read
 // ============================================
 function formatKitchenTicket(order) {
+    const TVA_RATE   = 10;
+    const totalTTC   = order.total || 0;
+    const deliveryFee = order.delivery_fee || 0;
+    const subtotalTTC = (order.subtotal || totalTTC) - deliveryFee;
+    const totalHT    = subtotalTTC / (1 + TVA_RATE / 100);
+    const tvaAmount  = subtotalTTC - totalHT;
+    const items      = Array.isArray(order.items) ? order.items : [];
+    const typeLabels = { livraison: 'LIVRAISON', emporter: 'A EMPORTER', surplace: 'SUR PLACE' };
+    const payLabels  = { 'en_ligne': 'CB', 'cb': 'CB', 'especes': 'Cash' };
+    const typeLabel  = typeLabels[order.order_type] || (order.order_type || '').toUpperCase();
+
+    // Standard ESC/POS Font commands
+    const FONT_A = ESC + 'M' + '\x00';
+    const FONT_B = ESC + 'M' + '\x01';
+
     let t = '';
-    t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
-    t += ESCPOS.UPSIDE_ON;
+    t += ESCPOS.INIT + ESCPOS.UPSIDE_ON + ESCPOS.SET_CODEPAGE_1252;
 
-    // ════ BAS DU TICKET (printed first = bottom when read) ════
-
-    // Footer — bottom of ticket
-    t += '\n\n';
-    if (ticketSettings.kitchenTemplate.footer) {
-        t += ESCPOS.CENTER + ESCPOS.BOLD_ON;
-        ticketSettings.kitchenTemplate.footer.split('\n').forEach(line => {
+    // 1. RESTAURANT HEADER (Title Centered, Subheader Left-aligned)
+    const headerTitle = ticketSettings.kitchenTemplate.header || 'TWIN PIZZA';
+    t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + ESCPOS.CENTER + headerTitle + '\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    t += ESCPOS.LEFT;
+    const subheaderText = ticketSettings.kitchenTemplate.subheader || '';
+    if (subheaderText) {
+        subheaderText.split('\n').forEach(line => {
             t += line.trim() + '\n';
         });
-        t += ESCPOS.BOLD_OFF + ESCPOS.LEFT + '\n';
-        t += DASH_LINE;
-    } else {
-        t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Twin Pizza' + ESCPOS.BOLD_OFF + ESCPOS.LEFT + '\n';
+    }
+    t += DASH_LINE;
+
+    // 2. ORDER NUMBER + TYPE (BIG)
+    if (ticketSettings.kitchenTemplate.showOrderNumber) {
+        t += ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+        t += '#' + order.order_number + '\n';
+        t += typeLabel + '\n';
+        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+        t += ESCPOS.CENTER + DASH_LINE;
+    }
+
+    // 3. SCHEDULED TIME
+    t += ESCPOS.LEFT;
+    if (ticketSettings.kitchenTemplate.showScheduledTime && order.is_scheduled && order.scheduled_for) {
+        const sd = new Date(order.scheduled_for);
+        t += ESCPOS.BOLD_ON + 'PROGRAMME: ' + sd.toLocaleString('fr-FR', {
+            weekday: 'short', day: 'numeric', month: 'short',
+            hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris'
+        }) + ESCPOS.BOLD_OFF + '\n' + DASH_LINE;
+    }
+
+    // 4. DATE/TIME + SOURCE
+    let hasDateBlock = false;
+    if (ticketSettings.kitchenTemplate.showDateTime) {
+        const orderDate = new Date(order.created_at);
+        t += 'Date: ' + orderDate.toLocaleString('fr-FR', {
+            dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
+        }) + '\n';
+        t += 'Origine: ' + getSourceLabel(order) + '\n';
+        hasDateBlock = true;
+    }
+    if (hasDateBlock) {
         t += DASH_LINE;
     }
 
-    // Articles (reversed — last item printed = top when read)
-    const items = Array.isArray(order.items) ? order.items : [];
+    // 5. CLIENT BLOCK
+    const clientNotes = (order.customer_notes || '').replace(/^\[BORNE\]\s*/i, '').trim();
+    const clientPhone = cleanCustomerPhone(order.customer_phone);
+    const clientName  = cleanCustomerName(order.customer_name);
+    
+    let hasClientBlock = false;
+    if (ticketSettings.kitchenTemplate.showCustomerInfo && clientName) {
+        t += 'Client: ' + clientName + '\n';
+        hasClientBlock = true;
+    }
+    if (ticketSettings.kitchenTemplate.showCustomerPhone && clientPhone) {
+        t += 'Tel: ' + clientPhone + '\n';
+        hasClientBlock = true;
+    }
+    if (ticketSettings.kitchenTemplate.showDeliveryAddress && order.customer_address) {
+        t += 'Adresse: ' + order.customer_address + '\n';
+        hasClientBlock = true;
+    }
+    if (ticketSettings.kitchenTemplate.showCustomerNotes && clientNotes) {
+        t += ESCPOS.BOLD_ON + 'Note: ' + clientNotes + ESCPOS.BOLD_OFF + '\n';
+        hasClientBlock = true;
+    }
+    if (hasClientBlock) {
+        t += DASH_LINE;
+    }
 
-    // Group by category
+    // 6. COLUMN HEADER
+    t += ESCPOS.BOLD_ON + padLine('QTE  ARTICLE', 'P.U.   TOTAL') + ESCPOS.BOLD_OFF + '\n';
+    t += DASH_LINE;
+
+    // 7. ARTICLES LIST (Normal Order)
     const grouped = {};
     items.forEach(ci => {
         const cat = (ci.item?.category || ci.category || 'Articles').toLowerCase();
@@ -346,151 +416,103 @@ function formatKitchenTicket(order) {
         grouped[cat].push(ci);
     });
 
-    const catKeys = Object.keys(grouped).reverse();
+    const catKeys = Object.keys(grouped);
     catKeys.forEach(cat => {
-        const catItems = [...grouped[cat]].reverse();
+        // Category Header (Large and Centered for readability)
+        t += ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + '--- ' + cat.toUpperCase() + ' ---' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + '\n' + ESCPOS.LEFT;
+
+        const catItems = grouped[cat];
         catItems.forEach(ci => {
-            const name = (ci.item?.name || ci.name || 'Produit').toUpperCase();
-            const qty  = ci.quantity || 1;
-            const c    = ci.customization;
+            const name      = ci.item?.name || ci.name || 'Produit';
+            const qty       = ci.quantity || 1;
+            const price     = ci.totalPrice || ci.calculatedPrice || ci.price || 0;
+            const unitPrice = qty > 0 ? price / qty : price;
+            const c         = ci.customization;
 
-            // Customisations (printed first → appear below name)
-            if (c) {
-                const details = [];
-                if (c.size) details.push(`   (${c.size.toUpperCase()})`);
-                if (c.base) details.push(`   ${c.base.toUpperCase()}`);
-                if (c.meats?.length)  c.meats.forEach(m  => details.push(`   . ${m.toUpperCase()}`));
-                if (c.meat)           details.push(`   . ${c.meat.toUpperCase()}`);
-                if (c.sauces?.length) c.sauces.forEach(s => details.push(`   . ${s.toUpperCase()}`));
-                if (c.sauce)          details.push(`   . ${c.sauce.toUpperCase()}`);
-                if (c.garnitures?.length) c.garnitures.forEach(g => details.push(`   . ${g.toUpperCase()}`));
-                if (c.supplements?.length) c.supplements.forEach(s => details.push(`   + ${s.toUpperCase()}`));
-                if (c.removedIngredients?.length) c.removedIngredients.forEach(r =>
-                    details.push(ESCPOS.BOLD_ON + `   SANS ${r.toUpperCase()}` + ESCPOS.BOLD_OFF));
-                if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
-                    const parts  = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
-                    const ml     = { frites: 'FRITE', boisson: 'BOISSON', supp_frites: 'SUPP FRITES', menu: 'MENU COMPLET' };
-                    const labels = parts.map(p => ml[p] || p.toUpperCase());
-                    if (labels.length) details.push(`   ${labels.join(' + ')}`);
-                } else if (c.menuOption === 'none' || c.menuOption === '') {
-                    const cat2 = (ci.item?.category || ci.category || '').toLowerCase();
-                    if (cat2 === 'panini' || name.includes('SANDWICH') || name.includes('PANINI'))
-                        details.push('   SANS FRITE');
-                }
-                if (c.drink) details.push(`   ${c.drink.toUpperCase()}`);
-                if (c.note)  details.push(ESCPOS.BOLD_ON + `   *** ${c.note} ***` + ESCPOS.BOLD_OFF);
-
-                details.reverse().forEach(d => { t += d + '\n'; });
+            // Remove duplicated "PIZZA" word in name if category is pizza
+            let cleanedName = name.toUpperCase();
+            if (cat === 'pizza' || cat === 'pizzas' || cleanedName.startsWith('PIZZA ')) {
+                cleanedName = cleanedName.replace(/^PIZZA\s+/i, '');
             }
 
-            // Item name (printed last → appears at top)
-            t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
-            t += `${qty}x  ${name}\n`;
-            t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+            // Main product line: Qty x Product Name on the left, total price on the right (with bullet point prefix)
+            const leftPart = '• ' + qty + 'x ' + cleanedName;
+            const rightPart = price.toFixed(2) + 'E';
+            t += ESCPOS.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS.BOLD_OFF + '\n';
+
+            // Indented customizations (using Font B for size and Font A for supplements/notes)
+            if (c) {
+                // Size customization in Font B (smaller)
+                if (c.size) {
+                    t += FONT_B + '   - ' + c.size.toUpperCase() + '\n' + FONT_A;
+                }
+
+                // Other options in Font A (standard size, bigger)
+                const otherDetails = [];
+                if (c.meats?.length)  otherDetails.push(...c.meats.map(m => '+ ' + m));
+                if (c.meat)           otherDetails.push('+ ' + c.meat);
+                if (c.sauces?.length) otherDetails.push(...c.sauces.map(s => 'Sauce: ' + s));
+                if (c.sauce)          otherDetails.push('Sauce: ' + c.sauce);
+                if (c.garnitures?.length) otherDetails.push(...c.garnitures);
+                if (c.supplements?.length) otherDetails.push(...c.supplements.map(s => '+ ' + s));
+                if (c.removedIngredients?.length) otherDetails.push(...c.removedIngredients.map(r => 'Sans ' + r));
+                if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
+                    const parts  = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
+                    const ml     = { frites: 'Frite', boisson: 'Boisson', supp_frites: 'Supp Frites', menu: 'Menu complet' };
+                    const labels = parts.map(p => ml[p] || p);
+                    if (labels.length) otherDetails.push(labels.join(' + '));
+                } else if (c.menuOption === 'none' || c.menuOption === '') {
+                    const cat2 = (ci.item?.category || ci.category || '').toLowerCase();
+                    if (cat2 === 'panini' || name.toUpperCase().includes('SANDWICH') || name.toUpperCase().includes('PANINI'))
+                        otherDetails.push('Sans frite');
+                }
+                if (c.drink) otherDetails.push('Boisson: ' + c.drink);
+
+                otherDetails.forEach(d => {
+                    t += '   - ' + d + '\n';
+                });
+
+                // Customer note in Font A and BOLD
+                if (c.note) {
+                    t += ESCPOS.BOLD_ON + '   - Note: ' + c.note + ESCPOS.BOLD_OFF + '\n';
+                }
+            }
         });
-
-        // Category label (appears above group items)
-        t += ESCPOS.BOLD_ON + cat.toUpperCase() + ESCPOS.BOLD_OFF + '\n';
-        t += DASH_LINE;
     });
-
-    // Notes
-    if (ticketSettings.kitchenTemplate.showCustomerNotes && order.customer_notes) {
-        const note = order.customer_notes.replace(/^\[BORNE\]\s*/i, '').trim();
-        if (note) {
-            t += ESCPOS.BOLD_ON + '*** NOTE: ' + note + ' ***' + ESCPOS.BOLD_OFF + '\n';
-            t += DASH_LINE;
-        }
-    }
-
-    // Client info (livraison only)
-    if (order.order_type === 'livraison') {
-        const phone = cleanCustomerPhone(order.customer_phone);
-        let hasClientInfo = false;
-        if (ticketSettings.kitchenTemplate.showDeliveryAddress && order.customer_address) {
-            t += 'Adresse: ' + order.customer_address + '\n';
-            hasClientInfo = true;
-        }
-        if (ticketSettings.kitchenTemplate.showCustomerPhone && phone) {
-            t += 'Tel: ' + phone + '\n';
-            hasClientInfo = true;
-        }
-        if (ticketSettings.kitchenTemplate.showCustomerInfo) {
-            t += ESCPOS.BOLD_ON + 'Client: ' + cleanCustomerName(order.customer_name) + ESCPOS.BOLD_OFF + '\n';
-            hasClientInfo = true;
-        }
-        if (hasClientInfo) {
-            t += DASH_LINE;
-        }
-    }
-
-    // ════ HAUT DU TICKET (printed last = top when read) ════
-
-    // Scheduled
-    if (ticketSettings.kitchenTemplate.showScheduledTime && order.is_scheduled && order.scheduled_for) {
-        const sd = new Date(order.scheduled_for);
-        t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
-        t += 'PROGRAMME: ' + sd.toLocaleString('fr-FR', {
-            weekday: 'short', day: 'numeric', month: 'short',
-            hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris'
-        }) + '\n';
-        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + DASH_LINE;
-    }
-
-    // Date + source
-    if (ticketSettings.kitchenTemplate.showDateTime) {
-        const orderDate = new Date(order.created_at);
-        t += 'Date et heure : ' + orderDate.toLocaleString('fr-FR', {
-            dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
-        }) + '\n';
-        t += ESCPOS.BOLD_ON + getSourceLabel(order) + ESCPOS.BOLD_OFF + '\n';
-    }
-
-    // Client name, phone number, and total price always on header
-    let hasHeaderBlock = false;
-    const clientName = cleanCustomerName(order.customer_name);
-    if (ticketSettings.kitchenTemplate.showCustomerInfo && clientName) {
-        t += 'Client : ' + clientName + '\n';
-        hasHeaderBlock = true;
-    }
-
-    const clientPhone = cleanCustomerPhone(order.customer_phone);
-    if (ticketSettings.kitchenTemplate.showCustomerPhone && clientPhone) {
-        t += 'Tel    : ' + clientPhone + '\n';
-        hasHeaderBlock = true;
-    }
-
-    if (ticketSettings.kitchenTemplate.showTotal) {
-        const totalPrice = order.total || 0;
-        t += 'Prix   : ' + totalPrice.toFixed(2) + ' E\n';
-        hasHeaderBlock = true;
-    }
-    if (hasHeaderBlock || ticketSettings.kitchenTemplate.showDateTime) {
-        t += DASH_LINE;
-    }
-
-    // Order number + type — big and bold
-    if (ticketSettings.kitchenTemplate.showOrderNumber) {
-        const typeLabels = { livraison: 'LIVRAISON', emporter: 'A EMPORTER', surplace: 'SUR PLACE' };
-        const typeLabel  = typeLabels[order.order_type] || (order.order_type || '').toUpperCase();
-        t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
-        t += padLine('CUISINE  #' + order.order_number, typeLabel, 24) + '\n';
-        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
-        t += DASH_LINE;
-    }
-
-    // Title of Twin Pizza on top
-    t += ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE;
-    t += (ticketSettings.kitchenTemplate.header || 'TWIN PIZZA') + '\n';
-    if (ticketSettings.kitchenTemplate.subheader) {
-        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + ticketSettings.kitchenTemplate.subheader + '\n';
-    } else {
-        t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
-    }
-    t += ESCPOS.LEFT;
     t += DASH_LINE;
 
-    t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
+    // 8. TOTALS
+    t += ESCPOS.LEFT;
+    if (deliveryFee > 0) {
+        t += padLine('Livraison:', deliveryFee.toFixed(2) + 'E') + '\n';
+    }
+    t += padLine('TVA ' + TVA_RATE + '%:', tvaAmount.toFixed(2) + 'E') + '\n';
+    
+    // Final price in bold & double size
+    t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE;
+    t += padLine('TOTAL:', totalTTC.toFixed(2) + 'E', 24) + '\n';
+    t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    t += DASH_LINE;
+
+    // 9. PAYMENT
+    t += ESCPOS.LEFT;
+    t += 'Reglement: ' + (payLabels[order.payment_method] || order.payment_method || '').toUpperCase() + '\n';
+    t += DASH_LINE;
+
+    // 14. FOOTER MESSAGE
+    t += ESCPOS.CENTER;
+    if (ticketSettings.kitchenTemplate.footer) {
+        ticketSettings.kitchenTemplate.footer.split('\n').forEach(line => {
+            t += line.trim() + '\n';
+        });
+    } else {
+        t += 'Twin Pizza\n';
+    }
+
+    t += ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
+
+    return convertToCP1252(t);
+}
     return convertToCP1252(t);
 }
 
@@ -554,7 +576,7 @@ function formatCounterTicket(order, loyaltyText) {
 
     // 1. RESTAURANT HEADER (Title Centered, Subheader Left-aligned)
     const headerTitle = ticketSettings.counterTemplate.header || 'TWIN PIZZA';
-    t += ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + headerTitle + '\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + ESCPOS.CENTER + headerTitle + '\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
     t += ESCPOS.LEFT;
     const subheaderText = ticketSettings.counterTemplate.subheader || '60 Rue Georges Clemenceau, 76530 Grand-Couronne\n02 32 11 26 13';
     subheaderText.split('\n').forEach(line => {
