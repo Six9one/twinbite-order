@@ -100,6 +100,17 @@ export function applyPizzaPromotions(
     return customization?.isMenuMidi !== true;
   });
 
+  // Separate weekend promo pizzas
+  const weekendPromoPizzas = regularPizzas.filter(item => {
+    const customization = item.customization as PizzaCustomization;
+    return customization?.promoApplied === 'weekend_promo';
+  });
+
+  const standardRegularPizzas = regularPizzas.filter(item => {
+    const customization = item.customization as PizzaCustomization;
+    return customization?.promoApplied !== 'weekend_promo';
+  });
+
   // Calculate Menu Midi total (NO promotions, fixed price)
   let menuMidiTotal = 0;
   menuMidiPizzas.forEach(item => {
@@ -110,7 +121,7 @@ export function applyPizzaPromotions(
     }
   });
 
-  // Calculate supplements total for REGULAR pizzas only (never discounted)
+  // Calculate supplements total for ALL regular pizzas (never discounted)
   let supplementsTotal = 0;
   regularPizzas.forEach(item => {
     const customization = item.customization as PizzaCustomization;
@@ -119,12 +130,19 @@ export function applyPizzaPromotions(
     }
   });
 
-  // Group REGULAR pizzas by size (for base price calculation only)
-  const seniorPizzas = regularPizzas.filter(item => {
+  // Calculate weekend promotion price (2 senior pizzas for 16€, i.e. 8€ each in pairs)
+  const weekendCount = weekendPromoPizzas.reduce((sum, item) => sum + item.quantity, 0);
+  const weekendPairs = Math.floor(weekendCount / 2);
+  const weekendOdd = weekendCount % 2;
+  const weekendDiscountedBaseTotal = (weekendPairs * 16) + (weekendOdd * pizzaPrices.senior);
+  const weekendOriginalBaseTotal = weekendCount * pizzaPrices.senior;
+
+  // Group STANDARD regular pizzas by size (for base price calculation only)
+  const seniorPizzas = standardRegularPizzas.filter(item => {
     const customization = item.customization as PizzaCustomization;
     return customization?.size === 'senior';
   });
-  const megaPizzas = regularPizzas.filter(item => {
+  const megaPizzas = standardRegularPizzas.filter(item => {
     const customization = item.customization as PizzaCustomization;
     return customization?.size === 'mega';
   });
@@ -132,9 +150,9 @@ export function applyPizzaPromotions(
   const seniorCount = seniorPizzas.reduce((sum, item) => sum + item.quantity, 0);
   const megaCount = megaPizzas.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Calculate original total for REGULAR pizzas (base prices only, without supplements)
+  // Calculate original total for STANDARD regular pizzas (base prices only, without supplements)
   let originalBaseTotal = 0;
-  regularPizzas.forEach(item => {
+  standardRegularPizzas.forEach(item => {
     const customization = item.customization as PizzaCustomization;
     if (customization) {
       originalBaseTotal += getBasePizzaPrice(customization) * item.quantity;
@@ -202,11 +220,32 @@ export function applyPizzaPromotions(
     discountedBaseTotal = originalBaseTotal;
   }
 
+  // Combine standard and weekend promo totals
+  const totalOriginalBase = originalBaseTotal + weekendOriginalBaseTotal;
+  const totalDiscountedBase = discountedBaseTotal + weekendDiscountedBaseTotal;
+
+  // Set description for weekend promo
+  let weekendPromoDesc = '';
+  if (weekendCount >= 2) {
+    weekendPromoDesc = `Offre Week-end: ${weekendPairs * 2} pizzas pour ${weekendPairs * 16}€`;
+    if (weekendOdd > 0) {
+      weekendPromoDesc += ` (+1 pizza à ajouter pour l'offre)`;
+    }
+  } else if (weekendCount === 1) {
+    weekendPromoDesc = `Ajoutez une 2ème pizza pour l'offre 2 pour 16€ !`;
+  }
+
+  if (weekendPromoDesc) {
+    promoDescription = promoDescription 
+      ? `${promoDescription} | ${weekendPromoDesc}` 
+      : weekendPromoDesc;
+  }
+
   // Final totals: 
   // - Menu Midi: fixed price (no discount)
-  // - Regular: base + supplements (supplements never discounted)
-  const originalTotal = menuMidiTotal + originalBaseTotal + supplementsTotal;
-  const discountedTotal = menuMidiTotal + discountedBaseTotal + supplementsTotal;
+  // - Regular (Standard & Weekend Promo): base + supplements (supplements never discounted)
+  const originalTotal = menuMidiTotal + totalOriginalBase + supplementsTotal;
+  const discountedTotal = menuMidiTotal + totalDiscountedBase + supplementsTotal;
 
   return { originalTotal, discountedTotal, promoDescription, freePizzas, supplementsTotal };
 }

@@ -6,8 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { runAutoReleve } from "@/lib/kitchenAutoReleve";
 
-// Contexts
 import { LanguageProvider } from "@/context/LanguageContext";
+import { OrderProvider } from "@/context/OrderContext";
 
 // PWA Components
 import { PWAInstallPrompt, OfflineIndicator } from "@/components/PWAComponents";
@@ -31,6 +31,7 @@ import SpinWheel from "./pages/SpinWheel";
 import SpinPage from "./pages/SpinPage";
 import KioskPage from "./pages/KioskPage";
 import POSPage from "./pages/POSPage";
+import PromoWeekend from "./pages/PromoWeekend";
 
 // Components
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -83,6 +84,8 @@ const App = () => {
                                     <Route path="/spin" element={<SpinPage />} />
                                     <Route path="/kiosk" element={<KioskPage />} />
                                     <Route path="/pos" element={<POSPage />} />
+                                    <Route path="/promo-weekend" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
+                                    <Route path="/promo" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
                                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                                     <Route path="*" element={<NotFound />} />
                                 </Routes>
