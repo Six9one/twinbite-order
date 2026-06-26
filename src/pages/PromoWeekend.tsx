@@ -27,7 +27,6 @@ import {
   MapPin,
   X,
   ChevronUp,
-  MessageSquare,
   PartyPopper
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -57,7 +56,7 @@ export default function PromoWeekend() {
   const [activeBase, setActiveBase] = useState<'tomate' | 'creme'>('tomate');
   const [selectedPizzas, setSelectedPizzas] = useState<PizzaInCart[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
-  const [noteOpenIndex, setNoteOpenIndex] = useState<number | null>(null);
+
 
   // Database pizza queries
   const { data: dbPizzasTomate } = usePizzasByBase('tomate');
@@ -124,7 +123,7 @@ export default function PromoWeekend() {
   // ─── Remove pizza ───
   const handleRemovePizza = (index: number) => {
     setSelectedPizzas(prev => prev.filter((_, i) => i !== index));
-    if (noteOpenIndex === index) setNoteOpenIndex(null);
+
   };
 
   // ─── Update note for a pizza ───
@@ -735,40 +734,25 @@ export default function PromoWeekend() {
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {/* Note toggle */}
-                          <button
-                            onClick={() => setNoteOpenIndex(noteOpenIndex === i ? null : i)}
-                            className={`p-2 rounded-lg transition-colors ${
-                              p.note ? 'text-amber-400 bg-amber-500/10' : 'text-stone-500 hover:text-stone-300 hover:bg-stone-800'
-                            }`}
-                            title="Ajouter une note"
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                          </button>
-                          {/* Remove */}
-                          <button
-                            onClick={() => handleRemovePizza(i)}
-                            className="p-2 rounded-lg text-stone-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {/* Remove */}
+                        <button
+                          onClick={() => handleRemovePizza(i)}
+                          className="p-2 rounded-lg text-stone-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                       
-                      {/* Note field */}
-                      {noteOpenIndex === i && (
-                        <div className="px-3 pb-3 pt-0">
-                          <input
-                            type="text"
-                            placeholder="Ex: Sans oignons, bien cuite..."
-                            value={p.note}
-                            onChange={(e) => handleUpdateNote(i, e.target.value)}
-                            className="w-full bg-stone-900 border border-stone-800 rounded-lg px-3 py-2 text-xs text-white placeholder:text-stone-600 focus:outline-none focus:border-amber-500"
-                            autoFocus
-                          />
-                        </div>
-                      )}
+                      {/* Note field — always visible */}
+                      <div className="px-3 pb-3 pt-0">
+                        <input
+                          type="text"
+                          placeholder="📝 Note: sans oignons, bien cuite..."
+                          value={p.note}
+                          onChange={(e) => handleUpdateNote(i, e.target.value)}
+                          className="w-full bg-stone-900 border border-stone-800 rounded-lg px-3 py-2 text-xs text-white placeholder:text-stone-600 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
                     </div>
                   );
                 })}
