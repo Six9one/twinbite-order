@@ -552,15 +552,15 @@ function formatCounterTicket(order, loyaltyText) {
     let t = '';
     t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
 
-    // 1. RESTAURANT HEADER (Centred)
-    t += ESCPOS.CENTER;
+    // 1. RESTAURANT HEADER (Title Centered, Subheader Left-aligned)
     const headerTitle = ticketSettings.counterTemplate.header || 'TWIN PIZZA';
-    t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + headerTitle + '\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    t += ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + headerTitle + '\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    t += ESCPOS.LEFT;
     const subheaderText = ticketSettings.counterTemplate.subheader || '60 Rue Georges Clemenceau, 76530 Grand-Couronne\n02 32 11 26 13';
     subheaderText.split('\n').forEach(line => {
-        t += ESCPOS.CENTER + line.trim() + '\n';
+        t += line.trim() + '\n';
     });
-    t += ESCPOS.CENTER + DASH_LINE;
+    t += DASH_LINE;
 
     // 2. ORDER NUMBER + TYPE (BIG)
     if (ticketSettings.counterTemplate.showOrderNumber) {
