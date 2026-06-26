@@ -500,13 +500,13 @@ function getQRCodeString(url) {
     const pH = String.fromCharCode((len >> 8) & 0xFF);
 
     return (
-        '\n\x1B' + 'a' + '\x01' + // center
+        '\x1B' + 'a' + '1' + // center (ASCII '1')
         '\x1B\x1D\x79\x53\x30\x02' + // Set Model 2
         '\x1B\x1D\x79\x53\x31\x00' + // Set Error Correction Level L
         '\x1B\x1D\x79\x53\x32\x05' + // Set Cell Size 5 (larger)
         '\x1B\x1D\x79\x44\x31\x00' + pL + pH + url + // Set Data (Auto setting)
         '\x1B\x1D\x79\x50' + // Print QR Code
-        '\n\x1B' + 'a' + '\x00' // reset left
+        '\x1B' + 'a' + '0' // reset left (ASCII '0')
     );
 }
 
@@ -519,9 +519,9 @@ function formatCounterTicket(order, loyaltyText) {
     const ESCPOS = {
         INIT: ESC + '@',
         SET_CODEPAGE_1252: ESC + 't' + '\x10',
-        CENTER: ESC + 'a' + '\x01',
-        LEFT: ESC + 'a' + '\x00',
-        RIGHT: ESC + 'a' + '\x02',
+        CENTER: ESC + 'a' + '1',
+        LEFT: ESC + 'a' + '0',
+        RIGHT: ESC + 'a' + '2',
         BOLD_ON: ESC + 'E' + '\x01',
         BOLD_OFF: ESC + 'E' + '\x00',
         DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
@@ -553,7 +553,7 @@ function formatCounterTicket(order, loyaltyText) {
     t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
 
     // 1. RESTAURANT HEADER (Centred)
-    t += '\n' + ESCPOS.CENTER;
+    t += ESCPOS.CENTER;
     const headerTitle = ticketSettings.counterTemplate.header || 'TWIN PIZZA';
     t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + headerTitle + '\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
     const subheaderText = ticketSettings.counterTemplate.subheader || '60 Rue Georges Clemenceau, 76530 Grand-Couronne\n02 32 11 26 13';
@@ -564,7 +564,7 @@ function formatCounterTicket(order, loyaltyText) {
 
     // 2. ORDER NUMBER + TYPE (BIG)
     if (ticketSettings.counterTemplate.showOrderNumber) {
-        t += '\n' + ESCPOS.CENTER;
+        t += ESCPOS.CENTER;
         t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
         t += '#' + order.order_number + '\n';
         t += ESCPOS.CENTER + typeLabel + '\n';
@@ -636,8 +636,8 @@ function formatCounterTicket(order, loyaltyText) {
 
     const catKeys = Object.keys(grouped); // Normal order (not reversed)
     catKeys.forEach(cat => {
-        // Category Header
-        t += ESCPOS.BOLD_ON + '--- ' + cat.toUpperCase() + ' ---' + ESCPOS.BOLD_OFF + '\n';
+        // Category Header (Large and Centered for readability)
+        t += ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + '--- ' + cat.toUpperCase() + ' ---' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + '\n' + ESCPOS.LEFT;
 
         const catItems = grouped[cat]; // Normal order (not reversed)
         catItems.forEach(ci => {
@@ -658,39 +658,46 @@ function formatCounterTicket(order, loyaltyText) {
             const rightPart = price.toFixed(2) + 'E';
             t += ESCPOS.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS.BOLD_OFF + '\n';
 
-            // Indented customizations (using Font B for size and ingredients to make them a bit smaller)
+            // Indented customizations (using Font A for supplements/notes to make them bigger, note bolded)
             if (c) {
-                const details = [];
-                if (c.size) details.push(c.size.toUpperCase());
-                if (c.meats?.length)  details.push(...c.meats.map(m => '+ ' + m));
-                if (c.meat)           details.push('+ ' + c.meat);
-                if (c.sauces?.length) details.push(...c.sauces.map(s => 'Sauce: ' + s));
-                if (c.sauce)          details.push('Sauce: ' + c.sauce);
-                if (c.garnitures?.length) details.push(...c.garnitures);
-                if (c.supplements?.length) details.push(...c.supplements.map(s => '+ ' + s));
-                if (c.removedIngredients?.length) details.push(...c.removedIngredients.map(r => 'Sans ' + r));
+                // Size customization in Font B (smaller)
+                if (c.size) {
+                    t += ESCPOS.FONT_B + '   - ' + c.size.toUpperCase() + '\n' + ESCPOS.FONT_A;
+                }
+
+                // Other options in Font A (standard size, bigger)
+                const otherDetails = [];
+                if (c.meats?.length)  otherDetails.push(...c.meats.map(m => '+ ' + m));
+                if (c.meat)           otherDetails.push('+ ' + c.meat);
+                if (c.sauces?.length) otherDetails.push(...c.sauces.map(s => 'Sauce: ' + s));
+                if (c.sauce)          otherDetails.push('Sauce: ' + c.sauce);
+                if (c.garnitures?.length) otherDetails.push(...c.garnitures);
+                if (c.supplements?.length) otherDetails.push(...c.supplements.map(s => '+ ' + s));
+                if (c.removedIngredients?.length) otherDetails.push(...c.removedIngredients.map(r => 'Sans ' + r));
                 if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
                     const parts  = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
                     const ml2    = { frites: 'Frite', boisson: 'Boisson', supp_frites: 'Supp Frites', menu: 'Menu complet' };
                     const labels = parts.map(p => ml2[p] || p);
-                    if (labels.length) details.push(labels.join(' + '));
+                    if (labels.length) otherDetails.push(labels.join(' + '));
                 } else if (c.menuOption === 'none' || c.menuOption === '') {
                     const cat2 = (ci.item?.category || ci.category || '').toLowerCase();
                     if (cat2 === 'panini' || name.toUpperCase().includes('SANDWICH') || name.toUpperCase().includes('PANINI'))
-                        details.push('Sans frite');
+                        otherDetails.push('Sans frite');
                 }
-                if (c.drink) details.push('Boisson: ' + c.drink);
-                if (c.note)  details.push('Note: ' + c.note);
+                if (c.drink) otherDetails.push('Boisson: ' + c.drink);
 
-                t += ESCPOS.FONT_B; // switch to smaller font B
-                details.forEach(d => {
+                otherDetails.forEach(d => {
                     t += '   - ' + d + '\n';
                 });
-                t += ESCPOS.FONT_A; // restore standard font A
+
+                // Customer note in Font A and BOLD for maximum visibility
+                if (c.note) {
+                    t += ESCPOS.BOLD_ON + '   - Note: ' + c.note + ESCPOS.BOLD_OFF + '\n';
+                }
             }
         });
-        t += DASH_LINE;
     });
+    t += DASH_LINE;
 
     // 8. TOTALS
     t += ESCPOS.LEFT;
@@ -729,12 +736,12 @@ function formatCounterTicket(order, loyaltyText) {
     // 12. SIRET / LEGAL FOOTER - removed by default for standard ticket
 
     // 13. GOOGLE REVIEW QR CODE (Centered)
-    t += '\n' + ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS.BOLD_OFF;
+    t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS.BOLD_OFF;
     t += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr') + '\n';
     t += ESCPOS.CENTER + DASH_LINE;
 
     // 14. FOOTER MESSAGE
-    t += '\n' + ESCPOS.CENTER;
+    t += ESCPOS.CENTER;
     if (ticketSettings.counterTemplate.footer) {
         ticketSettings.counterTemplate.footer.split('\n').forEach(line => {
             t += ESCPOS.CENTER + line.trim() + '\n';
@@ -744,7 +751,7 @@ function formatCounterTicket(order, loyaltyText) {
         t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'THANK YOU!\n' + ESCPOS.BOLD_OFF;
     }
 
-    t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
+    t += ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
     // Star TSP100 USB printer does not support GS v 0 logo raw bytes (prints garbage '('), so we skip it
     return convertToCP1252(t);
