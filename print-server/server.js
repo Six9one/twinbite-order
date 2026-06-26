@@ -409,9 +409,15 @@ function formatKitchenTicket(order) {
     }) + '\n';
     t += ESCPOS.BOLD_ON + getSourceLabel(order) + ESCPOS.BOLD_OFF + '\n';
 
-    // Client name always on header
+    // Client name, phone number, and total price always on header
     const clientName = cleanCustomerName(order.customer_name);
     if (clientName) t += 'Client : ' + clientName + '\n';
+
+    const clientPhone = cleanCustomerPhone(order.customer_phone);
+    if (clientPhone) t += 'Tel    : ' + clientPhone + '\n';
+
+    const totalPrice = order.total || 0;
+    t += 'Prix   : ' + totalPrice.toFixed(2) + ' E\n';
     t += DASH_LINE;
 
     // Order number + type — big and bold
@@ -420,6 +426,10 @@ function formatKitchenTicket(order) {
     t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
     t += padLine('CUISINE  #' + order.order_number, typeLabel, 24) + '\n';
     t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+    t += DASH_LINE;
+
+    // Title of Twin Pizza on top
+    t += ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + 'TWIN PIZZA\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF + ESCPOS.LEFT;
     t += DASH_LINE;
 
     t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;

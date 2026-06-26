@@ -134,7 +134,15 @@ function formatOrderForPrint(order: OrderData, ticketSettings: any): string {
     ticket += ESCPOS.BOLD_ON;
     ticket += 'Client: ' + order.customer_name + '\n';
     ticket += ESCPOS.BOLD_OFF;
-    ticket += 'Tél: ' + (order.customer_phone || '') + '\n';
+    const cleanPhone = (phone: string) => {
+        const p = (phone || '').toLowerCase().trim();
+        if (p === 'pos' || p === 'borne') return '';
+        return phone || '';
+    };
+    const displayPhone = cleanPhone(order.customer_phone);
+    if (displayPhone) {
+        ticket += 'Tél: ' + displayPhone + '\n';
+    }
 
     if (order.customer_address) {
         ticket += 'Adresse: ' + order.customer_address + '\n';
