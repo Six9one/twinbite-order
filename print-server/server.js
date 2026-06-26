@@ -314,7 +314,30 @@ function getLogoBytesForTicket() {
 // KITCHEN TICKET — Cuisine (Ethernet printer)
 // No prices — big text — quick to read
 // ============================================
-function formatKitchenTicket(order) {
+function formatKitchenTicket(order, loyaltyText) {
+    // Star Line Mode formatting overrides for Star SP700 Ethernet printer
+    const ESCPOS = {
+        INIT: ESC + '@',
+        SET_CODEPAGE_1252: ESC + 't' + '\x10',
+        CENTER: ESC + '\x1D' + 'a' + '1', // Star Line Mode Center (ESC GS a 1)
+        LEFT: ESC + '\x1D' + 'a' + '0',   // Star Line Mode Left (ESC GS a 0)
+        RIGHT: ESC + '\x1D' + 'a' + '2',  // Star Line Mode Right (ESC GS a 2)
+        BOLD_ON: ESC + 'E' + '\x01',
+        BOLD_OFF: ESC + 'E' + '\x00',
+        DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
+        DOUBLE_WIDTH: ESC + 'i' + '\x01' + '\x00',
+        DOUBLE_SIZE: ESC + 'i' + '\x01' + '\x01',
+        NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
+        UNDERLINE_ON: ESC + '-' + '\x01',
+        UNDERLINE_OFF: ESC + '-' + '\x00',
+        PARTIAL_CUT: ESC + 'd' + '\x03',  // Feed and partial cut (ESC d 3)
+        FEED: '',                        // Empty because PARTIAL_CUT feeds automatically
+        UPSIDE_ON:  '\x0F',              // Star Mode Select Upside-down
+        UPSIDE_OFF: '\x12',              // Star Mode Cancel Upside-down
+        FONT_A: ESC + '\x1E' + 'F' + '\x00', // Standard Font A
+        FONT_B: ESC + '\x1E' + 'F' + '\x01', // Smaller Font B
+    };
+
     const TVA_RATE   = 10;
     const totalTTC   = order.total || 0;
     const deliveryFee = order.delivery_fee || 0;
@@ -326,37 +349,32 @@ function formatKitchenTicket(order) {
     const payLabels  = { 'en_ligne': 'CB', 'cb': 'CB', 'especes': 'Cash' };
     const typeLabel  = typeLabels[order.order_type] || (order.order_type || '').toUpperCase();
 
-    // Standard ESC/POS Font commands
-    const FONT_A = ESC + 'M' + '\x00';
-    const FONT_B = ESC + 'M' + '\x01';
-
     let t = '';
     t += ESCPOS.INIT + ESCPOS.UPSIDE_ON + ESCPOS.SET_CODEPAGE_1252;
 
     // 1. RESTAURANT HEADER (Title Centered, Subheader Left-aligned)
-    const headerTitle = ticketSettings.kitchenTemplate.header || 'TWIN PIZZA';
+    const headerTitle = ticketSettings.counterTemplate.header || 'TWIN PIZZA';
     t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + ESCPOS.CENTER + headerTitle + '\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
     t += ESCPOS.LEFT;
-    const subheaderText = ticketSettings.kitchenTemplate.subheader || '';
-    if (subheaderText) {
-        subheaderText.split('\n').forEach(line => {
-            t += line.trim() + '\n';
-        });
-    }
+    const subheaderText = ticketSettings.counterTemplate.subheader || '60 Rue Georges Clemenceau, 76530 Grand-Couronne\n02 32 11 26 13';
+    subheaderText.split('\n').forEach(line => {
+        t += line.trim() + '\n';
+    });
     t += DASH_LINE;
 
     // 2. ORDER NUMBER + TYPE (BIG)
-    if (ticketSettings.kitchenTemplate.showOrderNumber) {
-        t += ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
+    if (ticketSettings.counterTemplate.showOrderNumber) {
+        t += ESCPOS.CENTER;
+        t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT;
         t += '#' + order.order_number + '\n';
-        t += typeLabel + '\n';
+        t += ESCPOS.CENTER + typeLabel + '\n';
         t += ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
         t += ESCPOS.CENTER + DASH_LINE;
     }
 
     // 3. SCHEDULED TIME
     t += ESCPOS.LEFT;
-    if (ticketSettings.kitchenTemplate.showScheduledTime && order.is_scheduled && order.scheduled_for) {
+    if (ticketSettings.counterTemplate.showScheduledTime && order.is_scheduled && order.scheduled_for) {
         const sd = new Date(order.scheduled_for);
         t += ESCPOS.BOLD_ON + 'PROGRAMME: ' + sd.toLocaleString('fr-FR', {
             weekday: 'short', day: 'numeric', month: 'short',
@@ -366,7 +384,7 @@ function formatKitchenTicket(order) {
 
     // 4. DATE/TIME + SOURCE
     let hasDateBlock = false;
-    if (ticketSettings.kitchenTemplate.showDateTime) {
+    if (ticketSettings.counterTemplate.showDateTime) {
         const orderDate = new Date(order.created_at);
         t += 'Date: ' + orderDate.toLocaleString('fr-FR', {
             dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
@@ -384,19 +402,19 @@ function formatKitchenTicket(order) {
     const clientName  = cleanCustomerName(order.customer_name);
     
     let hasClientBlock = false;
-    if (ticketSettings.kitchenTemplate.showCustomerInfo && clientName) {
+    if (ticketSettings.counterTemplate.showCustomerInfo && clientName) {
         t += 'Client: ' + clientName + '\n';
         hasClientBlock = true;
     }
-    if (ticketSettings.kitchenTemplate.showCustomerPhone && clientPhone) {
+    if (ticketSettings.counterTemplate.showCustomerPhone && clientPhone) {
         t += 'Tel: ' + clientPhone + '\n';
         hasClientBlock = true;
     }
-    if (ticketSettings.kitchenTemplate.showDeliveryAddress && order.customer_address) {
+    if (ticketSettings.counterTemplate.showDeliveryAddress && order.customer_address) {
         t += 'Adresse: ' + order.customer_address + '\n';
         hasClientBlock = true;
     }
-    if (ticketSettings.kitchenTemplate.showCustomerNotes && clientNotes) {
+    if (ticketSettings.counterTemplate.showCustomerNotes && clientNotes) {
         t += ESCPOS.BOLD_ON + 'Note: ' + clientNotes + ESCPOS.BOLD_OFF + '\n';
         hasClientBlock = true;
     }
@@ -440,11 +458,11 @@ function formatKitchenTicket(order) {
             const rightPart = price.toFixed(2) + 'E';
             t += ESCPOS.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS.BOLD_OFF + '\n';
 
-            // Indented customizations (using Font B for size and Font A for supplements/notes)
+            // Indented customizations (using Font A for supplements/notes to make them bigger, note bolded)
             if (c) {
                 // Size customization in Font B (smaller)
                 if (c.size) {
-                    t += FONT_B + '   - ' + c.size.toUpperCase() + '\n' + FONT_A;
+                    t += ESCPOS.FONT_B + '   - ' + c.size.toUpperCase() + '\n' + ESCPOS.FONT_A;
                 }
 
                 // Other options in Font A (standard size, bigger)
@@ -499,20 +517,40 @@ function formatKitchenTicket(order) {
     t += 'Reglement: ' + (payLabels[order.payment_method] || order.payment_method || '').toUpperCase() + '\n';
     t += DASH_LINE;
 
+    // 10. PIZZA RESERVE / CREDITS
+    const creditsSaved     = order.pizza_credits_saved || 0;
+    const creditsRemaining = order.pizza_credits_remaining || 0;
+    if (creditsSaved > 0 || creditsRemaining > 0) {
+        t += ESCPOS.CENTER + ESCPOS.BOLD_ON + '*** PIZZAS EN RESERVE ***\n' + ESCPOS.BOLD_OFF;
+        if (creditsSaved > 0)    t += `Pizza sauvegardee: ${creditsSaved}\n`;
+        if (creditsRemaining > 0) t += ESCPOS.BOLD_ON + `TOTAL EN RESERVE: ${creditsRemaining}\n` + ESCPOS.BOLD_OFF;
+        t += 'Valable sans limite de temps!\n';
+        t += DASH_LINE;
+    }
+
+    // 11. LOYALTY TEXT
+    if (loyaltyText) {
+        t += loyaltyText + '\n' + DASH_LINE;
+    }
+
+    // 13. GOOGLE REVIEW QR CODE (Centered)
+    t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS.BOLD_OFF;
+    t += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr') + '\n';
+    t += ESCPOS.CENTER + DASH_LINE;
+
     // 14. FOOTER MESSAGE
     t += ESCPOS.CENTER;
-    if (ticketSettings.kitchenTemplate.footer) {
-        ticketSettings.kitchenTemplate.footer.split('\n').forEach(line => {
-            t += line.trim() + '\n';
+    if (ticketSettings.counterTemplate.footer) {
+        ticketSettings.counterTemplate.footer.split('\n').forEach(line => {
+            t += ESCPOS.CENTER + line.trim() + '\n';
         });
     } else {
-        t += 'Twin Pizza\n';
+        t += ESCPOS.CENTER + 'Merci de votre visite !\n';
+        t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'THANK YOU!\n' + ESCPOS.BOLD_OFF;
     }
 
     t += ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
-    return convertToCP1252(t);
-}
     return convertToCP1252(t);
 }
 
@@ -781,7 +819,7 @@ function formatCounterTicket(order, loyaltyText) {
 
 // Legacy wrapper for backward compatibility (HACCP endpoints etc.)
 function formatOrderForPrint(order, isKitchen = false) {
-    return isKitchen ? formatKitchenTicket(order) : formatCounterTicket(order, '');
+    return isKitchen ? formatKitchenTicket(order, '') : formatCounterTicket(order, '');
 }
 
 // ============================================
@@ -912,31 +950,20 @@ function sendToUSBPrinter(data, printerName) {
 async function sendToAllPrinters(ticketData, label) {
     let success = false;
 
-    // 1. Try network printers (all configured IPs, in parallel)
-    if (PRINTER_IPS.length > 0) {
-        console.log(`🖨️  Sending to ${PRINTER_IPS.length} printer(s): ${PRINTER_IPS.join(', ')}`);
-        const results = await Promise.allSettled(
-            PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, label))
-        );
-        success = results.some(r => r.status === 'fulfilled' && r.value === true);
-    }
-
-    // 2. Try USB Printer as fallback (only if no network printer worked and USB_PRINTER_NAME is set)
-    if (!success) {
-        const usbPrinterName = process.env.USB_PRINTER_NAME;
-        if (usbPrinterName && usbPrinterName.trim()) {
-            try {
-                console.log(`🖨️  Fallback: trying USB printer "${usbPrinterName}"`);
-                await sendToUSBPrinter(ticketData, usbPrinterName);
-                success = true;
-            } catch (err) {
-                console.error(`❌ USB Printer failed: ${err.message}`);
-            }
+    // 1. Try USB Printer (Ethernet is frozen for now)
+    const usbPrinterName = COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME;
+    if (usbPrinterName && usbPrinterName.trim()) {
+        try {
+            console.log(`🖨️  Printing [${label}] on USB printer "${usbPrinterName}"`);
+            await sendToUSBPrinter(ticketData, usbPrinterName);
+            success = true;
+        } catch (err) {
+            console.error(`❌ USB Printer failed: ${err.message}`);
         }
     }
 
     if (!success) {
-        console.error(`❌ All printers failed for [${label}]. IPs tried: ${PRINTER_IPS.join(', ') || 'none configured'}`);
+        console.error(`❌ Printer failed for [${label}]. USB printer: ${usbPrinterName}`);
     }
 
     return success;
@@ -960,30 +987,12 @@ async function printRawWithRetry(ticketData, label) {
 }
 
 // ── DUAL PRINT (direct — do NOT wrap in enqueuePrintJob, already called from one) ──
-// Ticket 1 → Ethernet cuisine : formatKitchenTicket (items seulement, sans prix)
+// Ticket 1 → Ethernet cuisine : formatKitchenTicket (disabled for now)
 // Ticket 2 → Star TSP100 USB  : formatCounterTicket (reçu complet client)
 async function printDualTickets(order, loyaltyText) {
-    let kitchenOk  = false;
     let counterOk  = false;
 
-    // ── 1. TICKET CUISINE → Ethernet ────────────────────────────────────────
-    if (PRINTER_IPS.length > 0) {
-        try {
-            const data = formatKitchenTicket(order);
-            const results = await Promise.allSettled(
-                PRINTER_IPS.map(ip => printToSinglePrinter(data, ip, `Cuisine #${order.order_number}`))
-            );
-            kitchenOk = results.some(r => r.status === 'fulfilled' && r.value === true);
-            if (kitchenOk) console.log(`✅ Ticket cuisine → ${PRINTER_IPS.join(', ')}`);
-        } catch (err) {
-            console.error(`❌ Ticket cuisine erreur: ${err.message}`);
-        }
-    } else {
-        console.log('⚠️  Aucun PRINTER_IPS configuré — ticket cuisine ignoré');
-    }
-
-    // Pause courte entre les deux imprimantes
-    await new Promise(r => setTimeout(r, 300));
+    // ── 1. TICKET CUISINE (Ethernet printer is frozen/disabled for now) ──
 
     // ── 2. TICKET CAISSE → Star TSP100 USB ──────────────────────────────────
     if (COUNTER_PRINTER_NAME) {
@@ -1000,7 +1009,7 @@ async function printDualTickets(order, loyaltyText) {
         console.log('⚠️  COUNTER_PRINTER_NAME non configuré dans .env — ticket caisse ignoré');
     }
 
-    return kitchenOk || counterOk;
+    return counterOk;
 }
 
 // Orders currently being printed (in-flight guard — prevents the 10s poll and
