@@ -838,26 +838,48 @@ async function printRawWithRetry(ticketData, label) {
 // Ticket 1 → Ethernet cuisine : formatKitchenTicket (disabled for now)
 // Ticket 2 → Star TSP100 USB  : formatCounterTicket (reçu complet client)
 async function printDualTickets(order, loyaltyText) {
-    let counterOk  = false;
+    let kitchenPromise = Promise.resolve(false);
+    let counterPromise = Promise.resolve(false);
 
-    // ── 1. TICKET CUISINE (Ethernet printer is frozen/disabled for now) ──
+    // ── 1. TICKET CUISINE → Ethernet (Parallel, does not block USB) ──
+    if (PRINTER_IPS.length > 0) {
+        kitchenPromise = (async () => {
+            try {
+                const data = await formatKitchenTicket(order);
+                const results = await Promise.allSettled(
+                    PRINTER_IPS.map(ip => printToSinglePrinter(data, ip, `Cuisine #${order.order_number}`))
+                );
+                const ok = results.some(r => r.status === 'fulfilled' && r.value === true);
+                if (ok) console.log(`✅ Ticket cuisine → ${PRINTER_IPS.join(', ')}`);
+                return ok;
+            } catch (err) {
+                console.error(`❌ Ticket cuisine erreur: ${err.message}`);
+                return false;
+            }
+        })();
+    } else {
+        console.log('⚠️  Aucun PRINTER_IPS configuré — ticket cuisine ignoré');
+    }
 
-    // ── 2. TICKET CAISSE → Star TSP100 USB ──────────────────────────────────
+    // ── 2. TICKET CAISSE → Star TSP100 USB (Parallel, does not block Ethernet) ──
     if (COUNTER_PRINTER_NAME) {
-        try {
-            const data = await formatCounterTicket(order, loyaltyText || '');
-            await sendToUSBPrinter(data, COUNTER_PRINTER_NAME);
-            console.log(`✅ Ticket caisse → "${COUNTER_PRINTER_NAME}"`);
-            counterOk = true;
-        } catch (err) {
-            console.error(`❌ Imprimante caisse "${COUNTER_PRINTER_NAME}" échouée: ${err.message}`);
-            console.error('   → Vérifier COUNTER_PRINTER_NAME dans print-server/.env');
-        }
+        counterPromise = (async () => {
+            try {
+                const data = await formatCounterTicket(order, loyaltyText || '');
+                await sendToUSBPrinter(data, COUNTER_PRINTER_NAME);
+                console.log(`✅ Ticket caisse → "${COUNTER_PRINTER_NAME}"`);
+                return true;
+            } catch (err) {
+                console.error(`❌ Imprimante caisse "${COUNTER_PRINTER_NAME}" échouée: ${err.message}`);
+                return false;
+            }
+        })();
     } else {
         console.log('⚠️  COUNTER_PRINTER_NAME non configuré dans .env — ticket caisse ignoré');
     }
 
-    return counterOk;
+    const [kitchenOk, counterOk] = await Promise.all([kitchenPromise, counterPromise]);
+    return kitchenOk || counterOk;
 }
 
 // Orders currently being printed (in-flight guard — prevents the 10s poll and
@@ -1538,6 +1560,48 @@ function formatHACCPTicket(data) {
     return convertToCP1252(ticket);
 }
 
+// Mock order for template test prints
+const MOCK_TEST_ORDER = {
+    order_number: 'TEST',
+    order_type: 'livraison',
+    created_at: new Date().toISOString(),
+    customer_name: 'Jean Dupont',
+    customer_phone: '06 12 34 56 78',
+    customer_address: '15 Rue de la Paix, 76530 Grand-Couronne',
+    customer_notes: 'Code porte 42A, sonner fort.',
+    payment_method: 'cb',
+    total: 24.50,
+    subtotal: 22.00,
+    delivery_fee: 2.50,
+    items: [
+        {
+            quantity: 1,
+            name: 'Pizza Margherita',
+            category: 'pizzas',
+            price: 12.50,
+            customization: {
+                size: 'Sénior',
+                supplements: ['Supplément Fromage']
+            }
+        },
+        {
+            quantity: 2,
+            name: 'Coca-Cola 33cl',
+            category: 'boissons',
+            price: 4.00,
+            customization: {
+                drink: 'Coca Zero'
+            }
+        },
+        {
+            quantity: 1,
+            name: 'Tiramisu Maison',
+            category: 'desserts',
+            price: 4.00
+        }
+    ]
+};
+
 // Setup Express HTTP server
 function setupHttpServer() {
     const app = express();
@@ -1550,6 +1614,54 @@ function setupHttpServer() {
     };
     app.get('/health', statusHandler);
     app.get('/status', statusHandler);
+
+    // Template test print endpoint
+    app.post('/print-test-template', async (req, res) => {
+        console.log('\n📥 Template test print request received');
+        try {
+            const { templateType, template } = req.body;
+            if (!template) {
+                return res.status(400).json({ error: 'Missing template configuration' });
+            }
+
+            console.log(`   Type: ${templateType}`);
+            console.log(`   Paper Width: ${template.paperWidth || '80mm'}`);
+
+            const loyaltyText = templateType === 'counter' ? '\n' + ESC + 'a' + '\x01' + ESC + 'E' + '\x01' + 'FIDELITE: 5/9 Tampons\n' + ESC + 'E' + '\x00' + 'Plus que 4 pour la gratuite!\n' : '';
+            const ticketData = await formatDynamicTicket(MOCK_TEST_ORDER, template, loyaltyText);
+
+            let success = false;
+            if (templateType === 'kitchen') {
+                if (PRINTER_IPS.length > 0) {
+                    console.log(`🖨️  Printing test kitchen ticket to Ethernet IPs: ${PRINTER_IPS.join(', ')}`);
+                    const results = await Promise.allSettled(
+                        PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, `Test Kitchen`))
+                    );
+                    success = results.some(r => r.status === 'fulfilled' && r.value === true);
+                } else {
+                    return res.status(400).json({ error: 'No Ethernet kitchen printer IPs configured in print-server/.env (PRINTER_IPS)' });
+                }
+            } else {
+                const usbPrinterName = COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME;
+                if (usbPrinterName && usbPrinterName.trim()) {
+                    console.log(`🖨️  Printing test client ticket to USB: "${usbPrinterName}"`);
+                    await sendToUSBPrinter(ticketData, usbPrinterName);
+                    success = true;
+                } else {
+                    return res.status(400).json({ error: 'No USB printer name configured' });
+                }
+            }
+
+            if (success) {
+                res.json({ success: true, message: 'Test ticket printed successfully' });
+            } else {
+                res.status(500).json({ error: 'Failed to print test ticket. Check printer connections.' });
+            }
+        } catch (error) {
+            console.error('❌ Template test print error:', error.message);
+            res.status(500).json({ error: error.message });
+        }
+    });
 
     // HACCP print endpoint
     app.post('/print-haccp', async (req, res) => {

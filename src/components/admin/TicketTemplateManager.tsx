@@ -283,6 +283,32 @@ export function TicketTemplateManager() {
     toast.success('Configuration réinitialisée par défaut');
   };
 
+  const [testingPrint, setTestingPrint] = useState(false);
+
+  const handleTestPrint = async () => {
+    setTestingPrint(true);
+    try {
+      const res = await fetch('http://localhost:3001/print-test-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateType: activeTemplateTab,
+          template: currentTemplate
+        })
+      });
+      if (res.ok) {
+        toast.success(`Impression test (${activeTemplateTab === 'kitchen' ? 'Cuisine' : 'Client'}) envoyée !`);
+      } else {
+        const errData = await res.json();
+        toast.error("Erreur d'impression : " + (errData.error || errData.message || "Échec"));
+      }
+    } catch (e: any) {
+      toast.error("Impossible de communiquer avec le serveur d'impression : " + e.message);
+    } finally {
+      setTestingPrint(false);
+    }
+  };
+
   const selectedSection = currentTemplate.sections?.find(s => s.id === selectedSectionId) || currentTemplate.sections?.[0];
 
   const getBorderStyles = (border: string) => {
@@ -535,9 +561,21 @@ export function TicketTemplateManager() {
 
             <TabsContent value={activeTemplateTab} className="space-y-4 mt-4">
               <Card className="border-border bg-slate-950/40">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Mise en page du ticket</CardTitle>
-                  <CardDescription>Glissez-déposez ou cliquez sur les flèches pour modifier l'ordre d'impression. Cochez pour activer.</CardDescription>
+                <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4 space-y-0">
+                  <div>
+                    <CardTitle className="text-base">Mise en page du ticket</CardTitle>
+                    <CardDescription>Glissez-déposez ou cliquez sur les flèches pour modifier l'ordre d'impression. Cochez pour activer.</CardDescription>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleTestPrint}
+                    disabled={testingPrint}
+                    variant="outline"
+                    className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10 gap-2 shrink-0 font-bold"
+                  >
+                    <Printer className="w-4 h-4" />
+                    {testingPrint ? "Impression..." : `Tester ${activeTemplateTab === 'kitchen' ? 'Cuisine (Ethernet)' : 'Client (Star)'}`}
+                  </Button>
                 </CardHeader>
                 <CardContent className="p-0 pb-4">
                   <DragDropContext onDragEnd={handleDragEnd}>
