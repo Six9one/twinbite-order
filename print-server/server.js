@@ -32,11 +32,6 @@ const SETTINGS_REFRESH_INTERVAL = 300000;
 
 // Logo ESC/POS bytes — preloaded once at startup
 let logoBytes = null;
-buildLogoBytes().then(b => {
-    logoBytes = b;
-    if (b) console.log('[LOGO] Twin Pizza logo loaded (' + b.length + ' bytes)');
-    else   console.warn('[LOGO] Logo not available — tickets will print without logo');
-});
 const POLL_INTERVAL = 10000;
 let lastEventReceivedAt = Date.now();
 
@@ -179,7 +174,8 @@ function convertToCP1252(text) {
     for (const char of text) {
         result += charMap[char] !== undefined ? charMap[char] : char;
     }
-    return result;
+    // Strip any remaining characters with code point > 255 to prevent binary/UTF-8 corruption on printer
+    return result.replace(/[^\x00-\xFF]/g, '');
 }
 
 // Default ticket settings (fallback if database unavailable)
@@ -275,19 +271,18 @@ let lastProcessedTestTimestamp = Date.now();
 // Execute a test print locally on the print-server
 async function runLocalTestPrint(printerType, layoutMode) {
     const targetLayoutMode = layoutMode || 'customizable';
-    const loyaltyText = '\n' + ESC + 'a' + '\x01' + ESC + 'E' + '\x01' + 'FIDELITE: 5/9 Tampons\n' + ESC + 'E' + '\x00' + 'Plus que 4 pour la gratuite!\n';
 
     const generateData = async (type) => {
         if (type === 'kitchen') {
             if (targetLayoutMode === 'customizable') {
-                return formatDynamicTicket(MOCK_TEST_ORDER, ticketSettings.kitchenTemplate, '');
+                return formatDynamicTicket(MOCK_TEST_ORDER, ticketSettings.kitchenTemplate);
             }
-            return formatKitchenTicketClassic(MOCK_TEST_ORDER, '');
+            return formatKitchenTicketClassic(MOCK_TEST_ORDER);
         } else {
             if (targetLayoutMode === 'customizable') {
-                return formatDynamicTicket(MOCK_TEST_ORDER, ticketSettings.counterTemplate, loyaltyText);
+                return formatDynamicTicket(MOCK_TEST_ORDER, ticketSettings.counterTemplate);
             }
-            return formatCounterTicketClassic(MOCK_TEST_ORDER, loyaltyText);
+            return formatCounterTicketClassic(MOCK_TEST_ORDER);
         }
     };
 
@@ -484,7 +479,7 @@ class TicketBufferBuilder {
     }
 }
 
-async function formatDynamicTicket(order, template, loyaltyText) {
+async function formatDynamicTicket(order, template) {
     const paperWidth = template?.paperWidth || ticketSettings.paperWidth || '80mm';
     const lineWidth = paperWidth === '58mm' ? 32 : 42;
     
@@ -495,7 +490,7 @@ async function formatDynamicTicket(order, template, loyaltyText) {
 
     const ESCPOS_LOCAL = isCounter ? {
         INIT: ESC + '@',
-        SET_CODEPAGE_1252: ESC + 't' + '\x10',
+        SET_CODEPAGE_1252: ESC + '\x1D' + 't' + '\x10',
         CENTER: ESC + '\x1D' + 'a' + '1', 
         LEFT: ESC + '\x1D' + 'a' + '0',   
         RIGHT: ESC + '\x1D' + 'a' + '2',  
@@ -754,11 +749,6 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                     visualItems.push({ text: 'Valable sans limite de temps!\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
                 }
 
-                if (loyaltyText) {
-                    loyaltyText.split('\n').filter(Boolean).forEach(line => {
-                        visualItems.push({ text: line + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
-                    });
-                }
                 break;
             }
             case 'qrcode': {
@@ -811,7 +801,7 @@ async function formatDynamicTicket(order, template, loyaltyText) {
     return builder.toBuffer();
 }
 
-async function formatKitchenTicketClassic(order, loyaltyText) {
+async function formatKitchenTicketClassic(order) {
     // Star Line Mode formatting overrides for Star SP700 Ethernet printer
     const ESCPOS_KITCHEN = {
         INIT: ESC + '@',
@@ -861,15 +851,6 @@ async function formatKitchenTicketClassic(order, loyaltyText) {
     // because first char = bottom of that block = reads last.
 
     const sections_k = [];
-
-    // ── PROMO IMAGE (bottom of ticket when hanging) ──
-    const promoUrl = ticketSettings.kitchenTemplate?.promoImageUrl || '';
-    if (promoUrl) {
-        try {
-            const promoBuf = await buildLogoBytesFromUrl(promoUrl, ticketSettings.kitchenTemplate?.promoImageWidth || 280);
-            if (promoBuf) sections_k.push({ buffer: promoBuf });
-        } catch (e) { console.warn('[PROMO] Kitchen image failed:', e.message); }
-    }
 
     // ── FOOTER ──
     {
@@ -1060,11 +1041,11 @@ async function formatKitchenTicketClassic(order, loyaltyText) {
 
 
 
-async function formatCounterTicketClassic(order, loyaltyText) {
+async function formatCounterTicketClassic(order) {
     // Star Line Mode formatting overrides for Star TSP100 USB printer
     const ESCPOS_COUNTER = {
         INIT: ESC + '@',
-        SET_CODEPAGE_1252: ESC + 't' + '\x10',
+        SET_CODEPAGE_1252: ESC + '\x1D' + 't' + '\x10',
         CENTER: ESC + '\x1D' + 'a' + '1', 
         LEFT: ESC + '\x1D' + 'a' + '0',   
         RIGHT: ESC + '\x1D' + 'a' + '2',  
@@ -1265,10 +1246,7 @@ async function formatCounterTicketClassic(order, loyaltyText) {
         t += DASH_LINE;
     }
 
-    // 11. LOYALTY TEXT
-    if (loyaltyText) {
-        t += loyaltyText + '\n' + DASH_LINE;
-    }
+
 
     // 13. GOOGLE REVIEW QR CODE — native Star Line Mode QR command!
     const _qrSec2   = (ticketSettings?.counterTemplate?.sections || []).find(s => s.id === 'qrcode');
@@ -1298,28 +1276,28 @@ async function formatCounterTicketClassic(order, loyaltyText) {
     return cb.toBuffer();
 }
 
-async function formatKitchenTicket(order, loyaltyText) {
+async function formatKitchenTicket(order) {
     const layoutMode = ticketSettings?.kitchenLayoutMode || 'customizable';
     if (layoutMode === 'customizable') {
-        return formatDynamicTicket(order, ticketSettings.kitchenTemplate, loyaltyText);
+        return formatDynamicTicket(order, ticketSettings.kitchenTemplate);
     }
-    return formatKitchenTicketClassic(order, loyaltyText);
+    return formatKitchenTicketClassic(order);
 }
 
-async function formatCounterTicket(order, loyaltyText) {
+async function formatCounterTicket(order) {
     const layoutMode = ticketSettings?.counterLayoutMode || 'customizable';
     if (layoutMode === 'customizable') {
-        return formatDynamicTicket(order, ticketSettings.counterTemplate, loyaltyText);
+        return formatDynamicTicket(order, ticketSettings.counterTemplate);
     }
-    return formatCounterTicketClassic(order, loyaltyText);
+    return formatCounterTicketClassic(order);
 }
 
 async function formatOrderForPrint(order, isKitchen = false) {
-    return isKitchen ? formatKitchenTicket(order, '') : formatCounterTicket(order, '');
+    return isKitchen ? formatKitchenTicket(order) : formatCounterTicket(order);
 }
 
-async function formatUnifiedTicket(order, loyaltyText) {
-    return formatCounterTicket(order, loyaltyText);
+async function formatUnifiedTicket(order) {
+    return formatCounterTicket(order);
 }
 
 // Send data to printer via TCP
@@ -1463,11 +1441,12 @@ async function sendToAllPrinters(ticketData, label) {
 }
 
 // Print order ticket (QUEUED) — dual: cuisine (Ethernet) + caisse (USB)
-async function printWithRetry(order, loyaltyText) {
+// Print order ticket (QUEUED) — dual: cuisine (Ethernet) + caisse (USB)
+async function printWithRetry(order) {
     const label = `Order #${order.order_number}`;
     return enqueuePrintJob(async () => {
         console.log(`🖨️  Impression double ticket #${order.order_number}...`);
-        return printDualTickets(order, loyaltyText || '');
+        return printDualTickets(order);
     }, label);
 }
 
@@ -1482,7 +1461,7 @@ async function printRawWithRetry(ticketData, label) {
 // ── DUAL PRINT (direct — do NOT wrap in enqueuePrintJob, already called from one) ──
 // Ticket 1 → Ethernet cuisine : formatKitchenTicket (disabled for now)
 // Ticket 2 → Star TSP100 USB  : formatCounterTicket (reçu complet client)
-async function printDualTickets(order, loyaltyText) {
+async function printDualTickets(order) {
     let kitchenPromise = Promise.resolve(false);
     let counterPromise = Promise.resolve(false);
 
@@ -1510,7 +1489,7 @@ async function printDualTickets(order, loyaltyText) {
     if (COUNTER_PRINTER_NAME) {
         counterPromise = (async () => {
             try {
-                const data = await formatCounterTicket(order, loyaltyText || '');
+                const data = await formatCounterTicket(order);
                 await sendToUSBPrinter(data, COUNTER_PRINTER_NAME);
                 console.log(`✅ Ticket caisse → "${COUNTER_PRINTER_NAME}"`);
                 return true;
@@ -1527,8 +1506,6 @@ async function printDualTickets(order, loyaltyText) {
     return kitchenOk || counterOk;
 }
 
-// Orders currently being printed (in-flight guard — prevents the 10s poll and
-// realtime from queueing the SAME order multiple times = paper waste).
 const processingOrders = new Set();
 
 // Handle new order. `force` = bypass the printed cache (used by manual recovery).
@@ -1559,38 +1536,9 @@ async function handleNewOrder(order, force = false) {
     console.log(`${'='.repeat(50)}\n`);
 
     try {
-        // Fetch loyalty (utilisé uniquement sur le ticket caisse)
-        let loyaltyText = '';
-        try {
-            if (order.customer_phone) {
-                const { data: customer } = await supabase
-                    .from('loyalty_customers')
-                    .select('points')
-                    .eq('phone', order.customer_phone)
-                    .single();
-                if (customer) {
-                    const points = customer.points;
-                    const pointsNeeded = 9;
-                    if (points >= pointsNeeded) {
-                        loyaltyText = '\n' + ESCPOS.CENTER + ESCPOS.BOLD_ON + ESCPOS.DOUBLE_HEIGHT +
-                            '*** 10eme OFFERTE ! ***\n(Valeur 10 EUR)\n' +
-                            ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF +
-                            `Solde: ${points} Tampons\n`;
-                    } else {
-                        loyaltyText = '\n' + ESCPOS.CENTER + ESCPOS.BOLD_ON +
-                            `FIDELITE: ${points}/${pointsNeeded}\n` +
-                            ESCPOS.BOLD_OFF +
-                            `Plus que ${pointsNeeded - points} pour la gratuite!\n`;
-                    }
-                }
-            }
-        } catch (err) {
-            console.error('Erreur fidélité:', err.message);
-        }
-
         // Impression double (cuisine Ethernet + caisse USB) via la queue
         const success = await enqueuePrintJob(async () => {
-            return printDualTickets(order, loyaltyText);
+            return printDualTickets(order);
         }, `Order #${order.order_number}`);
 
         if (success) {
@@ -2288,19 +2236,17 @@ function setupHttpServer() {
             console.log(`   Printer target: ${targetPrinter}`);
             console.log(`   Layout mode: ${targetLayoutMode}`);
 
-            const loyaltyText = '\n' + ESC + 'a' + '\x01' + ESC + 'E' + '\x01' + 'FIDELITE: 5/9 Tampons\n' + ESC + 'E' + '\x00' + 'Plus que 4 pour la gratuite!\n';
-
             const generateTicketData = async (type) => {
                 if (type === 'kitchen') {
                     if (targetLayoutMode === 'customizable' && template) {
-                        return formatDynamicTicket(MOCK_TEST_ORDER, template, '');
+                        return formatDynamicTicket(MOCK_TEST_ORDER, template);
                     }
-                    return formatKitchenTicketClassic(MOCK_TEST_ORDER, '');
+                    return formatKitchenTicketClassic(MOCK_TEST_ORDER);
                 } else {
                     if (targetLayoutMode === 'customizable' && template) {
-                        return formatDynamicTicket(MOCK_TEST_ORDER, template, loyaltyText);
+                        return formatDynamicTicket(MOCK_TEST_ORDER, template);
                     }
-                    return formatCounterTicketClassic(MOCK_TEST_ORDER, loyaltyText);
+                    return formatCounterTicketClassic(MOCK_TEST_ORDER);
                 }
             };
 
@@ -2921,7 +2867,7 @@ function setupHttpServer() {
 
             const ESCPOS_COUNTER = {
                 INIT: ESC + '@',
-                SET_CODEPAGE_1252: ESC + 't' + '\x10',
+                SET_CODEPAGE_1252: ESC + '\x1D' + 't' + '\x10',
                 CENTER: ESC + '\x1D' + 'a' + '1', 
                 LEFT: ESC + '\x1D' + 'a' + '0',   
                 RIGHT: ESC + '\x1D' + 'a' + '2',  
@@ -2960,25 +2906,15 @@ function setupHttpServer() {
             const _qrSec3 = (ticketSettings?.counterTemplate?.sections || []).find(s => s.id === 'qrcode');
             const _qrUrl3 = (_qrSec3?.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
             const _qrLabel3 = _qrSec3?.qrCodeLabel || 'Laissez-nous un avis !';
-            const _qrSize3 = _qrSec3?.qrCodeSize || 120;
             
             t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + _qrLabel3 + '\n' + ESCPOS_COUNTER.BOLD_OFF;
+            t += ESCPOS_COUNTER.CENTER + _qrUrl3 + '\n';
+            t += DASH_LINE;
 
             let tAfter = '\n' + ESCPOS_COUNTER.PARTIAL_CUT;
 
             const cb = new TicketBufferBuilder();
             cb.addText(convertToCP1252(t));
-
-            // Render QR as bitmap image (works on ALL Star printer firmware versions)
-            const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${_qrSize3 * 2}x${_qrSize3 * 2}&data=${encodeURIComponent(_qrUrl3)}&format=png&qzone=2`;
-            try {
-                const qrBitmapBuf = await buildLogoBytesFromUrl(qrImageUrl, Math.min(_qrSize3, 280));
-                if (qrBitmapBuf) cb.addBuffer(qrBitmapBuf);
-            } catch (e) {
-                console.warn('[Test Print QR] image failed:', e.message);
-                cb.addText('Avis: ' + _qrUrl3 + '\n');
-            }
-
             cb.addText(convertToCP1252(tAfter));
 
             await sendToUSBPrinter(cb.toBuffer(), COUNTER_PRINTER_NAME);
