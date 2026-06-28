@@ -104,31 +104,7 @@ function getQRCodeString(url) {
     );
 }
 
-// Generates native Star Line Mode QR code command string.
-function getStarQRCodeString(url, size = 120) {
-    const setModel = ESC + GS + 'yS0' + '\x02' + '\x00'; // Model 2
-    const setErrCorr = ESC + GS + 'yS1' + '\x00'; // L (7%)
-    
-    // Map size (60-200) to cellSize (3-6)
-    const cellSize = Math.max(3, Math.min(6, Math.floor(size / 30)));
-    const setCellSize = ESC + GS + 'yS2' + String.fromCharCode(cellSize);
-    
-    const len = url.length;
-    const nL = String.fromCharCode(len & 0xFF);
-    const nH = String.fromCharCode((len >> 8) & 0xFF);
-    const storeData = ESC + GS + 'yD1' + '\x00' + nL + nH + url;
-    const printQR = ESC + GS + 'yP';
-    
-    return (
-        ESC + '\x1D' + 'a' + '1' + // center align
-        setModel +
-        setErrCorr +
-        setCellSize +
-        storeData +
-        printQR +
-        ESC + '\x1D' + 'a' + '0'   // reset left align
-    );
-}
+
 
 // ── Get QR URL from template section settings (fallback to default review URL)
 const DEFAULT_QR_URL = 'https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr';
@@ -606,22 +582,9 @@ async function formatDynamicTicket(order, template, loyaltyText) {
 
         switch (s.id) {
             case 'logo': {
-                if (isKitchen) {
-                    // Dot-matrix kitchen printers cannot print graphics/bitmaps
-                    visualItems.push({ text: '🍕 [TWIN PIZZA]\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
-                } else if (template?.logoUrl) {
-                    const width = template.logoWidth || 160;
-                    const logoBuf = await buildLogoBytesFromUrl(template.logoUrl, width, isCounter);
-                    if (logoBuf) {
-                        visualItems.push({ buffer: logoBuf });
-                    }
-                } else {
-                    if (logoBytes) {
-                        visualItems.push({ buffer: logoBytes });
-                    } else {
-                        visualItems.push({ text: '🍕 [TWIN PIZZA LOGO]\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
-                    }
-                }
+                // Universal text logo fallback to prevent print queue crashes
+                const logoText = '🍕  TWIN PIZZA  🍕\n';
+                visualItems.push({ text: logoText, align: s.align, bold: true, underline: false, fontSize: 'large', fontType: 'A' });
                 break;
             }
             case 'header': {
@@ -801,45 +764,13 @@ async function formatDynamicTicket(order, template, loyaltyText) {
             case 'qrcode': {
                 const qrLabel = s.qrCodeLabel || 'Laissez-nous un avis !';
                 const qrUrl   = (s.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
-                const qrSize  = s.qrCodeSize || 120;
                 visualItems.push({ text: qrLabel + '\n', align: 'center', bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
-                
-                if (isKitchen) {
-                    // Dot-matrix kitchen printer cannot print barcodes or graphics, use text fallback
-                    visualItems.push({ text: qrUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
-                } else if (isCounter) {
-                    // Star TSP100 supports native QR code commands in Star Line Mode
-                    const nativeStarQr = getStarQRCodeString(qrUrl, qrSize);
-                    visualItems.push({ buffer: Buffer.from(nativeStarQr, 'binary') });
-                } else {
-                    // Standard ESC/POS bitmap fallback
-                    try {
-                        const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize * 2}x${qrSize * 2}&data=${encodeURIComponent(qrUrl)}&format=png&qzone=2`;
-                        const qrBuf = await buildLogoBytesFromUrl(qrImgUrl, Math.min(qrSize, 280), false);
-                        if (qrBuf) visualItems.push({ buffer: qrBuf });
-                    } catch (e) {
-                        console.warn('[QR dynamic] image failed:', e.message);
-                        visualItems.push({ text: 'Avis: ' + qrUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
-                    }
-                }
+                visualItems.push({ text: qrUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
                 visualItems.push({ text: '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
                 break;
             }
             case 'promo_image': {
-                if (isKitchen) {
-                    // Skip promo images on dot-matrix kitchen printer
-                    break;
-                }
-                const promoUrl = template?.promoImageUrl || '';
-                if (promoUrl) {
-                    try {
-                        const promoW = template?.promoImageWidth || 280;
-                        const promoBuf = await buildLogoBytesFromUrl(promoUrl, promoW, isCounter);
-                        if (promoBuf) visualItems.push({ buffer: promoBuf });
-                    } catch (e) {
-                        console.warn('[PROMO dynamic] image failed:', e.message);
-                    }
-                }
+                // Skip/omit custom promo photos to prevent raw binary printer queue crashes
                 break;
             }
             case 'footer': {
@@ -1347,13 +1278,7 @@ async function formatCounterTicketClassic(order, loyaltyText) {
 
     // Build prefix text (already in t) + close the text portion
     t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + _qrLabel2 + '\n' + ESCPOS_COUNTER.BOLD_OFF;
-
-    // Use native Star Line Mode QR code
-    const nativeStarQr = getStarQRCodeString(_qrUrl2, _qrSize2);
-    t += nativeStarQr;
-
-    // 14. PROMO IMAGE (bottom of ticket)
-    const promoUrl2 = ticketSettings.counterTemplate?.promoImageUrl || '';
+    t += ESCPOS_COUNTER.CENTER + _qrUrl2 + '\n';
 
     // Build footer text
     let tAfterQr = ESCPOS_COUNTER.CENTER;
@@ -1369,14 +1294,6 @@ async function formatCounterTicketClassic(order, loyaltyText) {
     cb.addText(t); 
     cb.addText(DASH_LINE);
     cb.addText(tAfterQr);
-
-    // Promo image at the very bottom (using Star Line Mode raster graphics format)
-    if (promoUrl2) {
-        try {
-            const promoBuf = await buildLogoBytesFromUrl(promoUrl2, ticketSettings.counterTemplate?.promoImageWidth || 280, true);
-            if (promoBuf) cb.addBuffer(promoBuf);
-        } catch (e) { console.warn('[PROMO] Counter image failed:', e.message); }
-    }
 
     return cb.toBuffer();
 }
