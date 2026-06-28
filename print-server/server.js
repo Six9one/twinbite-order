@@ -1896,7 +1896,7 @@ function startHeartbeat() {
 async function pollForUnprintedOrders(lookbackMs) {
     try {
         // Sync templates & remote test print triggers
-        await syncSettings();
+        await fetchTicketSettings();
 
         const lookback = lookbackMs || 5 * 60 * 1000; // Default: last 5 minutes
         const since = new Date(Date.now() - lookback).toISOString();
