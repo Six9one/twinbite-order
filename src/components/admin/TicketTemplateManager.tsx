@@ -203,7 +203,7 @@ function migrateFontSize(v: any): FontSize {
 }
 
 function normalizeSections(sections: any[]): TicketSection[] {
-  return sections.map(s => {
+  const mapped = sections.map(s => {
     const def = DEFAULT_SECTIONS.find(d => d.id === s.id) ?? DEFAULT_SECTIONS[0];
     return {
       ...def, ...s,
@@ -219,6 +219,10 @@ function normalizeSections(sections: any[]): TicketSection[] {
       fontSize:       migrateFontSize(s.fontSize),
     } as TicketSection;
   });
+
+  // Automatically append new default sections that don't exist in the saved DB array
+  const missing = DEFAULT_SECTIONS.filter(def => !mapped.some(m => m.id === def.id));
+  return [...mapped, ...missing];
 }
 
 function normalizeTemplate(t: any, isKitchen: boolean): TicketTemplate {
