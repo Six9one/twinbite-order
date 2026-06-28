@@ -580,9 +580,12 @@ async function formatDynamicTicket(order, template, loyaltyText) {
 
         switch (s.id) {
             case 'logo': {
-                if (template?.logoUrl) {
+                if (isKitchen) {
+                    // Dot-matrix kitchen printers cannot print graphics/bitmaps
+                    visualItems.push({ text: '🍕 [TWIN PIZZA]\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
+                } else if (template?.logoUrl) {
                     const width = template.logoWidth || 160;
-                    const logoBuf = await buildLogoBytesFromUrl(template.logoUrl, width);
+                    const logoBuf = await buildLogoBytesFromUrl(template.logoUrl, width, isCounter);
                     if (logoBuf) {
                         visualItems.push({ buffer: logoBuf });
                     }
@@ -774,25 +777,38 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                 const qrUrl   = (s.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
                 const qrSize  = s.qrCodeSize || 120;
                 visualItems.push({ text: qrLabel + '\n', align: 'center', bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
-                // Download QR as bitmap (works on ALL Star printer firmware versions)
-                try {
-                    const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize * 2}x${qrSize * 2}&data=${encodeURIComponent(qrUrl)}&format=png&qzone=2`;
-                    const qrBuf = await buildLogoBytesFromUrl(qrImgUrl, Math.min(qrSize, 280));
-                    if (qrBuf) visualItems.push({ buffer: qrBuf });
-                } catch (e) {
-                    console.warn('[QR dynamic] image failed:', e.message);
-                    visualItems.push({ text: 'Avis: ' + qrUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
+                
+                if (isKitchen) {
+                    // Dot-matrix kitchen printer cannot print barcodes or graphics, use text fallback
+                    visualItems.push({ text: qrUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
+                } else if (isCounter) {
+                    // Star TSP100 supports native QR code commands in Star Line Mode
+                    const nativeStarQr = getStarQRCodeString(qrUrl, qrSize);
+                    visualItems.push({ buffer: Buffer.from(nativeStarQr, 'binary') });
+                } else {
+                    // Standard ESC/POS bitmap fallback
+                    try {
+                        const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize * 2}x${qrSize * 2}&data=${encodeURIComponent(qrUrl)}&format=png&qzone=2`;
+                        const qrBuf = await buildLogoBytesFromUrl(qrImgUrl, Math.min(qrSize, 280), false);
+                        if (qrBuf) visualItems.push({ buffer: qrBuf });
+                    } catch (e) {
+                        console.warn('[QR dynamic] image failed:', e.message);
+                        visualItems.push({ text: 'Avis: ' + qrUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
+                    }
                 }
                 visualItems.push({ text: '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
                 break;
             }
             case 'promo_image': {
-                // Event / promotional photo printed as ESC/POS bitmap
+                if (isKitchen) {
+                    // Skip promo images on dot-matrix kitchen printer
+                    break;
+                }
                 const promoUrl = template?.promoImageUrl || '';
                 if (promoUrl) {
                     try {
                         const promoW = template?.promoImageWidth || 280;
-                        const promoBuf = await buildLogoBytesFromUrl(promoUrl, promoW);
+                        const promoBuf = await buildLogoBytesFromUrl(promoUrl, promoW, isCounter);
                         if (promoBuf) visualItems.push({ buffer: promoBuf });
                     } catch (e) {
                         console.warn('[PROMO dynamic] image failed:', e.message);
