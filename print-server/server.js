@@ -486,7 +486,32 @@ async function formatDynamicTicket(order, template, loyaltyText) {
     const paperWidth = template?.paperWidth || ticketSettings.paperWidth || '80mm';
     const lineWidth = paperWidth === '58mm' ? 32 : 42;
     
-    const ESCPOS_LOCAL = {
+    const isCounter = template === ticketSettings.counterTemplate || 
+                      (template?.name || '').toLowerCase().includes('caisse') || 
+                      (template?.name || '').toLowerCase().includes('counter') || 
+                      (template?.name || '').toLowerCase().includes('client');
+
+    const ESCPOS_LOCAL = isCounter ? {
+        INIT: ESC + '@',
+        SET_CODEPAGE_1252: ESC + 't' + '\x10',
+        CENTER: ESC + '\x1D' + 'a' + '1', 
+        LEFT: ESC + '\x1D' + 'a' + '0',   
+        RIGHT: ESC + '\x1D' + 'a' + '2',  
+        BOLD_ON: ESC + 'E' + '\x01',
+        BOLD_OFF: ESC + 'E' + '\x00',
+        DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
+        DOUBLE_WIDTH: ESC + 'i' + '\x01' + '\x00',
+        DOUBLE_SIZE: ESC + 'i' + '\x01' + '\x01',
+        NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
+        UNDERLINE_ON: ESC + '-' + '\x01',
+        UNDERLINE_OFF: ESC + '-' + '\x00',
+        PARTIAL_CUT: ESC + 'd' + '\x03',  
+        FEED: '',                        
+        UPSIDE_ON:  '',
+        UPSIDE_OFF: '',
+        FONT_A: ESC + '\x1E' + 'F' + '\x00', 
+        FONT_B: ESC + '\x1E' + 'F' + '\x01', 
+    } : {
         INIT: ESC + '@',
         SET_CODEPAGE_1252: ESC + 't' + '\x10',
         CENTER: ESC + 'a' + '\x01',
@@ -504,6 +529,29 @@ async function formatDynamicTicket(order, template, loyaltyText) {
         FEED: ESC + 'd' + '\x03',
         FONT_A: ESC + 'M' + '\x00',
         FONT_B: ESC + 'M' + '\x01',
+        UPSIDE_ON:  ESC + '{' + '\x01',
+        UPSIDE_OFF: ESC + '{' + '\x00',
+    };
+
+    const getAlignCmdLocal = (align) => {
+        if (align === 'center') return ESCPOS_LOCAL.CENTER;
+        if (align === 'right') return ESCPOS_LOCAL.RIGHT;
+        return ESCPOS_LOCAL.LEFT;
+    };
+
+    const getStyleCmdLocal = (item) => {
+        let cmd = '';
+        cmd += item.fontType === 'B' ? ESCPOS_LOCAL.FONT_B : ESCPOS_LOCAL.FONT_A;
+
+        if (item.fontSize === 'double_height') cmd += ESCPOS_LOCAL.DOUBLE_HEIGHT;
+        else if (item.fontSize === 'double_width') cmd += ESCPOS_LOCAL.DOUBLE_WIDTH;
+        else if (item.fontSize === 'double_size') cmd += ESCPOS_LOCAL.DOUBLE_SIZE;
+        else cmd += ESCPOS_LOCAL.NORMAL_SIZE;
+
+        cmd += item.bold ? ESCPOS_LOCAL.BOLD_ON : ESCPOS_LOCAL.BOLD_OFF;
+        cmd += item.underline ? ESCPOS_LOCAL.UNDERLINE_ON : ESCPOS_LOCAL.UNDERLINE_OFF;
+
+        return cmd;
     };
 
     const RESET_STYLE = ESCPOS_LOCAL.FONT_A + ESCPOS_LOCAL.NORMAL_SIZE + ESCPOS_LOCAL.BOLD_OFF + ESCPOS_LOCAL.UNDERLINE_OFF;
@@ -516,9 +564,9 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                      (template?.name || '').toLowerCase().includes('cuisine') || 
                      (template?.name || '').toLowerCase().includes('kitchen');
     if (isKitchen) {
-        builder.addText(ESCPOS.UPSIDE_ON);
+        builder.addText(ESCPOS_LOCAL.UPSIDE_ON);
     } else {
-        builder.addText(ESCPOS.UPSIDE_OFF);
+        builder.addText(ESCPOS_LOCAL.UPSIDE_OFF);
     }
     builder.addText(ESCPOS_LOCAL.SET_CODEPAGE_1252);
 
@@ -773,13 +821,13 @@ async function formatDynamicTicket(order, template, loyaltyText) {
 
     for (const item of visualItems) {
         if (item.isSeparator) {
-            builder.addText(getAlignCmd(item.align));
+            builder.addText(getAlignCmdLocal(item.align));
             builder.addText(getSeparatorLine(item.borderStyle, paperWidth));
         } else if (item.buffer) {
             builder.addBuffer(item.buffer);
         } else {
-            builder.addText(getAlignCmd(item.align));
-            builder.addText(getStyleCmd(item));
+            builder.addText(getAlignCmdLocal(item.align));
+            builder.addText(getStyleCmdLocal(item));
             builder.addText(item.text);
             builder.addText(RESET_STYLE);
         }
@@ -2912,7 +2960,6 @@ function setupHttpServer() {
         }
     });
 
-    // POST print-test
     app.post('/print-test', async (req, res) => {
         console.log('\n📥 Test print request received');
         try {
@@ -2920,13 +2967,12 @@ function setupHttpServer() {
                 return res.status(400).json({ error: 'No counter printer name configured. Please save a printer name first.' });
             }
 
-            // Star Line Mode formatting overrides for Star TSP100 USB printer
-            const ESCPOS = {
+            const ESCPOS_COUNTER = {
                 INIT: ESC + '@',
                 SET_CODEPAGE_1252: ESC + 't' + '\x10',
-                CENTER: ESC + 'a' + '\x01',
-                LEFT: ESC + 'a' + '\x00',
-                RIGHT: ESC + 'a' + '\x02',
+                CENTER: ESC + '\x1D' + 'a' + '1', 
+                LEFT: ESC + '\x1D' + 'a' + '0',   
+                RIGHT: ESC + '\x1D' + 'a' + '2',  
                 BOLD_ON: ESC + 'E' + '\x01',
                 BOLD_OFF: ESC + 'E' + '\x00',
                 DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
@@ -2935,40 +2981,55 @@ function setupHttpServer() {
                 NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
                 UNDERLINE_ON: ESC + '-' + '\x01',
                 UNDERLINE_OFF: ESC + '-' + '\x00',
-                PARTIAL_CUT: '\x1D\x56\x01',
-                FEED: ESC + 'd' + '\x03',
-                UPSIDE_ON:  ESC + '{' + '\x01',
-                UPSIDE_OFF: ESC + '{' + '\x00',
+                PARTIAL_CUT: ESC + 'd' + '\x03',  
+                FEED: '',                        
+                UPSIDE_ON:  '',
+                UPSIDE_OFF: '',
+                FONT_A: ESC + '\x1E' + 'F' + '\x00', 
+                FONT_B: ESC + '\x1E' + 'F' + '\x01', 
             };
 
             let t = '';
-            t += ESCPOS.INIT + ESCPOS.SET_CODEPAGE_1252;
-            t += ESCPOS.UPSIDE_ON;
-            t += ESCPOS.CENTER;
-            t += ESCPOS.BOLD_ON + ESCPOS.DOUBLE_SIZE + 'TEST IMPRIMANTE\n' + ESCPOS.NORMAL_SIZE + ESCPOS.BOLD_OFF;
+            t += ESCPOS_COUNTER.INIT + ESCPOS_COUNTER.SET_CODEPAGE_1252;
+            t += ESCPOS_COUNTER.CENTER;
+            t += ESCPOS_COUNTER.BOLD_ON + ESCPOS_COUNTER.DOUBLE_SIZE + 'TEST IMPRIMANTE\n' + ESCPOS_COUNTER.NORMAL_SIZE + ESCPOS_COUNTER.BOLD_OFF;
             t += 'Star TSP100 USB\n';
-            t += ESCPOS.LINE_42;
-            t += ESCPOS.LEFT;
+            t += DASH_LINE;
+            t += ESCPOS_COUNTER.LEFT;
             t += 'Date: ' + new Date().toLocaleString('fr-FR') + '\n';
             t += 'Imprimante: ' + COUNTER_PRINTER_NAME + '\n';
-            t += ESCPOS.LINE_42;
-            t += ESCPOS.CENTER;
-            t += ESCPOS.BOLD_ON + 'STATUT: SUCCES\n' + ESCPOS.BOLD_OFF;
-            t += 'L\'imprimante est correctement configuree !\n';
-            t += ESCPOS.LINE_42;
+            t += DASH_LINE;
+            t += ESCPOS_COUNTER.CENTER;
+            t += ESCPOS_COUNTER.BOLD_ON + 'STATUT: SUCCES\n' + ESCPOS_COUNTER.BOLD_OFF;
+            t += "L'imprimante est correctement configuree !\n";
+            t += DASH_LINE;
             
             // Google Review QR code — URL from template manager settings
             const _qrSec3 = (ticketSettings?.counterTemplate?.sections || []).find(s => s.id === 'qrcode');
             const _qrUrl3 = (_qrSec3?.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
-            const _qrLabel3 = _qrSec3?.qrCodeLabel || 'Laissez-nous un avis ! *';
-            t += ESCPOS.CENTER + ESCPOS.BOLD_ON + _qrLabel3 + '\n' + ESCPOS.BOLD_OFF;
-            t += getQRCodeString(_qrUrl3) + '\n';
-            t += ESCPOS.LINE_42;
+            const _qrLabel3 = _qrSec3?.qrCodeLabel || 'Laissez-nous un avis !';
+            const _qrSize3 = _qrSec3?.qrCodeSize || 120;
             
-            t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
+            t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + _qrLabel3 + '\n' + ESCPOS_COUNTER.BOLD_OFF;
 
-            const ticketData = convertToCP1252(t);
-            await sendToUSBPrinter(ticketData, COUNTER_PRINTER_NAME);
+            let tAfter = '\n' + ESCPOS_COUNTER.PARTIAL_CUT;
+
+            const cb = new TicketBufferBuilder();
+            cb.addText(convertToCP1252(t));
+
+            // Render QR as bitmap image (works on ALL Star printer firmware versions)
+            const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${_qrSize3 * 2}x${_qrSize3 * 2}&data=${encodeURIComponent(_qrUrl3)}&format=png&qzone=2`;
+            try {
+                const qrBitmapBuf = await buildLogoBytesFromUrl(qrImageUrl, Math.min(_qrSize3, 280));
+                if (qrBitmapBuf) cb.addBuffer(qrBitmapBuf);
+            } catch (e) {
+                console.warn('[Test Print QR] image failed:', e.message);
+                cb.addText('Avis: ' + _qrUrl3 + '\n');
+            }
+
+            cb.addText(convertToCP1252(tAfter));
+
+            await sendToUSBPrinter(cb.toBuffer(), COUNTER_PRINTER_NAME);
             console.log(`✅ Test print successfully sent to: "${COUNTER_PRINTER_NAME}"`);
             res.json({ success: true, message: `Test print sent to ${COUNTER_PRINTER_NAME}` });
         } catch (error) {
