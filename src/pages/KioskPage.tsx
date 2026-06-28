@@ -270,31 +270,7 @@ function KioskContent() {
 
             // Send Telegram notification
             try {
-                await supabase.functions.invoke('send-telegram-notification', {
-                    body: {
-                        orderNumber: newOrderNumber,
-                        customerName: customerName.trim(),
-                        customerPhone: 'Borne',
-                        customerAddress: null,
-                        customerNotes: `[BORNE] ${orderType === 'surplace' ? 'Sur Place' : 'À Emporter'}`,
-                        orderType: orderType,
-                        paymentMethod: 'A la caisse',
-                        total: total,
-                        subtotal: ht,
-                        tva: tva,
-                        deliveryFee: 0,
-                        items: cart.map(item => ({
-                            name: item.item.name,
-                            quantity: item.quantity,
-                            price: item.calculatedPrice || item.item.price,
-                            category: item.item.category,
-                            customization: item.customization,
-                        })),
-                        isScheduled: false,
-                        scheduledFor: null,
-                        isKiosk: true,
-                    },
-                });
+                console.log('[KIOSK] Telegram notification bypassed (sleeping driver)');
             } catch (telegramError) {
                 console.error('[KIOSK] Telegram notification failed:', telegramError);
             }

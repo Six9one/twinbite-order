@@ -333,31 +333,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
       // Send Telegram notification with stamp info included
       try {
-        await supabase.functions.invoke('send-telegram-notification', {
-          body: {
-            orderNumber: orderNumberRef.current,
-            customerName: customerInfo.name.trim(),
-            customerPhone: customerInfo.phone.trim(),
-            customerAddress: customerInfo.address?.trim() || null,
-            customerNotes: customerInfo.notes?.trim() || null,
-            orderType,
-            paymentMethod,
-            total: finalTtc,
-            subtotal: finalHt,
-            tva: finalTva,
-            deliveryFee: deliveryFee,
-            items: cart.map(item => ({
-              name: item.item.name,
-              quantity: item.quantity,
-              price: item.calculatedPrice || item.item.price,
-              category: item.item.category,
-              customization: item.customization,
-            })),
-            isScheduled: scheduledInfo.isScheduled,
-            scheduledFor: scheduledInfo.scheduledFor?.toISOString() || null,
-          },
-        });
-        console.log('[CHECKOUT] Telegram notification sent with stamp info');
+        console.log('[CHECKOUT] Telegram notification bypassed (sleeping driver)');
       } catch (telegramError) {
         console.error('[CHECKOUT] Telegram notification failed:', telegramError);
         // Don't fail the order if Telegram fails
