@@ -876,14 +876,38 @@ export function TicketTemplateManager() {
   const handleTestPrint = async (pt: 'counter'|'kitchen'|'both') => {
     setTestingPrint(true);
     try {
-      const r = await fetch('http://localhost:3001/print-test-template', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ printerType: pt, layoutMode: 'customizable', template: tmpl }),
-      });
-      if (r.ok) toast.success(`Test envoyé → ${pt === 'both' ? 'les deux' : pt === 'kitchen' ? 'Cuisine' : 'Star USB'}`);
-      else { const e = await r.json().catch(() => ({})); toast.error("Erreur: " + (e.error || 'Échec')); }
-    } catch (e: any) { toast.error("Serveur inaccessible : " + e.message); }
-    finally { setTestingPrint(false); }
+      // 1. Try direct connection to local print server first (for fast local dev feedback)
+      try {
+        const r = await fetch('http://localhost:3001/print-test-template', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ printerType: pt, layoutMode: 'customizable', template: tmpl }),
+        });
+        if (r.ok) {
+          toast.success(`Test envoyé → ${pt === 'both' ? 'les deux' : pt === 'kitchen' ? 'Cuisine' : 'Star USB'}`);
+          setTestingPrint(false);
+          return;
+        }
+      } catch (localErr) {
+        console.log('Local print server direct call failed, falling back to database trigger:', localErr);
+      }
+
+      // 2. Fallback to Supabase database trigger (works instantly from any remote device/phone!)
+      const settingsWithTrigger = {
+        ...settings,
+        triggerTestPrint: {
+          printerType: pt,
+          layoutMode: 'customizable',
+          timestamp: Date.now()
+        }
+      };
+
+      await updateSetting.mutateAsync({ key: 'ticket_templates', value: settingsWithTrigger as any });
+      toast.success(`Test envoyé via Cloud → ${pt === 'both' ? 'les deux' : pt === 'kitchen' ? 'Cuisine' : 'Star USB'}`);
+    } catch (e: any) {
+      toast.error("Erreur lors de l'envoi du test: " + e.message);
+    } finally {
+      setTestingPrint(false);
+    }
   };
 
   if (isLoading) return (

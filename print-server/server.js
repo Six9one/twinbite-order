@@ -268,6 +268,90 @@ async function savePrintedOrders() {
 
 const printedOrders = loadPrintedOrders();
 
+let lastProcessedTestTimestamp = Date.now();
+
+// Execute a test print locally on the print-server
+async function runLocalTestPrint(printerType, layoutMode) {
+    const targetLayoutMode = layoutMode || 'customizable';
+    const loyaltyText = '\n' + ESC + 'a' + '\x01' + ESC + 'E' + '\x01' + 'FIDELITE: 5/9 Tampons\n' + ESC + 'E' + '\x00' + 'Plus que 4 pour la gratuite!\n';
+
+    const generateData = async (type) => {
+        if (type === 'kitchen') {
+            if (targetLayoutMode === 'customizable') {
+                return formatDynamicTicket(MOCK_TEST_ORDER, ticketSettings.kitchenTemplate, '');
+            }
+            return formatKitchenTicketClassic(MOCK_TEST_ORDER, '');
+        } else {
+            if (targetLayoutMode === 'customizable') {
+                return formatDynamicTicket(MOCK_TEST_ORDER, ticketSettings.counterTemplate, loyaltyText);
+            }
+            return formatCounterTicketClassic(MOCK_TEST_ORDER, loyaltyText);
+        }
+    };
+
+    if (printerType === 'kitchen' || printerType === 'both') {
+        if (PRINTER_IPS.length > 0) {
+            console.log(`🖨️  Printing test kitchen ticket to Ethernet IPs: ${PRINTER_IPS.join(', ')}`);
+            const ticketData = await generateData('kitchen');
+            await Promise.allSettled(
+                PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, `Test Kitchen`))
+            );
+        }
+    }
+
+    if (printerType === 'counter' || printerType === 'both') {
+        const usbPrinterName = COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME;
+        if (usbPrinterName && usbPrinterName.trim()) {
+            console.log(`🖨️  Printing test client ticket to USB: "${usbPrinterName}"`);
+            const ticketData = await generateData('counter');
+            await sendToUSBPrinter(ticketData, usbPrinterName);
+        }
+    }
+}
+
+// Update settings and check for remote test print triggers
+async function handleSettingsUpdate(savedSettings) {
+    if (!savedSettings) return;
+
+    ticketSettings = {
+        ...defaultSettings,
+        ...savedSettings,
+        kitchenTemplate: { ...defaultSettings.kitchenTemplate, ...(savedSettings.kitchenTemplate || {}) },
+        counterTemplate: { ...defaultSettings.counterTemplate, ...(savedSettings.counterTemplate || {}) }
+    };
+
+    // Dynamic printer update from DB settings
+    if (savedSettings.usbPrinterName) {
+        const newPrinterName = savedSettings.usbPrinterName.trim();
+        if (COUNTER_PRINTER_NAME !== newPrinterName) {
+            console.log(`🔌 Dynamic printer name updated from DB settings: "${COUNTER_PRINTER_NAME}" ➔ "${newPrinterName}"`);
+            COUNTER_PRINTER_NAME = newPrinterName;
+        }
+    } else {
+        COUNTER_PRINTER_NAME = (process.env.COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME || '').trim();
+    }
+
+    console.log('✅ Ticket settings synchronized from database.');
+
+    // Check remote test print trigger
+    if (savedSettings.triggerTestPrint && typeof savedSettings.triggerTestPrint.timestamp === 'number') {
+        const trigger = savedSettings.triggerTestPrint;
+        if (trigger.timestamp > lastProcessedTestTimestamp) {
+            lastProcessedTestTimestamp = trigger.timestamp;
+            console.log(`📡 Remote Test Print Triggered: ${trigger.printerType} (${trigger.layoutMode})`);
+            
+            // Run asynchronously so we don't block the database fetching thread
+            setTimeout(async () => {
+                try {
+                    await runLocalTestPrint(trigger.printerType, trigger.layoutMode);
+                } catch (err) {
+                    console.error('❌ Remote test print failed:', err.message);
+                }
+            }, 50);
+        }
+    }
+}
+
 // Fetch ticket settings from Supabase
 async function fetchTicketSettings() {
     try {
@@ -283,32 +367,7 @@ async function fetchTicketSettings() {
         }
 
         if (data?.setting_value) {
-            const savedSettings = data.setting_value;
-            ticketSettings = {
-                ...defaultSettings,
-                ...savedSettings,
-                kitchenTemplate: { ...defaultSettings.kitchenTemplate, ...(savedSettings.kitchenTemplate || {}) },
-                counterTemplate: { ...defaultSettings.counterTemplate, ...(savedSettings.counterTemplate || {}) }
-            };
-
-            // Dynamic printer update from DB settings
-            if (savedSettings.usbPrinterName) {
-                const newPrinterName = savedSettings.usbPrinterName.trim();
-                if (COUNTER_PRINTER_NAME !== newPrinterName) {
-                    console.log(`🔌 Dynamic printer name updated from DB settings: "${COUNTER_PRINTER_NAME}" ➔ "${newPrinterName}"`);
-                    COUNTER_PRINTER_NAME = newPrinterName;
-                }
-            } else {
-                COUNTER_PRINTER_NAME = (process.env.COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME || '').trim();
-            }
-
-            console.log('✅ Ticket settings loaded from database:');
-            console.log('   Header:', ticketSettings.counterTemplate.header);
-            console.log('   Subheader:', ticketSettings.counterTemplate.subheader);
-            console.log('   Footer:', ticketSettings.counterTemplate.footer);
-            console.log('   Paper width:', ticketSettings.paperWidth);
-            console.log('   Active template:', ticketSettings.activeTemplate);
-            console.log('   USB Printer:', COUNTER_PRINTER_NAME || '(none)');
+            await handleSettingsUpdate(data.setting_value);
         } else {
             console.log('⚠️ No ticket_templates found in database, using defaults');
         }
@@ -1706,6 +1765,20 @@ async function setupRealtimeSubscription() {
                 reconnectAttempts = 0;
                 lastEventReceivedAt = Date.now();
                 enqueueHACCPPrint(payload.new);
+            }
+        )
+        .on(
+            'postgres_changes',
+            {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'admin_settings'
+            },
+            (payload) => {
+                if (payload.new && payload.new.setting_key === 'ticket_templates') {
+                    console.log('🔄 Ticket templates updated in real-time');
+                    handleSettingsUpdate(payload.new.setting_value);
+                }
             }
         )
         .subscribe((status) => {
