@@ -100,19 +100,19 @@ const logoCache = new Map();
 /**
  * Download, resize, and convert a custom logo URL to ESC/POS bytes.
  */
-export async function buildLogoBytesFromUrl(url, targetWidth = 160) {
+export async function buildLogoBytesFromUrl(url, targetWidth = 160, isStar = false) {
     if (!url) return null;
     
     // Ensure target width is a multiple of 8
     const width = Math.ceil(targetWidth / 8) * 8;
-    const cacheKey = `${url}_${width}`;
+    const cacheKey = `${url}_${width}_${isStar ? 'star' : 'escpos'}`;
     
     if (logoCache.has(cacheKey)) {
         return logoCache.get(cacheKey);
     }
     
     try {
-        console.log(`[LOGO] Fetching and building custom logo from URL: ${url} (${width}px)...`);
+        console.log(`[LOGO] Fetching and building custom logo from URL: ${url} (${width}px, format: ${isStar ? 'Star' : 'ESC/POS'})...`);
         let img = await Jimp.read(url);
         
         // Resize keeping aspect ratio
@@ -153,11 +153,14 @@ export async function buildLogoBytesFromUrl(url, targetWidth = 160) {
         const yL = h & 0xFF;
         const yH = (h >> 8) & 0xFF;
         
-        const header = [0x1D, 0x76, 0x30, 0x00, xL, xH, yL, yH];
+        const header = isStar
+            ? [0x1B, 0x67, 0x64, 0x31, 0x00, xL, xH, yL, yH]
+            : [0x1D, 0x76, 0x30, 0x00, xL, xH, yL, yH];
+            
         const pixelData = rasterRows.flat();
         
-        const CENTER_ON  = [0x1B, 0x61, 0x01];
-        const CENTER_OFF = [0x1B, 0x61, 0x00];
+        const CENTER_ON  = isStar ? [0x1B, 0x1D, 0x61, 0x31] : [0x1B, 0x61, 0x01];
+        const CENTER_OFF = isStar ? [0x1B, 0x1D, 0x61, 0x30] : [0x1B, 0x61, 0x00];
         const NEWLINE    = [0x0A];
         
         const allBytes = [

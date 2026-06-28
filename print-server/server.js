@@ -1297,9 +1297,7 @@ async function formatCounterTicketClassic(order, loyaltyText) {
         t += loyaltyText + '\n' + DASH_LINE;
     }
 
-    // 13. GOOGLE REVIEW QR CODE — download as IMAGE (bitmap) via api.qrserver.com
-    //     This avoids ESC/POS GS(k compatibility issues with Star TSP100.
-    //     The QR image is rendered server-side as a bitmap, identical to the logo.
+    // 13. GOOGLE REVIEW QR CODE — native Star Line Mode QR command!
     const _qrSec2   = (ticketSettings?.counterTemplate?.sections || []).find(s => s.id === 'qrcode');
     const _qrUrl2   = (_qrSec2?.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
     const _qrLabel2 = _qrSec2?.qrCodeLabel || 'Laissez-nous un avis !';
@@ -1307,6 +1305,10 @@ async function formatCounterTicketClassic(order, loyaltyText) {
 
     // Build prefix text (already in t) + close the text portion
     t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + _qrLabel2 + '\n' + ESCPOS_COUNTER.BOLD_OFF;
+
+    // Use native Star Line Mode QR code
+    const nativeStarQr = getStarQRCodeString(_qrUrl2, _qrSize2);
+    t += nativeStarQr;
 
     // 14. PROMO IMAGE (bottom of ticket)
     const promoUrl2 = ticketSettings.counterTemplate?.promoImageUrl || '';
@@ -1320,28 +1322,16 @@ async function formatCounterTicketClassic(order, loyaltyText) {
     }
     tAfterQr += '\n' + ESCPOS_COUNTER.FEED + ESCPOS_COUNTER.PARTIAL_CUT;
 
-    // Build as buffer: [text before QR] + [QR bitmap] + [footer text] + [optional promo image]
+    // Build as buffer
     const cb = new TicketBufferBuilder();
-    cb.addText(t); // everything up to QR label
-
-    // Download QR as bitmap image (same mechanism as logo printing)
-    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${_qrSize2 * 2}x${_qrSize2 * 2}&data=${encodeURIComponent(_qrUrl2)}&format=png&qzone=2`;
-    try {
-        const qrBitmapBuf = await buildLogoBytesFromUrl(qrImageUrl, Math.min(_qrSize2, 280));
-        if (qrBitmapBuf) cb.addBuffer(qrBitmapBuf);
-    } catch (e) {
-        console.warn('[QR] Failed to download/render QR image:', e.message);
-        // Fallback: print the URL as text if image fails
-        cb.addText('Avis: ' + _qrUrl2 + '\n');
-    }
-
+    cb.addText(t); 
     cb.addText(DASH_LINE);
     cb.addText(tAfterQr);
 
-    // Promo image at the very bottom
+    // Promo image at the very bottom (using Star Line Mode raster graphics format)
     if (promoUrl2) {
         try {
-            const promoBuf = await buildLogoBytesFromUrl(promoUrl2, ticketSettings.counterTemplate?.promoImageWidth || 280);
+            const promoBuf = await buildLogoBytesFromUrl(promoUrl2, ticketSettings.counterTemplate?.promoImageWidth || 280, true);
             if (promoBuf) cb.addBuffer(promoBuf);
         } catch (e) { console.warn('[PROMO] Counter image failed:', e.message); }
     }
