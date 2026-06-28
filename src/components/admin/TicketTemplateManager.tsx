@@ -53,6 +53,8 @@ interface TicketSettings {
   paperWidth: '58mm' | '80mm';
   fontSize: 'small' | 'medium' | 'large';
   usbPrinterName?: string;
+  counterLayoutMode?: 'classic' | 'customizable';
+  kitchenLayoutMode?: 'classic' | 'customizable';
 }
 
 const DEFAULT_SECTIONS: TicketSection[] = [
@@ -118,7 +120,9 @@ const defaultSettings: TicketSettings = {
   autoPrint: false,
   paperWidth: '80mm',
   fontSize: 'medium',
-  usbPrinterName: ''
+  usbPrinterName: '',
+  counterLayoutMode: 'classic',
+  kitchenLayoutMode: 'classic'
 };
 
 export function TicketTemplateManager() {
@@ -200,6 +204,8 @@ export function TicketTemplateManager() {
         ...saved,
         kitchenTemplate: normalizeTemplate(saved.kitchenTemplate, true),
         counterTemplate: normalizeTemplate(saved.counterTemplate, false),
+        counterLayoutMode: saved.counterLayoutMode || 'classic',
+        kitchenLayoutMode: saved.kitchenLayoutMode || 'classic',
       });
     }
   }, [settingsData]);
@@ -285,19 +291,21 @@ export function TicketTemplateManager() {
 
   const [testingPrint, setTestingPrint] = useState(false);
 
-  const handleTestPrint = async () => {
+  const handleSpecificTestPrint = async (printerType: 'counter' | 'kitchen' | 'both') => {
     setTestingPrint(true);
     try {
+      const activeLayoutMode = activeTemplateTab === 'kitchen' ? settings.kitchenLayoutMode : settings.counterLayoutMode;
       const res = await fetch('http://localhost:3001/print-test-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          templateType: activeTemplateTab,
+          printerType,
+          layoutMode: activeLayoutMode,
           template: currentTemplate
         })
       });
       if (res.ok) {
-        toast.success(`Impression test (${activeTemplateTab === 'kitchen' ? 'Cuisine' : 'Client'}) envoyée !`);
+        toast.success(`Impression test envoyée sur ${printerType === 'both' ? 'les deux imprimantes' : printerType === 'kitchen' ? 'Cuisine (Ethernet)' : 'Star (USB)'} !`);
       } else {
         const errData = await res.json();
         toast.error("Erreur d'impression : " + (errData.error || errData.message || "Échec"));
@@ -334,6 +342,88 @@ export function TicketTemplateManager() {
   };
 
   const generatePreviewHtml = () => {
+    const isKitchenTab = activeTemplateTab === 'kitchen';
+    const isClassic = isKitchenTab ? settings.kitchenLayoutMode === 'classic' : settings.counterLayoutMode === 'classic';
+
+    if (isClassic) {
+      // Classic layout preview simulation
+      const paperWidthStyle = settings.paperWidth === '58mm' ? '280px' : '380px';
+      if (isKitchenTab) {
+        // Classic kitchen ticket preview
+        return `
+          <div style="font-family: monospace; width: ${paperWidthStyle}; padding: 12px 8px; background: #fff; color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; line-height: 1.35; box-sizing: border-box;">
+            <div style="text-align: center; font-size: 20px; font-weight: bold; padding-bottom: 4px;">${currentTemplate.header || 'CUISINE'}</div>
+            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
+            <div style="text-align: center; font-size: 18px; font-weight: bold;">#042</div>
+            <div style="text-align: center; font-size: 16px; font-weight: bold;">LIVRAISON</div>
+            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
+            <div style="font-size: 13px;">Date: 26/06/2026 19:42<br/>Origine: WEB</div>
+            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
+            <div style="font-size: 13px;"><strong>Client:</strong> Ahmed Benali<br/><strong>Tel:</strong> 06 12 34 56 78<br/><strong>Adresse:</strong> 12 Rue de Paris, 76530<br/><strong>Note:</strong> Sans oignons svp</div>
+            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
+            <div style="font-size: 12px; font-weight: bold; display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 6px;">
+              <span>QTE  ARTICLE</span>
+              <span>TOTAL</span>
+            </div>
+            <div style="font-size: 18px; font-weight: bold; display: flex; justify-content: space-between;">
+              <span>• 1x MARGHERITA</span>
+              <span>12.50€</span>
+            </div>
+            <div style="font-size: 11px; margin-left: 12px; color: #555;">- SÉNIOR</div>
+            <div style="font-size: 13px; margin-left: 12px;">- + Supplément Fromage</div>
+            <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
+            <div style="font-size: 13px;">Reglement: CB</div>
+            <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
+            <div style="text-align: center; font-size: 13px; white-space: pre-line;">${currentTemplate.footer || 'Twin Pizza'}</div>
+          </div>
+        `;
+      } else {
+        // Classic counter ticket preview
+        return `
+          <div style="font-family: monospace; width: ${paperWidthStyle}; padding: 12px 8px; background: #fff; color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; line-height: 1.35; box-sizing: border-box;">
+            <div style="text-align: center; font-size: 20px; font-weight: bold; padding-bottom: 4px;">${currentTemplate.header || 'TWIN PIZZA'}</div>
+            <div style="font-size: 13px; text-align: left; white-space: pre-line;">${currentTemplate.subheader || '60 Rue Georges Clemenceau\nGrand-Couronne'}</div>
+            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
+            <div style="text-align: center; font-size: 18px; font-weight: bold;">#042</div>
+            <div style="text-align: center; font-size: 16px; font-weight: bold;">LIVRAISON</div>
+            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
+            <div style="font-size: 13px;">Date: 26/06/2026 19:42<br/>Origine: WEB</div>
+            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
+            <div style="font-size: 13px;"><strong>Client:</strong> Ahmed Benali<br/><strong>Tel:</strong> 06 12 34 56 78<br/><strong>Adresse:</strong> 12 Rue de Paris, 76530<br/><strong>Note:</strong> Sans oignons svp</div>
+            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
+            <div style="font-size: 12px; font-weight: bold; display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 6px;">
+              <span>QTE  ARTICLE</span>
+              <span>TOTAL</span>
+            </div>
+            <div style="font-size: 18px; font-weight: bold; display: flex; justify-content: space-between;">
+              <span>• 1x MARGHERITA</span>
+              <span>12.50€</span>
+            </div>
+            <div style="font-size: 11px; margin-left: 12px; color: #555;">- SÉNIOR</div>
+            <div style="font-size: 13px; margin-left: 12px;">- + Supplément Fromage</div>
+            <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
+            <div style="font-size: 13px; display: flex; justify-content: space-between;">
+              <span>TVA 10%:</span>
+              <span>1.25€</span>
+            </div>
+            <div style="font-size: 18px; font-weight: bold; display: flex; justify-content: space-between;">
+              <span>TOTAL:</span>
+              <span>12.50€</span>
+            </div>
+            <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
+            <div style="font-size: 13px;">Reglement: CB</div>
+            <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
+            <div style="text-align: center; font-size: 13px; font-weight: bold;">Laissez-nous un avis ! *</div>
+            <div style="display: flex; justify-content: center; padding: 8px 0;">
+              <div style="width: 100px; height: 100px; background: #000; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px;">[QR CODE]</div>
+            </div>
+            <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
+            <div style="text-align: center; font-size: 13px; white-space: pre-line;">${currentTemplate.footer || 'Merci de votre visite !\nTHANK YOU!'}</div>
+          </div>
+        `;
+      }
+    }
+
     const sections = currentTemplate.sections || [];
     let html = `<div style="font-family: monospace; width: ${settings.paperWidth === '58mm' ? '280px' : '380px'}; padding: 12px 8px; background: #fff; color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; line-height: 1.35; box-sizing: border-box;">`;
 
@@ -560,22 +650,75 @@ export function TicketTemplateManager() {
             </TabsList>
 
             <TabsContent value={activeTemplateTab} className="space-y-4 mt-4">
+              {/* Layout Engine Selector Banner */}
+              <Card className="border-border bg-slate-900/50 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Settings2 className="w-4 h-4 text-amber-500" />
+                      Moteur de mise en page ({activeTemplateTab === 'kitchen' ? 'Cuisine' : 'Client'})
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Choisissez si ce ticket doit utiliser la mise en page classique (hier 18h) ou être personnalisé dynamiquement.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={activeTemplateTab === 'kitchen' ? settings.kitchenLayoutMode : settings.counterLayoutMode}
+                      onChange={(e) => {
+                        const val = e.target.value as 'classic' | 'customizable';
+                        setSettings(prev => ({
+                          ...prev,
+                          [activeTemplateTab === 'kitchen' ? 'kitchenLayoutMode' : 'counterLayoutMode']: val
+                        }));
+                      }}
+                      className="h-9 px-3 rounded-md border border-border bg-[#0d1117] text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 font-bold"
+                    >
+                      <option value="classic">Classique (Hier 18h)</option>
+                      <option value="customizable">Personnalisable (Design Dynamique)</option>
+                    </select>
+                  </div>
+                </div>
+              </Card>
+
               <Card className="border-border bg-slate-950/40">
-                <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4 space-y-0">
+                <CardHeader className="pb-3 flex flex-col md:flex-row md:items-center justify-between gap-4 space-y-0">
                   <div>
                     <CardTitle className="text-base">Mise en page du ticket</CardTitle>
                     <CardDescription>Glissez-déposez ou cliquez sur les flèches pour modifier l'ordre d'impression. Cochez pour activer.</CardDescription>
                   </div>
-                  <Button
-                    type="button"
-                    onClick={handleTestPrint}
-                    disabled={testingPrint}
-                    variant="outline"
-                    className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10 gap-2 shrink-0 font-bold"
-                  >
-                    <Printer className="w-4 h-4" />
-                    {testingPrint ? "Impression..." : `Tester ${activeTemplateTab === 'kitchen' ? 'Cuisine (Ethernet)' : 'Client (Star)'}`}
-                  </Button>
+                  <div className="flex flex-wrap gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      onClick={() => handleSpecificTestPrint('counter')}
+                      disabled={testingPrint}
+                      variant="outline"
+                      className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10 gap-1 text-xs font-bold px-3 h-9"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Test Star (USB)
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => handleSpecificTestPrint('kitchen')}
+                      disabled={testingPrint}
+                      variant="outline"
+                      className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10 gap-1 text-xs font-bold px-3 h-9"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Test Cuisine (Ethernet)
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => handleSpecificTestPrint('both')}
+                      disabled={testingPrint}
+                      variant="outline"
+                      className="bg-amber-500/10 border-amber-500/40 text-amber-400 hover:bg-amber-500/20 gap-1 text-xs font-bold px-3 h-9"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Test sur les Deux
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0 pb-4">
                   <DragDropContext onDragEnd={handleDragEnd}>

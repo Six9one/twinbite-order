@@ -433,12 +433,12 @@ async function formatDynamicTicket(order, template, loyaltyText) {
     builder.addText(ESCPOS_LOCAL.SET_CODEPAGE_1252);
 
     const sections = template?.sections && template.sections.length > 0 ? template.sections : DEFAULT_SECTIONS;
+    const visualItems = [];
 
     for (const s of sections) {
         if (!s.enabled) continue;
 
-        builder.addText(getAlignCmd(s.align));
-        builder.addText(getStyleCmd(s));
+        const startIndex = visualItems.length;
 
         switch (s.id) {
             case 'logo': {
@@ -446,33 +446,34 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                     const width = template.logoWidth || 160;
                     const logoBuf = await buildLogoBytesFromUrl(template.logoUrl, width);
                     if (logoBuf) {
-                        builder.addBuffer(logoBuf);
+                        visualItems.push({ buffer: logoBuf });
                     }
                 } else {
                     if (logoBytes) {
-                        builder.addBuffer(logoBytes);
+                        visualItems.push({ buffer: logoBytes });
                     } else {
-                        builder.addText('🍕 [TWIN PIZZA LOGO]\n');
+                        visualItems.push({ text: '🍕 [TWIN PIZZA LOGO]\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                     }
                 }
                 break;
             }
             case 'header': {
                 const headerText = template?.header || 'TWIN PIZZA';
-                builder.addText(headerText + '\n');
+                visualItems.push({ text: headerText + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                 break;
             }
             case 'subheader': {
                 const subheaderText = template?.subheader || '60 Rue Georges Clemenceau, 76530 Grand-Couronne\n02 32 11 26 13';
                 subheaderText.split('\n').forEach(line => {
-                    builder.addText(line.trim() + '\n');
+                    visualItems.push({ text: line.trim() + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                 });
                 break;
             }
             case 'order_info': {
                 const typeLabels = { livraison: 'LIVRAISON', emporter: 'A EMPORTER', surplace: 'SUR PLACE' };
                 const typeLabel = typeLabels[order.order_type] || (order.order_type || '').toUpperCase();
-                builder.addText('#' + order.order_number + '\n' + typeLabel + '\n');
+                visualItems.push({ text: '#' + order.order_number + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
+                visualItems.push({ text: typeLabel + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                 break;
             }
             case 'scheduled_time': {
@@ -482,7 +483,7 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                         weekday: 'short', day: 'numeric', month: 'short',
                         hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris'
                     });
-                    builder.addText('PROGRAMME: ' + formatted + '\n');
+                    visualItems.push({ text: 'PROGRAMME: ' + formatted + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                 }
                 break;
             }
@@ -491,8 +492,8 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                 const formattedDate = orderDate.toLocaleString('fr-FR', {
                     dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
                 });
-                builder.addText('Date: ' + formattedDate + '\n');
-                builder.addText('Origine: ' + getSourceLabel(order) + '\n');
+                visualItems.push({ text: 'Date: ' + formattedDate + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
+                visualItems.push({ text: 'Origine: ' + getSourceLabel(order) + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                 break;
             }
             case 'customer_info': {
@@ -501,22 +502,22 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                 const clientName  = cleanCustomerName(order.customer_name);
                 
                 if (clientName) {
-                    builder.addText('Client: ' + clientName + '\n');
+                    visualItems.push({ text: 'Client: ' + clientName + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                 }
                 if (clientPhone) {
-                    builder.addText('Tel: ' + clientPhone + '\n');
+                    visualItems.push({ text: 'Tel: ' + clientPhone + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                 }
                 if (order.customer_address) {
-                    builder.addText('Adresse: ' + order.customer_address + '\n');
+                    visualItems.push({ text: 'Adresse: ' + order.customer_address + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                 }
                 if (clientNotes) {
-                    builder.addText('Note: ' + clientNotes + '\n');
+                    visualItems.push({ text: 'Note: ' + clientNotes + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                 }
                 break;
             }
             case 'items': {
-                builder.addText(ESCPOS_LOCAL.BOLD_ON + padLine('QTE  ARTICLE', 'P.U.   TOTAL', lineWidth) + ESCPOS_LOCAL.BOLD_OFF + '\n');
-                builder.addText('-'.repeat(lineWidth) + '\n');
+                visualItems.push({ text: padLine('QTE  ARTICLE', 'P.U.   TOTAL', lineWidth) + '\n', align: s.align, bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
+                visualItems.push({ text: '-'.repeat(lineWidth) + '\n', align: s.align, bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
 
                 const items = Array.isArray(order.items) ? order.items : [];
                 const grouped = {};
@@ -528,7 +529,7 @@ async function formatDynamicTicket(order, template, loyaltyText) {
 
                 const catKeys = Object.keys(grouped);
                 catKeys.forEach(cat => {
-                    builder.addText(ESCPOS_LOCAL.CENTER + ESCPOS_LOCAL.BOLD_ON + ESCPOS_LOCAL.DOUBLE_SIZE + '--- ' + cat.toUpperCase() + ' ---' + RESET_STYLE + '\n' + getAlignCmd(s.align));
+                    visualItems.push({ text: '--- ' + cat.toUpperCase() + ' ---' + '\n', align: 'center', bold: true, underline: false, fontSize: 'double_size', fontType: 'A' });
 
                     const catItems = grouped[cat];
                     catItems.forEach(ci => {
@@ -545,23 +546,19 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                         const leftPart = bullet + qty + 'x ' + cleanedName;
                         const rightPart = price.toFixed(2) + 'E';
 
-                        const pSizeCmd = template?.itemFontSize === 'double_height' ? ESCPOS_LOCAL.DOUBLE_HEIGHT :
-                                         template?.itemFontSize === 'double_size' ? ESCPOS_LOCAL.DOUBLE_SIZE :
-                                         ESCPOS_LOCAL.NORMAL_SIZE;
-                        const pBoldCmd = template?.itemBold !== false ? ESCPOS_LOCAL.BOLD_ON : ESCPOS_LOCAL.BOLD_OFF;
+                        const pSize = template?.itemFontSize || 'double_height';
+                        const pBold = template?.itemBold !== false;
 
-                        builder.addText(pBoldCmd + pSizeCmd + padLine(leftPart, rightPart, lineWidth) + RESET_STYLE + '\n');
+                        visualItems.push({ text: padLine(leftPart, rightPart, lineWidth) + '\n', align: s.align, bold: pBold, underline: false, fontSize: pSize, fontType: 'A' });
 
                         const c = ci.customization;
                         if (c) {
-                            const dFontCmd = template?.detailFontType === 'B' ? ESCPOS_LOCAL.FONT_B : ESCPOS_LOCAL.FONT_A;
-                            const dSizeCmd = template?.detailFontSize === 'double_height' ? ESCPOS_LOCAL.DOUBLE_HEIGHT : ESCPOS_LOCAL.NORMAL_SIZE;
-                            const dBoldCmd = template?.detailBold ? ESCPOS_LOCAL.BOLD_ON : ESCPOS_LOCAL.BOLD_OFF;
-
-                            builder.addText(dFontCmd + dSizeCmd + dBoldCmd);
+                            const dFont = template?.detailFontType || 'B';
+                            const dSize = template?.detailFontSize || 'normal';
+                            const dBold = !!template?.detailBold;
 
                             if (c.size) {
-                                builder.addText('   - ' + c.size.toUpperCase() + '\n');
+                                visualItems.push({ text: '   - ' + c.size.toUpperCase() + '\n', align: s.align, bold: dBold, underline: false, fontSize: dSize, fontType: dFont });
                             }
 
                             const otherDetails = [];
@@ -586,16 +583,12 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                             if (c.drink) otherDetails.push('Boisson: ' + c.drink);
 
                             otherDetails.forEach(d => {
-                                builder.addText('   - ' + d + '\n');
+                                visualItems.push({ text: '   - ' + d + '\n', align: s.align, bold: dBold, underline: false, fontSize: dSize, fontType: dFont });
                             });
 
                             if (c.note) {
-                                builder.addText('   - Note: ' + c.note + '\n');
+                                visualItems.push({ text: '   - Note: ' + c.note + '\n', align: s.align, bold: dBold, underline: false, fontSize: dSize, fontType: dFont });
                             }
-
-                            builder.addText(RESET_STYLE);
-                            builder.addText(getAlignCmd(s.align));
-                            builder.addText(getStyleCmd(s));
                         }
                     });
                 });
@@ -610,49 +603,67 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                 const tvaAmount = subtotalTTC - totalHT;
 
                 if (deliveryFee > 0) {
-                    builder.addText(padLine('Livraison:', deliveryFee.toFixed(2) + 'E', lineWidth) + '\n');
+                    visualItems.push({ text: padLine('Livraison:', deliveryFee.toFixed(2) + 'E', lineWidth) + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                 }
-                builder.addText(padLine('TVA ' + TVA_RATE + '%:', tvaAmount.toFixed(2) + 'E', lineWidth) + '\n');
-                builder.addText(ESCPOS_LOCAL.BOLD_ON + ESCPOS_LOCAL.DOUBLE_SIZE + padLine('TOTAL:', totalTTC.toFixed(2) + 'E', Math.floor(lineWidth * 0.6)) + RESET_STYLE + '\n');
+                visualItems.push({ text: padLine('TVA ' + TVA_RATE + '%:', tvaAmount.toFixed(2) + 'E', lineWidth) + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
+                visualItems.push({ text: padLine('TOTAL:', totalTTC.toFixed(2) + 'E', Math.floor(lineWidth * 0.6)) + '\n', align: s.align, bold: true, underline: false, fontSize: 'double_size', fontType: 'A' });
                 break;
             }
             case 'payment': {
                 const payLabels = { 'en_ligne': 'CB', 'cb': 'CB', 'especes': 'Cash' };
                 const payText = (payLabels[order.payment_method] || order.payment_method || '').toUpperCase();
-                builder.addText('Reglement: ' + payText + '\n');
+                visualItems.push({ text: 'Reglement: ' + payText + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
 
                 const creditsSaved     = order.pizza_credits_saved || 0;
                 const creditsRemaining = order.pizza_credits_remaining || 0;
                 if (creditsSaved > 0 || creditsRemaining > 0) {
-                    builder.addText(ESCPOS_LOCAL.CENTER + ESCPOS_LOCAL.BOLD_ON + '\n*** PIZZAS EN RESERVE ***\n' + ESCPOS_LOCAL.BOLD_OFF);
-                    if (creditsSaved > 0)     builder.addText(`Pizza sauvegardee: ${creditsSaved}\n`);
-                    if (creditsRemaining > 0) builder.addText(ESCPOS_LOCAL.BOLD_ON + `TOTAL EN RESERVE: ${creditsRemaining}\n` + ESCPOS_LOCAL.BOLD_OFF);
-                    builder.addText('Valable sans limite de temps!\n' + getAlignCmd(s.align));
+                    visualItems.push({ text: '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: '*** PIZZAS EN RESERVE ***\n', align: 'center', bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
+                    if (creditsSaved > 0)     visualItems.push({ text: `Pizza sauvegardee: ${creditsSaved}\n`, align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
+                    if (creditsRemaining > 0) visualItems.push({ text: `TOTAL EN RESERVE: ${creditsRemaining}\n`, align: 'center', bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: 'Valable sans limite de temps!\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
                 }
 
                 if (loyaltyText) {
-                    builder.addText(loyaltyText + '\n');
+                    loyaltyText.split('\n').filter(Boolean).forEach(line => {
+                        visualItems.push({ text: line + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
+                    });
                 }
                 break;
             }
             case 'qrcode': {
-                builder.addText(ESCPOS_LOCAL.CENTER + ESCPOS_LOCAL.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS_LOCAL.BOLD_OFF);
-                builder.addText(getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr') + '\n');
+                visualItems.push({ text: 'Laissez-nous un avis ! *\n', align: 'center', bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
+                const qrBuf = Buffer.from(getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr'), 'binary');
+                visualItems.push({ buffer: qrBuf });
+                visualItems.push({ text: '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
                 break;
             }
             case 'footer': {
                 const footerText = template?.footer || 'Merci de votre visite !\n🍕 À bientôt ! 🍕';
                 footerText.split('\n').forEach(line => {
-                    builder.addText(line.trim() + '\n');
+                    visualItems.push({ text: line.trim() + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                 });
                 break;
             }
         }
 
-        builder.addText(RESET_STYLE);
+        if (s.borderBottom !== 'none' && visualItems.length > startIndex) {
+            visualItems[visualItems.length - 1].borderBottom = s.borderBottom;
+        }
+    }
 
-        if (s.borderBottom !== 'none') {
-            builder.addText(getSeparatorLine(s.borderBottom, paperWidth));
+    for (const item of visualItems) {
+        if (item.buffer) {
+            builder.addBuffer(item.buffer);
+        } else {
+            builder.addText(getAlignCmd(item.align));
+            builder.addText(getStyleCmd(item));
+            builder.addText(item.text);
+            builder.addText(RESET_STYLE);
+
+            if (item.borderBottom && item.borderBottom !== 'none') {
+                builder.addText(getSeparatorLine(item.borderBottom, paperWidth));
+            }
         }
     }
 
@@ -661,12 +672,455 @@ async function formatDynamicTicket(order, template, loyaltyText) {
     return builder.toBuffer();
 }
 
+async function formatKitchenTicketClassic(order, loyaltyText) {
+    // Star Line Mode formatting overrides for Star SP700 Ethernet printer
+    const ESCPOS_KITCHEN = {
+        INIT: ESC + '@',
+        SET_CODEPAGE_1252: ESC + 't' + '\x10',
+        CENTER: ESC + 'a' + '\x01',
+        LEFT: ESC + 'a' + '\x00',
+        RIGHT: ESC + 'a' + '\x02',
+        BOLD_ON: ESC + 'E' + '\x01',
+        BOLD_OFF: ESC + 'E' + '\x00',
+        DOUBLE_HEIGHT: GS + '!' + '\x01',
+        DOUBLE_WIDTH: GS + '!' + '\x10',
+        DOUBLE_SIZE: GS + '!' + '\x11',
+        NORMAL_SIZE: GS + '!' + '\x00',
+        UNDERLINE_ON: ESC + '-' + '\x01',
+        UNDERLINE_OFF: ESC + '-' + '\x00',
+        PARTIAL_CUT: GS + 'V' + '\x01',
+        FEED: ESC + 'd' + '\x03',
+        UPSIDE_ON:  ESC + '{' + '\x01',
+        UPSIDE_OFF: ESC + '{' + '\x00',
+        FONT_A: ESC + 'M' + '\x00',
+        FONT_B: ESC + 'M' + '\x01',
+    };
+
+    const TVA_RATE   = 10;
+    const totalTTC   = order.total || 0;
+    const deliveryFee = order.delivery_fee || 0;
+    const subtotalTTC = (order.subtotal || totalTTC) - deliveryFee;
+    const totalHT    = subtotalTTC / (1 + TVA_RATE / 100);
+    const tvaAmount  = subtotalTTC - totalHT;
+    const items      = Array.isArray(order.items) ? order.items : [];
+    const typeLabels = { livraison: 'LIVRAISON', emporter: 'A EMPORTER', surplace: 'SUR PLACE' };
+    const payLabels  = { 'en_ligne': 'CB', 'cb': 'CB', 'especes': 'Cash' };
+    const typeLabel  = typeLabels[order.order_type] || (order.order_type || '').toUpperCase();
+
+    let t = '';
+    t += ESCPOS_KITCHEN.INIT + ESCPOS_KITCHEN.UPSIDE_ON + ESCPOS_KITCHEN.SET_CODEPAGE_1252;
+
+    // 1. RESTAURANT HEADER (Title Centered, Subheader Left-aligned)
+    const headerTitle = ticketSettings.kitchenTemplate?.header || 'CUISINE';
+    t += ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE + ESCPOS_KITCHEN.CENTER + headerTitle + '\n' + ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF;
+    t += ESCPOS_KITCHEN.LEFT;
+    t += DASH_LINE;
+
+    // 2. ORDER NUMBER + TYPE (BIG)
+    if (ticketSettings.kitchenTemplate?.showOrderNumber !== false) {
+        t += ESCPOS_KITCHEN.CENTER + ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_HEIGHT;
+        t += '#' + order.order_number + '\n';
+        t += typeLabel + '\n';
+        t += ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF;
+        t += ESCPOS_KITCHEN.CENTER + DASH_LINE;
+    }
+
+    // 3. SCHEDULED TIME
+    t += ESCPOS_KITCHEN.LEFT;
+    if (ticketSettings.kitchenTemplate?.showScheduledTime !== false && order.is_scheduled && order.scheduled_for) {
+        const sd = new Date(order.scheduled_for);
+        t += ESCPOS_KITCHEN.BOLD_ON + 'PROGRAMME: ' + sd.toLocaleString('fr-FR', {
+            weekday: 'short', day: 'numeric', month: 'short',
+            hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris'
+        }) + ESCPOS_KITCHEN.BOLD_OFF + '\n' + DASH_LINE;
+    }
+
+    // 4. DATE/TIME + SOURCE
+    let hasDateBlock = false;
+    if (ticketSettings.kitchenTemplate?.showDateTime !== false) {
+        const orderDate = new Date(order.created_at);
+        t += 'Date: ' + orderDate.toLocaleString('fr-FR', {
+            dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
+        }) + '\n';
+        t += 'Origine: ' + getSourceLabel(order) + '\n';
+        hasDateBlock = true;
+    }
+    if (hasDateBlock) {
+        t += DASH_LINE;
+    }
+
+    // 5. CLIENT BLOCK
+    const clientNotes = (order.customer_notes || '').replace(/^\[BORNE\]\s*/i, '').trim();
+    const clientPhone = cleanCustomerPhone(order.customer_phone);
+    const clientName  = cleanCustomerName(order.customer_name);
+    
+    let hasClientBlock = false;
+    if (ticketSettings.kitchenTemplate?.showCustomerInfo !== false && clientName) {
+        t += 'Client: ' + clientName + '\n';
+        hasClientBlock = true;
+    }
+    if (ticketSettings.kitchenTemplate?.showCustomerPhone !== false && clientPhone) {
+        t += 'Tel: ' + clientPhone + '\n';
+        hasClientBlock = true;
+    }
+    if (ticketSettings.kitchenTemplate?.showDeliveryAddress !== false && order.customer_address) {
+        t += 'Adresse: ' + order.customer_address + '\n';
+        hasClientBlock = true;
+    }
+    if (ticketSettings.kitchenTemplate?.showCustomerNotes !== false && clientNotes) {
+        t += ESCPOS_KITCHEN.BOLD_ON + 'Note: ' + clientNotes + ESCPOS_KITCHEN.BOLD_OFF + '\n';
+        hasClientBlock = true;
+    }
+    if (hasClientBlock) {
+        t += DASH_LINE;
+    }
+
+    // 6. COLUMN HEADER
+    t += ESCPOS_KITCHEN.BOLD_ON + padLine('QTE  ARTICLE', 'P.U.   TOTAL') + ESCPOS_KITCHEN.BOLD_OFF + '\n';
+    t += DASH_LINE;
+
+    // 7. ARTICLES LIST
+    const grouped = {};
+    items.forEach(ci => {
+        const cat = (ci.item?.category || ci.category || 'Articles').toLowerCase();
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(ci);
+    });
+
+    const catKeys = Object.keys(grouped);
+    catKeys.forEach(cat => {
+        t += ESCPOS_KITCHEN.CENTER + ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE + '--- ' + cat.toUpperCase() + ' ---' + ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + '\n' + ESCPOS_KITCHEN.LEFT;
+
+        const catItems = grouped[cat];
+        catItems.forEach(ci => {
+            const name      = ci.item?.name || ci.name || 'Produit';
+            const qty       = ci.quantity || 1;
+            const price     = ci.totalPrice || ci.calculatedPrice || ci.price || 0;
+            const c         = ci.customization;
+
+            let cleanedName = name.toUpperCase();
+            if (cat === 'pizza' || cat === 'pizzas' || cleanedName.startsWith('PIZZA ')) {
+                cleanedName = cleanedName.replace(/^PIZZA\s+/i, '');
+            }
+
+            const leftPart = '• ' + qty + 'x ' + cleanedName;
+            const rightPart = price.toFixed(2) + 'E';
+            t += ESCPOS_KITCHEN.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS_KITCHEN.BOLD_OFF + '\n';
+
+            if (c) {
+                if (c.size) {
+                    t += ESCPOS_KITCHEN.FONT_B + '   - ' + c.size.toUpperCase() + '\n' + ESCPOS_KITCHEN.FONT_A;
+                }
+
+                const otherDetails = [];
+                if (c.meats?.length)  otherDetails.push(...c.meats.map(m => '+ ' + m));
+                if (c.meat)           otherDetails.push('+ ' + c.meat);
+                if (c.sauces?.length) otherDetails.push(...c.sauces.map(s => 'Sauce: ' + s));
+                if (c.sauce)          otherDetails.push('Sauce: ' + c.sauce);
+                if (c.garnitures?.length) otherDetails.push(...c.garnitures);
+                if (c.supplements?.length) otherDetails.push(...c.supplements.map(s => '+ ' + s));
+                if (c.removedIngredients?.length) otherDetails.push(...c.removedIngredients.map(r => 'Sans ' + r));
+                if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
+                    const parts  = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
+                    const ml     = { frites: 'Frite', boisson: 'Boisson', supp_frites: 'Supp Frites', menu: 'Menu complet' };
+                    const labels = parts.map(p => ml[p] || p);
+                    if (labels.length) otherDetails.push(labels.join(' + '));
+                } else if (c.menuOption === 'none' || c.menuOption === '') {
+                    const cat2 = (ci.item?.category || ci.category || '').toLowerCase();
+                    if (cat2 === 'panini' || name.toUpperCase().includes('SANDWICH') || name.toUpperCase().includes('PANINI'))
+                        otherDetails.push('Sans frite');
+                }
+                if (c.drink) otherDetails.push('Boisson: ' + c.drink);
+
+                otherDetails.forEach(d => {
+                    t += '   - ' + d + '\n';
+                });
+
+                if (c.note) {
+                    t += ESCPOS_KITCHEN.BOLD_ON + '   - Note: ' + c.note + ESCPOS_KITCHEN.BOLD_OFF + '\n';
+                }
+            }
+        });
+    });
+    t += DASH_LINE;
+
+    // 8. TOTALS
+    t += ESCPOS_KITCHEN.LEFT;
+    if (deliveryFee > 0) {
+        t += padLine('Livraison:', deliveryFee.toFixed(2) + 'E') + '\n';
+    }
+    t += padLine('TVA ' + TVA_RATE + '%:', tvaAmount.toFixed(2) + 'E') + '\n';
+    
+    t += ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE;
+    t += padLine('TOTAL:', totalTTC.toFixed(2) + 'E', 24) + '\n';
+    t += ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF;
+    t += DASH_LINE;
+
+    // 9. PAYMENT
+    t += ESCPOS_KITCHEN.LEFT;
+    t += 'Reglement: ' + (payLabels[order.payment_method] || order.payment_method || '').toUpperCase() + '\n';
+    t += DASH_LINE;
+
+    // 10. FOOTER MESSAGE
+    t += ESCPOS_KITCHEN.CENTER;
+    if (ticketSettings.kitchenTemplate?.footer) {
+        ticketSettings.kitchenTemplate.footer.split('\n').forEach(line => {
+            t += line.trim() + '\n';
+        });
+    } else {
+        t += 'Twin Pizza\n';
+    }
+
+    t += ESCPOS_KITCHEN.FEED + ESCPOS_KITCHEN.PARTIAL_CUT;
+
+    return convertToCP1252(t);
+}
+
+async function formatCounterTicketClassic(order, loyaltyText) {
+    // Star Line Mode formatting overrides for Star TSP100 USB printer
+    const ESCPOS_COUNTER = {
+        INIT: ESC + '@',
+        SET_CODEPAGE_1252: ESC + 't' + '\x10',
+        CENTER: ESC + '\x1D' + 'a' + '1', 
+        LEFT: ESC + '\x1D' + 'a' + '0',   
+        RIGHT: ESC + '\x1D' + 'a' + '2',  
+        BOLD_ON: ESC + 'E' + '\x01',
+        BOLD_OFF: ESC + 'E' + '\x00',
+        DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
+        DOUBLE_WIDTH: ESC + 'i' + '\x01' + '\x00',
+        DOUBLE_SIZE: ESC + 'i' + '\x01' + '\x01',
+        NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
+        UNDERLINE_ON: ESC + '-' + '\x01',
+        UNDERLINE_OFF: ESC + '-' + '\x00',
+        PARTIAL_CUT: ESC + 'd' + '\x03',  
+        FEED: '',                        
+        UPSIDE_ON:  '',
+        UPSIDE_OFF: '',
+        FONT_A: ESC + '\x1E' + 'F' + '\x00', 
+        FONT_B: ESC + '\x1E' + 'F' + '\x01', 
+    };
+
+    const TVA_RATE   = 10;
+    const totalTTC   = order.total || 0;
+    const deliveryFee = order.delivery_fee || 0;
+    const subtotalTTC = (order.subtotal || totalTTC) - deliveryFee;
+    const totalHT    = subtotalTTC / (1 + TVA_RATE / 100);
+    const tvaAmount  = subtotalTTC - totalHT;
+    const items      = Array.isArray(order.items) ? order.items : [];
+    const typeLabels = { livraison: 'LIVRAISON', emporter: 'A EMPORTER', surplace: 'SUR PLACE' };
+    const payLabels  = { 'en_ligne': 'CB', 'cb': 'CB', 'especes': 'Cash' };
+    const typeLabel  = typeLabels[order.order_type] || (order.order_type || '').toUpperCase();
+
+    let t = '';
+    t += ESCPOS_COUNTER.INIT + ESCPOS_COUNTER.SET_CODEPAGE_1252;
+
+    // 1. RESTAURANT HEADER (Title Centered, Subheader Left-aligned)
+    const headerTitle = ticketSettings.counterTemplate?.header || 'TWIN PIZZA';
+    t += ESCPOS_COUNTER.BOLD_ON + ESCPOS_COUNTER.DOUBLE_SIZE + ESCPOS_COUNTER.CENTER + headerTitle + '\n' + ESCPOS_COUNTER.NORMAL_SIZE + ESCPOS_COUNTER.BOLD_OFF;
+    t += ESCPOS_COUNTER.LEFT;
+    const subheaderText = ticketSettings.counterTemplate?.subheader || '60 Rue Georges Clemenceau, 76530 Grand-Couronne\n02 32 11 26 13';
+    subheaderText.split('\n').forEach(line => {
+        t += line.trim() + '\n';
+    });
+    t += DASH_LINE;
+
+    // 2. ORDER NUMBER + TYPE (BIG)
+    if (ticketSettings.counterTemplate?.showOrderNumber !== false) {
+        t += ESCPOS_COUNTER.CENTER;
+        t += ESCPOS_COUNTER.BOLD_ON + ESCPOS_COUNTER.DOUBLE_HEIGHT;
+        t += '#' + order.order_number + '\n';
+        t += ESCPOS_COUNTER.CENTER + typeLabel + '\n';
+        t += ESCPOS_COUNTER.NORMAL_SIZE + ESCPOS_COUNTER.BOLD_OFF;
+        t += ESCPOS_COUNTER.CENTER + DASH_LINE;
+    }
+
+    // 3. SCHEDULED TIME
+    t += ESCPOS_COUNTER.LEFT;
+    if (ticketSettings.counterTemplate?.showScheduledTime !== false && order.is_scheduled && order.scheduled_for) {
+        const sd = new Date(order.scheduled_for);
+        t += ESCPOS_COUNTER.BOLD_ON + 'PROGRAMME: ' + sd.toLocaleString('fr-FR', {
+            weekday: 'short', day: 'numeric', month: 'short',
+            hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris'
+        }) + ESCPOS_COUNTER.BOLD_OFF + '\n' + DASH_LINE;
+    }
+
+    // 4. DATE/TIME + SOURCE
+    let hasDateBlock = false;
+    if (ticketSettings.counterTemplate?.showDateTime !== false) {
+        const orderDate = new Date(order.created_at);
+        t += 'Date: ' + orderDate.toLocaleString('fr-FR', {
+            dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
+        }) + '\n';
+        t += 'Origine: ' + getSourceLabel(order) + '\n';
+        hasDateBlock = true;
+    }
+    if (hasDateBlock) {
+        t += DASH_LINE;
+    }
+
+    // 5. CLIENT BLOCK
+    const clientNotes = (order.customer_notes || '').replace(/^\[BORNE\]\s*/i, '').trim();
+    const clientPhone = cleanCustomerPhone(order.customer_phone);
+    const clientName  = cleanCustomerName(order.customer_name);
+    
+    let hasClientBlock = false;
+    if (ticketSettings.counterTemplate?.showCustomerInfo !== false && clientName) {
+        t += 'Client: ' + clientName + '\n';
+        hasClientBlock = true;
+    }
+    if (ticketSettings.counterTemplate?.showCustomerPhone !== false && clientPhone) {
+        t += 'Tel: ' + clientPhone + '\n';
+        hasClientBlock = true;
+    }
+    if (ticketSettings.counterTemplate?.showDeliveryAddress !== false && order.customer_address) {
+        t += 'Adresse: ' + order.customer_address + '\n';
+        hasClientBlock = true;
+    }
+    if (ticketSettings.counterTemplate?.showCustomerNotes !== false && clientNotes) {
+        t += ESCPOS_COUNTER.BOLD_ON + 'Note: ' + clientNotes + ESCPOS_COUNTER.BOLD_OFF + '\n';
+        hasClientBlock = true;
+    }
+    if (hasClientBlock) {
+        t += DASH_LINE;
+    }
+
+    // 6. COLUMN HEADER
+    t += ESCPOS_COUNTER.BOLD_ON + padLine('QTE  ARTICLE', 'P.U.   TOTAL') + ESCPOS_COUNTER.BOLD_OFF + '\n';
+    t += DASH_LINE;
+
+    // 7. ARTICLES LIST
+    const grouped = {};
+    items.forEach(ci => {
+        const cat = (ci.item?.category || ci.category || 'Articles').toLowerCase();
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(ci);
+    });
+
+    const catKeys = Object.keys(grouped);
+    catKeys.forEach(cat => {
+        t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + ESCPOS_COUNTER.DOUBLE_SIZE + '--- ' + cat.toUpperCase() + ' ---' + ESCPOS_COUNTER.NORMAL_SIZE + ESCPOS_COUNTER.BOLD_OFF + '\n' + ESCPOS_COUNTER.LEFT;
+
+        const catItems = grouped[cat];
+        catItems.forEach(ci => {
+            const name      = ci.item?.name || ci.name || 'Produit';
+            const qty       = ci.quantity || 1;
+            const price     = ci.totalPrice || ci.calculatedPrice || ci.price || 0;
+            const c         = ci.customization;
+
+            let cleanedName = name.toUpperCase();
+            if (cat === 'pizza' || cat === 'pizzas' || cleanedName.startsWith('PIZZA ')) {
+                cleanedName = cleanedName.replace(/^PIZZA\s+/i, '');
+            }
+
+            const leftPart = '• ' + qty + 'x ' + cleanedName;
+            const rightPart = price.toFixed(2) + 'E';
+            t += ESCPOS_COUNTER.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS_COUNTER.BOLD_OFF + '\n';
+
+            if (c) {
+                if (c.size) {
+                    t += ESCPOS_COUNTER.FONT_B + '   - ' + c.size.toUpperCase() + '\n' + ESCPOS_COUNTER.FONT_A;
+                }
+
+                const otherDetails = [];
+                if (c.meats?.length)  otherDetails.push(...c.meats.map(m => '+ ' + m));
+                if (c.meat)           otherDetails.push('+ ' + c.meat);
+                if (c.sauces?.length) otherDetails.push(...c.sauces.map(s => 'Sauce: ' + s));
+                if (c.sauce)          otherDetails.push('Sauce: ' + c.sauce);
+                if (c.garnitures?.length) otherDetails.push(...c.garnitures);
+                if (c.supplements?.length) otherDetails.push(...c.supplements.map(s => '+ ' + s));
+                if (c.removedIngredients?.length) otherDetails.push(...c.removedIngredients.map(r => 'Sans ' + r));
+                if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
+                    const parts  = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
+                    const ml2    = { frites: 'Frite', boisson: 'Boisson', supp_frites: 'Supp Frites', menu: 'Menu complet' };
+                    const labels = parts.map(p => ml2[p] || p);
+                    if (labels.length) otherDetails.push(labels.join(' + '));
+                } else if (c.menuOption === 'none' || c.menuOption === '') {
+                    const cat2 = (ci.item?.category || ci.category || '').toLowerCase();
+                    if (cat2 === 'panini' || name.toUpperCase().includes('SANDWICH') || name.toUpperCase().includes('PANINI'))
+                        otherDetails.push('Sans frite');
+                }
+                if (c.drink) otherDetails.push('Boisson: ' + c.drink);
+
+                otherDetails.forEach(d => {
+                    t += '   - ' + d + '\n';
+                });
+
+                if (c.note) {
+                    t += ESCPOS_COUNTER.BOLD_ON + '   - Note: ' + c.note + ESCPOS_COUNTER.BOLD_OFF + '\n';
+                }
+            }
+        });
+    });
+    t += DASH_LINE;
+
+    // 8. TOTALS
+    t += ESCPOS_COUNTER.LEFT;
+    if (deliveryFee > 0) {
+        t += padLine('Livraison:', deliveryFee.toFixed(2) + 'E') + '\n';
+    }
+    t += padLine('TVA ' + TVA_RATE + '%:', tvaAmount.toFixed(2) + 'E') + '\n';
+    
+    t += ESCPOS_COUNTER.BOLD_ON + ESCPOS_COUNTER.DOUBLE_SIZE;
+    t += padLine('TOTAL:', totalTTC.toFixed(2) + 'E', 24) + '\n';
+    t += ESCPOS_COUNTER.NORMAL_SIZE + ESCPOS_COUNTER.BOLD_OFF;
+    t += DASH_LINE;
+
+    // 9. PAYMENT
+    t += ESCPOS_COUNTER.LEFT;
+    t += 'Reglement: ' + (payLabels[order.payment_method] || order.payment_method || '').toUpperCase() + '\n';
+    t += DASH_LINE;
+
+    // 10. RESERVE / CREDITS
+    const creditsSaved     = order.pizza_credits_saved || 0;
+    const creditsRemaining = order.pizza_credits_remaining || 0;
+    if (creditsSaved > 0 || creditsRemaining > 0) {
+        t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + '*** PIZZAS EN RESERVE ***\n' + ESCPOS_COUNTER.BOLD_OFF;
+        if (creditsSaved > 0)    t += `Pizza sauvegardee: ${creditsSaved}\n`;
+        if (creditsRemaining > 0) t += ESCPOS_COUNTER.BOLD_ON + `TOTAL EN RESERVE: ${creditsRemaining}\n` + ESCPOS_COUNTER.BOLD_OFF;
+        t += 'Valable sans limite de temps!\n';
+        t += DASH_LINE;
+    }
+
+    // 11. LOYALTY TEXT
+    if (loyaltyText) {
+        t += loyaltyText + '\n' + DASH_LINE;
+    }
+
+    // 13. GOOGLE REVIEW QR CODE (Centered)
+    t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS_COUNTER.BOLD_OFF;
+    t += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr') + '\n';
+    t += DASH_LINE;
+
+    // 14. FOOTER MESSAGE
+    t += ESCPOS_COUNTER.CENTER;
+    if (ticketSettings.counterTemplate?.footer) {
+        ticketSettings.counterTemplate.footer.split('\n').forEach(line => {
+            t += line.trim() + '\n';
+        });
+    } else {
+        t += 'Merci de votre visite !\n';
+        t += ESCPOS_COUNTER.BOLD_ON + 'THANK YOU!\n' + ESCPOS_COUNTER.BOLD_OFF;
+    }
+
+    t += '\n' + ESCPOS_COUNTER.FEED + ESCPOS_COUNTER.PARTIAL_CUT;
+
+    return convertToCP1252(t);
+}
+
 async function formatKitchenTicket(order, loyaltyText) {
-    return formatDynamicTicket(order, ticketSettings.kitchenTemplate, loyaltyText);
+    const layoutMode = ticketSettings?.kitchenLayoutMode || 'classic';
+    if (layoutMode === 'customizable') {
+        return formatDynamicTicket(order, ticketSettings.kitchenTemplate, loyaltyText);
+    }
+    return formatKitchenTicketClassic(order, loyaltyText);
 }
 
 async function formatCounterTicket(order, loyaltyText) {
-    return formatDynamicTicket(order, ticketSettings.counterTemplate, loyaltyText);
+    const layoutMode = ticketSettings?.counterLayoutMode || 'classic';
+    if (layoutMode === 'customizable') {
+        return formatDynamicTicket(order, ticketSettings.counterTemplate, loyaltyText);
+    }
+    return formatCounterTicketClassic(order, loyaltyText);
 }
 
 async function formatOrderForPrint(order, isKitchen = false) {
@@ -1619,35 +2073,55 @@ function setupHttpServer() {
     app.post('/print-test-template', async (req, res) => {
         console.log('\n📥 Template test print request received');
         try {
-            const { templateType, template } = req.body;
-            if (!template) {
-                return res.status(400).json({ error: 'Missing template configuration' });
-            }
+            const { templateType, printerType, layoutMode, template } = req.body;
+            const targetPrinter = printerType || templateType || 'counter';
+            const targetLayoutMode = layoutMode || (targetPrinter === 'kitchen' ? (ticketSettings.kitchenLayoutMode || 'classic') : (ticketSettings.counterLayoutMode || 'classic'));
 
-            console.log(`   Type: ${templateType}`);
-            console.log(`   Paper Width: ${template.paperWidth || '80mm'}`);
+            console.log(`   Printer target: ${targetPrinter}`);
+            console.log(`   Layout mode: ${targetLayoutMode}`);
 
-            const loyaltyText = templateType === 'counter' ? '\n' + ESC + 'a' + '\x01' + ESC + 'E' + '\x01' + 'FIDELITE: 5/9 Tampons\n' + ESC + 'E' + '\x00' + 'Plus que 4 pour la gratuite!\n' : '';
-            const ticketData = await formatDynamicTicket(MOCK_TEST_ORDER, template, loyaltyText);
+            const loyaltyText = '\n' + ESC + 'a' + '\x01' + ESC + 'E' + '\x01' + 'FIDELITE: 5/9 Tampons\n' + ESC + 'E' + '\x00' + 'Plus que 4 pour la gratuite!\n';
+
+            const generateTicketData = async (type) => {
+                if (type === 'kitchen') {
+                    if (targetLayoutMode === 'customizable' && template) {
+                        return formatDynamicTicket(MOCK_TEST_ORDER, template, '');
+                    }
+                    return formatKitchenTicketClassic(MOCK_TEST_ORDER, '');
+                } else {
+                    if (targetLayoutMode === 'customizable' && template) {
+                        return formatDynamicTicket(MOCK_TEST_ORDER, template, loyaltyText);
+                    }
+                    return formatCounterTicketClassic(MOCK_TEST_ORDER, loyaltyText);
+                }
+            };
 
             let success = false;
-            if (templateType === 'kitchen') {
+            let errors = [];
+
+            if (targetPrinter === 'kitchen' || targetPrinter === 'both') {
                 if (PRINTER_IPS.length > 0) {
                     console.log(`🖨️  Printing test kitchen ticket to Ethernet IPs: ${PRINTER_IPS.join(', ')}`);
+                    const ticketData = await generateTicketData('kitchen');
                     const results = await Promise.allSettled(
                         PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, `Test Kitchen`))
                     );
-                    success = results.some(r => r.status === 'fulfilled' && r.value === true);
-                } else {
+                    const ok = results.some(r => r.status === 'fulfilled' && r.value === true);
+                    if (ok) success = true;
+                    else errors.push('Failed to print to Ethernet kitchen printer(s)');
+                } else if (targetPrinter === 'kitchen') {
                     return res.status(400).json({ error: 'No Ethernet kitchen printer IPs configured in print-server/.env (PRINTER_IPS)' });
                 }
-            } else {
+            }
+
+            if (targetPrinter === 'counter' || targetPrinter === 'both') {
                 const usbPrinterName = COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME;
                 if (usbPrinterName && usbPrinterName.trim()) {
                     console.log(`🖨️  Printing test client ticket to USB: "${usbPrinterName}"`);
+                    const ticketData = await generateTicketData('counter');
                     await sendToUSBPrinter(ticketData, usbPrinterName);
                     success = true;
-                } else {
+                } else if (targetPrinter === 'counter') {
                     return res.status(400).json({ error: 'No USB printer name configured' });
                 }
             }
@@ -1655,7 +2129,7 @@ function setupHttpServer() {
             if (success) {
                 res.json({ success: true, message: 'Test ticket printed successfully' });
             } else {
-                res.status(500).json({ error: 'Failed to print test ticket. Check printer connections.' });
+                res.status(500).json({ error: errors.join(', ') || 'Failed to print test ticket. Check printer connections.' });
             }
         } catch (error) {
             console.error('❌ Template test print error:', error.message);
