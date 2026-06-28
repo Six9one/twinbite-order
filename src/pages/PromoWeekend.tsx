@@ -257,7 +257,31 @@ export default function PromoWeekend() {
 
       // Send Telegram notification with PROMO tag
       try {
-        console.log('[PROMO] Telegram notification bypassed (sleeping driver)');
+        await supabase.functions.invoke('send-telegram-notification', {
+          body: {
+            orderNumber: generatedNum,
+            customerName: name.trim(),
+            customerPhone: phone.trim(),
+            customerAddress: null,
+            customerNotes: combinedNotes ? `🎉 COMMANDE PROMO WEEK-END 🎉\n${combinedNotes}` : '🎉 COMMANDE PROMO WEEK-END 🎉',
+            orderType: 'emporter',
+            paymentMethod,
+            total: ttc,
+            subtotal: ht,
+            tva,
+            deliveryFee: 0,
+            items: recalculatedItems.map(item => ({
+              name: item.item.name,
+              quantity: item.quantity,
+              price: item.calculatedPrice,
+              category: item.item.category,
+              customization: item.customization,
+            })),
+            isScheduled: false,
+            scheduledFor: null,
+            promoSource: 'weekend_promo',
+          },
+        });
       } catch (telegramError) {
         console.error('Telegram notification error:', telegramError);
       }
