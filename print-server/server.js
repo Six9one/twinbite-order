@@ -87,6 +87,30 @@ const ESCPOS = {
     UPSIDE_OFF: ESC + '{' + '\x00',   // Désactiver impression retournée
 };
 
+// ── ESC/POS QR Code generator ─────────────────────────────────────────────
+// Generates a native ESC/POS QR code command string for thermal printers.
+// Uses GS ( k commands (QR Code model 2, error correction L, size 4).
+function getQRCodeString(url) {
+    const len = url.length + 3;
+    const pL = String.fromCharCode(len & 0xFF);
+    const pH = String.fromCharCode((len >> 8) & 0xFF);
+    return (
+        ESC + 'a' + '\x01' +                               // center align
+        GS  + '(' + 'k' + '\x03' + '\x00' + '1' + 'C' + '\x04' + // size 4
+        GS  + '(' + 'k' + '\x03' + '\x00' + '1' + 'E' + '\x30' + // error correction L
+        GS  + '(' + 'k' + pL + pH + '1' + 'P' + '0' + url +      // store data
+        GS  + '(' + 'k' + '\x03' + '\x00' + '1' + 'Q' + '0' +    // print
+        ESC + 'a' + '\x00'                                 // reset left
+    );
+}
+
+// ── Get QR URL from template section settings (fallback to default review URL)
+const DEFAULT_QR_URL = 'https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr';
+function getQrUrlFromSettings(ticketSettings) {
+    const sections = ticketSettings?.counterTemplate?.sections || [];
+    const qrSec = sections.find(s => s.id === 'qrcode');
+    return (qrSec?.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
+}
 
 // Detect order source channel (pos, borne, website)
 function detectOrderSource(order) {
@@ -632,8 +656,10 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                 break;
             }
             case 'qrcode': {
-                visualItems.push({ text: 'Laissez-nous un avis ! *\n', align: 'center', bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
-                const qrBuf = Buffer.from(getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr'), 'binary');
+                const qrLabel = s.qrCodeLabel || 'Laissez-nous un avis ! *';
+                const qrUrl   = (s.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
+                visualItems.push({ text: qrLabel + '\n', align: 'center', bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
+                const qrBuf = Buffer.from(getQRCodeString(qrUrl), 'binary');
                 visualItems.push({ buffer: qrBuf });
                 visualItems.push({ text: '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
                 break;
@@ -1086,9 +1112,12 @@ async function formatCounterTicketClassic(order, loyaltyText) {
         t += loyaltyText + '\n' + DASH_LINE;
     }
 
-    // 13. GOOGLE REVIEW QR CODE (Centered)
-    t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS_COUNTER.BOLD_OFF;
-    t += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr') + '\n';
+    // 13. GOOGLE REVIEW QR CODE (Centered) — URL comes from template manager settings
+    const _qrSec2 = (ticketSettings?.counterTemplate?.sections || []).find(s => s.id === 'qrcode');
+    const _qrUrl2 = (_qrSec2?.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
+    const _qrLabel2 = _qrSec2?.qrCodeLabel || 'Laissez-nous un avis ! *';
+    t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + _qrLabel2 + '\n' + ESCPOS_COUNTER.BOLD_OFF;
+    t += getQRCodeString(_qrUrl2) + '\n';
     t += DASH_LINE;
 
     // 14. FOOTER MESSAGE
@@ -2749,9 +2778,12 @@ function setupHttpServer() {
             t += 'L\'imprimante est correctement configuree !\n';
             t += ESCPOS.LINE_42;
             
-            // Google Review QR code
-            t += ESCPOS.CENTER + ESCPOS.BOLD_ON + 'Laissez-nous un avis ! *\n' + ESCPOS.BOLD_OFF;
-            t += getQRCodeString('https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr') + '\n';
+            // Google Review QR code — URL from template manager settings
+            const _qrSec3 = (ticketSettings?.counterTemplate?.sections || []).find(s => s.id === 'qrcode');
+            const _qrUrl3 = (_qrSec3?.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
+            const _qrLabel3 = _qrSec3?.qrCodeLabel || 'Laissez-nous un avis ! *';
+            t += ESCPOS.CENTER + ESCPOS.BOLD_ON + _qrLabel3 + '\n' + ESCPOS.BOLD_OFF;
+            t += getQRCodeString(_qrUrl3) + '\n';
             t += ESCPOS.LINE_42;
             
             t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
