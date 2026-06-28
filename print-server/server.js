@@ -201,6 +201,8 @@ const defaultSettings = {
         showTotal: false,
         showCustomerNotes: true,
         showScheduledTime: true,
+        promoImageUrl: '',
+        promoImageWidth: 280,
     },
     counterTemplate: {
         header: 'TWIN PIZZA',
@@ -221,10 +223,14 @@ const defaultSettings = {
         showTotal: true,
         showCustomerNotes: true,
         showScheduledTime: true,
+        promoImageUrl: '',
+        promoImageWidth: 280,
     },
     activeTemplate: 'counter',
     paperWidth: '80mm',
-    fontSize: 'medium'
+    fontSize: 'medium',
+    kitchenLayoutMode: 'customizable',
+    counterLayoutMode: 'customizable',
 };
 
 // Current settings (loaded from database)
@@ -350,6 +356,7 @@ const DEFAULT_SECTIONS = [
   { id: 'totals', name: 'Totaux (TVA, HT, TTC)', enabled: true, align: 'left', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'dashed' },
   { id: 'payment', name: 'Règlement / Paiement', enabled: true, align: 'left', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'dashed' },
   { id: 'qrcode', name: 'Code QR (Avis Google)', enabled: true, align: 'center', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'dashed' },
+  { id: 'promo_image', name: 'Photo Promo / Événement', enabled: true, align: 'center', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'none' },
   { id: 'footer', name: 'Message de pied de page', enabled: true, align: 'center', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'none' },
 ];
 
@@ -656,12 +663,34 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                 break;
             }
             case 'qrcode': {
-                const qrLabel = s.qrCodeLabel || 'Laissez-nous un avis ! *';
+                const qrLabel = s.qrCodeLabel || 'Laissez-nous un avis !';
                 const qrUrl   = (s.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
+                const qrSize  = s.qrCodeSize || 120;
                 visualItems.push({ text: qrLabel + '\n', align: 'center', bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
-                const qrBuf = Buffer.from(getQRCodeString(qrUrl), 'binary');
-                visualItems.push({ buffer: qrBuf });
+                // Download QR as bitmap (works on ALL Star printer firmware versions)
+                try {
+                    const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize * 2}x${qrSize * 2}&data=${encodeURIComponent(qrUrl)}&format=png&qzone=2`;
+                    const qrBuf = await buildLogoBytesFromUrl(qrImgUrl, Math.min(qrSize, 280));
+                    if (qrBuf) visualItems.push({ buffer: qrBuf });
+                } catch (e) {
+                    console.warn('[QR dynamic] image failed:', e.message);
+                    visualItems.push({ text: 'Avis: ' + qrUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
+                }
                 visualItems.push({ text: '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
+                break;
+            }
+            case 'promo_image': {
+                // Event / promotional photo printed as ESC/POS bitmap
+                const promoUrl = template?.promoImageUrl || '';
+                if (promoUrl) {
+                    try {
+                        const promoW = template?.promoImageWidth || 280;
+                        const promoBuf = await buildLogoBytesFromUrl(promoUrl, promoW);
+                        if (promoBuf) visualItems.push({ buffer: promoBuf });
+                    } catch (e) {
+                        console.warn('[PROMO dynamic] image failed:', e.message);
+                    }
+                }
                 break;
             }
             case 'footer': {
@@ -671,25 +700,29 @@ async function formatDynamicTicket(order, template, loyaltyText) {
                 });
                 break;
             }
+
         }
 
-        if (s.borderBottom !== 'none' && visualItems.length > startIndex) {
-            visualItems[visualItems.length - 1].borderBottom = s.borderBottom;
+        if (s.borderBottom && s.borderBottom !== 'none' && visualItems.length > startIndex) {
+            visualItems.push({ isSeparator: true, borderStyle: s.borderBottom, align: s.align });
         }
     }
 
+    if (isKitchen) {
+        visualItems.reverse();
+    }
+
     for (const item of visualItems) {
-        if (item.buffer) {
+        if (item.isSeparator) {
+            builder.addText(getAlignCmd(item.align));
+            builder.addText(getSeparatorLine(item.borderStyle, paperWidth));
+        } else if (item.buffer) {
             builder.addBuffer(item.buffer);
         } else {
             builder.addText(getAlignCmd(item.align));
             builder.addText(getStyleCmd(item));
             builder.addText(item.text);
             builder.addText(RESET_STYLE);
-
-            if (item.borderBottom && item.borderBottom !== 'none') {
-                builder.addText(getSeparatorLine(item.borderBottom, paperWidth));
-            }
         }
     }
 
@@ -733,60 +766,89 @@ async function formatKitchenTicketClassic(order, loyaltyText) {
     const payLabels  = { 'en_ligne': 'CB', 'cb': 'CB', 'especes': 'Cash' };
     const typeLabel  = typeLabels[order.order_type] || (order.order_type || '').toUpperCase();
 
-    // ── SECTION BUILDERS (built in REVERSE order for upside-down wall-mounted printer)
-    // When UPSIDE_ON is active, the first byte out of the printer ends up at the BOTTOM
-    // of the hanging tape. So we build each section into a separate string, then reverse
-    // the array before joining, so CUISINE header prints last → hangs at the TOP.
+    // ── SECTION BUILDERS ─────────────────────────────────────────────────────
+    // For upside-down wall-mounted kitchen printer with UPSIDE_ON:
+    //   - Each CHARACTER is rotated 180° by UPSIDE_ON
+    //   - Paper still feeds bottom-to-top physically
+    //   - First byte out of printer  → physical BOTTOM of hanging tape → reads LAST
+    //   - Last byte out (before CUT) → physical TOP of hanging tape   → reads FIRST
+    // So to get correct reading order (CUISINE at top → items → footer at bottom):
+    //   sections_k[0] = footer (reads last = printed first = bottom of tape)
+    //   sections_k[last-1] = CUISINE header (reads first = printed last-1 = top of tape)
+    //   sections_k[last]   = FEED + PARTIAL_CUT (must be VERY LAST so cut is at top)
+    //
+    // Within each section, lines must also be built in display order then reversed,
+    // because first char = bottom of that block = reads last.
 
     const sections_k = [];
 
-    // CUT + FEED (printed FIRST so it ends up at the very bottom after reversal)
-    sections_k.push(ESCPOS_KITCHEN.FEED + ESCPOS_KITCHEN.PARTIAL_CUT);
+    // ── PROMO IMAGE (bottom of ticket when hanging) ──
+    const promoUrl = ticketSettings.kitchenTemplate?.promoImageUrl || '';
+    if (promoUrl) {
+        try {
+            const promoBuf = await buildLogoBytesFromUrl(promoUrl, ticketSettings.kitchenTemplate?.promoImageWidth || 280);
+            if (promoBuf) sections_k.push({ buffer: promoBuf });
+        } catch (e) { console.warn('[PROMO] Kitchen image failed:', e.message); }
+    }
 
-    // FOOTER (bottom of ticket as seen when hanging)
+    // ── FOOTER ──
     {
         let s = ESCPOS_KITCHEN.CENTER;
         if (ticketSettings.kitchenTemplate?.footer) {
-            ticketSettings.kitchenTemplate.footer.split('\n').forEach(line => {
-                s += line.trim() + '\n';
-            });
+            ticketSettings.kitchenTemplate.footer.split('\n').forEach(line => { s += line.trim() + '\n'; });
         } else {
             s += 'Twin Pizza\n';
         }
-        sections_k.push(s);
+        sections_k.push({ text: s });
     }
 
-    // PAYMENT
-    sections_k.push(
+    // ── PAYMENT ──
+    sections_k.push({ text:
         ESCPOS_KITCHEN.LEFT +
         'Reglement: ' + (payLabels[order.payment_method] || order.payment_method || '').toUpperCase() + '\n' +
         DASH_LINE
-    );
+    });
 
-    // TOTALS
+    // ── TOTALS ──
     {
-        let s = ESCPOS_KITCHEN.LEFT;
-        if (deliveryFee > 0) s += padLine('Livraison:', deliveryFee.toFixed(2) + 'E') + '\n';
-        s += padLine('TVA ' + TVA_RATE + '%:', tvaAmount.toFixed(2) + 'E') + '\n';
-        s += ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE;
-        s += padLine('TOTAL:', totalTTC.toFixed(2) + 'E', 24) + '\n';
-        s += ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + DASH_LINE;
-        sections_k.push(s);
+        // Display order (top→bottom): TOTAL then TVA
+        // So build in REVERSE for printing (TVA first in string = bottom = reads last)
+        const displayLines = [];
+        displayLines.push(ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE +
+            padLine('TOTAL:', totalTTC.toFixed(2) + 'E', 24) + '\n' +
+            ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF);
+        displayLines.push(padLine('TVA ' + TVA_RATE + '%:', tvaAmount.toFixed(2) + 'E') + '\n');
+        if (deliveryFee > 0)
+            displayLines.push(padLine('Livraison:', deliveryFee.toFixed(2) + 'E') + '\n');
+        // Separator goes at the very top (last in reversed = last char = top of block)
+        displayLines.push(DASH_LINE);
+        sections_k.push({ text: ESCPOS_KITCHEN.LEFT + displayLines.reverse().join('') });
     }
 
-    // ARTICLES LIST
+    // ── ARTICLES LIST ──
+    // Build in display order (top→bottom: category header → items → details)
+    // Then reverse ALL lines so the printer outputs them bottom-to-top.
     {
-        let s = '';
         const grouped = {};
         items.forEach(ci => {
             const cat = (ci.item?.category || ci.category || 'Articles').toLowerCase();
             if (!grouped[cat]) grouped[cat] = [];
             grouped[cat].push(ci);
         });
+
+        // Build display-order lines array
+        const displayLines = [];
+        // Top separator
+        displayLines.push(DASH_LINE);
+
         Object.keys(grouped).forEach(cat => {
-            s += ESCPOS_KITCHEN.CENTER + ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE +
-                 '--- ' + cat.toUpperCase() + ' ---' +
-                 ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + '\n' + ESCPOS_KITCHEN.LEFT;
+            // Category header → appears at TOP of category block → must be first in displayLines for this cat
+            displayLines.push(
+                ESCPOS_KITCHEN.CENTER + ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE +
+                '--- ' + cat.toUpperCase() + ' ---' +
+                ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + '\n' + ESCPOS_KITCHEN.LEFT
+            );
+
             grouped[cat].forEach(ci => {
                 const name  = ci.item?.name || ci.name || 'Produit';
                 const qty   = ci.quantity || 1;
@@ -795,9 +857,17 @@ async function formatKitchenTicketClassic(order, loyaltyText) {
                 let cleanedName = name.toUpperCase();
                 if (cat === 'pizza' || cat === 'pizzas' || cleanedName.startsWith('PIZZA '))
                     cleanedName = cleanedName.replace(/^PIZZA\s+/i, '');
-                s += ESCPOS_KITCHEN.BOLD_ON + padLine('• ' + qty + 'x ' + cleanedName, price.toFixed(2) + 'E') + ESCPOS_KITCHEN.BOLD_OFF + '\n';
+
+                // Item name line → appears at TOP of item block → first in displayLines for this item
+                displayLines.push(
+                    ESCPOS_KITCHEN.BOLD_ON +
+                    padLine('• ' + qty + 'x ' + cleanedName, price.toFixed(2) + 'E') +
+                    ESCPOS_KITCHEN.BOLD_OFF + '\n'
+                );
+
+                // Details → appear BELOW item name
                 if (c) {
-                    if (c.size) s += ESCPOS_KITCHEN.FONT_B + '   - ' + c.size.toUpperCase() + '\n' + ESCPOS_KITCHEN.FONT_A;
+                    if (c.size) displayLines.push(ESCPOS_KITCHEN.FONT_B + '   - ' + c.size.toUpperCase() + '\n' + ESCPOS_KITCHEN.FONT_A);
                     const details = [];
                     if (c.meats?.length)  details.push(...c.meats.map(m => '+ ' + m));
                     if (c.meat)           details.push('+ ' + c.meat);
@@ -812,90 +882,103 @@ async function formatKitchenTicketClassic(order, loyaltyText) {
                         if (lbs.length) details.push(lbs.join(' + '));
                     }
                     if (c.drink) details.push('Boisson: ' + c.drink);
-                    details.forEach(d => { s += '   - ' + d + '\n'; });
-                    if (c.note) s += ESCPOS_KITCHEN.BOLD_ON + '   * Note: ' + c.note + ESCPOS_KITCHEN.BOLD_OFF + '\n';
+                    details.forEach(d => displayLines.push('   - ' + d + '\n'));
+                    if (c.note) displayLines.push(ESCPOS_KITCHEN.BOLD_ON + '   * Note: ' + c.note + ESCPOS_KITCHEN.BOLD_OFF + '\n');
                 }
             });
         });
-        s += DASH_LINE;
-        sections_k.push(s);
+
+        // REVERSE: now last displayLine (bottom separator) prints first (goes to physical bottom)
+        //          and first displayLine (top separator DASH_LINE) prints last (goes to physical top)
+        sections_k.push({ text: displayLines.reverse().join('') });
     }
 
-    // COLUMN HEADER (QTE / ARTICLE / TOTAL)
-    sections_k.push(
+    // ── COLUMN HEADER ──
+    sections_k.push({ text:
         ESCPOS_KITCHEN.BOLD_ON + padLine('QTE  ARTICLE', 'P.U.   TOTAL') + ESCPOS_KITCHEN.BOLD_OFF + '\n' + DASH_LINE
-    );
+    });
 
-    // CLIENT BLOCK
+    // ── CLIENT BLOCK ──
     {
         const clientNotes = (order.customer_notes || '').replace(/^\[BORNE\]\s*/i, '').trim();
         const clientPhone = cleanCustomerPhone(order.customer_phone);
         const clientName  = cleanCustomerName(order.customer_name);
-        let s = '';
+        // Display order: name, tel, address, notes
+        const displayLines = [];
         if (ticketSettings.kitchenTemplate?.showCustomerInfo !== false && clientName)
-            s += 'Client: ' + clientName + '\n';
+            displayLines.push('Client: ' + clientName + '\n');
         if (ticketSettings.kitchenTemplate?.showCustomerPhone !== false && clientPhone)
-            s += 'Tel: ' + clientPhone + '\n';
+            displayLines.push('Tel: ' + clientPhone + '\n');
         if (ticketSettings.kitchenTemplate?.showDeliveryAddress !== false && order.customer_address)
-            s += 'Adresse: ' + order.customer_address + '\n';
+            displayLines.push('Adresse: ' + order.customer_address + '\n');
         if (ticketSettings.kitchenTemplate?.showCustomerNotes !== false && clientNotes)
-            s += ESCPOS_KITCHEN.BOLD_ON + 'Note: ' + clientNotes + ESCPOS_KITCHEN.BOLD_OFF + '\n';
-        if (s) sections_k.push(s + DASH_LINE);
+            displayLines.push(ESCPOS_KITCHEN.BOLD_ON + 'Note: ' + clientNotes + ESCPOS_KITCHEN.BOLD_OFF + '\n');
+        displayLines.push(DASH_LINE);
+        if (displayLines.length > 1)
+            sections_k.push({ text: displayLines.reverse().join('') });
     }
 
-    // DATE & SOURCE
+    // ── DATE & SOURCE ──
     if (ticketSettings.kitchenTemplate?.showDateTime !== false) {
         const orderDate = new Date(order.created_at);
-        sections_k.push(
-            'Date: ' + orderDate.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' }) + '\n' +
-            'Origine: ' + getSourceLabel(order) + '\n' +
-            DASH_LINE
-        );
+        const displayLines = [
+            'Date: ' + orderDate.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' }) + '\n',
+            'Origine: ' + getSourceLabel(order) + '\n',
+            DASH_LINE,
+        ];
+        sections_k.push({ text: displayLines.reverse().join('') });
     }
 
-    // SCHEDULED TIME
+    // ── SCHEDULED TIME ──
     if (ticketSettings.kitchenTemplate?.showScheduledTime !== false && order.is_scheduled && order.scheduled_for) {
         const sd = new Date(order.scheduled_for);
-        sections_k.push(
+        sections_k.push({ text:
+            DASH_LINE +
             ESCPOS_KITCHEN.BOLD_ON + 'PROGRAMME: ' + sd.toLocaleString('fr-FR', {
                 weekday: 'short', day: 'numeric', month: 'short',
                 hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris'
-            }) + ESCPOS_KITCHEN.BOLD_OFF + '\n' + DASH_LINE
-        );
+            }) + ESCPOS_KITCHEN.BOLD_OFF + '\n'
+        });
     }
 
-    // ORDER NUMBER + TYPE (BIG) — printed last → hangs at TOP
+    // ── ORDER NUMBER + TYPE ──
     if (ticketSettings.kitchenTemplate?.showOrderNumber !== false) {
-        sections_k.push(
+        // Display order: #953 then SUR PLACE
+        const displayLines = [
+            '#' + order.order_number + '\n',
+            typeLabel + '\n',
+            DASH_LINE,
+        ];
+        sections_k.push({ text:
             ESCPOS_KITCHEN.CENTER + ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_HEIGHT +
-            '#' + order.order_number + '\n' +
-            typeLabel + '\n' +
-            ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF +
-            ESCPOS_KITCHEN.CENTER + DASH_LINE
-        );
+            displayLines.reverse().join('') +
+            ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF
+        });
     }
 
-    // CUISINE HEADER — very last → exits printer last → TOP of hanging tape
+    // ── CUISINE HEADER — very last text → top of hanging tape ──
     const headerTitle = ticketSettings.kitchenTemplate?.header || 'CUISINE';
-    sections_k.push(
+    sections_k.push({ text:
         ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE + ESCPOS_KITCHEN.CENTER +
         headerTitle + '\n' +
         ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF +
         ESCPOS_KITCHEN.LEFT + DASH_LINE
-    );
+    });
 
-    // Assemble: INIT + UPSIDE_ON + reversed sections
-    let t = ESCPOS_KITCHEN.INIT + ESCPOS_KITCHEN.UPSIDE_ON + ESCPOS_KITCHEN.SET_CODEPAGE_1252;
-    // sections_k[0] = CUT, sections_k[last] = HEADER
-    // Reverse so HEADER is printed first (bottom of tape) and CUT is last (top of tape)
-    // Wait — we want HEADER at TOP of tape. Tape TOP = printer exit LAST.
-    // So: print CUT first (bottom), then footer, ..., then HEADER last (top).
-    // sections_k is already in that order: [CUT, footer, payment, totals, items, col_header, client, date, scheduled, order_info, HEADER]
-    // Do NOT reverse — this is already bottom-to-top.
-    t += sections_k.join('');
+    // ── FEED + CUT — MUST be VERY LAST so the cut happens at the TOP of the tape ──
+    sections_k.push({ text: ESCPOS_KITCHEN.FEED + ESCPOS_KITCHEN.PARTIAL_CUT });
 
-    return convertToCP1252(t);
+    // ── ASSEMBLE using TicketBufferBuilder (handles both text and image buffers) ──
+    const kb = new TicketBufferBuilder();
+    kb.addText(ESCPOS_KITCHEN.INIT + ESCPOS_KITCHEN.UPSIDE_ON + ESCPOS_KITCHEN.SET_CODEPAGE_1252);
+    for (const chunk of sections_k) {
+        if (chunk.buffer) kb.addBuffer(chunk.buffer);
+        else if (chunk.text) kb.addText(chunk.text);
+    }
+    return kb.toBuffer();
 }
+
+
 
 async function formatCounterTicketClassic(order, loyaltyText) {
     // Star Line Mode formatting overrides for Star TSP100 USB printer
@@ -1107,37 +1190,60 @@ async function formatCounterTicketClassic(order, loyaltyText) {
         t += loyaltyText + '\n' + DASH_LINE;
     }
 
-    // 13. GOOGLE REVIEW QR CODE
-    // CRITICAL: getQRCodeString() returns raw binary ESC/POS bytes.
-    // We MUST NOT pass those through convertToCP1252() — it will corrupt them.
-    // Solution: split into 3 parts → convert text before QR, keep QR as binary, convert text after.
+    // 13. GOOGLE REVIEW QR CODE — download as IMAGE (bitmap) via api.qrserver.com
+    //     This avoids ESC/POS GS(k compatibility issues with Star TSP100.
+    //     The QR image is rendered server-side as a bitmap, identical to the logo.
     const _qrSec2   = (ticketSettings?.counterTemplate?.sections || []).find(s => s.id === 'qrcode');
     const _qrUrl2   = (_qrSec2?.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
     const _qrLabel2 = _qrSec2?.qrCodeLabel || 'Laissez-nous un avis !';
+    const _qrSize2  = _qrSec2?.qrCodeSize || 120;
 
-    // Text BEFORE QR (already in t)
+    // Build prefix text (already in t) + close the text portion
     t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + _qrLabel2 + '\n' + ESCPOS_COUNTER.BOLD_OFF;
 
-    // 14. FOOTER MESSAGE (text AFTER QR)
-    let tAfterQr = DASH_LINE + ESCPOS_COUNTER.CENTER;
+    // 14. PROMO IMAGE (bottom of ticket)
+    const promoUrl2 = ticketSettings.counterTemplate?.promoImageUrl || '';
+
+    // Build footer text
+    let tAfterQr = ESCPOS_COUNTER.CENTER;
     if (ticketSettings.counterTemplate?.footer) {
-        ticketSettings.counterTemplate.footer.split('\n').forEach(line => {
-            tAfterQr += line.trim() + '\n';
-        });
+        ticketSettings.counterTemplate.footer.split('\n').forEach(line => { tAfterQr += line.trim() + '\n'; });
     } else {
         tAfterQr += 'Merci de votre visite !\n';
     }
     tAfterQr += '\n' + ESCPOS_COUNTER.FEED + ESCPOS_COUNTER.PARTIAL_CUT;
 
-    // Build as a binary Buffer: [text before QR] + [QR binary] + [text after QR]
-    const bufBefore = Buffer.from(convertToCP1252(t), 'binary');
-    const bufQr     = Buffer.from(getQRCodeString(_qrUrl2), 'binary');
-    const bufAfter  = Buffer.from(convertToCP1252(tAfterQr), 'binary');
-    return Buffer.concat([bufBefore, bufQr, bufAfter]);
+    // Build as buffer: [text before QR] + [QR bitmap] + [footer text] + [optional promo image]
+    const cb = new TicketBufferBuilder();
+    cb.addText(t); // everything up to QR label
+
+    // Download QR as bitmap image (same mechanism as logo printing)
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${_qrSize2 * 2}x${_qrSize2 * 2}&data=${encodeURIComponent(_qrUrl2)}&format=png&qzone=2`;
+    try {
+        const qrBitmapBuf = await buildLogoBytesFromUrl(qrImageUrl, Math.min(_qrSize2, 280));
+        if (qrBitmapBuf) cb.addBuffer(qrBitmapBuf);
+    } catch (e) {
+        console.warn('[QR] Failed to download/render QR image:', e.message);
+        // Fallback: print the URL as text if image fails
+        cb.addText('Avis: ' + _qrUrl2 + '\n');
+    }
+
+    cb.addText(DASH_LINE);
+    cb.addText(tAfterQr);
+
+    // Promo image at the very bottom
+    if (promoUrl2) {
+        try {
+            const promoBuf = await buildLogoBytesFromUrl(promoUrl2, ticketSettings.counterTemplate?.promoImageWidth || 280);
+            if (promoBuf) cb.addBuffer(promoBuf);
+        } catch (e) { console.warn('[PROMO] Counter image failed:', e.message); }
+    }
+
+    return cb.toBuffer();
 }
 
 async function formatKitchenTicket(order, loyaltyText) {
-    const layoutMode = ticketSettings?.kitchenLayoutMode || 'classic';
+    const layoutMode = ticketSettings?.kitchenLayoutMode || 'customizable';
     if (layoutMode === 'customizable') {
         return formatDynamicTicket(order, ticketSettings.kitchenTemplate, loyaltyText);
     }
@@ -1145,7 +1251,7 @@ async function formatKitchenTicket(order, loyaltyText) {
 }
 
 async function formatCounterTicket(order, loyaltyText) {
-    const layoutMode = ticketSettings?.counterLayoutMode || 'classic';
+    const layoutMode = ticketSettings?.counterLayoutMode || 'customizable';
     if (layoutMode === 'customizable') {
         return formatDynamicTicket(order, ticketSettings.counterTemplate, loyaltyText);
     }
@@ -2104,7 +2210,7 @@ function setupHttpServer() {
         try {
             const { templateType, printerType, layoutMode, template } = req.body;
             const targetPrinter = printerType || templateType || 'counter';
-            const targetLayoutMode = layoutMode || (targetPrinter === 'kitchen' ? (ticketSettings.kitchenLayoutMode || 'classic') : (ticketSettings.counterLayoutMode || 'classic'));
+            const targetLayoutMode = layoutMode || (targetPrinter === 'kitchen' ? (ticketSettings.kitchenLayoutMode || 'customizable') : (ticketSettings.counterLayoutMode || 'customizable'));
 
             console.log(`   Printer target: ${targetPrinter}`);
             console.log(`   Layout mode: ${targetLayoutMode}`);

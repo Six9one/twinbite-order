@@ -65,6 +65,8 @@ interface TicketTemplate {
   sections?: TicketSection[];
   logoUrl?: string;
   logoWidth?: number;
+  promoImageUrl?: string;
+  promoImageWidth?: number;
   itemBullet?: 'none' | '•' | '-' | '*' | '▸' | '→';
   itemFontSize?: FontSize;
   itemBold?: boolean;
@@ -81,6 +83,8 @@ interface TicketSettings {
   paperWidth: '58mm' | '80mm';
   fontSize: 'small' | 'medium' | 'large';
   usbPrinterName?: string;
+  kitchenLayoutMode?: 'classic' | 'customizable';
+  counterLayoutMode?: 'classic' | 'customizable';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,12 +134,13 @@ const DEFAULT_SECTIONS: TicketSection[] = [
     align: 'center', borderBottom: 'dashed', paddingTop: 6, paddingBottom: 6,
     qrCodeUrl: '', qrCodeLabel: 'Laissez-nous un avis !', qrCodeSize: 100,
   }),
+  mkSec('promo_image',    'Photo Promo / Événement',           { align: 'center', paddingTop: 4, paddingBottom: 4 }),
   mkSec('footer',         'Message de pied de page',           { align: 'center', paddingTop: 4 }),
 ];
 
 const defaultKitchenTemplate: TicketTemplate = {
   name: 'Ticket Cuisine', header: 'TWIN PIZZA - CUISINE', subheader: '', footer: '',
-  logoUrl: '', logoWidth: 160, itemBullet: '•', itemFontSize: 'xlarge', itemBold: true,
+  logoUrl: '', logoWidth: 160, promoImageUrl: '', promoImageWidth: 280, itemBullet: '•', itemFontSize: 'xlarge', itemBold: true,
   detailFontSize: 'normal', detailFontType: 'A', detailBold: false,
   sections: DEFAULT_SECTIONS.map(s =>
     ['logo','subheader','totals','payment','qrcode','footer'].includes(s.id) ? { ...s, enabled: false } : s
@@ -146,7 +151,7 @@ const defaultCounterTemplate: TicketTemplate = {
   name: 'Ticket Client', header: 'TWIN PIZZA',
   subheader: 'Grand-Couronne\n60 Rue Georges Clemenceau',
   footer: 'Merci de votre visite!\n🍕 À bientôt! 🍕',
-  logoUrl: '', logoWidth: 160, itemBullet: '•', itemFontSize: 'xlarge', itemBold: true,
+  logoUrl: '', logoWidth: 160, promoImageUrl: '', promoImageWidth: 280, itemBullet: '•', itemFontSize: 'xlarge', itemBold: true,
   detailFontSize: 'small', detailFontType: 'B', detailBold: false,
   sections: [...DEFAULT_SECTIONS],
 };
@@ -155,6 +160,8 @@ const defaultSettings: TicketSettings = {
   kitchenTemplate: defaultKitchenTemplate,
   counterTemplate: defaultCounterTemplate,
   activeTemplate: 'counter', autoPrint: false, paperWidth: '80mm', fontSize: 'medium', usbPrinterName: '',
+  kitchenLayoutMode: 'customizable',
+  counterLayoutMode: 'customizable',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -311,6 +318,13 @@ function buildPreviewHtml(tmpl: TicketTemplate, paperWidth: '58mm'|'80mm'): stri
       case 'footer':
         html = `<div style="${css};white-space:pre-line">${tmpl.footer || 'Merci de votre visite !'}</div>`;
         break;
+      case 'promo_image': {
+        const aln = s.align === 'center' ? 'margin:0 auto' : s.align === 'right' ? 'margin-left:auto;margin-right:0' : '';
+        html = tmpl.promoImageUrl
+          ? `<div style="${css}"><img src="${tmpl.promoImageUrl}" style="max-width:${tmpl.promoImageWidth||280}px;width:100%;height:auto;display:block;${aln}"/></div>`
+          : `<div style="${css};border:1.5px dashed #bbb;background:#fdf2f8;padding:8px;text-align:center;font-size:10px;color:#db2777;border-radius:6px">🖼️ [PHOTO PROMO / ÉVÉNEMENT]</div>`;
+        break;
+      }
     }
 
     if (!html) return;
@@ -613,7 +627,7 @@ function SectionRow({ s, tmpl, expanded, dragHandleProps, onExpand, onToggle, on
             </div>
           )}
 
-          {/* QR CODE ── THE BIG ONE ── */}
+          {/* QR CODE */}
           {s.id === 'qrcode' && (
             <div className="space-y-4 pt-2 border-t border-slate-700/60">
               <p className="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest flex items-center gap-1.5">
@@ -659,8 +673,8 @@ function SectionRow({ s, tmpl, expanded, dragHandleProps, onExpand, onToggle, on
               {/* Size slider */}
               <div className="space-y-1.5">
                 <Label className="text-[10px] text-slate-400 uppercase tracking-widest flex justify-between">
-                  <span>Taille du QR code</span>
-                  <span className="text-amber-400 font-bold normal-case">{s.qrCodeSize || 100}px × {s.qrCodeSize || 100}px</span>
+                  <span>Taille du QR code (impression)</span>
+                  <span className="text-amber-400 font-bold normal-case">{s.qrCodeSize || 100}px</span>
                 </Label>
                 <input type="range" min={60} max={200} step={10}
                   value={s.qrCodeSize || 100}
@@ -687,8 +701,68 @@ function SectionRow({ s, tmpl, expanded, dragHandleProps, onExpand, onToggle, on
               )}
 
               <p className="text-[10px] text-slate-500 leading-relaxed">
-                💡 Le QR code est généré via <code className="text-amber-400 bg-slate-800 px-1 rounded">api.qrserver.com</code>. Internet requis lors de l'impression.
+                💡 Le QR code est rendu sous forme d'image bitmap — fonctionne avec toutes les imprimantes thermiques.
               </p>
+            </div>
+          )}
+
+          {/* PROMO IMAGE / EVENT PHOTO */}
+          {s.id === 'promo_image' && (
+            <div className="space-y-4 pt-2 border-t border-slate-700/60">
+              <p className="text-[10px] font-bold text-pink-400/90 uppercase tracking-widest flex items-center gap-1.5">
+                🖼️ Photo Promo / Événement
+              </p>
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                Uploadez une photo personnalisée (promotion, événement, offre spéciale...). Elle sera imprimée automatiquement en noir et blanc sur le ticket à la position de cette section.
+              </p>
+
+              {/* Upload */}
+              <div className="flex flex-col sm:flex-row gap-3 items-start">
+                <div className="flex-1">
+                  <LogoUploader
+                    logoUrl={tmpl.promoImageUrl || ''}
+                    onChange={u => onTmpl('promoImageUrl', u)}
+                  />
+                </div>
+                {tmpl.promoImageUrl && (
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={tmpl.promoImageUrl}
+                      className="h-16 w-auto rounded border border-white/10 bg-white object-contain p-1 max-w-[120px]"
+                      alt="promo"
+                    />
+                    <button
+                      onClick={() => onTmpl('promoImageUrl', '')}
+                      className="p-1.5 rounded-md bg-red-900/40 hover:bg-red-800/50 text-red-400 border border-red-800/40"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Width slider */}
+              <div className="space-y-1.5">
+                <Label className="text-[10px] text-slate-400 uppercase tracking-widest flex justify-between">
+                  <span>Largeur d'impression</span>
+                  <span className="text-pink-400 font-bold normal-case">{tmpl.promoImageWidth || 280}px</span>
+                </Label>
+                <input type="range" min={80} max={576} step={8}
+                  value={tmpl.promoImageWidth || 280}
+                  onChange={e => onTmpl('promoImageWidth', parseInt(e.target.value))}
+                  className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-pink-500" />
+                <div className="flex justify-between text-[9px] text-slate-600">
+                  <span>80px (petit)</span><span>576px (pleine largeur 80mm)</span>
+                </div>
+              </div>
+
+              {!tmpl.promoImageUrl && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-pink-900/15 border border-pink-800/30">
+                  <span className="text-[10px] text-pink-300">
+                    ↗️ Uploadez une image ci-dessus. Elle sera convertie automatiquement en noir et blanc thermique.
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
