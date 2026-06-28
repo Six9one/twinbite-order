@@ -733,171 +733,166 @@ async function formatKitchenTicketClassic(order, loyaltyText) {
     const payLabels  = { 'en_ligne': 'CB', 'cb': 'CB', 'especes': 'Cash' };
     const typeLabel  = typeLabels[order.order_type] || (order.order_type || '').toUpperCase();
 
-    let t = '';
-    t += ESCPOS_KITCHEN.INIT + ESCPOS_KITCHEN.UPSIDE_ON + ESCPOS_KITCHEN.SET_CODEPAGE_1252;
+    // ── SECTION BUILDERS (built in REVERSE order for upside-down wall-mounted printer)
+    // When UPSIDE_ON is active, the first byte out of the printer ends up at the BOTTOM
+    // of the hanging tape. So we build each section into a separate string, then reverse
+    // the array before joining, so CUISINE header prints last → hangs at the TOP.
 
-    // 1. RESTAURANT HEADER (Title Centered, Subheader Left-aligned)
-    const headerTitle = ticketSettings.kitchenTemplate?.header || 'CUISINE';
-    t += ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE + ESCPOS_KITCHEN.CENTER + headerTitle + '\n' + ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF;
-    t += ESCPOS_KITCHEN.LEFT;
-    t += DASH_LINE;
+    const sections_k = [];
 
-    // 2. ORDER NUMBER + TYPE (BIG)
-    if (ticketSettings.kitchenTemplate?.showOrderNumber !== false) {
-        t += ESCPOS_KITCHEN.CENTER + ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_HEIGHT;
-        t += '#' + order.order_number + '\n';
-        t += typeLabel + '\n';
-        t += ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF;
-        t += ESCPOS_KITCHEN.CENTER + DASH_LINE;
+    // CUT + FEED (printed FIRST so it ends up at the very bottom after reversal)
+    sections_k.push(ESCPOS_KITCHEN.FEED + ESCPOS_KITCHEN.PARTIAL_CUT);
+
+    // FOOTER (bottom of ticket as seen when hanging)
+    {
+        let s = ESCPOS_KITCHEN.CENTER;
+        if (ticketSettings.kitchenTemplate?.footer) {
+            ticketSettings.kitchenTemplate.footer.split('\n').forEach(line => {
+                s += line.trim() + '\n';
+            });
+        } else {
+            s += 'Twin Pizza\n';
+        }
+        sections_k.push(s);
     }
 
-    // 3. SCHEDULED TIME
-    t += ESCPOS_KITCHEN.LEFT;
-    if (ticketSettings.kitchenTemplate?.showScheduledTime !== false && order.is_scheduled && order.scheduled_for) {
-        const sd = new Date(order.scheduled_for);
-        t += ESCPOS_KITCHEN.BOLD_ON + 'PROGRAMME: ' + sd.toLocaleString('fr-FR', {
-            weekday: 'short', day: 'numeric', month: 'short',
-            hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris'
-        }) + ESCPOS_KITCHEN.BOLD_OFF + '\n' + DASH_LINE;
+    // PAYMENT
+    sections_k.push(
+        ESCPOS_KITCHEN.LEFT +
+        'Reglement: ' + (payLabels[order.payment_method] || order.payment_method || '').toUpperCase() + '\n' +
+        DASH_LINE
+    );
+
+    // TOTALS
+    {
+        let s = ESCPOS_KITCHEN.LEFT;
+        if (deliveryFee > 0) s += padLine('Livraison:', deliveryFee.toFixed(2) + 'E') + '\n';
+        s += padLine('TVA ' + TVA_RATE + '%:', tvaAmount.toFixed(2) + 'E') + '\n';
+        s += ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE;
+        s += padLine('TOTAL:', totalTTC.toFixed(2) + 'E', 24) + '\n';
+        s += ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + DASH_LINE;
+        sections_k.push(s);
     }
 
-    // 4. DATE/TIME + SOURCE
-    let hasDateBlock = false;
+    // ARTICLES LIST
+    {
+        let s = '';
+        const grouped = {};
+        items.forEach(ci => {
+            const cat = (ci.item?.category || ci.category || 'Articles').toLowerCase();
+            if (!grouped[cat]) grouped[cat] = [];
+            grouped[cat].push(ci);
+        });
+        Object.keys(grouped).forEach(cat => {
+            s += ESCPOS_KITCHEN.CENTER + ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE +
+                 '--- ' + cat.toUpperCase() + ' ---' +
+                 ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + '\n' + ESCPOS_KITCHEN.LEFT;
+            grouped[cat].forEach(ci => {
+                const name  = ci.item?.name || ci.name || 'Produit';
+                const qty   = ci.quantity || 1;
+                const price = ci.totalPrice || ci.calculatedPrice || ci.price || 0;
+                const c     = ci.customization;
+                let cleanedName = name.toUpperCase();
+                if (cat === 'pizza' || cat === 'pizzas' || cleanedName.startsWith('PIZZA '))
+                    cleanedName = cleanedName.replace(/^PIZZA\s+/i, '');
+                s += ESCPOS_KITCHEN.BOLD_ON + padLine('• ' + qty + 'x ' + cleanedName, price.toFixed(2) + 'E') + ESCPOS_KITCHEN.BOLD_OFF + '\n';
+                if (c) {
+                    if (c.size) s += ESCPOS_KITCHEN.FONT_B + '   - ' + c.size.toUpperCase() + '\n' + ESCPOS_KITCHEN.FONT_A;
+                    const details = [];
+                    if (c.meats?.length)  details.push(...c.meats.map(m => '+ ' + m));
+                    if (c.meat)           details.push('+ ' + c.meat);
+                    if (c.sauces?.length) details.push(...c.sauces.map(sc => 'Sauce: ' + sc));
+                    if (c.sauce)          details.push('Sauce: ' + c.sauce);
+                    if (c.garnitures?.length) details.push(...c.garnitures);
+                    if (c.supplements?.length) details.push(...c.supplements.map(sp => '+ ' + sp));
+                    if (c.removedIngredients?.length) details.push(...c.removedIngredients.map(r => 'Sans ' + r));
+                    if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
+                        const ml = { frites:'Frite', boisson:'Boisson', supp_frites:'Supp Frites', menu:'Menu complet' };
+                        const lbs = c.menuOption.split(',').map(o => ml[o.trim()] || o.trim()).filter(Boolean);
+                        if (lbs.length) details.push(lbs.join(' + '));
+                    }
+                    if (c.drink) details.push('Boisson: ' + c.drink);
+                    details.forEach(d => { s += '   - ' + d + '\n'; });
+                    if (c.note) s += ESCPOS_KITCHEN.BOLD_ON + '   * Note: ' + c.note + ESCPOS_KITCHEN.BOLD_OFF + '\n';
+                }
+            });
+        });
+        s += DASH_LINE;
+        sections_k.push(s);
+    }
+
+    // COLUMN HEADER (QTE / ARTICLE / TOTAL)
+    sections_k.push(
+        ESCPOS_KITCHEN.BOLD_ON + padLine('QTE  ARTICLE', 'P.U.   TOTAL') + ESCPOS_KITCHEN.BOLD_OFF + '\n' + DASH_LINE
+    );
+
+    // CLIENT BLOCK
+    {
+        const clientNotes = (order.customer_notes || '').replace(/^\[BORNE\]\s*/i, '').trim();
+        const clientPhone = cleanCustomerPhone(order.customer_phone);
+        const clientName  = cleanCustomerName(order.customer_name);
+        let s = '';
+        if (ticketSettings.kitchenTemplate?.showCustomerInfo !== false && clientName)
+            s += 'Client: ' + clientName + '\n';
+        if (ticketSettings.kitchenTemplate?.showCustomerPhone !== false && clientPhone)
+            s += 'Tel: ' + clientPhone + '\n';
+        if (ticketSettings.kitchenTemplate?.showDeliveryAddress !== false && order.customer_address)
+            s += 'Adresse: ' + order.customer_address + '\n';
+        if (ticketSettings.kitchenTemplate?.showCustomerNotes !== false && clientNotes)
+            s += ESCPOS_KITCHEN.BOLD_ON + 'Note: ' + clientNotes + ESCPOS_KITCHEN.BOLD_OFF + '\n';
+        if (s) sections_k.push(s + DASH_LINE);
+    }
+
+    // DATE & SOURCE
     if (ticketSettings.kitchenTemplate?.showDateTime !== false) {
         const orderDate = new Date(order.created_at);
-        t += 'Date: ' + orderDate.toLocaleString('fr-FR', {
-            dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
-        }) + '\n';
-        t += 'Origine: ' + getSourceLabel(order) + '\n';
-        hasDateBlock = true;
-    }
-    if (hasDateBlock) {
-        t += DASH_LINE;
+        sections_k.push(
+            'Date: ' + orderDate.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' }) + '\n' +
+            'Origine: ' + getSourceLabel(order) + '\n' +
+            DASH_LINE
+        );
     }
 
-    // 5. CLIENT BLOCK
-    const clientNotes = (order.customer_notes || '').replace(/^\[BORNE\]\s*/i, '').trim();
-    const clientPhone = cleanCustomerPhone(order.customer_phone);
-    const clientName  = cleanCustomerName(order.customer_name);
-    
-    let hasClientBlock = false;
-    if (ticketSettings.kitchenTemplate?.showCustomerInfo !== false && clientName) {
-        t += 'Client: ' + clientName + '\n';
-        hasClientBlock = true;
-    }
-    if (ticketSettings.kitchenTemplate?.showCustomerPhone !== false && clientPhone) {
-        t += 'Tel: ' + clientPhone + '\n';
-        hasClientBlock = true;
-    }
-    if (ticketSettings.kitchenTemplate?.showDeliveryAddress !== false && order.customer_address) {
-        t += 'Adresse: ' + order.customer_address + '\n';
-        hasClientBlock = true;
-    }
-    if (ticketSettings.kitchenTemplate?.showCustomerNotes !== false && clientNotes) {
-        t += ESCPOS_KITCHEN.BOLD_ON + 'Note: ' + clientNotes + ESCPOS_KITCHEN.BOLD_OFF + '\n';
-        hasClientBlock = true;
-    }
-    if (hasClientBlock) {
-        t += DASH_LINE;
+    // SCHEDULED TIME
+    if (ticketSettings.kitchenTemplate?.showScheduledTime !== false && order.is_scheduled && order.scheduled_for) {
+        const sd = new Date(order.scheduled_for);
+        sections_k.push(
+            ESCPOS_KITCHEN.BOLD_ON + 'PROGRAMME: ' + sd.toLocaleString('fr-FR', {
+                weekday: 'short', day: 'numeric', month: 'short',
+                hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris'
+            }) + ESCPOS_KITCHEN.BOLD_OFF + '\n' + DASH_LINE
+        );
     }
 
-    // 6. COLUMN HEADER
-    t += ESCPOS_KITCHEN.BOLD_ON + padLine('QTE  ARTICLE', 'P.U.   TOTAL') + ESCPOS_KITCHEN.BOLD_OFF + '\n';
-    t += DASH_LINE;
-
-    // 7. ARTICLES LIST
-    const grouped = {};
-    items.forEach(ci => {
-        const cat = (ci.item?.category || ci.category || 'Articles').toLowerCase();
-        if (!grouped[cat]) grouped[cat] = [];
-        grouped[cat].push(ci);
-    });
-
-    const catKeys = Object.keys(grouped);
-    catKeys.forEach(cat => {
-        t += ESCPOS_KITCHEN.CENTER + ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE + '--- ' + cat.toUpperCase() + ' ---' + ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + '\n' + ESCPOS_KITCHEN.LEFT;
-
-        const catItems = grouped[cat];
-        catItems.forEach(ci => {
-            const name      = ci.item?.name || ci.name || 'Produit';
-            const qty       = ci.quantity || 1;
-            const price     = ci.totalPrice || ci.calculatedPrice || ci.price || 0;
-            const c         = ci.customization;
-
-            let cleanedName = name.toUpperCase();
-            if (cat === 'pizza' || cat === 'pizzas' || cleanedName.startsWith('PIZZA ')) {
-                cleanedName = cleanedName.replace(/^PIZZA\s+/i, '');
-            }
-
-            const leftPart = '• ' + qty + 'x ' + cleanedName;
-            const rightPart = price.toFixed(2) + 'E';
-            t += ESCPOS_KITCHEN.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS_KITCHEN.BOLD_OFF + '\n';
-
-            if (c) {
-                if (c.size) {
-                    t += ESCPOS_KITCHEN.FONT_B + '   - ' + c.size.toUpperCase() + '\n' + ESCPOS_KITCHEN.FONT_A;
-                }
-
-                const otherDetails = [];
-                if (c.meats?.length)  otherDetails.push(...c.meats.map(m => '+ ' + m));
-                if (c.meat)           otherDetails.push('+ ' + c.meat);
-                if (c.sauces?.length) otherDetails.push(...c.sauces.map(s => 'Sauce: ' + s));
-                if (c.sauce)          otherDetails.push('Sauce: ' + c.sauce);
-                if (c.garnitures?.length) otherDetails.push(...c.garnitures);
-                if (c.supplements?.length) otherDetails.push(...c.supplements.map(s => '+ ' + s));
-                if (c.removedIngredients?.length) otherDetails.push(...c.removedIngredients.map(r => 'Sans ' + r));
-                if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
-                    const parts  = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
-                    const ml     = { frites: 'Frite', boisson: 'Boisson', supp_frites: 'Supp Frites', menu: 'Menu complet' };
-                    const labels = parts.map(p => ml[p] || p);
-                    if (labels.length) otherDetails.push(labels.join(' + '));
-                } else if (c.menuOption === 'none' || c.menuOption === '') {
-                    const cat2 = (ci.item?.category || ci.category || '').toLowerCase();
-                    if (cat2 === 'panini' || name.toUpperCase().includes('SANDWICH') || name.toUpperCase().includes('PANINI'))
-                        otherDetails.push('Sans frite');
-                }
-                if (c.drink) otherDetails.push('Boisson: ' + c.drink);
-
-                otherDetails.forEach(d => {
-                    t += '   - ' + d + '\n';
-                });
-
-                if (c.note) {
-                    t += ESCPOS_KITCHEN.BOLD_ON + '   - Note: ' + c.note + ESCPOS_KITCHEN.BOLD_OFF + '\n';
-                }
-            }
-        });
-    });
-    t += DASH_LINE;
-
-    // 8. TOTALS
-    t += ESCPOS_KITCHEN.LEFT;
-    if (deliveryFee > 0) {
-        t += padLine('Livraison:', deliveryFee.toFixed(2) + 'E') + '\n';
-    }
-    t += padLine('TVA ' + TVA_RATE + '%:', tvaAmount.toFixed(2) + 'E') + '\n';
-    
-    t += ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE;
-    t += padLine('TOTAL:', totalTTC.toFixed(2) + 'E', 24) + '\n';
-    t += ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF;
-    t += DASH_LINE;
-
-    // 9. PAYMENT
-    t += ESCPOS_KITCHEN.LEFT;
-    t += 'Reglement: ' + (payLabels[order.payment_method] || order.payment_method || '').toUpperCase() + '\n';
-    t += DASH_LINE;
-
-    // 10. FOOTER MESSAGE
-    t += ESCPOS_KITCHEN.CENTER;
-    if (ticketSettings.kitchenTemplate?.footer) {
-        ticketSettings.kitchenTemplate.footer.split('\n').forEach(line => {
-            t += line.trim() + '\n';
-        });
-    } else {
-        t += 'Twin Pizza\n';
+    // ORDER NUMBER + TYPE (BIG) — printed last → hangs at TOP
+    if (ticketSettings.kitchenTemplate?.showOrderNumber !== false) {
+        sections_k.push(
+            ESCPOS_KITCHEN.CENTER + ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_HEIGHT +
+            '#' + order.order_number + '\n' +
+            typeLabel + '\n' +
+            ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF +
+            ESCPOS_KITCHEN.CENTER + DASH_LINE
+        );
     }
 
-    t += ESCPOS_KITCHEN.FEED + ESCPOS_KITCHEN.PARTIAL_CUT;
+    // CUISINE HEADER — very last → exits printer last → TOP of hanging tape
+    const headerTitle = ticketSettings.kitchenTemplate?.header || 'CUISINE';
+    sections_k.push(
+        ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE + ESCPOS_KITCHEN.CENTER +
+        headerTitle + '\n' +
+        ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF +
+        ESCPOS_KITCHEN.LEFT + DASH_LINE
+    );
+
+    // Assemble: INIT + UPSIDE_ON + reversed sections
+    let t = ESCPOS_KITCHEN.INIT + ESCPOS_KITCHEN.UPSIDE_ON + ESCPOS_KITCHEN.SET_CODEPAGE_1252;
+    // sections_k[0] = CUT, sections_k[last] = HEADER
+    // Reverse so HEADER is printed first (bottom of tape) and CUT is last (top of tape)
+    // Wait — we want HEADER at TOP of tape. Tape TOP = printer exit LAST.
+    // So: print CUT first (bottom), then footer, ..., then HEADER last (top).
+    // sections_k is already in that order: [CUT, footer, payment, totals, items, col_header, client, date, scheduled, order_info, HEADER]
+    // Do NOT reverse — this is already bottom-to-top.
+    t += sections_k.join('');
 
     return convertToCP1252(t);
 }
@@ -1112,28 +1107,33 @@ async function formatCounterTicketClassic(order, loyaltyText) {
         t += loyaltyText + '\n' + DASH_LINE;
     }
 
-    // 13. GOOGLE REVIEW QR CODE (Centered) — URL comes from template manager settings
-    const _qrSec2 = (ticketSettings?.counterTemplate?.sections || []).find(s => s.id === 'qrcode');
-    const _qrUrl2 = (_qrSec2?.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
-    const _qrLabel2 = _qrSec2?.qrCodeLabel || 'Laissez-nous un avis ! *';
-    t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + _qrLabel2 + '\n' + ESCPOS_COUNTER.BOLD_OFF;
-    t += getQRCodeString(_qrUrl2) + '\n';
-    t += DASH_LINE;
+    // 13. GOOGLE REVIEW QR CODE
+    // CRITICAL: getQRCodeString() returns raw binary ESC/POS bytes.
+    // We MUST NOT pass those through convertToCP1252() — it will corrupt them.
+    // Solution: split into 3 parts → convert text before QR, keep QR as binary, convert text after.
+    const _qrSec2   = (ticketSettings?.counterTemplate?.sections || []).find(s => s.id === 'qrcode');
+    const _qrUrl2   = (_qrSec2?.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
+    const _qrLabel2 = _qrSec2?.qrCodeLabel || 'Laissez-nous un avis !';
 
-    // 14. FOOTER MESSAGE
-    t += ESCPOS_COUNTER.CENTER;
+    // Text BEFORE QR (already in t)
+    t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + _qrLabel2 + '\n' + ESCPOS_COUNTER.BOLD_OFF;
+
+    // 14. FOOTER MESSAGE (text AFTER QR)
+    let tAfterQr = DASH_LINE + ESCPOS_COUNTER.CENTER;
     if (ticketSettings.counterTemplate?.footer) {
         ticketSettings.counterTemplate.footer.split('\n').forEach(line => {
-            t += line.trim() + '\n';
+            tAfterQr += line.trim() + '\n';
         });
     } else {
-        t += 'Merci de votre visite !\n';
-        t += ESCPOS_COUNTER.BOLD_ON + 'THANK YOU!\n' + ESCPOS_COUNTER.BOLD_OFF;
+        tAfterQr += 'Merci de votre visite !\n';
     }
+    tAfterQr += '\n' + ESCPOS_COUNTER.FEED + ESCPOS_COUNTER.PARTIAL_CUT;
 
-    t += '\n' + ESCPOS_COUNTER.FEED + ESCPOS_COUNTER.PARTIAL_CUT;
-
-    return convertToCP1252(t);
+    // Build as a binary Buffer: [text before QR] + [QR binary] + [text after QR]
+    const bufBefore = Buffer.from(convertToCP1252(t), 'binary');
+    const bufQr     = Buffer.from(getQRCodeString(_qrUrl2), 'binary');
+    const bufAfter  = Buffer.from(convertToCP1252(tAfterQr), 'binary');
+    return Buffer.concat([bufBefore, bufQr, bufAfter]);
 }
 
 async function formatKitchenTicket(order, loyaltyText) {
