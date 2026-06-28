@@ -104,6 +104,32 @@ function getQRCodeString(url) {
     );
 }
 
+// Generates native Star Line Mode QR code command string.
+function getStarQRCodeString(url, size = 120) {
+    const setModel = ESC + GS + 'yS0' + '\x02' + '\x00'; // Model 2
+    const setErrCorr = ESC + GS + 'yS1' + '\x00'; // L (7%)
+    
+    // Map size (60-200) to cellSize (3-6)
+    const cellSize = Math.max(3, Math.min(6, Math.floor(size / 30)));
+    const setCellSize = ESC + GS + 'yS2' + String.fromCharCode(cellSize);
+    
+    const len = url.length;
+    const nL = String.fromCharCode(len & 0xFF);
+    const nH = String.fromCharCode((len >> 8) & 0xFF);
+    const storeData = ESC + GS + 'yD1' + '\x00' + nL + nH + url;
+    const printQR = ESC + GS + 'yP';
+    
+    return (
+        ESC + '\x1D' + 'a' + '1' + // center align
+        setModel +
+        setErrCorr +
+        setCellSize +
+        storeData +
+        printQR +
+        ESC + '\x1D' + 'a' + '0'   // reset left align
+    );
+}
+
 // ── Get QR URL from template section settings (fallback to default review URL)
 const DEFAULT_QR_URL = 'https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr';
 function getQrUrlFromSettings(ticketSettings) {
@@ -2004,6 +2030,9 @@ function startHeartbeat() {
 // ============================================
 async function pollForUnprintedOrders(lookbackMs) {
     try {
+        // Sync templates & remote test print triggers
+        await syncSettings();
+
         const lookback = lookbackMs || 5 * 60 * 1000; // Default: last 5 minutes
         const since = new Date(Date.now() - lookback).toISOString();
         const { data: orders, error } = await supabase
