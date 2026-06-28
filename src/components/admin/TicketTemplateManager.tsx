@@ -1,32 +1,60 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { useAdminSetting, useUpdateAdminSetting } from '@/hooks/useAdminSettings';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   Printer, Save, RotateCcw, Eye, FileText,
-  ChefHat, Store, Code, HelpCircle, Copy,
-  ArrowUp, ArrowDown, Upload, GripVertical, Settings2
+  ChefHat, Store, Upload, GripVertical,
+  ChevronDown, ChevronUp, QrCode, Image as ImageIcon,
+  AlignLeft, AlignCenter, AlignRight, Type, Hash,
+  Trash2, RefreshCw, Layers, Link, Palette, Move,
+  Minus, Bold, Italic, Underline
 } from 'lucide-react';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REUSABLE TAILWIND CLASSES — explicit light text so Windows browsers render
+// dark-background selects & inputs correctly without CSS variable issues.
+// ─────────────────────────────────────────────────────────────────────────────
+const SEL  = "w-full h-8 px-2 rounded-md border border-white/10 bg-slate-800 text-white text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500";
+const SEL_LG = "w-full h-9 px-3 rounded-md border border-white/10 bg-slate-800 text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500";
+const INP  = "border border-white/10 bg-slate-800 text-white placeholder:text-slate-500 focus:ring-amber-500 focus:border-amber-500";
+const DS   = { colorScheme: 'dark' } as React.CSSProperties; // forces browser native dark scheme on <select>
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+type Align        = 'left' | 'center' | 'right';
+type FontSize     = 'tiny' | 'small' | 'normal' | 'large' | 'xlarge' | 'xxlarge';
+type FontType     = 'A' | 'B';
+type BorderStyle  = 'none' | 'dashed' | 'solid' | 'double';
+type TextTransform = 'none' | 'uppercase' | 'lowercase';
+type LetterSpacing = 'normal' | 'wide' | 'wider';
 
 interface TicketSection {
   id: string;
   name: string;
   enabled: boolean;
-  align: 'left' | 'center' | 'right';
-  fontSize: 'normal' | 'double_height' | 'double_width' | 'double_size';
-  fontType: 'A' | 'B';
+  align: Align;
+  fontSize: FontSize;
+  fontType: FontType;
   bold: boolean;
   underline: boolean;
-  borderBottom: 'none' | 'dashed' | 'solid' | 'double';
+  italic: boolean;
+  borderBottom: BorderStyle;
+  borderTop: BorderStyle;
+  paddingTop: number;
+  paddingBottom: number;
+  textTransform: TextTransform;
+  letterSpacing: LetterSpacing;
+  qrCodeUrl?: string;
+  qrCodeLabel?: string;
+  qrCodeSize?: number;
 }
 
 interface TicketTemplate {
@@ -37,11 +65,11 @@ interface TicketTemplate {
   sections?: TicketSection[];
   logoUrl?: string;
   logoWidth?: number;
-  itemBullet?: 'none' | '•' | '-' | '*';
-  itemFontSize?: 'normal' | 'double_height' | 'double_width' | 'double_size';
+  itemBullet?: 'none' | '•' | '-' | '*' | '▸' | '→';
+  itemFontSize?: FontSize;
   itemBold?: boolean;
-  detailFontSize?: 'normal' | 'double_height' | 'double_width' | 'double_size';
-  detailFontType?: 'A' | 'B';
+  detailFontSize?: FontSize;
+  detailFontType?: FontType;
   detailBold?: boolean;
 }
 
@@ -53,1049 +81,909 @@ interface TicketSettings {
   paperWidth: '58mm' | '80mm';
   fontSize: 'small' | 'medium' | 'large';
   usbPrinterName?: string;
-  counterLayoutMode?: 'classic' | 'customizable';
-  kitchenLayoutMode?: 'classic' | 'customizable';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FONT SIZE CONFIG
+// ─────────────────────────────────────────────────────────────────────────────
+const FONT_SIZE_MAP: Record<FontSize, { px: number; lh: number }> = {
+  tiny:    { px: 9,  lh: 1.3 },
+  small:   { px: 11, lh: 1.3 },
+  normal:  { px: 13, lh: 1.4 },
+  large:   { px: 17, lh: 1.4 },
+  xlarge:  { px: 21, lh: 1.3 },
+  xxlarge: { px: 26, lh: 1.2 },
+};
+
+const FONT_SIZE_LABELS: Record<FontSize, string> = {
+  tiny:    'Minuscule (9px)',
+  small:   'Petite (11px)',
+  normal:  'Normale (13px)',
+  large:   'Grande (17px)',
+  xlarge:  'Très grande (21px)',
+  xxlarge: 'Géante (26px)',
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION DEFAULTS
+// ─────────────────────────────────────────────────────────────────────────────
+function mkSec(id: string, name: string, o: Partial<TicketSection> = {}): TicketSection {
+  return {
+    id, name, enabled: true, align: 'left', fontSize: 'normal', fontType: 'A',
+    bold: false, underline: false, italic: false, borderBottom: 'none', borderTop: 'none',
+    paddingTop: 0, paddingBottom: 0, textTransform: 'none', letterSpacing: 'normal', ...o,
+  };
 }
 
 const DEFAULT_SECTIONS: TicketSection[] = [
-  { id: 'logo', name: 'Logo / Image', enabled: true, align: 'center', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'none' },
-  { id: 'header', name: 'En-tête (Titre)', enabled: true, align: 'center', fontSize: 'double_size', fontType: 'A', bold: true, underline: false, borderBottom: 'none' },
-  { id: 'subheader', name: 'Sous-titre (Adresse, Tél)', enabled: true, align: 'left', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'dashed' },
-  { id: 'order_info', name: 'N° & Type de commande', enabled: true, align: 'center', fontSize: 'double_height', fontType: 'A', bold: true, underline: false, borderBottom: 'dashed' },
-  { id: 'scheduled_time', name: 'Heure programmée', enabled: true, align: 'left', fontSize: 'normal', fontType: 'A', bold: true, underline: false, borderBottom: 'dashed' },
-  { id: 'date_source', name: 'Date & Origine', enabled: true, align: 'left', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'dashed' },
-  { id: 'customer_info', name: 'Infos client (Nom, Tel, Adresse)', enabled: true, align: 'left', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'dashed' },
-  { id: 'items', name: 'Liste des articles', enabled: true, align: 'left', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'dashed' },
-  { id: 'totals', name: 'Totaux (TVA, HT, TTC)', enabled: true, align: 'left', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'dashed' },
-  { id: 'payment', name: 'Règlement / Paiement', enabled: true, align: 'left', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'dashed' },
-  { id: 'qrcode', name: 'Code QR (Avis Google)', enabled: true, align: 'center', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'dashed' },
-  { id: 'footer', name: 'Message de pied de page', enabled: true, align: 'center', fontSize: 'normal', fontType: 'A', bold: false, underline: false, borderBottom: 'none' },
+  mkSec('logo',           'Logo / Image',                      { align: 'center', paddingBottom: 4 }),
+  mkSec('header',         'En-tête (Titre)',                   { align: 'center', fontSize: 'xxlarge', bold: true, paddingBottom: 2 }),
+  mkSec('subheader',      'Sous-titre (Adresse, Tél)',         { align: 'center', fontSize: 'small', borderBottom: 'dashed', paddingBottom: 4 }),
+  mkSec('order_info',     'N° & Type de commande',             { align: 'center', fontSize: 'xlarge', bold: true, borderBottom: 'dashed', paddingTop: 4, paddingBottom: 4 }),
+  mkSec('scheduled_time', 'Heure programmée',                  { bold: true, borderBottom: 'dashed', paddingBottom: 3 }),
+  mkSec('date_source',    'Date & Origine',                    { borderBottom: 'dashed', paddingBottom: 3 }),
+  mkSec('customer_info',  'Infos client (Nom, Tel, Adresse)',  { borderBottom: 'dashed', paddingBottom: 4 }),
+  mkSec('items',          'Liste des articles',                { borderBottom: 'dashed', paddingBottom: 4 }),
+  mkSec('totals',         'Totaux (TVA, HT, TTC)',             { borderBottom: 'dashed', paddingBottom: 4 }),
+  mkSec('payment',        'Règlement / Paiement',              { borderBottom: 'dashed', paddingBottom: 3 }),
+  mkSec('qrcode',         'Code QR (Avis Google)',             {
+    align: 'center', borderBottom: 'dashed', paddingTop: 6, paddingBottom: 6,
+    qrCodeUrl: '', qrCodeLabel: 'Laissez-nous un avis !', qrCodeSize: 100,
+  }),
+  mkSec('footer',         'Message de pied de page',           { align: 'center', paddingTop: 4 }),
 ];
 
 const defaultKitchenTemplate: TicketTemplate = {
-  name: 'Ticket Cuisine',
-  header: 'TWIN PIZZA - CUISINE',
-  subheader: '',
-  footer: '',
-  sections: DEFAULT_SECTIONS.map(s => {
-    // Kitchen defaults
-    if (s.id === 'logo') return { ...s, enabled: false };
-    if (s.id === 'subheader') return { ...s, enabled: false };
-    if (s.id === 'totals') return { ...s, enabled: false };
-    if (s.id === 'payment') return { ...s, enabled: false };
-    if (s.id === 'qrcode') return { ...s, enabled: false };
-    if (s.id === 'footer') return { ...s, enabled: false };
-    return s;
-  }),
-  logoUrl: '',
-  logoWidth: 160,
-  itemBullet: '•',
-  itemFontSize: 'double_height',
-  itemBold: true,
-  detailFontSize: 'normal',
-  detailFontType: 'A',
-  detailBold: false,
+  name: 'Ticket Cuisine', header: 'TWIN PIZZA - CUISINE', subheader: '', footer: '',
+  logoUrl: '', logoWidth: 160, itemBullet: '•', itemFontSize: 'xlarge', itemBold: true,
+  detailFontSize: 'normal', detailFontType: 'A', detailBold: false,
+  sections: DEFAULT_SECTIONS.map(s =>
+    ['logo','subheader','totals','payment','qrcode','footer'].includes(s.id) ? { ...s, enabled: false } : s
+  ),
 };
 
 const defaultCounterTemplate: TicketTemplate = {
-  name: 'Ticket Client',
-  header: 'TWIN PIZZA',
+  name: 'Ticket Client', header: 'TWIN PIZZA',
   subheader: 'Grand-Couronne\n60 Rue Georges Clemenceau',
   footer: 'Merci de votre visite!\n🍕 À bientôt! 🍕',
+  logoUrl: '', logoWidth: 160, itemBullet: '•', itemFontSize: 'xlarge', itemBold: true,
+  detailFontSize: 'small', detailFontType: 'B', detailBold: false,
   sections: [...DEFAULT_SECTIONS],
-  logoUrl: '',
-  logoWidth: 160,
-  itemBullet: '•',
-  itemFontSize: 'double_height',
-  itemBold: true,
-  detailFontSize: 'normal',
-  detailFontType: 'B',
-  detailBold: false,
 };
 
 const defaultSettings: TicketSettings = {
   kitchenTemplate: defaultKitchenTemplate,
   counterTemplate: defaultCounterTemplate,
-  activeTemplate: 'counter',
-  autoPrint: false,
-  paperWidth: '80mm',
-  fontSize: 'medium',
-  usbPrinterName: '',
-  counterLayoutMode: 'classic',
-  kitchenLayoutMode: 'classic'
+  activeTemplate: 'counter', autoPrint: false, paperWidth: '80mm', fontSize: 'medium', usbPrinterName: '',
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+function getQrUrl(url: string, size: number) {
+  if (!url.trim()) return '';
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&format=png&qzone=1`;
+}
+
+function getSectionCss(s: TicketSection): string {
+  const { px, lh } = FONT_SIZE_MAP[s.fontSize] || FONT_SIZE_MAP.normal;
+  return [
+    `text-align:${s.align}`,
+    `font-size:${px}px`,
+    `line-height:${lh}`,
+    `padding-top:${s.paddingTop||0}px`,
+    `padding-bottom:${s.paddingBottom||0}px`,
+    s.bold      ? 'font-weight:bold'          : 'font-weight:normal',
+    s.italic    ? 'font-style:italic'         : '',
+    s.underline ? 'text-decoration:underline' : '',
+    s.textTransform !== 'none' ? `text-transform:${s.textTransform}` : '',
+    s.letterSpacing === 'wide'  ? 'letter-spacing:0.08em' : '',
+    s.letterSpacing === 'wider' ? 'letter-spacing:0.15em' : '',
+  ].filter(Boolean).join(';');
+}
+
+function borderDiv(style: BorderStyle, pos: 'top'|'bottom'): string {
+  const rules: Record<string, string> = {
+    dashed: `border-${pos}:1.5px dashed #000`,
+    solid:  `border-${pos}:1.5px solid #000`,
+    double: `border-${pos}:3px double #000`,
+  };
+  return rules[style] ? `<div style="${rules[style]};margin:0"></div>` : '';
+}
+
+function migrateFontSize(v: any): FontSize {
+  return ({ double_height:'xlarge', double_width:'large', double_size:'xxlarge' } as any)[v] || v || 'normal';
+}
+
+function normalizeSections(sections: any[]): TicketSection[] {
+  return sections.map(s => {
+    const def = DEFAULT_SECTIONS.find(d => d.id === s.id) ?? DEFAULT_SECTIONS[0];
+    return {
+      ...def, ...s,
+      paddingTop:     s.paddingTop    ?? def.paddingTop,
+      paddingBottom:  s.paddingBottom ?? def.paddingBottom,
+      borderTop:      s.borderTop     ?? 'none',
+      italic:         s.italic        ?? false,
+      textTransform:  s.textTransform ?? 'none',
+      letterSpacing:  s.letterSpacing ?? 'normal',
+      qrCodeUrl:      s.qrCodeUrl     ?? (s.id === 'qrcode' ? '' : undefined),
+      qrCodeLabel:    s.qrCodeLabel   ?? (s.id === 'qrcode' ? 'Laissez-nous un avis !' : undefined),
+      qrCodeSize:     s.qrCodeSize    ?? (s.id === 'qrcode' ? 100 : undefined),
+      fontSize:       migrateFontSize(s.fontSize),
+    } as TicketSection;
+  });
+}
+
+function normalizeTemplate(t: any, isKitchen: boolean): TicketTemplate {
+  const def = isKitchen ? defaultKitchenTemplate : defaultCounterTemplate;
+  const n = { ...def, ...t };
+  n.sections = (Array.isArray(t?.sections) && t.sections.length > 0)
+    ? normalizeSections(t.sections)
+    : def.sections;
+  if (n.itemFontSize)  n.itemFontSize  = migrateFontSize(n.itemFontSize);
+  if (n.detailFontSize) n.detailFontSize = migrateFontSize(n.detailFontSize);
+  return n;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PREVIEW HTML
+// ─────────────────────────────────────────────────────────────────────────────
+function buildPreviewHtml(tmpl: TicketTemplate, paperWidth: '58mm'|'80mm'): string {
+  const w = paperWidth === '58mm' ? 260 : 360;
+  const sections = tmpl.sections || DEFAULT_SECTIONS;
+  const rows: string[] = [];
+
+  sections.forEach(s => {
+    if (!s.enabled) return;
+    const css = getSectionCss(s);
+    let html = '';
+
+    switch (s.id) {
+      case 'logo': {
+        const aln = s.align === 'center' ? 'margin:0 auto' : s.align === 'right' ? 'margin-left:auto;margin-right:0' : '';
+        html = tmpl.logoUrl
+          ? `<div style="${css}"><img src="${tmpl.logoUrl}" style="max-width:${tmpl.logoWidth||160}px;width:100%;height:auto;display:block;${aln}"/></div>`
+          : `<div style="${css};font-size:24px">🍕 <span style="font-size:11px;color:#888">[LOGO]</span></div>`;
+        break;
+      }
+      case 'header':
+        html = `<div style="${css};white-space:pre-line">${tmpl.header || 'TWIN PIZZA'}</div>`;
+        break;
+      case 'subheader':
+        html = `<div style="${css};white-space:pre-line">${tmpl.subheader || '60 Rue de la Paix'}</div>`;
+        break;
+      case 'order_info':
+        html = `<div style="${css}"><div>#042</div><div>🚗 LIVRAISON</div></div>`;
+        break;
+      case 'scheduled_time':
+        html = `<div style="${css}"><strong>PROGRAMMÉ:</strong> Ven. 28 Juin 20:30</div>`;
+        break;
+      case 'date_source':
+        html = `<div style="${css}">Date: 28/06/2026 19:42<br/>Origine: WEB</div>`;
+        break;
+      case 'customer_info':
+        html = `<div style="${css}"><strong>Client:</strong> Ahmed Benali<br/><strong>Tél:</strong> 06 12 34 56 78<br/><strong>Adresse:</strong> 12 Rue de Paris, 76530<br/><strong>Note:</strong> Sans oignons svp</div>`;
+        break;
+      case 'items': {
+        const { px: ip, lh: il } = FONT_SIZE_MAP[tmpl.itemFontSize || 'xlarge'];
+        const { px: dp } = FONT_SIZE_MAP[tmpl.detailFontSize || 'small'];
+        const ib = tmpl.itemBold !== false ? 'font-weight:bold;' : '';
+        const db = tmpl.detailBold ? 'font-weight:bold;' : '';
+        const bu = tmpl.itemBullet && tmpl.itemBullet !== 'none' ? tmpl.itemBullet + ' ' : '';
+        html = `<div style="${css}">
+          <div style="font-size:11px;font-weight:bold;display:flex;justify-content:space-between;border-bottom:1px solid #000;padding-bottom:2px;margin-bottom:4px"><span>QTE  ARTICLE</span><span>TOTAL</span></div>
+          <div style="margin-bottom:3px">
+            <div style="font-size:${ip}px;line-height:${il};${ib}display:flex;justify-content:space-between"><span>${bu}1x MARGHERITA</span><span>12.50€</span></div>
+            <div style="font-size:${dp}px;${db}margin-left:12px;color:#555">- SENIOR</div>
+            <div style="font-size:${dp}px;${db}margin-left:12px;color:#555">- + Supplément Fromage</div>
+          </div>
+          <div>
+            <div style="font-size:${ip}px;line-height:${il};${ib}display:flex;justify-content:space-between"><span>${bu}2x COCA-COLA 33CL</span><span>4.00€</span></div>
+            <div style="font-size:${dp}px;${db}margin-left:12px;color:#555">- Note: Très frais svp</div>
+          </div>
+        </div>`;
+        break;
+      }
+      case 'totals':
+        html = `<div style="${css}">
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span>Sous-total HT:</span><span>15.00€</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span>TVA 10%:</span><span>1.50€</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold;border-top:1px solid #000;margin-top:3px;padding-top:2px"><span>TOTAL:</span><span>16.50€</span></div>
+        </div>`;
+        break;
+      case 'payment':
+        html = `<div style="${css}">Règlement: ESPÈCES</div>`;
+        break;
+      case 'qrcode': {
+        const qUrl = s.qrCodeUrl || '';
+        const qSize = s.qrCodeSize || 100;
+        const qLabel = s.qrCodeLabel || 'Laissez-nous un avis !';
+        const qSrc = getQrUrl(qUrl, qSize);
+        html = `<div style="${css}">
+          <div style="font-size:11px;font-weight:bold;margin-bottom:4px">${qLabel}</div>
+          ${qSrc
+            ? `<img src="${qSrc}" width="${qSize}" height="${qSize}" style="display:block;margin:0 auto;image-rendering:pixelated"/>`
+            : `<div style="width:${qSize}px;height:${qSize}px;border:1.5px dashed #bbb;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:9px;color:#999;text-align:center;background:#f5f5f5">QR<br/>CODE</div>`
+          }
+        </div>`;
+        break;
+      }
+      case 'footer':
+        html = `<div style="${css};white-space:pre-line">${tmpl.footer || 'Merci de votre visite !'}</div>`;
+        break;
+    }
+
+    if (!html) return;
+    rows.push(borderDiv(s.borderTop, 'top'));
+    rows.push(html);
+    rows.push(borderDiv(s.borderBottom, 'bottom'));
+  });
+
+  return `<div style="font-family:'Courier New',monospace;width:${w}px;padding:10px 8px;background:#fff;color:#000;box-shadow:0 4px 20px rgba(0,0,0,.25);border-radius:8px;box-sizing:border-box;overflow:hidden">${rows.join('')}</div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOGO UPLOADER
+// ─────────────────────────────────────────────────────────────────────────────
+function LogoUploader({ logoUrl, onChange }: { logoUrl?: string; onChange: (u: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const handle = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    setBusy(true);
+    try {
+      const { uploadToCloudinary } = await import('@/utils/cloudinary');
+      const u = await uploadToCloudinary(f);
+      if (u) { onChange(u); toast.success('Logo uploadé ✓'); }
+      else toast.error("Upload échoué");
+    } catch (err: any) { toast.error("Erreur : " + err.message); }
+    finally { setBusy(false); }
+  };
+  return (
+    <label className={`flex items-center gap-2 h-9 px-3 rounded-md border border-white/10 bg-slate-800 text-xs text-white cursor-pointer hover:border-amber-500/50 transition-all ${busy ? 'opacity-50 pointer-events-none' : ''}`}>
+      <Upload className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+      <span className="text-slate-300 truncate">{busy ? 'Upload...' : logoUrl ? 'Changer le logo' : 'Choisir une image...'}</span>
+      <input type="file" accept="image/*" onChange={handle} className="hidden" disabled={busy} />
+    </label>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION ROW (inline accordion)
+// ─────────────────────────────────────────────────────────────────────────────
+interface SRProps {
+  s: TicketSection;
+  tmpl: TicketTemplate;
+  expanded: boolean;
+  dragHandleProps: any;
+  onExpand: () => void;
+  onToggle: (v: boolean) => void;
+  onSec: (u: Partial<TicketSection>) => void;
+  onTmpl: (k: keyof TicketTemplate, v: any) => void;
+}
+
+function SectionRow({ s, tmpl, expanded, dragHandleProps, onExpand, onToggle, onSec, onTmpl }: SRProps) {
+  const secIcon: Record<string, React.ReactNode> = {
+    logo: <ImageIcon className="w-3.5 h-3.5" />, header: <Type className="w-3.5 h-3.5" />,
+    order_info: <Hash className="w-3.5 h-3.5" />, qrcode: <QrCode className="w-3.5 h-3.5" />,
+    footer: <AlignLeft className="w-3.5 h-3.5" />, items: <Layers className="w-3.5 h-3.5" />,
+  };
+  const icon = secIcon[s.id] || <Minus className="w-3.5 h-3.5" />;
+
+  return (
+    <div className={`border-b border-slate-700/40 last:border-b-0 transition-all ${s.enabled ? '' : 'opacity-55'}`}>
+      {/* ── ROW HEADER ── */}
+      <div className={`flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-slate-800/60 transition-colors select-none ${expanded ? 'bg-amber-500/8 border-l-2 border-l-amber-500' : ''}`}>
+        <div {...dragHandleProps} className="text-slate-500 hover:text-slate-300 cursor-grab active:cursor-grabbing p-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+          <GripVertical className="w-4 h-4" />
+        </div>
+        <div onClick={e => { e.stopPropagation(); onToggle(!s.enabled); }}>
+          <Switch checked={s.enabled} className="scale-[0.78] pointer-events-none" />
+        </div>
+        <button onClick={onExpand} className="flex items-center gap-2 flex-1 min-w-0 text-left">
+          <span className={`shrink-0 ${expanded ? 'text-amber-400' : 'text-slate-400'}`}>{icon}</span>
+          <span className={`text-sm font-medium truncate ${expanded ? 'text-amber-300' : 'text-slate-200'}`}>{s.name}</span>
+          {!s.enabled && <span className="text-[10px] text-slate-500 italic shrink-0">(masqué)</span>}
+        </button>
+        {/* Quick info badges */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">{s.fontSize}</span>
+          {s.bold && <span className="text-[10px] font-extrabold text-amber-500/70">B</span>}
+          {s.italic && <span className="text-[10px] italic text-amber-500/70">I</span>}
+        </div>
+        <button onClick={onExpand} className={`p-1 rounded hover:bg-slate-700 transition-colors shrink-0 ${expanded ? 'text-amber-400' : 'text-slate-500'}`}>
+          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+      </div>
+
+      {/* ── INLINE SETTINGS PANEL ── */}
+      {expanded && (
+        <div className="px-4 pt-4 pb-5 bg-slate-900 border-t border-amber-500/15 space-y-5">
+
+          {/* ── ALIGNMENT ── */}
+          <div className="space-y-1.5">
+            <Label className="text-[10px] text-slate-400 uppercase tracking-widest">Alignement du texte</Label>
+            <div className="flex gap-1.5">
+              {(['left','center','right'] as Align[]).map(a => (
+                <button key={a} onClick={() => onSec({ align: a })}
+                  className={`flex-1 h-8 flex items-center justify-center rounded-md border text-xs transition-all font-medium ${s.align === a ? 'bg-amber-500 border-amber-400 text-black' : 'border-slate-600 hover:border-slate-400 text-slate-400 bg-slate-800 hover:bg-slate-700'}`}>
+                  {a === 'left' ? <AlignLeft className="w-4 h-4"/> : a === 'center' ? <AlignCenter className="w-4 h-4"/> : <AlignRight className="w-4 h-4"/>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── STYLE GRID ── */}
+          {s.id !== 'logo' && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] text-slate-400 uppercase tracking-widest">Taille police</Label>
+                <select value={s.fontSize} onChange={e => onSec({ fontSize: e.target.value as FontSize })} className={SEL} style={DS}>
+                  {(Object.keys(FONT_SIZE_LABELS) as FontSize[]).map(f => (
+                    <option key={f} value={f}>{FONT_SIZE_LABELS[f]}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] text-slate-400 uppercase tracking-widest">Casse du texte</Label>
+                <select value={s.textTransform} onChange={e => onSec({ textTransform: e.target.value as TextTransform })} className={SEL} style={DS}>
+                  <option value="none">Normale</option>
+                  <option value="uppercase">MAJUSCULES</option>
+                  <option value="lowercase">minuscules</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] text-slate-400 uppercase tracking-widest">Espacement lettres</Label>
+                <select value={s.letterSpacing} onChange={e => onSec({ letterSpacing: e.target.value as LetterSpacing })} className={SEL} style={DS}>
+                  <option value="normal">Normal</option>
+                  <option value="wide">Élargi</option>
+                  <option value="wider">Très élargi</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* ── BOLD / ITALIC / UNDERLINE ── */}
+          {s.id !== 'logo' && (
+            <div className="space-y-1.5">
+              <Label className="text-[10px] text-slate-400 uppercase tracking-widest">Style</Label>
+              <div className="flex gap-2">
+                {[
+                  { key:'bold',      label:'Gras',      icon:<Bold className="w-3.5 h-3.5"/> },
+                  { key:'italic',    label:'Italique',  icon:<Italic className="w-3.5 h-3.5"/> },
+                  { key:'underline', label:'Souligné',  icon:<Underline className="w-3.5 h-3.5"/> },
+                ].map(({ key, label, icon }) => (
+                  <button key={key}
+                    onClick={() => onSec({ [key]: !(s as any)[key] })}
+                    className={`flex items-center gap-1.5 h-8 px-3 rounded-md border text-xs font-medium transition-all ${(s as any)[key] ? 'bg-amber-500 border-amber-400 text-black' : 'border-slate-600 text-slate-400 bg-slate-800 hover:bg-slate-700'}`}>
+                    {icon}{label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── BORDERS ── */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-slate-400 uppercase tracking-widest">Séparateur haut</Label>
+              <select value={s.borderTop} onChange={e => onSec({ borderTop: e.target.value as BorderStyle })} className={SEL} style={DS}>
+                <option value="none">Aucun</option>
+                <option value="dashed">─ ─ ─  Pointillés</option>
+                <option value="solid">──── Ligne pleine</option>
+                <option value="double">════ Double</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-slate-400 uppercase tracking-widest">Séparateur bas</Label>
+              <select value={s.borderBottom} onChange={e => onSec({ borderBottom: e.target.value as BorderStyle })} className={SEL} style={DS}>
+                <option value="none">Aucun</option>
+                <option value="dashed">─ ─ ─  Pointillés</option>
+                <option value="solid">──── Ligne pleine</option>
+                <option value="double">════ Double</option>
+              </select>
+            </div>
+          </div>
+
+          {/* ── PADDING ── */}
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { key: 'paddingTop', label: 'Espace haut', val: s.paddingTop },
+              { key: 'paddingBottom', label: 'Espace bas', val: s.paddingBottom },
+            ].map(({ key, label, val }) => (
+              <div key={key} className="space-y-1.5">
+                <Label className="text-[10px] text-slate-400 uppercase tracking-widest flex justify-between">
+                  <span>{label}</span>
+                  <span className="text-amber-400 font-bold">{val}px</span>
+                </Label>
+                <input type="range" min={0} max={30} step={1} value={val}
+                  onChange={e => onSec({ [key]: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-amber-500" />
+              </div>
+            ))}
+          </div>
+
+          {/* ── SECTION-SPECIFIC ── */}
+
+          {/* LOGO */}
+          {s.id === 'logo' && (
+            <div className="space-y-3 pt-2 border-t border-slate-700/60">
+              <p className="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">Réglages Logo</p>
+              <div className="flex flex-col sm:flex-row gap-3 items-start">
+                <div className="flex-1">
+                  <LogoUploader logoUrl={tmpl.logoUrl} onChange={u => onTmpl('logoUrl', u)} />
+                </div>
+                {tmpl.logoUrl && (
+                  <div className="flex items-center gap-2">
+                    <img src={tmpl.logoUrl} className="h-12 w-auto rounded border border-white/10 bg-white object-contain p-1" alt="logo" />
+                    <button onClick={() => onTmpl('logoUrl', '')} className="p-1.5 rounded-md bg-red-900/40 hover:bg-red-800/50 text-red-400 border border-red-800/40">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] text-slate-400 uppercase tracking-widest flex justify-between">
+                  <span>Largeur du logo</span>
+                  <span className="text-amber-400 font-bold">{tmpl.logoWidth || 160}px</span>
+                </Label>
+                <input type="range" min={60} max={280} step={8}
+                  value={tmpl.logoWidth || 160}
+                  onChange={e => onTmpl('logoWidth', parseInt(e.target.value))}
+                  className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-amber-500" />
+              </div>
+            </div>
+          )}
+
+          {/* HEADER */}
+          {s.id === 'header' && (
+            <div className="space-y-2 pt-2 border-t border-slate-700/60">
+              <p className="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">Texte principal</p>
+              <Input value={tmpl.header} onChange={e => onTmpl('header', e.target.value)}
+                placeholder="Ex: TWIN PIZZA" className={`h-9 ${INP}`} />
+            </div>
+          )}
+
+          {/* SUBHEADER */}
+          {s.id === 'subheader' && (
+            <div className="space-y-2 pt-2 border-t border-slate-700/60">
+              <p className="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">Texte du sous-titre</p>
+              <Textarea value={tmpl.subheader} onChange={e => onTmpl('subheader', e.target.value)}
+                placeholder={"Grand-Couronne\n60 Rue Georges Clemenceau"} rows={3}
+                className={`resize-none text-sm ${INP}`} />
+              <p className="text-[10px] text-slate-500">Appuyez sur Entrée pour aller à la ligne</p>
+            </div>
+          )}
+
+          {/* ITEMS */}
+          {s.id === 'items' && (
+            <div className="space-y-3 pt-2 border-t border-slate-700/60">
+              <p className="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">Style des articles commandés</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Product line */}
+                <div className="space-y-3 p-3 rounded-lg border border-slate-700/60 bg-slate-800/40">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase">Ligne produit (ex: 1x Margherita)</p>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-slate-400">Puce</Label>
+                    <select value={tmpl.itemBullet || '•'} onChange={e => onTmpl('itemBullet', e.target.value)} className={SEL} style={DS}>
+                      <option value="•">• Puce</option>
+                      <option value="-">- Tiret</option>
+                      <option value="*">* Étoile</option>
+                      <option value="▸">▸ Triangle</option>
+                      <option value="→">→ Flèche</option>
+                      <option value="none">Aucune</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-slate-400">Taille</Label>
+                    <select value={tmpl.itemFontSize || 'xlarge'} onChange={e => onTmpl('itemFontSize', e.target.value as FontSize)} className={SEL} style={DS}>
+                      {(['small','normal','large','xlarge','xxlarge'] as FontSize[]).map(f => (
+                        <option key={f} value={f}>{FONT_SIZE_LABELS[f]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Switch checked={tmpl.itemBold !== false} onCheckedChange={v => onTmpl('itemBold', v)} className="scale-[0.8]" />
+                    <span className="text-xs text-slate-300">Gras</span>
+                  </label>
+                </div>
+                {/* Detail line */}
+                <div className="space-y-3 p-3 rounded-lg border border-slate-700/60 bg-slate-800/40">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase">Options & Suppléments</p>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-slate-400">Taille</Label>
+                    <select value={tmpl.detailFontSize || 'small'} onChange={e => onTmpl('detailFontSize', e.target.value as FontSize)} className={SEL} style={DS}>
+                      {(['tiny','small','normal','large'] as FontSize[]).map(f => (
+                        <option key={f} value={f}>{FONT_SIZE_LABELS[f]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-slate-400">Police</Label>
+                    <select value={tmpl.detailFontType || 'B'} onChange={e => onTmpl('detailFontType', e.target.value as FontType)} className={SEL} style={DS}>
+                      <option value="A">Standard (Font A)</option>
+                      <option value="B">Condensée (Font B)</option>
+                    </select>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Switch checked={tmpl.detailBold || false} onCheckedChange={v => onTmpl('detailBold', v)} className="scale-[0.8]" />
+                    <span className="text-xs text-slate-300">Gras</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* QR CODE ── THE BIG ONE ── */}
+          {s.id === 'qrcode' && (
+            <div className="space-y-4 pt-2 border-t border-slate-700/60">
+              <p className="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest flex items-center gap-1.5">
+                <QrCode className="w-3.5 h-3.5" /> Réglages Code QR
+              </p>
+
+              {/* URL input */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-300 flex items-center gap-1.5">
+                  <Link className="w-3.5 h-3.5 text-amber-400" />
+                  URL à encoder (lien Google Avis / Google Maps)
+                </Label>
+                <Input
+                  value={s.qrCodeUrl || ''}
+                  onChange={e => onSec({ qrCodeUrl: e.target.value })}
+                  placeholder="https://maps.google.com/maps?cid=..."
+                  className={`h-9 font-mono text-sm ${INP}`}
+                />
+                {s.qrCodeUrl ? (
+                  <div className="flex items-center gap-2 mt-1 p-2 rounded-md bg-green-900/25 border border-green-700/30">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" />
+                    <span className="text-[10px] text-green-300">QR code actif — visible dans l'aperçu à droite</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 mt-1 p-2 rounded-md bg-slate-800/60 border border-slate-700/40">
+                    <div className="w-2 h-2 rounded-full bg-slate-500 shrink-0" />
+                    <span className="text-[10px] text-slate-400">Entrez une URL pour voir le QR code en aperçu</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Label text */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-300">Texte affiché au-dessus du QR code</Label>
+                <Input
+                  value={s.qrCodeLabel || ''}
+                  onChange={e => onSec({ qrCodeLabel: e.target.value })}
+                  placeholder="Laissez-nous un avis !"
+                  className={`h-9 text-sm ${INP}`}
+                />
+              </div>
+
+              {/* Size slider */}
+              <div className="space-y-1.5">
+                <Label className="text-[10px] text-slate-400 uppercase tracking-widest flex justify-between">
+                  <span>Taille du QR code</span>
+                  <span className="text-amber-400 font-bold normal-case">{s.qrCodeSize || 100}px × {s.qrCodeSize || 100}px</span>
+                </Label>
+                <input type="range" min={60} max={200} step={10}
+                  value={s.qrCodeSize || 100}
+                  onChange={e => onSec({ qrCodeSize: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-amber-500" />
+                <div className="flex justify-between text-[9px] text-slate-600">
+                  <span>60px (petit)</span><span>200px (grand)</span>
+                </div>
+              </div>
+
+              {/* Live QR preview inside settings */}
+              {s.qrCodeUrl && (
+                <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white border border-slate-300">
+                  <img
+                    src={getQrUrl(s.qrCodeUrl, s.qrCodeSize || 100)}
+                    width={s.qrCodeSize || 100}
+                    height={s.qrCodeSize || 100}
+                    alt="QR Code preview"
+                    className="block"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+                  <p className="text-[10px] text-slate-500 text-center">{s.qrCodeLabel || 'Laissez-nous un avis !'}</p>
+                </div>
+              )}
+
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                💡 Le QR code est généré via <code className="text-amber-400 bg-slate-800 px-1 rounded">api.qrserver.com</code>. Internet requis lors de l'impression.
+              </p>
+            </div>
+          )}
+
+          {/* FOOTER */}
+          {s.id === 'footer' && (
+            <div className="space-y-2 pt-2 border-t border-slate-700/60">
+              <p className="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">Message de pied de page</p>
+              <Textarea value={tmpl.footer} onChange={e => onTmpl('footer', e.target.value)}
+                placeholder={"Merci de votre commande!\n🍕 À bientôt !"} rows={3}
+                className={`resize-none text-sm ${INP}`} />
+              <p className="text-[10px] text-slate-500">Appuyez sur Entrée pour aller à la ligne. Les emojis 🍕 sont supportés.</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
 export function TicketTemplateManager() {
   const { data: settingsData, isLoading } = useAdminSetting('ticket_templates');
   const updateSetting = useUpdateAdminSetting();
 
   const [settings, setSettings] = useState<TicketSettings>(defaultSettings);
-  const [activeTemplateTab, setActiveTemplateTab] = useState<'kitchen' | 'counter'>('counter');
-  const [selectedSectionId, setSelectedSectionId] = useState<string>('header');
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [availablePrinters, setAvailablePrinters] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'kitchen'|'counter'>('counter');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [printers, setPrinters] = useState<string[]>([]);
   const [loadingPrinters, setLoadingPrinters] = useState(false);
+  const [testingPrint, setTestingPrint] = useState(false);
 
-  const currentTemplate = activeTemplateTab === 'kitchen' ? settings.kitchenTemplate : settings.counterTemplate;
+  const tmpl = activeTab === 'kitchen' ? settings.kitchenTemplate : settings.counterTemplate;
+  const tmplKey = activeTab === 'kitchen' ? 'kitchenTemplate' : 'counterTemplate';
 
-  const normalizeTemplate = (t: any, isKitchen: boolean): TicketTemplate => {
-    const defaults = isKitchen ? defaultKitchenTemplate : defaultCounterTemplate;
-    const normalized = { ...defaults, ...t };
-
-    // Hydrate sections if missing
-    if (!normalized.sections) {
-      normalized.sections = DEFAULT_SECTIONS.map(s => {
-        let enabled = s.enabled;
-        if (s.id === 'logo') enabled = t.showLogo !== undefined ? t.showLogo : defaults.sections?.find(x=>x.id==='logo')?.enabled ?? true;
-        if (s.id === 'order_info') enabled = t.showOrderNumber !== undefined ? t.showOrderNumber : defaults.sections?.find(x=>x.id==='order_info')?.enabled ?? true;
-        if (s.id === 'date_source') enabled = t.showDateTime !== undefined ? t.showDateTime : defaults.sections?.find(x=>x.id==='date_source')?.enabled ?? true;
-        if (s.id === 'customer_info') enabled = t.showCustomerInfo !== undefined ? t.showCustomerInfo : defaults.sections?.find(x=>x.id==='customer_info')?.enabled ?? true;
-        if (s.id === 'items') enabled = t.showItemDetails !== undefined ? t.showItemDetails : defaults.sections?.find(x=>x.id==='items')?.enabled ?? true;
-        if (s.id === 'totals') enabled = t.showTotal !== undefined ? t.showTotal : defaults.sections?.find(x=>x.id==='totals')?.enabled ?? true;
-        if (s.id === 'payment') enabled = t.showPaymentMethod !== undefined ? t.showPaymentMethod : defaults.sections?.find(x=>x.id==='payment')?.enabled ?? true;
-        if (s.id === 'scheduled_time') enabled = t.showScheduledTime !== undefined ? t.showScheduledTime : defaults.sections?.find(x=>x.id==='scheduled_time')?.enabled ?? true;
-        
-        let align = s.align;
-        let fontSize = s.fontSize;
-        let bold = s.bold;
-        if (s.id === 'header') { align = 'center'; fontSize = 'double_size'; bold = true; }
-        if (s.id === 'order_info') { align = 'center'; fontSize = 'double_height'; bold = true; }
-        return { ...s, enabled, align, fontSize, bold };
-      });
-    }
-
-    // Set other items controls if missing
-    if (normalized.itemBullet === undefined) normalized.itemBullet = '•';
-    if (normalized.itemFontSize === undefined) normalized.itemFontSize = 'double_height';
-    if (normalized.itemBold === undefined) normalized.itemBold = true;
-    if (normalized.detailFontSize === undefined) normalized.detailFontSize = 'normal';
-    if (normalized.detailFontType === undefined) normalized.detailFontType = 'B';
-    if (normalized.detailBold === undefined) normalized.detailBold = false;
-
-    return normalized;
-  };
-
-  const fetchPrinters = async () => {
-    setLoadingPrinters(true);
-    try {
-      const res = await fetch('http://localhost:3001/available-printers');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && Array.isArray(data.printers)) {
-          setAvailablePrinters(data.printers);
-        }
-      }
-    } catch (e) {
-      console.warn('Could not fetch available printers:', e);
-    } finally {
-      setLoadingPrinters(false);
-    }
-  };
-
+  // Load saved
   useEffect(() => {
-    fetchPrinters();
-  }, []);
-
-  useEffect(() => {
-    if (settingsData?.setting_value) {
-      const saved = settingsData.setting_value as unknown as TicketSettings;
-      setSettings({
-        ...defaultSettings,
-        ...saved,
-        kitchenTemplate: normalizeTemplate(saved.kitchenTemplate, true),
-        counterTemplate: normalizeTemplate(saved.counterTemplate, false),
-        counterLayoutMode: saved.counterLayoutMode || 'classic',
-        kitchenLayoutMode: saved.kitchenLayoutMode || 'classic',
-      });
-    }
+    if (!settingsData?.setting_value) return;
+    const saved = settingsData.setting_value as unknown as TicketSettings;
+    setSettings({
+      ...defaultSettings, ...saved,
+      kitchenTemplate: normalizeTemplate(saved.kitchenTemplate, true),
+      counterTemplate: normalizeTemplate(saved.counterTemplate, false),
+    });
   }, [settingsData]);
 
-  const updateTemplate = (field: keyof TicketTemplate, value: any) => {
+  // Printers
+  const fetchPrinters = useCallback(async () => {
+    setLoadingPrinters(true);
+    try {
+      const r = await fetch('http://localhost:3001/available-printers');
+      if (r.ok) { const d = await r.json(); if (d.printers) setPrinters(d.printers); }
+    } catch { /* no print server */ }
+    finally { setLoadingPrinters(false); }
+  }, []);
+  useEffect(() => { fetchPrinters(); }, [fetchPrinters]);
+
+  // Mutations
+  const updateTmpl = useCallback((k: keyof TicketTemplate, v: any) => {
+    setSettings(prev => ({ ...prev, [tmplKey]: { ...prev[tmplKey], [k]: v } }));
+  }, [tmplKey]);
+
+  const updateSec = useCallback((id: string, u: Partial<TicketSection>) => {
     setSettings(prev => ({
       ...prev,
-      [activeTemplateTab === 'kitchen' ? 'kitchenTemplate' : 'counterTemplate']: {
-        ...currentTemplate,
-        [field]: value
+      [tmplKey]: {
+        ...prev[tmplKey],
+        sections: (prev[tmplKey].sections || []).map(s => s.id === id ? { ...s, ...u } : s),
       }
     }));
+  }, [tmplKey]);
+
+  const handleDragEnd = useCallback((r: any) => {
+    if (!r.destination) return;
+    setSettings(prev => {
+      const items = [...(prev[tmplKey].sections || [])];
+      const [moved] = items.splice(r.source.index, 1);
+      items.splice(r.destination.index, 0, moved);
+      return { ...prev, [tmplKey]: { ...prev[tmplKey], sections: items } };
+    });
+  }, [tmplKey]);
+
+  const toggleExpand = useCallback((id: string) => {
+    setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }, []);
+
+  const handleTabChange = (tab: 'kitchen'|'counter') => {
+    setActiveTab(tab);
+    setExpanded(new Set());
   };
 
-  const updateSection = (id: string, updates: Partial<TicketSection>) => {
-    const nextSections = currentTemplate.sections?.map(s => {
-      if (s.id === id) return { ...s, ...updates };
-      return s;
-    }) || [];
-    updateTemplate('sections', nextSections);
-  };
-
-  const moveSection = (index: number, direction: 'up' | 'down') => {
-    if (!currentTemplate.sections) return;
-    const nextSections = [...currentTemplate.sections];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= nextSections.length) return;
-    
-    const temp = nextSections[index];
-    nextSections[index] = nextSections[targetIndex];
-    nextSections[targetIndex] = temp;
-    updateTemplate('sections', nextSections);
-  };
-
-  const handleDragEnd = (result: any) => {
-    if (!result.destination || !currentTemplate.sections) return;
-    const items = Array.from(currentTemplate.sections);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-    updateTemplate('sections', items);
-  };
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingLogo(true);
-    try {
-      const { uploadToCloudinary } = await import('@/utils/cloudinary');
-      const url = await uploadToCloudinary(file);
-      if (url) {
-        updateTemplate('logoUrl', url);
-        toast.success('Logo uploadé avec succès');
-      } else {
-        toast.error("L'upload a échoué");
-      }
-    } catch (err: any) {
-      toast.error("Erreur lors de l'upload : " + err.message);
-    } finally {
-      setUploadingLogo(false);
-    }
-  };
-
+  // Save / Reset
   const handleSave = async () => {
     try {
-      await updateSetting.mutateAsync({
-        key: 'ticket_templates',
-        value: settings as any
-      });
-      toast.success('Configuration des tickets enregistrée');
-    } catch (error) {
-      toast.error("Erreur lors de l'enregistrement");
-    }
+      await updateSetting.mutateAsync({ key: 'ticket_templates', value: settings as any });
+      toast.success('Configuration enregistrée ✓');
+    } catch { toast.error("Erreur lors de l'enregistrement"); }
   };
 
   const handleReset = () => {
-    if (activeTemplateTab === 'kitchen') {
-      setSettings(prev => ({ ...prev, kitchenTemplate: defaultKitchenTemplate }));
-    } else {
-      setSettings(prev => ({ ...prev, counterTemplate: defaultCounterTemplate }));
-    }
-    toast.success('Configuration réinitialisée par défaut');
+    setSettings(prev => ({ ...prev, [tmplKey]: activeTab === 'kitchen' ? defaultKitchenTemplate : defaultCounterTemplate }));
+    setExpanded(new Set());
+    toast.success('Réinitialisé aux valeurs par défaut');
   };
 
-  const [testingPrint, setTestingPrint] = useState(false);
-
-  const handleSpecificTestPrint = async (printerType: 'counter' | 'kitchen' | 'both') => {
+  const handleTestPrint = async (pt: 'counter'|'kitchen'|'both') => {
     setTestingPrint(true);
     try {
-      const activeLayoutMode = activeTemplateTab === 'kitchen' ? settings.kitchenLayoutMode : settings.counterLayoutMode;
-      const res = await fetch('http://localhost:3001/print-test-template', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          printerType,
-          layoutMode: activeLayoutMode,
-          template: currentTemplate
-        })
+      const r = await fetch('http://localhost:3001/print-test-template', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ printerType: pt, layoutMode: 'customizable', template: tmpl }),
       });
-      if (res.ok) {
-        toast.success(`Impression test envoyée sur ${printerType === 'both' ? 'les deux imprimantes' : printerType === 'kitchen' ? 'Cuisine (Ethernet)' : 'Star (USB)'} !`);
-      } else {
-        const errData = await res.json();
-        toast.error("Erreur d'impression : " + (errData.error || errData.message || "Échec"));
-      }
-    } catch (e: any) {
-      toast.error("Impossible de communiquer avec le serveur d'impression : " + e.message);
-    } finally {
-      setTestingPrint(false);
-    }
+      if (r.ok) toast.success(`Test envoyé → ${pt === 'both' ? 'les deux' : pt === 'kitchen' ? 'Cuisine' : 'Star USB'}`);
+      else { const e = await r.json().catch(() => ({})); toast.error("Erreur: " + (e.error || 'Échec')); }
+    } catch (e: any) { toast.error("Serveur inaccessible : " + e.message); }
+    finally { setTestingPrint(false); }
   };
 
-  const selectedSection = currentTemplate.sections?.find(s => s.id === selectedSectionId) || currentTemplate.sections?.[0];
+  if (isLoading) return (
+    <div className="flex items-center justify-center p-12 text-slate-400">
+      <RefreshCw className="w-5 h-5 animate-spin mr-3" /> Chargement...
+    </div>
+  );
 
-  const getBorderStyles = (border: string) => {
-    if (border === 'dashed') return 'border-bottom: 1.5px dashed #000; margin: 8px 0;';
-    if (border === 'solid') return 'border-bottom: 1.5px solid #000; margin: 8px 0;';
-    if (border === 'double') return 'border-bottom: 3.5px double #000; margin: 8px 0;';
-    return '';
-  };
-
-  const getTextStyles = (s: TicketSection) => {
-    let styles = `text-align: ${s.align};`;
-    if (s.bold) styles += ' font-weight: bold;';
-    if (s.underline) styles += ' text-decoration: underline;';
-    
-    // font size mapping
-    if (s.fontSize === 'double_height') styles += ' font-size: 20px; transform: scaleY(1.7); transform-origin: top center; display: inline-block; width: 100%;';
-    else if (s.fontSize === 'double_width') styles += ' font-size: 20px; transform: scaleX(1.7); transform-origin: top center; display: inline-block; width: 100%;';
-    else if (s.fontSize === 'double_size') styles += ' font-size: 22px; font-weight: bold; line-height: 1.2;';
-    else if (s.fontType === 'B') styles += ' font-size: 11px;';
-    else styles += ' font-size: 13px;';
-
-    return styles;
-  };
-
-  const generatePreviewHtml = () => {
-    const isKitchenTab = activeTemplateTab === 'kitchen';
-    const isClassic = isKitchenTab ? settings.kitchenLayoutMode === 'classic' : settings.counterLayoutMode === 'classic';
-
-    if (isClassic) {
-      // Classic layout preview simulation
-      const paperWidthStyle = settings.paperWidth === '58mm' ? '280px' : '380px';
-      if (isKitchenTab) {
-        // Classic kitchen ticket preview
-        return `
-          <div style="font-family: monospace; width: ${paperWidthStyle}; padding: 12px 8px; background: #fff; color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; line-height: 1.35; box-sizing: border-box;">
-            <div style="text-align: center; font-size: 20px; font-weight: bold; padding-bottom: 4px;">${currentTemplate.header || 'CUISINE'}</div>
-            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
-            <div style="text-align: center; font-size: 18px; font-weight: bold;">#042</div>
-            <div style="text-align: center; font-size: 16px; font-weight: bold;">LIVRAISON</div>
-            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
-            <div style="font-size: 13px;">Date: 26/06/2026 19:42<br/>Origine: WEB</div>
-            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
-            <div style="font-size: 13px;"><strong>Client:</strong> Ahmed Benali<br/><strong>Tel:</strong> 06 12 34 56 78<br/><strong>Adresse:</strong> 12 Rue de Paris, 76530<br/><strong>Note:</strong> Sans oignons svp</div>
-            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
-            <div style="font-size: 12px; font-weight: bold; display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 6px;">
-              <span>QTE  ARTICLE</span>
-              <span>TOTAL</span>
-            </div>
-            <div style="font-size: 18px; font-weight: bold; display: flex; justify-content: space-between;">
-              <span>• 1x MARGHERITA</span>
-              <span>12.50€</span>
-            </div>
-            <div style="font-size: 11px; margin-left: 12px; color: #555;">- SÉNIOR</div>
-            <div style="font-size: 13px; margin-left: 12px;">- + Supplément Fromage</div>
-            <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
-            <div style="font-size: 13px;">Reglement: CB</div>
-            <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
-            <div style="text-align: center; font-size: 13px; white-space: pre-line;">${currentTemplate.footer || 'Twin Pizza'}</div>
-          </div>
-        `;
-      } else {
-        // Classic counter ticket preview
-        return `
-          <div style="font-family: monospace; width: ${paperWidthStyle}; padding: 12px 8px; background: #fff; color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; line-height: 1.35; box-sizing: border-box;">
-            <div style="text-align: center; font-size: 20px; font-weight: bold; padding-bottom: 4px;">${currentTemplate.header || 'TWIN PIZZA'}</div>
-            <div style="font-size: 13px; text-align: left; white-space: pre-line;">${currentTemplate.subheader || '60 Rue Georges Clemenceau\nGrand-Couronne'}</div>
-            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
-            <div style="text-align: center; font-size: 18px; font-weight: bold;">#042</div>
-            <div style="text-align: center; font-size: 16px; font-weight: bold;">LIVRAISON</div>
-            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
-            <div style="font-size: 13px;">Date: 26/06/2026 19:42<br/>Origine: WEB</div>
-            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
-            <div style="font-size: 13px;"><strong>Client:</strong> Ahmed Benali<br/><strong>Tel:</strong> 06 12 34 56 78<br/><strong>Adresse:</strong> 12 Rue de Paris, 76530<br/><strong>Note:</strong> Sans oignons svp</div>
-            <div style="border-bottom: 1px dashed #000; margin: 6px 0;"></div>
-            <div style="font-size: 12px; font-weight: bold; display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 6px;">
-              <span>QTE  ARTICLE</span>
-              <span>TOTAL</span>
-            </div>
-            <div style="font-size: 18px; font-weight: bold; display: flex; justify-content: space-between;">
-              <span>• 1x MARGHERITA</span>
-              <span>12.50€</span>
-            </div>
-            <div style="font-size: 11px; margin-left: 12px; color: #555;">- SÉNIOR</div>
-            <div style="font-size: 13px; margin-left: 12px;">- + Supplément Fromage</div>
-            <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
-            <div style="font-size: 13px; display: flex; justify-content: space-between;">
-              <span>TVA 10%:</span>
-              <span>1.25€</span>
-            </div>
-            <div style="font-size: 18px; font-weight: bold; display: flex; justify-content: space-between;">
-              <span>TOTAL:</span>
-              <span>12.50€</span>
-            </div>
-            <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
-            <div style="font-size: 13px;">Reglement: CB</div>
-            <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
-            <div style="text-align: center; font-size: 13px; font-weight: bold;">Laissez-nous un avis ! *</div>
-            <div style="display: flex; justify-content: center; padding: 8px 0;">
-              <div style="width: 100px; height: 100px; background: #000; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px;">[QR CODE]</div>
-            </div>
-            <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
-            <div style="text-align: center; font-size: 13px; white-space: pre-line;">${currentTemplate.footer || 'Merci de votre visite !\nTHANK YOU!'}</div>
-          </div>
-        `;
-      }
-    }
-
-    const sections = currentTemplate.sections || [];
-    let html = `<div style="font-family: monospace; width: ${settings.paperWidth === '58mm' ? '280px' : '380px'}; padding: 12px 8px; background: #fff; color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; line-height: 1.35; box-sizing: border-box;">`;
-
-    sections.forEach(s => {
-      if (!s.enabled) return;
-
-      let sectionContent = '';
-      const styles = getTextStyles(s);
-
-      switch (s.id) {
-        case 'logo':
-          const alignClass = s.align === 'center' ? 'margin: 0 auto;' : s.align === 'right' ? 'margin-left: auto; margin-right: 0;' : 'margin-right: auto; margin-left: 0;';
-          sectionContent = currentTemplate.logoUrl 
-            ? `<div style="text-align: ${s.align}; padding-bottom: 4px;"><img src="${currentTemplate.logoUrl}" style="max-width: ${currentTemplate.logoWidth}px; width: 100%; height: auto; display: block; ${alignClass}" /></div>`
-            : `<div style="text-align: center; font-size: 26px; padding-bottom: 4px;">🍕 [TWIN PIZZA LOGO]</div>`;
-          break;
-        case 'header':
-          sectionContent = `<div style="${styles}">${currentTemplate.header || 'TWIN PIZZA'}</div>`;
-          break;
-        case 'subheader':
-          sectionContent = `<div style="${styles}; white-space: pre-line;">${currentTemplate.subheader || '60 Rue Georges Clemenceau\nGrand-Couronne'}</div>`;
-          break;
-        case 'order_info':
-          sectionContent = `<div style="${styles}; padding: 4px 0;">#042<br/>LIVRAISON</div>`;
-          break;
-        case 'scheduled_time':
-          sectionContent = `<div style="${styles}"><strong>PROGRAMMÉ:</strong> Ven. 26 Juin 20:30</div>`;
-          break;
-        case 'date_source':
-          sectionContent = `<div style="${styles}">Date: 26/06/2026 19:42<br/>Origine: WEB</div>`;
-          break;
-        case 'customer_info':
-          sectionContent = `<div style="${styles}"><strong>Client:</strong> Ahmed Benali<br/><strong>Tel:</strong> 06 12 34 56 78<br/><strong>Adresse:</strong> 12 Rue de Paris, 76530<br/><strong>Note:</strong> Sans oignons svp</div>`;
-          break;
-        case 'items':
-          // Product lines styles
-          let pStyles = 'font-weight: bold; display: flex; justify-content: space-between;';
-          if (currentTemplate.itemFontSize === 'double_height') pStyles += ' font-size: 18px; transform: scaleY(1.5); transform-origin: top center; margin-bottom: 4px;';
-          else if (currentTemplate.itemFontSize === 'double_size') pStyles += ' font-size: 18px;';
-          else pStyles += ' font-size: 13px;';
-          if (!currentTemplate.itemBold) pStyles = pStyles.replace('font-weight: bold;', '');
-
-          // Detail lines styles
-          let dStyles = 'margin-left: 12px;';
-          if (currentTemplate.detailFontType === 'B') dStyles += ' font-size: 11px; color: #555;';
-          else dStyles += ' font-size: 13px;';
-          if (currentTemplate.detailBold) dStyles += ' font-weight: bold;';
-
-          const bullet = currentTemplate.itemBullet && currentTemplate.itemBullet !== 'none' ? `${currentTemplate.itemBullet} ` : '';
-
-          sectionContent = `
-            <div style="font-size: 12px; font-weight: bold; display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 6px;">
-              <span>QTE  ARTICLE</span>
-              <span>TOTAL</span>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-              <div>
-                <div style="${pStyles}">
-                  <span>${bullet}1x MARGHERITA</span>
-                  <span>12.50€</span>
-                </div>
-                <div style="${dStyles}">- SENIOR</div>
-                <div style="${dStyles}">- + Supplément Fromage</div>
-              </div>
-              <div>
-                <div style="${pStyles}">
-                  <span>${bullet}2x COCA-COLA 33CL</span>
-                  <span>4.00€</span>
-                </div>
-                <div style="${dStyles}">- Note: Très frais svp</div>
-              </div>
-            </div>
-          `;
-          break;
-        case 'totals':
-          sectionContent = `
-            <div style="${styles}">
-              <div style="display: flex; justify-content: space-between; font-size: 12px;"><span>Sous-total HT:</span><span>15.00€</span></div>
-              <div style="display: flex; justify-content: space-between; font-size: 12px;"><span>TVA 10%:</span><span>1.50€</span></div>
-              <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 17px; border-top: 1px solid #000; margin-top: 4px; padding-top: 2px;">
-                <span>TOTAL:</span><span>16.50€</span>
-              </div>
-            </div>
-          `;
-          break;
-        case 'payment':
-          sectionContent = `<div style="${styles}">Règlement: ESPÈCES (Non payé)</div>`;
-          break;
-        case 'qrcode':
-          sectionContent = `
-            <div style="text-align: center; font-size: 11px;">
-              <strong>Laissez-nous un avis !</strong>
-              <div style="width: 80px; height: 80px; border: 1px solid #000; margin: 6px auto; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; background: #fafafa;">QR CODE</div>
-            </div>
-          `;
-          break;
-        case 'footer':
-          sectionContent = `<div style="${styles}; white-space: pre-line;">${currentTemplate.footer || 'Merci de votre visite !\nA bientôt !'}</div>`;
-          break;
-      }
-
-      html += sectionContent;
-
-      if (s.borderBottom !== 'none') {
-        html += `<div style="${getBorderStyles(s.borderBottom)}"></div>`;
-      }
-    });
-
-    html += `</div>`;
-    return html;
-  };
-
-  if (isLoading) {
-    return <div className="p-6 text-center text-muted-foreground">Chargement des données...</div>;
-  }
+  const previewHtml = buildPreviewHtml(tmpl, settings.paperWidth);
 
   return (
-    <div className="space-y-6">
-      {/* Header Controls */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-5 text-slate-100">
+
+      {/* ── HEADER ── */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h2 className="text-2xl font-bold flex items-center gap-2 text-slate-100">
             <FileText className="w-6 h-6 text-amber-500" />
             Concepteur de Tickets Thermiques
           </h2>
-          <p className="text-muted-foreground">Modifiez visuellement l'ordre, les polices, tailles et bordures des reçus</p>
+          <p className="text-slate-400 text-sm mt-0.5">
+            Personnalisez chaque section — glissez-déposez, cliquez ▼ pour éditer, aperçu en direct
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleReset}>
-            <RotateCcw className="w-4 h-4 mr-2" />
-            Réinitialiser
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" onClick={handleReset} className="gap-2 h-9 border-slate-600 text-slate-200 hover:bg-slate-800">
+            <RotateCcw className="w-4 h-4" /> Réinitialiser
           </Button>
-          <Button onClick={handleSave} disabled={updateSetting.isPending} className="bg-amber-500 hover:bg-amber-600 text-black font-bold">
-            <Save className="w-4 h-4 mr-2" />
-            {updateSetting.isPending ? 'Enregistrement...' : 'Sauvegarder la configuration'}
+          <Button onClick={handleSave} disabled={updateSetting.isPending}
+            className="bg-amber-500 hover:bg-amber-600 text-black font-bold gap-2 h-9">
+            <Save className="w-4 h-4" />
+            {updateSetting.isPending ? 'Enregistrement...' : 'Sauvegarder'}
           </Button>
         </div>
       </div>
 
-      {/* General Settings Bar */}
-      <Card className="border-border bg-slate-900/50">
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4 items-end">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Largeur papier</Label>
-            <select
-              value={settings.paperWidth}
-              onChange={(e) => setSettings(prev => ({ ...prev, paperWidth: e.target.value as '58mm' | '80mm' }))}
-              className="w-full h-9 px-3 rounded-md border border-border bg-[#0d1117] text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-            >
-              <option value="58mm">58mm (Format étroit)</option>
-              <option value="80mm">80mm (Format standard)</option>
+      {/* ── GLOBAL SETTINGS BAR ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-xl border border-slate-700/60 bg-slate-900/60">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-slate-400">Largeur papier</Label>
+          <select value={settings.paperWidth}
+            onChange={e => setSettings(p => ({ ...p, paperWidth: e.target.value as '58mm'|'80mm' }))}
+            className={SEL_LG} style={DS}>
+            <option value="58mm">58mm (Format étroit)</option>
+            <option value="80mm">80mm (Format standard)</option>
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-slate-400">Gabarit actif (impression)</Label>
+          <select value={settings.activeTemplate}
+            onChange={e => setSettings(p => ({ ...p, activeTemplate: e.target.value as 'kitchen'|'counter' }))}
+            className={SEL_LG} style={DS}>
+            <option value="counter">Client (comptoir / caisse)</option>
+            <option value="kitchen">Cuisine (préparation)</option>
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-slate-400 flex items-center justify-between">
+            <span>Imprimante USB (Star)</span>
+            <button onClick={fetchPrinters} disabled={loadingPrinters} className="text-amber-500 hover:text-amber-400">
+              <RefreshCw className={`w-3 h-3 ${loadingPrinters ? 'animate-spin' : ''}`} />
+            </button>
+          </Label>
+          {printers.length > 0 ? (
+            <select value={settings.usbPrinterName || ''} onChange={e => setSettings(p => ({ ...p, usbPrinterName: e.target.value }))} className={SEL_LG} style={DS}>
+              <option value="">-- Par défaut --</option>
+              {printers.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Gabarit d'impression</Label>
-            <select
-              value={settings.activeTemplate}
-              onChange={(e) => setSettings(prev => ({ ...prev, activeTemplate: e.target.value as 'kitchen' | 'counter' }))}
-              className="w-full h-9 px-3 rounded-md border border-border bg-[#0d1117] text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-            >
-              <option value="counter">Client (comptoir/caisse)</option>
-              <option value="kitchen">Cuisine (résumé de préparation)</option>
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground flex items-center justify-between">
-              <span>Port Imprimante (Star USB)</span>
-              <button 
-                type="button" 
-                onClick={fetchPrinters} 
-                className="text-[10px] text-amber-500 hover:text-amber-600 underline font-bold"
-                disabled={loadingPrinters}
-              >
-                {loadingPrinters ? '...' : 'Actualiser'}
+          ) : (
+            <Input placeholder="Ex: Star TSP100 Cutter" value={settings.usbPrinterName || ''}
+              onChange={e => setSettings(p => ({ ...p, usbPrinterName: e.target.value }))}
+              className={`h-9 ${INP}`} />
+          )}
+        </div>
+        <div className="flex items-center gap-3 min-h-[36px]">
+          <Switch id="auto-print" checked={settings.autoPrint}
+            onCheckedChange={v => setSettings(p => ({ ...p, autoPrint: v }))} />
+          <Label htmlFor="auto-print" className="cursor-pointer text-sm text-slate-200">Impression automatique</Label>
+        </div>
+      </div>
+
+      {/* ── MAIN LAYOUT ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5">
+
+        {/* LEFT: Editor */}
+        <div className="space-y-4 min-w-0">
+
+          {/* Template Tab Switcher */}
+          <div className="flex gap-1.5 p-1 bg-slate-900 border border-slate-700/60 rounded-xl">
+            {([['counter','Reçu Client',<Store className="w-4 h-4"/>],['kitchen','Ticket Cuisine',<ChefHat className="w-4 h-4"/>]] as const).map(([tab, label, icon]) => (
+              <button key={tab} onClick={() => handleTabChange(tab)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${activeTab === tab ? 'bg-amber-500 text-black shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>
+                {icon}{label}
               </button>
-            </Label>
-            {availablePrinters.length > 0 ? (
-              <select
-                value={settings.usbPrinterName || ''}
-                onChange={(e) => setSettings(prev => ({ ...prev, usbPrinterName: e.target.value }))}
-                className="w-full h-9 px-3 rounded-md border border-border bg-[#0d1117] text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono text-xs"
-              >
-                <option value="">-- Par défaut (Star TSP100) --</option>
-                {availablePrinters.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            ) : (
-              <Input
-                placeholder="Ex: Star TSP100 Cutter (TSP143)"
-                value={settings.usbPrinterName || ''}
-                onChange={(e) => setSettings(prev => ({ ...prev, usbPrinterName: e.target.value }))}
-                className="h-9 border-border bg-[#0d1117] text-sm"
-              />
-            )}
+            ))}
           </div>
-          <div className="flex items-center gap-3 h-9">
-            <Switch
-              id="auto-print-switch"
-              checked={settings.autoPrint}
-              onCheckedChange={(checked) => setSettings(prev => ({ ...prev, autoPrint: checked }))}
-            />
-            <Label htmlFor="auto-print-switch" className="cursor-pointer text-sm font-medium">Impression automatique</Label>
+
+          {/* Section List */}
+          <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 overflow-hidden">
+            {/* Card header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/60">
+              <div>
+                <p className="text-sm font-semibold text-slate-200">Sections du ticket</p>
+                <p className="text-[11px] text-slate-500">Glissez ⠿ pour réorganiser · Cliquez ▼ pour configurer · Toggle pour activer</p>
+              </div>
+              <div className="flex gap-1.5">
+                <button onClick={() => setExpanded(new Set((tmpl.sections || []).map(s => s.id)))}
+                  className="text-[11px] text-slate-400 hover:text-slate-200 px-2 py-1 rounded hover:bg-slate-800 transition-colors">
+                  Tout ouvrir
+                </button>
+                <button onClick={() => setExpanded(new Set())}
+                  className="text-[11px] text-slate-400 hover:text-slate-200 px-2 py-1 rounded hover:bg-slate-800 transition-colors">
+                  Tout fermer
+                </button>
+              </div>
+            </div>
+
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId={`sections-${activeTab}`}>
+                {(prov) => (
+                  <div {...prov.droppableProps} ref={prov.innerRef}>
+                    {(tmpl.sections || []).map((s, idx) => (
+                      <Draggable key={`${activeTab}-${s.id}`} draggableId={`${activeTab}-${s.id}`} index={idx}>
+                        {(dp) => (
+                          <div ref={dp.innerRef} {...dp.draggableProps}>
+                            <SectionRow
+                              s={s} tmpl={tmpl}
+                              expanded={expanded.has(s.id)}
+                              dragHandleProps={dp.dragHandleProps}
+                              onExpand={() => toggleExpand(s.id)}
+                              onToggle={v => updateSec(s.id, { enabled: v })}
+                              onSec={u => updateSec(s.id, u)}
+                              onTmpl={updateTmpl}
+                            />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {prov.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
           </div>
-        </CardContent>
-      </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT COLUMN: Section Order (Drag and Drop) */}
-        <div className="lg:col-span-2 space-y-4">
-          <Tabs value={activeTemplateTab} onValueChange={(v) => {
-            setActiveTemplateTab(v as 'kitchen' | 'counter');
-            setSelectedSectionId('header');
-          }}>
-            <TabsList className="grid grid-cols-2 w-full bg-slate-900 border border-border">
-              <TabsTrigger value="counter" className="gap-2">
-                <Store className="w-4 h-4" />
-                Configuration Reçu Client
-              </TabsTrigger>
-              <TabsTrigger value="kitchen" className="gap-2">
-                <ChefHat className="w-4 h-4" />
-                Configuration Reçu Cuisine
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value={activeTemplateTab} className="space-y-4 mt-4">
-              {/* Layout Engine Selector Banner */}
-              <Card className="border-border bg-slate-900/50 p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <Settings2 className="w-4 h-4 text-amber-500" />
-                      Moteur de mise en page ({activeTemplateTab === 'kitchen' ? 'Cuisine' : 'Client'})
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Choisissez si ce ticket doit utiliser la mise en page classique (hier 18h) ou être personnalisé dynamiquement.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={activeTemplateTab === 'kitchen' ? settings.kitchenLayoutMode : settings.counterLayoutMode}
-                      onChange={(e) => {
-                        const val = e.target.value as 'classic' | 'customizable';
-                        setSettings(prev => ({
-                          ...prev,
-                          [activeTemplateTab === 'kitchen' ? 'kitchenLayoutMode' : 'counterLayoutMode']: val
-                        }));
-                      }}
-                      className="h-9 px-3 rounded-md border border-border bg-[#0d1117] text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 font-bold"
-                    >
-                      <option value="classic">Classique (Hier 18h)</option>
-                      <option value="customizable">Personnalisable (Design Dynamique)</option>
-                    </select>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="border-border bg-slate-950/40">
-                <CardHeader className="pb-3 flex flex-col md:flex-row md:items-center justify-between gap-4 space-y-0">
-                  <div>
-                    <CardTitle className="text-base">Mise en page du ticket</CardTitle>
-                    <CardDescription>Glissez-déposez ou cliquez sur les flèches pour modifier l'ordre d'impression. Cochez pour activer.</CardDescription>
-                  </div>
-                  <div className="flex flex-wrap gap-2 shrink-0">
-                    <Button
-                      type="button"
-                      onClick={() => handleSpecificTestPrint('counter')}
-                      disabled={testingPrint}
-                      variant="outline"
-                      className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10 gap-1 text-xs font-bold px-3 h-9"
-                    >
-                      <Printer className="w-4 h-4" />
-                      Test Star (USB)
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => handleSpecificTestPrint('kitchen')}
-                      disabled={testingPrint}
-                      variant="outline"
-                      className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10 gap-1 text-xs font-bold px-3 h-9"
-                    >
-                      <Printer className="w-4 h-4" />
-                      Test Cuisine (Ethernet)
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => handleSpecificTestPrint('both')}
-                      disabled={testingPrint}
-                      variant="outline"
-                      className="bg-amber-500/10 border-amber-500/40 text-amber-400 hover:bg-amber-500/20 gap-1 text-xs font-bold px-3 h-9"
-                    >
-                      <Printer className="w-4 h-4" />
-                      Test sur les Deux
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0 pb-4">
-                  <DragDropContext onDragEnd={handleDragEnd}>
-                    <Droppable droppableId="sections-list">
-                      {(provided) => (
-                        <div
-                          {...provided.droppableProps}
-                          ref={provided.innerRef}
-                          className="divide-y divide-border/40"
-                        >
-                          {currentTemplate.sections?.map((section, idx) => (
-                            <Draggable key={section.id} draggableId={section.id} index={idx}>
-                              {(dragProvided) => (
-                                <div
-                                  ref={dragProvided.innerRef}
-                                  {...dragProvided.draggableProps}
-                                  className={`flex items-center gap-3 p-3 hover:bg-slate-900/30 transition-colors ${selectedSectionId === section.id ? 'bg-amber-500/10 border-l-2 border-amber-500' : ''}`}
-                                >
-                                  {/* Drag Handle */}
-                                  <div {...dragProvided.dragHandleProps} className="text-muted-foreground hover:text-foreground cursor-grab p-1">
-                                    <GripVertical className="w-4 h-4" />
-                                  </div>
-
-                                  {/* Enabled Toggle */}
-                                  <Switch
-                                    checked={section.enabled}
-                                    onCheckedChange={(checked) => updateSection(section.id, { enabled: checked })}
-                                    className="scale-90"
-                                  />
-
-                                  {/* Title & Clickable Configuration */}
-                                  <button
-                                    onClick={() => setSelectedSectionId(section.id)}
-                                    className="flex-1 text-left font-medium text-sm text-foreground hover:text-amber-500 transition-colors"
-                                  >
-                                    {section.name}
-                                    {!section.enabled && <span className="ml-2 text-xs text-muted-foreground italic">(Masqué)</span>}
-                                  </button>
-
-                                  {/* Order Sorting Buttons (Mobile fallback) */}
-                                  <div className="flex items-center gap-1.5">
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      onClick={() => moveSection(idx, 'up')}
-                                      disabled={idx === 0}
-                                      className="w-7 h-7"
-                                    >
-                                      <ArrowUp className="w-3.5 h-3.5" />
-                                    </Button>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      onClick={() => moveSection(idx, 'down')}
-                                      disabled={idx === (currentTemplate.sections?.length || 0) - 1}
-                                      className="w-7 h-7"
-                                    >
-                                      <ArrowDown className="w-3.5 h-3.5" />
-                                    </Button>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      onClick={() => setSelectedSectionId(section.id)}
-                                      className={`w-7 h-7 ${selectedSectionId === section.id ? 'text-amber-500' : 'text-muted-foreground'}`}
-                                    >
-                                      <Settings2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </DragDropContext>
-                </CardContent>
-              </Card>
-
-              {/* Section Settings Block */}
-              {selectedSection && (
-                <Card className="border-border bg-slate-950/40">
-                  <CardHeader className="pb-3 border-b border-border/40">
-                    <CardTitle className="text-sm uppercase tracking-wider text-amber-500 flex items-center gap-2">
-                      <Settings2 className="w-4 h-4" />
-                      Réglages Section: {selectedSection.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-5 pt-4">
-                    {/* Common text configs */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {/* Align */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Alignement</Label>
-                        <select
-                          value={selectedSection.align}
-                          onChange={(e) => updateSection(selectedSection.id, { align: e.target.value as any })}
-                          className="w-full h-8 px-2 rounded border bg-[#0d1117] text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-                        >
-                          <option value="left">Gauche</option>
-                          <option value="center">Centré</option>
-                          <option value="right">Droite</option>
-                        </select>
-                      </div>
-
-                      {/* Font size */}
-                      {selectedSection.id !== 'logo' && (
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Taille de police</Label>
-                          <select
-                            value={selectedSection.fontSize}
-                            onChange={(e) => updateSection(selectedSection.id, { fontSize: e.target.value as any })}
-                            className="w-full h-8 px-2 rounded border bg-[#0d1117] text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-                          >
-                            <option value="normal">Normal</option>
-                            <option value="double_height">Double Hauteur</option>
-                            <option value="double_width">Double Largeur</option>
-                            <option value="double_size">Double Taille (H x L)</option>
-                          </select>
-                        </div>
-                      )}
-
-                      {/* Font type */}
-                      {selectedSection.id !== 'logo' && selectedSection.fontSize === 'normal' && (
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Type de police</Label>
-                          <select
-                            value={selectedSection.fontType}
-                            onChange={(e) => updateSection(selectedSection.id, { fontType: e.target.value as any })}
-                            className="w-full h-8 px-2 rounded border bg-[#0d1117] text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-                          >
-                            <option value="A">Standard (Font A)</option>
-                            <option value="B">Plus petite (Font B)</option>
-                          </select>
-                        </div>
-                      )}
-
-                      {/* Borders */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Bordure inférieure</Label>
-                        <select
-                          value={selectedSection.borderBottom}
-                          onChange={(e) => updateSection(selectedSection.id, { borderBottom: e.target.value as any })}
-                          className="w-full h-8 px-2 rounded border bg-[#0d1117] text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-                        >
-                          <option value="none">Aucune</option>
-                          <option value="dashed">Pointillés (---)</option>
-                          <option value="solid">Ligne (___)</option>
-                          <option value="double">Double Ligne (===)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-6 items-center">
-                      {selectedSection.id !== 'logo' && (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              id="sec-bold-switch"
-                              checked={selectedSection.bold}
-                              onCheckedChange={(checked) => updateSection(selectedSection.id, { bold: checked })}
-                              className="scale-90"
-                            />
-                            <Label htmlFor="sec-bold-switch" className="text-xs cursor-pointer">Gras (Bold)</Label>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              id="sec-under-switch"
-                              checked={selectedSection.underline}
-                              onCheckedChange={(checked) => updateSection(selectedSection.id, { underline: checked })}
-                              className="scale-90"
-                            />
-                            <Label htmlFor="sec-under-switch" className="text-xs cursor-pointer">Souligné (Underline)</Label>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Section Specific fields */}
-                    <Separator className="bg-border/30 my-2" />
-
-                    {/* Logo settings */}
-                    {selectedSection.id === 'logo' && (
-                      <div className="space-y-4">
-                        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                          <div className="grid w-full max-w-sm items-center gap-1.5">
-                            <Label htmlFor="logo-uploader" className="text-xs">Sélectionner un fichier (Image)</Label>
-                            <Input
-                              id="logo-uploader"
-                              type="file"
-                              accept="image/*"
-                              onChange={handleLogoUpload}
-                              className="h-8 border-border bg-[#0d1117] text-xs py-1"
-                              disabled={uploadingLogo}
-                            />
-                          </div>
-                          {currentTemplate.logoUrl && (
-                            <div className="flex items-center gap-2 mt-4 sm:mt-0">
-                              <img src={currentTemplate.logoUrl} className="h-10 w-auto rounded border bg-white object-contain p-1" />
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => updateTemplate('logoUrl', '')}
-                                className="h-7 px-3 text-xs"
-                              >
-                                Retirer
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="space-y-2 max-w-xs">
-                          <Label className="text-xs flex justify-between">
-                            <span>Largeur d'impression du logo (pixels)</span>
-                            <span className="text-amber-500 font-bold">{currentTemplate.logoWidth || 160}px</span>
-                          </Label>
-                          <input
-                            type="range"
-                            min={80}
-                            max={240}
-                            step={8}
-                            value={currentTemplate.logoWidth || 160}
-                            onChange={(e) => updateTemplate('logoWidth', parseInt(e.target.value))}
-                            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Header main title */}
-                    {selectedSection.id === 'header' && (
-                      <div className="space-y-2">
-                        <Label className="text-xs">Titre principal</Label>
-                        <Input
-                          value={currentTemplate.header}
-                          onChange={(e) => updateTemplate('header', e.target.value)}
-                          placeholder="Ex: TWIN PIZZA"
-                          className="h-9 border-border bg-[#0d1117] text-sm"
-                        />
-                      </div>
-                    )}
-
-                    {/* Subheader */}
-                    {selectedSection.id === 'subheader' && (
-                      <div className="space-y-2">
-                        <Label className="text-xs">Texte d'en-tête (ex: adresse, contacts)</Label>
-                        <Textarea
-                          value={currentTemplate.subheader}
-                          onChange={(e) => updateTemplate('subheader', e.target.value)}
-                          placeholder="Grand-Couronne&#10;60 Rue Georges Clemenceau"
-                          rows={2.5}
-                          className="border-border bg-[#0d1117] text-sm"
-                        />
-                      </div>
-                    )}
-
-                    {/* Items styling settings */}
-                    {selectedSection.id === 'items' && (
-                      <div className="space-y-4">
-                        <div className="border border-border/40 rounded-lg p-3 bg-slate-900/20 space-y-4">
-                          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Style Ligne Produit Principal (ex: 1x Margherita)</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Puce (Bullet)</Label>
-                              <select
-                                value={currentTemplate.itemBullet || '•'}
-                                onChange={(e) => updateTemplate('itemBullet', e.target.value as any)}
-                                className="w-full h-8 px-2 rounded border bg-[#0d1117] text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-                              >
-                                <option value="•">Puce ronde (•)</option>
-                                <option value="-">Tiret (-)</option>
-                                <option value="*">Étoile (*)</option>
-                                <option value="none">Aucune</option>
-                              </select>
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Taille de police</Label>
-                              <select
-                                value={currentTemplate.itemFontSize || 'double_height'}
-                                onChange={(e) => updateTemplate('itemFontSize', e.target.value as any)}
-                                className="w-full h-8 px-2 rounded border bg-[#0d1117] text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-                              >
-                                <option value="normal">Normal</option>
-                                <option value="double_height">Double Hauteur</option>
-                                <option value="double_size">Double Taille (H x L)</option>
-                              </select>
-                            </div>
-                            <div className="flex items-center gap-2 h-8 mt-6">
-                              <Switch
-                                id="item-bold-switch"
-                                checked={currentTemplate.itemBold !== false}
-                                onCheckedChange={(checked) => updateTemplate('itemBold', checked)}
-                                className="scale-90"
-                              />
-                              <Label htmlFor="item-bold-switch" className="text-xs cursor-pointer">Lignes de produits en gras</Label>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="border border-border/40 rounded-lg p-3 bg-slate-900/20 space-y-4">
-                          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Style Options & Suppléments (ex: + Champignons)</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Police / Taille</Label>
-                              <select
-                                value={currentTemplate.detailFontType || 'B'}
-                                onChange={(e) => updateTemplate('detailFontType', e.target.value as any)}
-                                className="w-full h-8 px-2 rounded border bg-[#0d1117] text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-                              >
-                                <option value="B">Plus petite (Font B)</option>
-                                <option value="A">Standard (Font A)</option>
-                              </select>
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Formatage</Label>
-                              <select
-                                value={currentTemplate.detailFontSize || 'normal'}
-                                onChange={(e) => updateTemplate('detailFontSize', e.target.value as any)}
-                                className="w-full h-8 px-2 rounded border bg-[#0d1117] text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-                              >
-                                <option value="normal">Normal</option>
-                                <option value="double_height">Double Hauteur</option>
-                              </select>
-                            </div>
-                            <div className="flex items-center gap-2 h-8 mt-6">
-                              <Switch
-                                id="detail-bold-switch"
-                                checked={currentTemplate.detailBold || false}
-                                onCheckedChange={(checked) => updateTemplate('detailBold', checked)}
-                                className="scale-90"
-                              />
-                              <Label htmlFor="detail-bold-switch" className="text-xs cursor-pointer">Options en gras</Label>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Footer text */}
-                    {selectedSection.id === 'footer' && (
-                      <div className="space-y-2">
-                        <Label className="text-xs">Texte de pied de page (ex: remerciements, horaires)</Label>
-                        <Textarea
-                          value={currentTemplate.footer}
-                          onChange={(e) => updateTemplate('footer', e.target.value)}
-                          placeholder="Merci de votre commande!&#10;🍕 A bientôt !"
-                          rows={2.5}
-                          className="border-border bg-[#0d1117] text-sm"
-                        />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-          </Tabs>
+          {/* Test Print */}
+          <div className="flex flex-wrap gap-2 items-center p-3 rounded-xl border border-slate-700/40 bg-slate-900/40">
+            <span className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+              <Printer className="w-3.5 h-3.5" /> Test impression :
+            </span>
+            {([['counter','Star (USB)'],['kitchen','Cuisine (Ethernet)'],['both','Les deux']] as const).map(([pt, lbl]) => (
+              <Button key={pt} onClick={() => handleTestPrint(pt)} disabled={testingPrint} variant="outline"
+                className={`text-xs h-8 px-3 border-amber-500/30 text-amber-400 hover:bg-amber-500/10 ${pt === 'both' ? 'bg-amber-500/5' : ''}`}>
+                <Printer className="w-3.5 h-3.5 mr-1.5" />{lbl}
+              </Button>
+            ))}
+          </div>
         </div>
 
-        {/* RIGHT COLUMN: Ticket Live Preview */}
-        <div className="lg:col-span-1 space-y-4">
-          <Card className="sticky top-6 border-border bg-slate-950/20">
-            <CardHeader className="pb-3 border-b border-border/40">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Eye className="w-4 h-4 text-amber-500" />
-                Aperçu réel du Reçu
-              </CardTitle>
-              <CardDescription>Aperçu en temps réel tel qu'il sera imprimé sur la bande thermique</CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 flex justify-center bg-slate-950/30">
-              <div 
-                className="preview-ticket-container"
-                dangerouslySetInnerHTML={{ __html: generatePreviewHtml() }}
-              />
-            </CardContent>
-          </Card>
+        {/* RIGHT: Live Preview */}
+        <div className="xl:sticky xl:top-6 xl:self-start space-y-3">
+          <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-700/60 flex items-center gap-2">
+              <Eye className="w-4 h-4 text-amber-500" />
+              <div>
+                <p className="text-sm font-semibold text-slate-200">Aperçu en direct</p>
+                <p className="text-[11px] text-slate-500">{settings.paperWidth} · {activeTab === 'counter' ? 'Ticket Client' : 'Ticket Cuisine'}</p>
+              </div>
+            </div>
+            <div className="p-4 bg-[#111827] overflow-x-auto flex justify-center min-h-[200px]">
+              <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-600 text-center px-4">
+            L'aperçu simule l'impression thermique. Les proportions exactes dépendent de l'imprimante.
+          </p>
         </div>
+
       </div>
     </div>
   );
