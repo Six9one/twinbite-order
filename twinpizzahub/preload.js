@@ -1,6 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 const path = require('path');
 
+// Guard: prevent double-injection (session.setPreloads + webPreferences.preload)
+try {
+
 contextBridge.exposeInMainWorld('twinHub', {
   // Windows
   openWindow:  (screen) => ipcRenderer.send('open-window', screen),
@@ -55,3 +58,8 @@ contextBridge.exposeInMainWorld('twinHub', {
   platform: typeof process !== 'undefined' ? process.platform : 'win32',
   appUrl: (typeof process !== 'undefined' && process.argv && process.argv.includes('--dev')) ? 'http://localhost:8080' : 'http://localhost:3456',
 });
+
+} catch(e) {
+  // Already injected in this renderer (e.g. launcher gets it from both webPreferences.preload AND session.setPreloads)
+  // This is safe to ignore — twinHub is already available.
+}
