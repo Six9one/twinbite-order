@@ -1329,11 +1329,27 @@ function closeMAJIfBackdrop(e) {
 }
 
 async function checkMAJ() {
-  if (!window.twinHub) return;
   const refreshBtn = document.getElementById('maj-refresh-btn');
+  const doBtn = document.getElementById('maj-do-update-btn');
+  
+  if (!window.twinHub) {
+    if (refreshBtn) refreshBtn.style.display = 'none';
+    if (doBtn) doBtn.style.display = 'none';
+    setMAJStatus('error', "L'API TwinHub n'est pas disponible. Veuillez lancer via le Launcher officiel.");
+    document.getElementById('maj-branch-info').textContent = 'Mode Navigateur';
+    document.getElementById('maj-local-list').innerHTML = '<div class="maj-empty">Non disponible en mode navigateur</div>';
+    return;
+  }
+
   refreshBtn.disabled = true;
   refreshBtn.textContent = '⏳ Vérification...';
   setMAJStatus('checking');
+
+  // Clear lists and set loading state to avoid feeling stuck/empty
+  document.getElementById('maj-branch-info').textContent = 'Recherche de mises à jour...';
+  document.getElementById('maj-local-list').innerHTML = '<div class="maj-empty">Recherche des modifications installées...</div>';
+  document.getElementById('maj-pending-section').style.display = 'none';
+  document.getElementById('maj-pending-list').innerHTML = '';
 
   try {
     const res = await window.twinHub.checkForUpdates();
@@ -1343,6 +1359,7 @@ async function checkMAJ() {
     if (!res || !res.success) {
       setMAJStatus('error', res?.error || 'Impossible de vérifier les mises à jour');
       document.getElementById('maj-branch-info').textContent = 'Erreur de connexion Git';
+      document.getElementById('maj-local-list').innerHTML = '<div class="maj-empty">Échec du chargement de l\'historique</div>';
       return;
     }
 

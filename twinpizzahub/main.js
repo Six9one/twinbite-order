@@ -568,7 +568,7 @@ function createWindow(name, { route, display, fullscreen = false, width = 1366, 
     show: false,              // no black flash
     backgroundColor: '#0d1117',
     icon: path.join(__dirname, '..', 'public', 'favicon.png'),
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: false },
   });
   win.once('ready-to-show', () => win.show());
   win.loadURL(getUrl(route));
@@ -588,8 +588,10 @@ function createLauncher() {
     icon: path.join(__dirname, '..', 'public', 'favicon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true, nodeIntegration: false,
+      contextIsolation: true,
+      nodeIntegration: false,
       webviewTag: true,
+      sandbox: false,
     },
   });
   launcherWin.loadFile(path.join(__dirname, 'launcher.html'));

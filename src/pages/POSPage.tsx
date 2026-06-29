@@ -73,10 +73,46 @@ function useThemeBump() {
   return bump;
 }
 
+// ── Local Pizza Images Fallback ──────────────────────────────────────────────
+const LOCAL_PIZZA_IMAGES: Record<string, string> = {
+  'margherita': 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=200&q=80',
+  'végétarienne': 'https://images.unsplash.com/photo-1571066811602-71683a3f680d?w=200&q=80',
+  'fruits de mer': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=200&q=80',
+  'mexicaine': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=200&q=80',
+  '4 saisons': 'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=200&q=80',
+  'reine': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=200&q=80',
+  'orientale': 'https://images.unsplash.com/photo-1594007654729-407ededc4963?w=200&q=80',
+  'campione': 'https://images.unsplash.com/photo-1590947132387-155cc02f3212?w=200&q=80',
+  '4 fromages': 'https://images.unsplash.com/photo-1573821663912-569905455b1c?w=200&q=80',
+  'calzone': 'https://images.unsplash.com/photo-1544982503-9f984c14501a?w=200&q=80',
+  'savoyarde': 'https://images.unsplash.com/photo-1595708684082-a173bb3a06c5?w=200&q=80',
+  'pêcheur': 'https://images.unsplash.com/photo-1534080391025-097d02b173e9?w=200&q=80',
+  'pimento': 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?w=200&q=80',
+  'royale': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=200&q=80',
+  '3 jambons': 'https://images.unsplash.com/photo-1555072956-7758afb20a8f?w=200&q=80',
+  'twinzienne': 'https://images.unsplash.com/photo-1595854341625-f33ee10dbf94?w=200&q=80',
+  'tartiflette': 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?w=200&q=80',
+  'kebab': 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=200&q=80',
+  'norvégienne': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&q=80',
+  'buffalo': 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=200&q=80',
+  'raclette': 'https://images.unsplash.com/photo-1544025162-d76694265947?w=200&q=80',
+  'antillaise': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=200&q=80',
+  'chèvre miel': 'https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=200&q=80',
+  'farmer': 'https://images.unsplash.com/photo-1588315029754-2dd089d39a1a?w=200&q=80',
+  'charcutière': 'https://images.unsplash.com/photo-1555072956-7758afb20a8f?w=200&q=80',
+  'boursin': 'https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?w=200&q=80',
+  'biggy': 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=200&q=80',
+  'cheezy': 'https://images.unsplash.com/photo-1548369937-2751babf242d?w=200&q=80',
+  'chicken': 'https://images.unsplash.com/photo-1562967914-6c8273b89a3e?w=200&q=80',
+  'indienne': 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=200&q=80',
+  'la hawaïe': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&q=80',
+};
+
 // ── Product tile ─────────────────────────────────────────────────────────────
 function ProductTile({ item, selected, onClick, badge, compact, tint }: { item:any; selected:boolean; onClick:()=>void; badge?:string; compact?:boolean; tint?:string }) {
-  // Support both camelCase (imageUrl) and snake_case (image_url from DB)
-  const img = item.imageUrl || item.image_url;
+  // Support both camelCase (imageUrl) and snake_case (image_url from DB), fallback to local images
+  const normalizedName = (item.name || '').trim().toLowerCase();
+  const img = item.imageUrl || item.image_url || LOCAL_PIZZA_IMAGES[normalizedName];
   const imgSize = compact ? 44 : 64;
   const borderColor = selected ? S.accent : (tint || '#2d3748');
   return (
@@ -150,10 +186,9 @@ type PizzaSizeId = typeof PIZZA_SIZES[number]['id'];
 const BASE_TINT = { tomate:'#ef4444', creme:'#3b82f6' }; // red / blue
 
 // ── Pizza panel ───────────────────────────────────────────────────────────────
-function PizzaPanel({ orderType, onAdd }: { orderType:OrderType; onAdd:(item:any,custom:any,price:number)=>void }) {
+function PizzaPanel({ orderType, onAdd, size, setSize }: { orderType:OrderType; onAdd:(item:any,custom:any,price:number)=>void; size:PizzaSizeId; setSize:(size:PizzaSizeId)=>void }) {
   const { data: pizzasTomate = [] } = usePizzasByBase('tomate');
   const { data: pizzasCreme  = [] } = usePizzasByBase('creme');
-  const [size, setSize]     = useState<PizzaSizeId>('senior');
   const [sel,  setSel]      = useState<any|null>(null);
   const [supps,setSupps]    = useState<string[]>([]);
   const [note, setNote]     = useState('');
@@ -181,25 +216,6 @@ function PizzaPanel({ orderType, onAdd }: { orderType:OrderType; onAdd:(item:any
 
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
-      {/* Size selector — single compact row, colour-coded per size */}
-      <div style={{ display:'flex', gap:6, padding:'8px 12px', borderBottom:`1px solid ${S.border}`, background:S.panel, flexShrink:0 }}>
-        {PIZZA_SIZES.map((s) => {
-          const active = size === s.id;
-          return (
-            <button key={s.id} onClick={()=>setSize(s.id)} style={{
-              flex:1, padding:'7px 6px', borderRadius:8, cursor:'pointer', fontWeight:800, fontSize:12,
-              lineHeight:1.2, transition:'all .12s',
-              border:`1.5px solid ${s.color}`,
-              background: active ? s.color : s.color + '1e',
-              color: active ? '#fff' : s.color,
-              boxShadow: active ? `0 0 0 2px ${s.color}44` : 'none',
-            }}>
-              {s.label}<br/><span style={{ fontSize:11, opacity:.95 }}>{s.price}€</span>
-            </button>
-          );
-        })}
-      </div>
-
       {/* Grid — ONE page: tomate=red tiles, creme=blue tiles */}
       <div style={{ flex:1, overflow:'auto', padding:'8px 10px' }}>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:4 }}>
@@ -1786,6 +1802,7 @@ function POSContent() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [pizzaSize, setPizzaSize] = useState<PizzaSizeId>('senior');
   const leftRef = useRef<ImperativePanelHandle>(null);
 
   const toggleLeft = () => {
@@ -1827,6 +1844,29 @@ function POSContent() {
     // No toast on add — the cart on the right already shows it instantly
   };
 
+  // Render the active category's inline panel
+  const renderPanel = () => {
+    if (!activeCategory) return (
+      <div style={{ flex:1, minHeight:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:8, color:'#374151' }}>
+        <div style={{ fontSize:32 }}>☝️</div>
+        <div style={{ fontSize:13 }}>Choisissez une catégorie à gauche</div>
+      </div>
+    );
+    if (activeCategory === 'pizzas') return <PizzaPanel orderType={orderType} onAdd={handleAdd} size={pizzaSize} setSize={setPizzaSize} />;
+    // Build-it wizards (meat → size): Soufflet, Makloub, Mlawi, Tacos, Panini
+    if (WIZARD_MAP[activeCategory]) return <WizardPanel categorySlug={activeCategory} onAdd={handleAdd} />;
+    // Sandwich: pick sandwich → sauce + crudités (no meat)
+    if (activeCategory === 'sandwiches') return <SandwichPanel onAdd={handleAdd} />;
+    // Tex-Mex: dedicated panel with Snacks/Frites/Croques sections
+    if (activeCategory === 'texmex')   return <TexMexPanel  onAdd={handleAdd} />;
+    // Boissons: canette/bouteille avec note + quantité
+    if (activeCategory === 'boissons') return <BoissonPanel onAdd={handleAdd} />;
+    // Product-based customizable (Croques): pick product then customize
+    const CUSTOMIZABLE = ['croques'];
+    if (CUSTOMIZABLE.includes(activeCategory)) return <CustomizablePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
+    return <SimplePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
+  };
+
   const handleSubmit = async () => {
     if (!cart.length) { toast.error('Panier vide'); return; }
     if (needsInfo && !name.trim()) { toast.error('Nom requis'); return; }
@@ -1852,29 +1892,6 @@ function POSContent() {
     finally { setSubmitting(false); }
   };
 
-  // Render the active category's inline panel
-  const renderPanel = () => {
-    if (!activeCategory) return (
-      <div style={{ flex:1, minHeight:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:8, color:'#374151' }}>
-        <div style={{ fontSize:32 }}>☝️</div>
-        <div style={{ fontSize:13 }}>Choisissez une catégorie ci-dessus</div>
-      </div>
-    );
-    if (activeCategory === 'pizzas') return <PizzaPanel orderType={orderType} onAdd={handleAdd} />;
-    // Build-it wizards (meat → size): Soufflet, Makloub, Mlawi, Tacos, Panini
-    if (WIZARD_MAP[activeCategory]) return <WizardPanel categorySlug={activeCategory} onAdd={handleAdd} />;
-    // Sandwich: pick sandwich → sauce + crudités (no meat)
-    if (activeCategory === 'sandwiches') return <SandwichPanel onAdd={handleAdd} />;
-    // Tex-Mex: dedicated panel with Snacks/Frites/Croques sections
-    if (activeCategory === 'texmex')   return <TexMexPanel  onAdd={handleAdd} />;
-    // Boissons: canette/bouteille avec note + quantité
-    if (activeCategory === 'boissons') return <BoissonPanel onAdd={handleAdd} />;
-    // Product-based customizable (Croques): pick product then customize
-    const CUSTOMIZABLE = ['croques'];
-    if (CUSTOMIZABLE.includes(activeCategory)) return <CustomizablePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
-    return <SimplePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
-  };
-
   return (
     <PanelGroup
       direction="horizontal"
@@ -1891,47 +1908,129 @@ function POSContent() {
       {/* ── LEFT (resizable + collapsible) ── */}
       <Panel ref={leftRef} collapsible collapsedSize={0} defaultSize={72} minSize={35}
         onCollapse={()=>setLeftCollapsed(true)} onExpand={()=>setLeftCollapsed(false)}>
-      <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, overflow:'hidden' }}>
+      <div style={{ display:'flex', flexDirection:'row', height:'100%', minHeight:0, overflow:'hidden' }}>
 
-        {/* ── Compact top bar: order type + categories on same row ── */}
-        <div style={{ display:'flex', flexDirection:'column', background:S.panel, borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
-          {/* Row 1: order type + icons */}
-          <div style={{ display:'flex', gap:6, padding:'6px 14px', alignItems:'center' }}>
+        {/* ── Vertical Left Sidebar (Order Type, Categories, Pizza Sizes, System Controls) ── */}
+        <div style={{
+          width: 200,
+          background: S.panel,
+          borderRight: `1px solid ${S.border}`,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          padding: '12px 10px',
+          flexShrink: 0,
+          overflowY: 'auto'
+        }}>
+          {/* Order Type Section */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {(['surplace','emporter','livraison'] as OrderType[]).map(t => (
               <button key={t} onClick={()=>handleOrderType(t)} style={{
-                padding:'5px 12px', borderRadius:7, border:'none', cursor:'pointer', fontSize:11, fontWeight:700,
+                padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700,
                 background: orderType===t ? S.accent : '#1f2937',
                 color:      orderType===t ? '#000'   : S.muted,
-              }}>{TYPE_LABELS[t]}</button>
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                transition: 'all .12s'
+              }}>{TYPE_LABELS[t]} <span>{t === 'surplace' ? '🍽️' : t === 'emporter' ? '🛍️' : '🛵'}</span></button>
             ))}
-            {lastOrder && <span style={{ background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'2px 8px', borderRadius:99, fontSize:10, fontWeight:700 }}>✅ #{lastOrder}</span>}
+          </div>
+
+          {lastOrder && (
+            <div style={{ background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'6px 8px', borderRadius:8, fontSize:10, fontWeight:700, textAlign:'center' }}>
+              ✅ Dernier: #{lastOrder}
+            </div>
+          )}
+
+          <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'2px 0' }} />
+
+          {/* Categories Section */}
+          <div style={{ fontSize: 10, fontWeight: 800, color: S.muted, textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 4 }}>
+            Catégories
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+            {categories.filter(cat => cat.slug !== 'salades').map(cat => {
+              const active = activeCategory === cat.slug;
+              return (
+                <button key={cat.id} onClick={() => setActiveCat(active ? null : cat.slug)} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, transition: 'all .12s',
+                  background: active ? S.accent + '22' : S.card,
+                  color:      active ? S.accent     : '#9ca3af',
+                  outline:    active ? `1px solid ${S.accent}44` : 'none',
+                  textAlign: 'left',
+                }}>
+                  <span style={{ fontSize: 15 }}>{CAT_ICON[cat.slug] || '🍽️'}</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Size Selector Section (only visible when pizzas is active) */}
+          {activeCategory === 'pizzas' && (
+            <>
+              <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'2px 0' }} />
+              <div style={{ fontSize: 10, fontWeight: 800, color: S.muted, textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 4 }}>
+                Tailles Pizza
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {PIZZA_SIZES.map((s) => {
+                  const active = pizzaSize === s.id;
+                  return (
+                    <button key={s.id} onClick={()=>setPizzaSize(s.id)} style={{
+                      padding: '8px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 800, fontSize: 11,
+                      textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      lineHeight: 1.2, transition: 'all .12s',
+                      border: `1.5px solid ${s.color}`,
+                      background: active ? s.color : s.color + '1e',
+                      color: active ? '#fff' : s.color,
+                      boxShadow: active ? `0 0 0 2px ${s.color}44` : 'none',
+                    }}>
+                      <span>{s.label}</span>
+                      <span>{s.price}€</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'2px 0' }} />
+
+          {/* System/Bottom Buttons */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <button
               title="Historique & Statistiques"
               onClick={() => setShowHistory(true)}
               style={{
                 ...S.btn,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 8px',
-                fontSize: 11,
+                flex: 1,
+                padding: '8px 4px',
+                fontSize: 12,
                 fontWeight: 800,
                 color: S.accent,
                 borderColor: S.accent + '33',
                 background: S.accent + '11',
-                marginLeft: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4
               }}
             >
-              📊 Historique & Stats
+              📊 Stats
             </button>
+            
             {typeof window !== 'undefined' && 'twinHub' in window && (
               <button
                 title="Mise à jour"
                 onClick={() => { setShowUpdateModal(true); setUpdateAvailable(false); }}
                 style={{
                   ...S.btn,
-                  padding: '4px 8px',
-                  fontSize: 13,
+                  padding: '8px 10px',
+                  fontSize: 14,
                   position: 'relative',
                   border: updateAvailable ? `1px solid ${S.accent}` : S.btn.border,
                 }}
@@ -1943,35 +2042,20 @@ function POSContent() {
                     top: -2,
                     right: -2,
                     background: '#ef4444',
-                    width: 8,
-                    height: 8,
+                    width: 6,
+                    height: 6,
                     borderRadius: '50%',
-                    border: '1.5px solid #111827'
+                    border: '1px solid #111827'
                   }} />
                 )}
               </button>
             )}
-            <button title="Personnaliser" onClick={()=>setShowSettings(true)} style={{ ...S.btn, padding:'4px 8px', fontSize:13 }}>⚙️</button>
-            <button title="Replier" onClick={toggleLeft} style={{ ...S.btn, padding:'4px 8px', fontSize:13 }}>⟨</button>
-          </div>
-          {/* Row 2: categories — single scrollable row */}
-          <div style={{ display:'flex', gap:5, padding:'5px 14px 6px', overflowX:'auto', overflowY:'hidden', flexWrap:'nowrap' }}>
-            {categories.filter(cat => cat.slug !== 'salades').map(cat => (
-              <button key={cat.id} onClick={() => setActiveCat(activeCategory === cat.slug ? null : cat.slug)} style={{
-                display:'flex', alignItems:'center', gap:4, flexShrink:0,
-                padding:'5px 10px', borderRadius:99, border:'none', cursor:'pointer', fontSize:11, fontWeight:700, transition:'all .12s', whiteSpace:'nowrap',
-                background: activeCategory===cat.slug ? S.accent+'22' : S.card,
-                color:      activeCategory===cat.slug ? S.accent     : '#9ca3af',
-                outline:    activeCategory===cat.slug ? `1px solid ${S.accent}44` : 'none',
-              }}>
-                <span style={{ fontSize:14 }}>{CAT_ICON[cat.slug] || '🍽️'}</span>
-                {cat.name}
-              </button>
-            ))}
+            <button title="Personnaliser" onClick={()=>setShowSettings(true)} style={{ ...S.btn, padding:'8px 10px', fontSize:14 }}>⚙️</button>
+            <button title="Replier" onClick={toggleLeft} style={{ ...S.btn, padding:'8px 10px', fontSize:14 }}>⟨</button>
           </div>
         </div>
 
-        {/* Products area — takes all remaining height */}
+        {/* Products area — takes all remaining space */}
         <div style={{ flex:1, minHeight:0, overflow:'hidden', display:'flex', flexDirection:'column' }}>
           {renderPanel()}
         </div>
