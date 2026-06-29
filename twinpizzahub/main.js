@@ -975,6 +975,7 @@ let liveboxPassword = null;
 let liveboxContextId = null;
 let liveboxCookie = null;
 let liveboxLastCallTime = null;
+let liveboxLastCallId = null;
 let liveboxPollInterval = null;
 
 // Load config on startup
@@ -1218,34 +1219,35 @@ async function pollLiveboxCalls() {
       if (logs.length === 0) return;
 
       const parsedCalls = logs.map(c => ({
+        id: Number(c.callId) || 0,
         number: c.remoteNumber || c.number || '',
         time: parseLiveboxTime(c.startTime),
         type: c.callType || '',
         origin: c.callOrigin || '',
         name: c.contactName || ''
-      })).filter(c => c.time > 0);
+      })).filter(c => c.id > 0);
 
       console.log(`[Livebox] Mapped ${parsedCalls.length} valid call logs.`);
       if (parsedCalls.length === 0) return;
 
-      parsedCalls.sort((a, b) => a.time - b.time);
+      parsedCalls.sort((a, b) => a.id - b.id);
       const latestCall = parsedCalls[parsedCalls.length - 1];
-      console.log('[Livebox] Latest call in router log:', JSON.stringify(latestCall), 'Last processed time:', liveboxLastCallTime);
+      console.log('[Livebox] Latest call in router log:', JSON.stringify(latestCall), 'Last processed ID:', liveboxLastCallId);
 
-      if (liveboxLastCallTime === null) {
+      if (liveboxLastCallId === null) {
+        liveboxLastCallId = latestCall.id;
         liveboxLastCallTime = latestCall.time;
-        console.log('[Livebox] Initialized last call time to:', liveboxLastCallTime);
+        console.log('[Livebox] Initialized last call ID to:', liveboxLastCallId);
         return;
       }
 
       for (const log of parsedCalls) {
-        if (log.time > liveboxLastCallTime) {
+        if (log.id > liveboxLastCallId) {
           if (log.type !== 'placed' && log.type !== 'outgoing' && log.origin !== 'local') {
-            const timeDiff = Math.abs(Date.now() - log.time) / 1000;
-            if (timeDiff < 20) {
-              broadcastFreeboxCall(log.number, log.name);
-            }
+            console.log('[Livebox] Triggering incoming call notification for:', log.number);
+            broadcastFreeboxCall(log.number, log.name);
           }
+          liveboxLastCallId = log.id;
           liveboxLastCallTime = log.time;
         }
       }
@@ -1330,6 +1332,7 @@ ipcMain.handle('livebox-register', async (_, { password }) => {
     if (testSession) {
       boxType = 'livebox';
       liveboxLastCallTime = null;
+      liveboxLastCallId = null;
       fs.writeFileSync(CONFIG_FILE, JSON.stringify({ box_type: 'livebox', livebox_password: password }));
       
       if (liveboxPollInterval) clearInterval(liveboxPollInterval);
@@ -1358,6 +1361,7 @@ ipcMain.handle('livebox-unregister', () => {
   liveboxPassword = null;
   liveboxContextId = null;
   liveboxLastCallTime = null;
+  liveboxLastCallId = null;
   boxType = 'freebox';
   
   if (fs.existsSync(CONFIG_FILE)) {
