@@ -583,8 +583,8 @@ function createLauncher() {
   launcherWin = new BrowserWindow({
     title: 'Twin Pizza', width: 1400, height: 860, minWidth: 1100, minHeight: 700,
     center: true, autoHideMenuBar: true,
-    show: false,              // don't show until ready — no black flash
-    backgroundColor: '#0d1117', // dark bg matches the app — no white blinking
+    show: true,
+    backgroundColor: '#0d1117',
     icon: path.join(__dirname, '..', 'public', 'favicon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -595,7 +595,6 @@ function createLauncher() {
     },
   });
   launcherWin.loadFile(path.join(__dirname, 'launcher.html'));
-  launcherWin.once('ready-to-show', () => launcherWin.show()); // show only when fully painted
   // Re-send QR and printer status once window finishes loading
   launcherWin.webContents.once('did-finish-load', () => {
     setTimeout(() => {
@@ -916,17 +915,7 @@ app.whenReady().then(async () => {
     return;
   }
 
-  // Inject preload into webviews from the main process
-  // This is the official Electron way to set webview preload + webPreferences
-  app.on('web-contents-created', (event, contents) => {
-    contents.on('will-attach-webview', (wvEvent, webPreferences, params) => {
-      // Set the preload script for every webview
-      webPreferences.preload = path.join(__dirname, 'preload.js');
-      webPreferences.contextIsolation = true;
-      webPreferences.sandbox = false;
-      webPreferences.nodeIntegration = false;
-    });
-  });
+
 
   // Show the launcher ASAP — everything else loads in background
   createLauncher();

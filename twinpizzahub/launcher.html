@@ -604,14 +604,23 @@ webview {
     <div class="loading-sub">Chargement en cours…</div>
   </div>
 
-  <!-- Webviews for each screen -->
-  <webview id="wv-pos"     src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
-  <webview id="wv-admin"   src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
-  <webview id="wv-tv"      src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
-  <webview id="wv-kiosk"   src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
-  <webview id="wv-kitchen" src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
-  <webview id="wv-crew"    src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
-  <webview id="wv-website" src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
+  <!-- Webviews for each screen (created dynamically to inject preload path BEFORE DOM insertion) -->
+  <script>
+    (function() {
+      const screens = ['pos', 'admin', 'tv', 'kiosk', 'kitchen', 'crew', 'website'];
+      screens.forEach(s => {
+        const wv = document.createElement('webview');
+        wv.id = 'wv-' + s;
+        wv.src = 'about:blank';
+        wv.setAttribute('allowpopups', '');
+        if (window.twinHub && window.twinHub.preloadPath) {
+          wv.setAttribute('preload', window.twinHub.preloadPath);
+        }
+        wv.setAttribute('webpreferences', 'contextIsolation=true, sandbox=false');
+        document.write(wv.outerHTML);
+      });
+    })();
+  </script>
 
   <!-- WhatsApp panel (full WhatsApp Web style) -->
   <div class="panel" id="panel-whatsapp">
