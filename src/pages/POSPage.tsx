@@ -1310,17 +1310,38 @@ function SettingsPanel({ onClose }: { onClose:()=>void }) {
   const setColor = (k:ThemeKey, v:string) => { (S as any)[k] = v; saveTheme(); notifyTheme(); };
   const resetAll = () => { Object.assign(S, DEFAULT_THEME); saveTheme(); notifyTheme(); };
 
-  // Freebox State
+  // Unified Box State
+  const [boxType, setBoxType] = useState<'freebox' | 'livebox'>('livebox');
   const [fbRegistered, setFbRegistered] = useState(false);
   const [fbState, setFbState] = useState<'idle' | 'pairing' | 'granted' | 'denied' | 'timeout' | 'error'>('idle');
   const [fbError, setFbError] = useState('');
+  
+  const [lbPassword, setLbPassword] = useState('');
+  const [lbRegistered, setLbRegistered] = useState(false);
+  const [lbState, setLbState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [lbError, setLbError] = useState('');
+  
   const isElectron = typeof window !== 'undefined' && 'twinHub' in window;
 
   useEffect(() => {
     if (isElectron) {
-      (window as any).twinHub.freeboxStatus().then((res: any) => {
-        if (res && res.success) setFbRegistered(res.registered);
-      });
+      const th = (window as any).twinHub;
+      if (th.freeboxStatus) {
+        th.freeboxStatus().then((res: any) => {
+          if (res && res.success && res.registered) {
+            setFbRegistered(true);
+            setBoxType('freebox');
+          }
+        });
+      }
+      if (th.liveboxStatus) {
+        th.liveboxStatus().then((res: any) => {
+          if (res && res.success && res.registered) {
+            setLbRegistered(true);
+            setBoxType('livebox');
+          }
+        });
+      }
     }
   }, [isElectron]);
 
@@ -1361,7 +1382,6 @@ function SettingsPanel({ onClose }: { onClose:()=>void }) {
         }
       }, 2000);
 
-      // Auto clear after 60s (timeout)
       setTimeout(() => clearInterval(pollTimer), 60000);
 
     } catch (e: any) {
@@ -1384,7 +1404,42 @@ function SettingsPanel({ onClose }: { onClose:()=>void }) {
     }
   };
 
-  return (
+  const handleLiveboxPair = async () => {
+    if (!isElectron || !lbPassword.trim()) return;
+    setLbState('loading');
+    setLbError('');
+    try {
+      const res = await (window as any).twinHub.liveboxRegister(lbPassword.trim());
+      if (res.success) {
+        setLbRegistered(true);
+        setLbState('idle');
+        toast.success("✅ Livebox Orange connectée avec succès !");
+      } else {
+        setLbState('error');
+        setLbError(res.error || "Mot de passe incorrect.");
+        toast.error("Échec de la connexion à la Livebox");
+      }
+    } catch (e: any) {
+      setLbState('error');
+      setLbError(e.message || "Erreur de connexion");
+      toast.error("Erreur de connexion");
+    }
+  };
+
+  const handleLiveboxUnlink = async () => {
+    if (!isElectron) return;
+    try {
+      const res = await (window as any).twinHub.liveboxUnregister();
+      if (res.success) {
+        setLbRegistered(false);
+        setLbState('idle');
+        setLbPassword('');
+        toast.success("🔴 Livebox Orange déconnectée");
+      }
+    } catch (e: any) {
+      toast.error("Erreur lors de la déconnexion");
+    }
+  };  return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
       <div onClick={e=>e.stopPropagation()} style={{ width:340, height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, padding:'18px 20px', display:'flex', flexDirection:'column', overflow:'hidden' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexShrink:0 }}>
@@ -1413,64 +1468,152 @@ function SettingsPanel({ onClose }: { onClose:()=>void }) {
 
           <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'16px 0' }} />
 
-          {/* Section 2: Freebox Link */}
-          <div style={{ fontSize:11, color:S.muted, textTransform:'uppercase', fontWeight:800, letterSpacing:'0.05em', marginBottom:10 }}>Liaison Téléphone Freebox</div>
+          {/* Section 2: Liaison Ligne Téléphonique */}
+          <div style={{ fontSize:11, color:S.muted, textTransform:'uppercase', fontWeight:800, letterSpacing:'0.05em', marginBottom:10 }}>Liaison Ligne Téléphonique Fixe</div>
           
           {!isElectron ? (
             <div style={{ fontSize:12, color:S.muted, padding:10, background:'#1f293755', borderRadius:8 }}>
-              ⚠️ Non disponible en mode navigateur. Lancez l'application officielle pour connecter la Freebox.
-            </div>
-          ) : fbRegistered ? (
-            <div style={{ background:'#22c55e0d', border:'1px solid #22c55e33', borderRadius:10, padding:12 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'#22c55e', display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-                <span>🟢 Freebox connectée</span>
-                <span style={{ width:7, height:7, background:'#22c55e', borderRadius:'50%' }} />
-              </div>
-              <div style={{ fontSize:11, color:S.text, lineHeight:1.3, marginBottom:10 }}>
-                La caisse reçoit en temps réel les numéros des appels entrants pour pré-remplir les fiches clients.
-              </div>
-              <button onClick={handleFreeboxUnlink} style={{ ...S.btn, width:'100%', padding:'8px', borderColor:'#ef444455', color:'#ef4444', background:'#ef44440d', fontWeight:700 }}>
-                🔴 Déconnecter la Freebox
-              </button>
+              ⚠️ Non disponible en mode navigateur. Lancez l'application officielle pour connecter votre Box.
             </div>
           ) : (
-            <div style={{ background:'#1f293733', border:`1px solid ${S.border}`, borderRadius:10, padding:12 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:S.text, marginBottom:6 }}>Connecter ma ligne fixe</div>
-              <div style={{ fontSize:11, color:S.muted, lineHeight:1.3, marginBottom:12 }}>
-                Associez la caisse à votre Freebox locale pour pré-remplir automatiquement les coordonnées des clients lorsqu'ils vous appellent.
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {/* Segmented Control */}
+              <div style={{ display:'flex', background:'#111', padding:3, borderRadius:8, gap:2 }}>
+                <button 
+                  onClick={() => setBoxType('livebox')}
+                  style={{ 
+                    flex:1, padding:'6px', border:'none', borderRadius:6, fontSize:11, fontWeight:700, cursor:'pointer',
+                    background: boxType === 'livebox' ? S.accent : 'transparent',
+                    color: boxType === 'livebox' ? '#000' : S.muted
+                  }}
+                >
+                  Livebox (Orange)
+                </button>
+                <button 
+                  onClick={() => setBoxType('freebox')}
+                  style={{ 
+                    flex:1, padding:'6px', border:'none', borderRadius:6, fontSize:11, fontWeight:700, cursor:'pointer',
+                    background: boxType === 'freebox' ? S.accent : 'transparent',
+                    color: boxType === 'freebox' ? '#000' : S.muted
+                  }}
+                >
+                  Freebox (Free)
+                </button>
               </div>
 
-              {fbState === 'idle' && (
-                <button onClick={handleFreeboxPair} style={{ ...S.btn, width:'100%', padding:'10px', background:S.accent, color:'#000', border:'none', fontWeight:800, fontSize:12 }}>
-                  🔗 Associer ma Freebox
-                </button>
-              )}
-
-              {fbState === 'pairing' && (
-                <div style={{ background:'#f59e0b11', border:'1px solid #f59e0b44', borderRadius:8, padding:10, textAlign:'center' }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:'#f59e0b', marginBottom:4 }}>⏳ Demande en cours...</div>
-                  <div style={{ fontSize:11, color:S.text, fontWeight:600, lineHeight:1.3 }}>
-                    👉 Regardez l'écran LCD de votre Freebox et appuyez sur la flèche de **DROITE (Oui)** pour valider !
+              {boxType === 'freebox' ? (
+                // Freebox UI
+                fbRegistered ? (
+                  <div style={{ background:'#22c55e0d', border:'1px solid #22c55e33', borderRadius:10, padding:12 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#22c55e', display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                      <span>🟢 Freebox connectée</span>
+                      <span style={{ width:7, height:7, background:'#22c55e', borderRadius:'50%' }} />
+                    </div>
+                    <div style={{ fontSize:11, color:S.text, lineHeight:1.3, marginBottom:10 }}>
+                      La caisse reçoit en temps réel les numéros des appels entrants pour pré-remplir les fiches clients.
+                    </div>
+                    <button onClick={handleFreeboxUnlink} style={{ ...S.btn, width:'100%', padding:'8px', borderColor:'#ef444455', color:'#ef4444', background:'#ef44440d', fontWeight:700 }}>
+                      🔴 Déconnecter la Freebox
+                    </button>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div style={{ background:'#1f293733', border:`1px solid ${S.border}`, borderRadius:10, padding:12 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:S.text, marginBottom:6 }}>Liaison Freebox</div>
+                    <div style={{ fontSize:11, color:S.muted, lineHeight:1.3, marginBottom:12 }}>
+                      Associez la caisse à votre Freebox locale pour pré-remplir automatiquement les coordonnées des clients lorsqu'ils vous appellent.
+                    </div>
 
-              {fbState === 'denied' && (
-                <div style={{ color:'#ef4444', fontSize:11, fontWeight:600, textAlign:'center', marginTop:8 }}>
-                  ❌ Association refusée sur la Freebox. <span style={{ textDecoration:'underline', cursor:'pointer' }} onClick={handleFreeboxPair}>Réessayer</span>
-                </div>
-              )}
+                    {fbState === 'idle' && (
+                      <button onClick={handleFreeboxPair} style={{ ...S.btn, width:'100%', padding:'10px', background:S.accent, color:'#000', border:'none', fontWeight:800, fontSize:12 }}>
+                        🔗 Associer ma Freebox
+                      </button>
+                    )}
 
-              {fbState === 'timeout' && (
-                <div style={{ color:'#ef4444', fontSize:11, fontWeight:600, textAlign:'center', marginTop:8 }}>
-                  ⏳ Temps écoulé. <span style={{ textDecoration:'underline', cursor:'pointer' }} onClick={handleFreeboxPair}>Réessayer</span>
-                </div>
-              )}
+                    {fbState === 'pairing' && (
+                      <div style={{ background:'#f59e0b11', border:'1px solid #f59e0b44', borderRadius:8, padding:10, textAlign:'center' }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:'#f59e0b', marginBottom:4 }}>⏳ Demande en cours...</div>
+                        <div style={{ fontSize:11, color:S.text, fontWeight:600, lineHeight:1.3 }}>
+                          👉 Regardez l'écran LCD de votre Freebox et appuyez sur la flèche de **DROITE (Oui)** pour valider !
+                        </div>
+                      </div>
+                    )}
 
-              {fbState === 'error' && (
-                <div style={{ color:'#ef4444', fontSize:11, fontWeight:600, textAlign:'center', marginTop:8 }}>
-                  ❌ Erreur: {fbError}. <span style={{ textDecoration:'underline', cursor:'pointer' }} onClick={handleFreeboxPair}>Réessayer</span>
-                </div>
+                    {fbState === 'denied' && (
+                      <div style={{ color:'#ef4444', fontSize:11, fontWeight:600, textAlign:'center', marginTop:8 }}>
+                        ❌ Association refusée sur la Freebox. <span style={{ textDecoration:'underline', cursor:'pointer' }} onClick={handleFreeboxPair}>Réessayer</span>
+                      </div>
+                    )}
+
+                    {fbState === 'timeout' && (
+                      <div style={{ color:'#ef4444', fontSize:11, fontWeight:600, textAlign:'center', marginTop:8 }}>
+                        ⏳ Temps écoulé. <span style={{ textDecoration:'underline', cursor:'pointer' }} onClick={handleFreeboxPair}>Réessayer</span>
+                      </div>
+                    )}
+
+                    {fbState === 'error' && (
+                      <div style={{ color:'#ef4444', fontSize:11, fontWeight:600, textAlign:'center', marginTop:8 }}>
+                        ❌ Erreur: {fbError}. <span style={{ textDecoration:'underline', cursor:'pointer' }} onClick={handleFreeboxPair}>Réessayer</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              ) : (
+                // Livebox UI
+                lbRegistered ? (
+                  <div style={{ background:'#22c55e0d', border:'1px solid #22c55e33', borderRadius:10, padding:12 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#22c55e', display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                      <span>🟢 Livebox connectée</span>
+                      <span style={{ width:7, height:7, background:'#22c55e', borderRadius:'50%' }} />
+                    </div>
+                    <div style={{ fontSize:11, color:S.text, lineHeight:1.3, marginBottom:10 }}>
+                      La caisse reçoit en temps réel les numéros des appels entrants pour pré-remplir les fiches clients.
+                    </div>
+                    <button onClick={handleLiveboxUnlink} style={{ ...S.btn, width:'100%', padding:'8px', borderColor:'#ef444455', color:'#ef4444', background:'#ef44440d', fontWeight:700 }}>
+                      🔴 Déconnecter la Livebox
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ background:'#1f293733', border:`1px solid ${S.border}`, borderRadius:10, padding:12 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:S.text, marginBottom:6 }}>Liaison Livebox (Orange)</div>
+                    <div style={{ fontSize:11, color:S.muted, lineHeight:1.3, marginBottom:12 }}>
+                      Entrez le mot de passe d'administration de votre Livebox (par défaut, ce sont les **8 premiers caractères de votre clé de sécurité Wi-Fi** imprimée sur l'étiquette au dos ou sous la box).
+                    </div>
+                    
+                    <input 
+                      type="password"
+                      placeholder="Mot de passe d'administration"
+                      value={lbPassword}
+                      onChange={e => setLbPassword(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        marginBottom: '10px',
+                        background: '#111',
+                        border: `1px solid ${S.border}`,
+                        borderRadius: 8,
+                        color: S.text,
+                        fontSize: 12,
+                        outline: 'none'
+                      }}
+                    />
+
+                    {lbState === 'loading' ? (
+                      <div style={{ fontSize:12, fontWeight:700, color:'#f59e0b', textAlign:'center', padding:10 }}>
+                        ⏳ Connexion en cours à la Livebox...
+                      </div>
+                    ) : (
+                      <button onClick={handleLiveboxPair} style={{ ...S.btn, width:'100%', padding:'10px', background:S.accent, color:'#000', border:'none', fontWeight:800, fontSize:12 }}>
+                        🔗 Associer ma Livebox
+                      </button>
+                    )}
+
+                    {lbState === 'error' && (
+                      <div style={{ color:'#ef4444', fontSize:11, fontWeight:600, textAlign:'center', marginTop:8 }}>
+                        ❌ {lbError}
+                      </div>
+                    )}
+                  </div>
+                )
               )}
             </div>
           )}

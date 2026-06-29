@@ -958,23 +958,34 @@ app.on('before-quit', () => {
   if (printServerProcess) try { printServerProcess.kill(); } catch(_) {}
 });
 
-// ─── Freebox Integration ──────────────────────────────────────────────────────
+// ─── Unified Box Integration (Freebox / Livebox) ─────────────────────────────────
 const crypto = require('crypto');
-const CONFIG_FILE = path.join(__dirname, 'freebox-config.json');
+const CONFIG_FILE = path.join(__dirname, 'freebox-config.json'); // Keep same filename for compatibility
 
+let boxType = 'freebox'; // 'freebox' | 'livebox'
+
+// Freebox State
 let freeboxAppToken = null;
 let freeboxSessionToken = null;
 let freeboxLastCallId = null;
 let freeboxPollInterval = null;
 
+// Livebox State
+let liveboxPassword = null;
+let liveboxContextId = null;
+let liveboxLastCallTime = null;
+let liveboxPollInterval = null;
+
 // Load config on startup
 try {
   if (fs.existsSync(CONFIG_FILE)) {
     const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    boxType = cfg.box_type || 'freebox';
     freeboxAppToken = cfg.app_token || null;
+    liveboxPassword = cfg.livebox_password || null;
   }
 } catch (e) {
-  console.error('Error loading Freebox config:', e);
+  console.error('Error loading Box config:', e);
 }
 
 // Helper to send call log events to all renderer windows
@@ -987,7 +998,7 @@ function broadcastFreeboxCall(phoneNumber, name) {
   });
 }
 
-// Log in and get a session token
+// ─── FREEBOX LOGIC ───────────────────────────────────────────────────────────
 async function getFreeboxSession() {
   try {
     const resLogin = await fetch('http://mafreebox.freebox.fr/api/v8/login/');
@@ -1017,7 +1028,6 @@ async function getFreeboxSession() {
   return null;
 }
 
-// Poll calls logs
 async function pollFreeboxCalls() {
   if (!freeboxAppToken) return;
   
@@ -1033,7 +1043,6 @@ async function pollFreeboxCalls() {
     });
     const data = await res.json();
     
-    // If session token expired, clear it so we re-login next tick
     if (data.errorcode === 'auth_required') {
       freeboxSessionToken = null;
       return;
@@ -1043,24 +1052,18 @@ async function pollFreeboxCalls() {
       const logs = data.result;
       if (logs.length === 0) return;
 
-      // Sort logs by id ascending to process in chronological order
       logs.sort((a, b) => a.id - b.id);
-
       const latestCall = logs[logs.length - 1];
 
-      // On first run, just initialize lastCallId to avoid spamming historical calls
       if (freeboxLastCallId === null) {
         freeboxLastCallId = latestCall.id;
         return;
       }
 
-      // Check for new incoming calls
       for (const log of logs) {
         if (log.id > freeboxLastCallId) {
-          // Only notify for inbound calls (missed or accepted)
           if (log.type === 'missed' || log.type === 'accepted') {
             const timeDiff = Math.abs(Date.now() / 1000 - log.datetime);
-            // Only trigger alert if the call was in the last 15 seconds (prevents old missed calls on reconnect)
             if (timeDiff < 15) {
               broadcastFreeboxCall(log.number, log.name);
             }
@@ -1074,9 +1077,115 @@ async function pollFreeboxCalls() {
   }
 }
 
-// Start polling
-if (freeboxAppToken) {
+// ─── LIVEBOX LOGIC ───────────────────────────────────────────────────────────
+async function getLiveboxSession() {
+  if (!liveboxPassword) return null;
+  try {
+    const authPayload = {
+      service: "sah.Device.Information",
+      method: "createContext",
+      parameters: {
+        applicationName: "so_sdkut",
+        username: "admin",
+        password: liveboxPassword
+      }
+    };
+    const res = await fetch('http://192.168.1.1/ws', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-sah-ws-1-call+json',
+        'Authorization': 'X-Sah-Login'
+      },
+      body: JSON.stringify(authPayload)
+    });
+    const data = await res.json();
+    if (data && data.data && data.data.contextID) {
+      liveboxContextId = data.data.contextID;
+      return liveboxContextId;
+    }
+  } catch (e) {
+    console.error('Livebox login failed:', e);
+  }
+  return null;
+}
+
+async function pollLiveboxCalls() {
+  if (!liveboxPassword) return;
+
+  let context = liveboxContextId;
+  if (!context) {
+    context = await getLiveboxSession();
+    if (!context) return;
+  }
+
+  try {
+    const payload = {
+      service: "VoiceService.VoiceApplication",
+      method: "getCallList",
+      parameters: {}
+    };
+    const res = await fetch('http://192.168.1.1/ws', {
+      method: 'POST',
+      headers: {
+        'X-Context': context,
+        'X-Prototype-Version': '1.7',
+        'Content-Type': 'application/x-sah-ws-1-call+json; charset=UTF-8',
+        'Accept': 'text/javascript'
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (data && data.errors && data.errors.some(e => e.error === 'AuthenticationFailed' || e.error === 'InvalidContext')) {
+      liveboxContextId = null;
+      return;
+    }
+
+    if (data && data.result) {
+      const logs = data.result;
+      if (!Array.isArray(logs) || logs.length === 0) return;
+
+      const parsedCalls = logs.map(c => ({
+        number: c.number || '',
+        time: Date.parse(c.startTime) || 0,
+        type: c.callType || '',
+        origin: c.callOrigin || '',
+        name: c.contactName || ''
+      })).filter(c => c.time > 0);
+
+      if (parsedCalls.length === 0) return;
+
+      parsedCalls.sort((a, b) => a.time - b.time);
+      const latestCall = parsedCalls[parsedCalls.length - 1];
+
+      if (liveboxLastCallTime === null) {
+        liveboxLastCallTime = latestCall.time;
+        return;
+      }
+
+      for (const log of parsedCalls) {
+        if (log.time > liveboxLastCallTime) {
+          if (log.type !== 'placed' && log.type !== 'outgoing' && log.origin !== 'local') {
+            const timeDiff = Math.abs(Date.now() - log.time) / 1000;
+            if (timeDiff < 15) {
+              broadcastFreeboxCall(log.number, log.name);
+            }
+          }
+          liveboxLastCallTime = log.time;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error fetching Livebox call logs:', e);
+    liveboxContextId = null;
+  }
+}
+
+// Start polling on startup
+if (boxType === 'freebox' && freeboxAppToken) {
   freeboxPollInterval = setInterval(pollFreeboxCalls, 3000);
+} else if (boxType === 'livebox' && liveboxPassword) {
+  liveboxPollInterval = setInterval(pollLiveboxCalls, 3000);
 }
 
 // IPC Handlers
@@ -1093,7 +1202,7 @@ ipcMain.handle('freebox-register', async () => {
       })
     });
     const data = await res.json();
-    return data; // returns success, result: { app_token, track_id }
+    return data;
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -1104,11 +1213,12 @@ ipcMain.handle('freebox-check-authorization', async (_, { trackId, appToken }) =
     const res = await fetch(`http://mafreebox.freebox.fr/api/v8/login/authorize/${trackId}`);
     const data = await res.json();
     if (data.success && data.result.status === 'granted') {
+      boxType = 'freebox';
       freeboxAppToken = appToken;
-      fs.writeFileSync(CONFIG_FILE, JSON.stringify({ app_token: appToken }));
+      fs.writeFileSync(CONFIG_FILE, JSON.stringify({ box_type: 'freebox', app_token: appToken }));
       
-      // Start polling calls
       if (freeboxPollInterval) clearInterval(freeboxPollInterval);
+      if (liveboxPollInterval) clearInterval(liveboxPollInterval);
       freeboxPollInterval = setInterval(pollFreeboxCalls, 3000);
     }
     return data;
@@ -1118,7 +1228,7 @@ ipcMain.handle('freebox-check-authorization', async (_, { trackId, appToken }) =
 });
 
 ipcMain.handle('freebox-status', () => {
-  return { success: true, registered: !!freeboxAppToken };
+  return { success: true, registered: boxType === 'freebox' && !!freeboxAppToken };
 });
 
 ipcMain.handle('freebox-unregister', () => {
@@ -1129,6 +1239,50 @@ ipcMain.handle('freebox-unregister', () => {
   freeboxAppToken = null;
   freeboxSessionToken = null;
   freeboxLastCallId = null;
+  
+  if (fs.existsSync(CONFIG_FILE)) {
+    try { fs.unlinkSync(CONFIG_FILE); } catch(_) {}
+  }
+  return { success: true };
+});
+
+ipcMain.handle('livebox-register', async (_, { password }) => {
+  try {
+    // Save password temporarily to test
+    liveboxPassword = password;
+    const testSession = await getLiveboxSession();
+    if (testSession) {
+      boxType = 'livebox';
+      liveboxLastCallTime = null;
+      fs.writeFileSync(CONFIG_FILE, JSON.stringify({ box_type: 'livebox', livebox_password: password }));
+      
+      if (liveboxPollInterval) clearInterval(liveboxPollInterval);
+      if (freeboxPollInterval) clearInterval(freeboxPollInterval);
+      liveboxPollInterval = setInterval(pollLiveboxCalls, 3000);
+      return { success: true };
+    } else {
+      liveboxPassword = null;
+      return { success: false, error: 'Connexion échouée : vérifiez votre mot de passe Livebox.' };
+    }
+  } catch (e) {
+    liveboxPassword = null;
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('livebox-status', () => {
+  return { success: true, registered: boxType === 'livebox' && !!liveboxPassword };
+});
+
+ipcMain.handle('livebox-unregister', () => {
+  if (liveboxPollInterval) {
+    clearInterval(liveboxPollInterval);
+    liveboxPollInterval = null;
+  }
+  liveboxPassword = null;
+  liveboxContextId = null;
+  liveboxLastCallTime = null;
+  boxType = 'freebox';
   
   if (fs.existsSync(CONFIG_FILE)) {
     try { fs.unlinkSync(CONFIG_FILE); } catch(_) {}
