@@ -2291,6 +2291,41 @@ function setupHttpServer() {
         }
     });
 
+    // Real-time incoming call webhook endpoint
+    app.post('/incoming-call', async (req, res) => {
+        const { phone, name } = req.body;
+        console.log(`\n📥 Real-time call webhook received for phone: ${phone}`);
+
+        if (!phone) {
+            return res.status(400).json({ error: 'Missing phone number' });
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from('voice_calls')
+                .insert([
+                    {
+                        phone_number: phone,
+                        customer_name: name || null,
+                        status: 'ringing',
+                        direction: 'inbound',
+                        created_at: new Date().toISOString()
+                    }
+                ]);
+
+            if (error) {
+                console.error('❌ Failed to insert voice_call row:', error.message);
+                return res.status(500).json({ error: error.message });
+            }
+
+            console.log('✅ Voice call inserted into database. Real-time banner triggered.');
+            res.json({ success: true, message: 'Real-time banner triggered successfully' });
+        } catch (error) {
+            console.error('❌ Incoming call error:', error.message);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     // HACCP print endpoint
     app.post('/print-haccp', async (req, res) => {
         console.log('\n📥 HACCP print request received');
