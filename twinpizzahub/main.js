@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, Menu, Tray, nativeImage, Notification, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Menu, Tray, nativeImage, Notification, dialog, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -915,6 +915,10 @@ app.whenReady().then(async () => {
     app.quit();
     return;
   }
+
+  // Inject preload into ALL renderers (launcher + webviews inside it)
+  // This is the only reliable way to get window.twinHub inside <webview> tags
+  session.defaultSession.setPreloads([path.join(__dirname, 'preload.js')]);
 
   // Show the launcher ASAP — everything else loads in background
   createLauncher();
