@@ -41,6 +41,16 @@ contextBridge.exposeInMainWorld('twinHub', {
     return () => ipcRenderer.removeListener('update-status', listener);
   },
 
+  freeboxRegister: () => ipcRenderer.invoke('freebox-register'),
+  freeboxCheckAuth: (trackId, appToken) => ipcRenderer.invoke('freebox-check-authorization', { trackId, appToken }),
+  freeboxStatus: () => ipcRenderer.invoke('freebox-status'),
+  freeboxUnregister: () => ipcRenderer.invoke('freebox-unregister'),
+  onFreeboxCall: (cb) => {
+    const listener = (_, data) => cb(data);
+    ipcRenderer.on('freebox-call', listener);
+    return () => ipcRenderer.removeListener('freebox-call', listener);
+  },
+
   preloadPath: path.join(__dirname, 'preload.js'),
   platform: typeof process !== 'undefined' ? process.platform : 'win32',
   appUrl: (typeof process !== 'undefined' && process.argv && process.argv.includes('--dev')) ? 'http://localhost:8080' : 'http://localhost:3456',

@@ -954,3 +954,181 @@ app.on('before-quit', () => {
   if (fileServer)        try { fileServer.close();         } catch(_) {}
   if (printServerProcess) try { printServerProcess.kill(); } catch(_) {}
 });
+
+// ─── Freebox Integration ──────────────────────────────────────────────────────
+const crypto = require('crypto');
+const CONFIG_FILE = path.join(__dirname, 'freebox-config.json');
+
+let freeboxAppToken = null;
+let freeboxSessionToken = null;
+let freeboxLastCallId = null;
+let freeboxPollInterval = null;
+
+// Load config on startup
+try {
+  if (fs.existsSync(CONFIG_FILE)) {
+    const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    freeboxAppToken = cfg.app_token || null;
+  }
+} catch (e) {
+  console.error('Error loading Freebox config:', e);
+}
+
+// Helper to send call log events to all renderer windows
+function broadcastFreeboxCall(phoneNumber, name) {
+  const all = [launcherWin, ...Object.values(windows)];
+  all.forEach(w => {
+    if (w && !w.isDestroyed()) {
+      w.webContents.send('freebox-call', { phone: phoneNumber, name: name || null });
+    }
+  });
+}
+
+// Log in and get a session token
+async function getFreeboxSession() {
+  try {
+    const resLogin = await fetch('http://mafreebox.freebox.fr/api/v8/login/');
+    const loginData = await resLogin.json();
+    if (!loginData.success) return null;
+
+    const challenge = loginData.result.challenge;
+    const password = crypto.createHmac('sha1', freeboxAppToken).update(challenge).digest('hex');
+
+    const resSession = await fetch('http://mafreebox.freebox.fr/api/v8/login/session/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        app_id: 'fr.twinpizza.pos',
+        app_version: '1.0.0',
+        password: password
+      })
+    });
+    const sessionData = await resSession.json();
+    if (sessionData.success) {
+      freeboxSessionToken = sessionData.result.session_token;
+      return freeboxSessionToken;
+    }
+  } catch (e) {
+    console.error('Freebox login failed:', e);
+  }
+  return null;
+}
+
+// Poll calls logs
+async function pollFreeboxCalls() {
+  if (!freeboxAppToken) return;
+  
+  let token = freeboxSessionToken;
+  if (!token) {
+    token = await getFreeboxSession();
+    if (!token) return;
+  }
+
+  try {
+    const res = await fetch('http://mafreebox.freebox.fr/api/v8/call/log/', {
+      headers: { 'X-Fbx-App-Auth': token }
+    });
+    const data = await res.json();
+    
+    // If session token expired, clear it so we re-login next tick
+    if (data.errorcode === 'auth_required') {
+      freeboxSessionToken = null;
+      return;
+    }
+
+    if (data.success && data.result) {
+      const logs = data.result;
+      if (logs.length === 0) return;
+
+      // Sort logs by id ascending to process in chronological order
+      logs.sort((a, b) => a.id - b.id);
+
+      const latestCall = logs[logs.length - 1];
+
+      // On first run, just initialize lastCallId to avoid spamming historical calls
+      if (freeboxLastCallId === null) {
+        freeboxLastCallId = latestCall.id;
+        return;
+      }
+
+      // Check for new incoming calls
+      for (const log of logs) {
+        if (log.id > freeboxLastCallId) {
+          // Only notify for inbound calls (missed or accepted)
+          if (log.type === 'missed' || log.type === 'accepted') {
+            const timeDiff = Math.abs(Date.now() / 1000 - log.datetime);
+            // Only trigger alert if the call was in the last 15 seconds (prevents old missed calls on reconnect)
+            if (timeDiff < 15) {
+              broadcastFreeboxCall(log.number, log.name);
+            }
+          }
+          freeboxLastCallId = log.id;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error fetching Freebox call logs:', e);
+  }
+}
+
+// Start polling
+if (freeboxAppToken) {
+  freeboxPollInterval = setInterval(pollFreeboxCalls, 3000);
+}
+
+// IPC Handlers
+ipcMain.handle('freebox-register', async () => {
+  try {
+    const res = await fetch('http://mafreebox.freebox.fr/api/v8/login/authorize/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        app_id: 'fr.twinpizza.pos',
+        app_name: 'Twin Pizza POS',
+        app_version: '1.0.0',
+        device_name: 'POS Station'
+      })
+    });
+    const data = await res.json();
+    return data; // returns success, result: { app_token, track_id }
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('freebox-check-authorization', async (_, { trackId, appToken }) => {
+  try {
+    const res = await fetch(`http://mafreebox.freebox.fr/api/v8/login/authorize/${trackId}`);
+    const data = await res.json();
+    if (data.success && data.result.status === 'granted') {
+      freeboxAppToken = appToken;
+      fs.writeFileSync(CONFIG_FILE, JSON.stringify({ app_token: appToken }));
+      
+      // Start polling calls
+      if (freeboxPollInterval) clearInterval(freeboxPollInterval);
+      freeboxPollInterval = setInterval(pollFreeboxCalls, 3000);
+    }
+    return data;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('freebox-status', () => {
+  return { success: true, registered: !!freeboxAppToken };
+});
+
+ipcMain.handle('freebox-unregister', () => {
+  if (freeboxPollInterval) {
+    clearInterval(freeboxPollInterval);
+    freeboxPollInterval = null;
+  }
+  freeboxAppToken = null;
+  freeboxSessionToken = null;
+  freeboxLastCallId = null;
+  
+  if (fs.existsSync(CONFIG_FILE)) {
+    try { fs.unlinkSync(CONFIG_FILE); } catch(_) {}
+  }
+  return { success: true };
+});

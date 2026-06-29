@@ -1304,32 +1304,177 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
   );
 }
 
-// ── Settings panel (theme / colors) ──────────────────────────────────────────
+// ── Settings panel (theme / colors + Freebox) ───────────────────────────────
 function SettingsPanel({ onClose }: { onClose:()=>void }) {
   useThemeBump();
   const setColor = (k:ThemeKey, v:string) => { (S as any)[k] = v; saveTheme(); notifyTheme(); };
   const resetAll = () => { Object.assign(S, DEFAULT_THEME); saveTheme(); notifyTheme(); };
+
+  // Freebox State
+  const [fbRegistered, setFbRegistered] = useState(false);
+  const [fbState, setFbState] = useState<'idle' | 'pairing' | 'granted' | 'denied' | 'timeout' | 'error'>('idle');
+  const [fbError, setFbError] = useState('');
+  const isElectron = typeof window !== 'undefined' && 'twinHub' in window;
+
+  useEffect(() => {
+    if (isElectron) {
+      (window as any).twinHub.freeboxStatus().then((res: any) => {
+        if (res && res.success) setFbRegistered(res.registered);
+      });
+    }
+  }, [isElectron]);
+
+  const handleFreeboxPair = async () => {
+    if (!isElectron) return;
+    setFbState('pairing');
+    setFbError('');
+    try {
+      const res = await (window as any).twinHub.freeboxRegister();
+      if (!res.success) {
+        setFbState('error');
+        setFbError(res.error || "Impossible d'initier l'association");
+        return;
+      }
+      
+      const { app_token, track_id } = res.result;
+      
+      // Poll authorization status every 2 seconds
+      const pollTimer = setInterval(async () => {
+        try {
+          const checkRes = await (window as any).twinHub.freeboxCheckAuth(track_id, app_token);
+          if (checkRes.success) {
+            const status = checkRes.result.status;
+            if (status === 'granted') {
+              clearInterval(pollTimer);
+              setFbRegistered(true);
+              setFbState('granted');
+              toast.success("✅ Freebox connectée avec succès !");
+            } else if (status === 'denied' || status === 'timeout') {
+              clearInterval(pollTimer);
+              setFbState(status);
+            }
+          }
+        } catch (e: any) {
+          clearInterval(pollTimer);
+          setFbState('error');
+          setFbError(e.message || "Erreur de vérification");
+        }
+      }, 2000);
+
+      // Auto clear after 60s (timeout)
+      setTimeout(() => clearInterval(pollTimer), 60000);
+
+    } catch (e: any) {
+      setFbState('error');
+      setFbError(e.message || "Erreur d'association");
+    }
+  };
+
+  const handleFreeboxUnlink = async () => {
+    if (!isElectron) return;
+    try {
+      const res = await (window as any).twinHub.freeboxUnregister();
+      if (res.success) {
+        setFbRegistered(false);
+        setFbState('idle');
+        toast.success("🔴 Freebox déconnectée");
+      }
+    } catch (e: any) {
+      toast.error("Erreur lors de la déconnexion");
+    }
+  };
+
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
-      <div onClick={e=>e.stopPropagation()} style={{ width:340, height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, padding:'18px 20px', overflow:'auto' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <div style={{ fontSize:16, fontWeight:800, color:S.text }}>⚙️ Personnalisation</div>
+      <div onClick={e=>e.stopPropagation()} style={{ width:340, height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, padding:'18px 20px', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexShrink:0 }}>
+          <div style={{ fontSize:16, fontWeight:800, color:S.text }}>⚙️ Personnalisation & Caisse</div>
           <button onClick={onClose} style={{ ...S.btn, padding:'5px 12px' }}>✕</button>
         </div>
-        <div style={{ fontSize:12, color:S.muted, marginBottom:14 }}>Changez les couleurs de l'application. Sauvegarde automatique.</div>
-        {(Object.keys(DEFAULT_THEME) as ThemeKey[]).map(k => (
-          <div key={k} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:`1px solid ${S.border}` }}>
-            <span style={{ fontSize:13, color:S.text }}>{THEME_LABELS[k]}</span>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:11, color:S.muted, fontFamily:'monospace' }}>{(S as any)[k]}</span>
-              <input type="color" value={(S as any)[k]} onChange={e=>setColor(k, e.target.value)}
-                style={{ width:38, height:28, border:'none', background:'none', cursor:'pointer', borderRadius:6 }} />
-            </div>
+        
+        <div style={{ flex:1, overflowY:'auto', minHeight:0, paddingRight:2 }}>
+          {/* Section 1: Colors */}
+          <div style={{ fontSize:11, color:S.muted, textTransform:'uppercase', fontWeight:800, letterSpacing:'0.05em', marginBottom:10 }}>Thème de l'application</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:2, marginBottom:20 }}>
+            {(Object.keys(DEFAULT_THEME) as ThemeKey[]).map(k => (
+              <div key={k} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:`1px solid ${S.border}` }}>
+                <span style={{ fontSize:13, color:S.text }}>{THEME_LABELS[k]}</span>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <span style={{ fontSize:11, color:S.muted, fontFamily:'monospace' }}>{(S as any)[k]}</span>
+                  <input type="color" value={(S as any)[k]} onChange={e=>setColor(k, e.target.value)}
+                    style={{ width:38, height:28, border:'none', background:'none', cursor:'pointer', borderRadius:6 }} />
+                </div>
+              </div>
+            ))}
+            <button onClick={resetAll} style={{ ...S.btn, width:'100%', marginTop:10, padding:'8px', fontSize:11, fontWeight:700 }}>
+              ↺ Réinitialiser les couleurs
+            </button>
           </div>
-        ))}
-        <button onClick={resetAll} style={{ ...S.btn, width:'100%', marginTop:18, padding:'10px', fontWeight:700 }}>
-          ↺ Réinitialiser les couleurs
-        </button>
+
+          <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'16px 0' }} />
+
+          {/* Section 2: Freebox Link */}
+          <div style={{ fontSize:11, color:S.muted, textTransform:'uppercase', fontWeight:800, letterSpacing:'0.05em', marginBottom:10 }}>Liaison Téléphone Freebox</div>
+          
+          {!isElectron ? (
+            <div style={{ fontSize:12, color:S.muted, padding:10, background:'#1f293755', borderRadius:8 }}>
+              ⚠️ Non disponible en mode navigateur. Lancez l'application officielle pour connecter la Freebox.
+            </div>
+          ) : fbRegistered ? (
+            <div style={{ background:'#22c55e0d', border:'1px solid #22c55e33', borderRadius:10, padding:12 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'#22c55e', display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                <span>🟢 Freebox connectée</span>
+                <span style={{ width:7, height:7, background:'#22c55e', borderRadius:'50%' }} />
+              </div>
+              <div style={{ fontSize:11, color:S.text, lineHeight:1.3, marginBottom:10 }}>
+                La caisse reçoit en temps réel les numéros des appels entrants pour pré-remplir les fiches clients.
+              </div>
+              <button onClick={handleFreeboxUnlink} style={{ ...S.btn, width:'100%', padding:'8px', borderColor:'#ef444455', color:'#ef4444', background:'#ef44440d', fontWeight:700 }}>
+                🔴 Déconnecter la Freebox
+              </button>
+            </div>
+          ) : (
+            <div style={{ background:'#1f293733', border:`1px solid ${S.border}`, borderRadius:10, padding:12 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:S.text, marginBottom:6 }}>Connecter ma ligne fixe</div>
+              <div style={{ fontSize:11, color:S.muted, lineHeight:1.3, marginBottom:12 }}>
+                Associez la caisse à votre Freebox locale pour pré-remplir automatiquement les coordonnées des clients lorsqu'ils vous appellent.
+              </div>
+
+              {fbState === 'idle' && (
+                <button onClick={handleFreeboxPair} style={{ ...S.btn, width:'100%', padding:'10px', background:S.accent, color:'#000', border:'none', fontWeight:800, fontSize:12 }}>
+                  🔗 Associer ma Freebox
+                </button>
+              )}
+
+              {fbState === 'pairing' && (
+                <div style={{ background:'#f59e0b11', border:'1px solid #f59e0b44', borderRadius:8, padding:10, textAlign:'center' }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:'#f59e0b', marginBottom:4 }}>⏳ Demande en cours...</div>
+                  <div style={{ fontSize:11, color:S.text, fontWeight:600, lineHeight:1.3 }}>
+                    👉 Regardez l'écran LCD de votre Freebox et appuyez sur la flèche de **DROITE (Oui)** pour valider !
+                  </div>
+                </div>
+              )}
+
+              {fbState === 'denied' && (
+                <div style={{ color:'#ef4444', fontSize:11, fontWeight:600, textAlign:'center', marginTop:8 }}>
+                  ❌ Association refusée sur la Freebox. <span style={{ textDecoration:'underline', cursor:'pointer' }} onClick={handleFreeboxPair}>Réessayer</span>
+                </div>
+              )}
+
+              {fbState === 'timeout' && (
+                <div style={{ color:'#ef4444', fontSize:11, fontWeight:600, textAlign:'center', marginTop:8 }}>
+                  ⏳ Temps écoulé. <span style={{ textDecoration:'underline', cursor:'pointer' }} onClick={handleFreeboxPair}>Réessayer</span>
+                </div>
+              )}
+
+              {fbState === 'error' && (
+                <div style={{ color:'#ef4444', fontSize:11, fontWeight:600, textAlign:'center', marginTop:8 }}>
+                  ❌ Erreur: {fbError}. <span style={{ textDecoration:'underline', cursor:'pointer' }} onClick={handleFreeboxPair}>Réessayer</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1982,6 +2127,18 @@ function POSContent() {
     return () => {
       supabase.removeChannel(channel);
     };
+  }, []);
+
+  // Listen to incoming calls from local Freebox (Electron process)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'twinHub' in window && (window as any).twinHub.onFreeboxCall) {
+      const cleanup = (window as any).twinHub.onFreeboxCall((data: any) => {
+        if (data && data.phone) {
+          setIncomingCall({ phone: data.phone, name: data.name || null });
+        }
+      });
+      return cleanup;
+    }
   }, []);
 
   // Find customer by phone in previous orders and pre-fill details
