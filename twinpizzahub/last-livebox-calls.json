@@ -3,32 +3,6 @@
     "remoteNumber": "0749701515",
     "remoteName": "",
     "terminal": "FXS1",
-    "startTime": "2026-06-26T21:52:54Z",
-    "duration": 4,
-    "callType": "succeeded",
-    "callOrigin": "SIP",
-    "callDestination": "local",
-    "trunkLineNumber": "+33232112613",
-    "viewed": false,
-    "callId": "1062"
-  },
-  {
-    "remoteNumber": "0749701515",
-    "remoteName": "",
-    "terminal": "FXS1",
-    "startTime": "2026-06-26T21:53:38Z",
-    "duration": 3,
-    "callType": "succeeded",
-    "callOrigin": "SIP",
-    "callDestination": "local",
-    "trunkLineNumber": "+33232112613",
-    "viewed": false,
-    "callId": "1063"
-  },
-  {
-    "remoteNumber": "0749701515",
-    "remoteName": "",
-    "terminal": "FXS1",
     "startTime": "2026-06-26T21:54:56Z",
     "duration": 11,
     "callType": "succeeded",
@@ -778,5 +752,31 @@
     "trunkLineNumber": "+33232112613",
     "viewed": false,
     "callId": "1121"
+  },
+  {
+    "remoteNumber": "0769116301",
+    "remoteName": "",
+    "terminal": "FXS1",
+    "startTime": "2026-06-29T10:20:29Z",
+    "duration": 2,
+    "callType": "succeeded",
+    "callOrigin": "SIP",
+    "callDestination": "local",
+    "trunkLineNumber": "+33232112613",
+    "viewed": false,
+    "callId": "1122"
+  },
+  {
+    "remoteNumber": "0769116301",
+    "remoteName": "",
+    "terminal": "FXS1",
+    "startTime": "2026-06-29T10:23:06Z",
+    "duration": 26,
+    "callType": "succeeded",
+    "callOrigin": "SIP",
+    "callDestination": "local",
+    "trunkLineNumber": "+33232112613",
+    "viewed": false,
+    "callId": "1123"
   }
 ]
