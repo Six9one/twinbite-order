@@ -1080,10 +1080,14 @@ async function pollFreeboxCalls() {
 
 // ─── LIVEBOX LOGIC ───────────────────────────────────────────────────────────
 async function getLiveboxSession() {
-  if (!liveboxPassword) return null;
+  if (!liveboxPassword) {
+    console.log('[Livebox] No password configured, skipping session creation.');
+    return null;
+  }
   
   // Method 1: createContext via /ws (New Livebox OS)
   try {
+    console.log('[Livebox] Attempting Method 1 authentication (createContext)...');
     const authPayload = {
       service: "sah.Device.Information",
       method: "createContext",
@@ -1102,18 +1106,21 @@ async function getLiveboxSession() {
       body: JSON.stringify(authPayload)
     });
     const data = await res.json();
+    console.log('[Livebox] Method 1 response:', JSON.stringify(data));
     if (data && data.data && data.data.contextID) {
       liveboxContextId = data.data.contextID;
       const cookies = res.headers.get('set-cookie');
       if (cookies) liveboxCookie = cookies;
+      console.log('[Livebox] Method 1 success! Context ID:', liveboxContextId, 'Cookie:', liveboxCookie);
       return liveboxContextId;
     }
   } catch (e) {
-    console.warn('Livebox Method 1 auth failed, trying Method 2...', e.message);
+    console.warn('[Livebox] Method 1 auth failed, trying Method 2...', e.message);
   }
 
   // Method 2: GET/POST to /authenticate (Livebox Pro / Older Livebox OS)
   try {
+    console.log('[Livebox] Attempting Method 2 authentication (authenticate)...');
     const res = await fetch(`http://192.168.1.1/authenticate?username=admin&password=${encodeURIComponent(liveboxPassword)}`, {
       method: 'POST',
       headers: {
@@ -1121,16 +1128,19 @@ async function getLiveboxSession() {
       }
     });
     const data = await res.json();
+    console.log('[Livebox] Method 2 response:', JSON.stringify(data));
     if (data && data.data && data.data.contextID) {
       liveboxContextId = data.data.contextID;
       const cookies = res.headers.get('set-cookie');
       if (cookies) liveboxCookie = cookies;
+      console.log('[Livebox] Method 2 success! Context ID:', liveboxContextId, 'Cookie:', liveboxCookie);
       return liveboxContextId;
     }
   } catch (e) {
-    console.error('Livebox Method 2 auth failed:', e);
+    console.error('[Livebox] Method 2 auth failed:', e);
   }
 
+  console.log('[Livebox] Both authentication methods failed.');
   return null;
 }
 
@@ -1151,10 +1161,14 @@ function parseLiveboxTime(t) {
 async function pollLiveboxCalls() {
   if (!liveboxPassword) return;
 
+  console.log('[Livebox] pollLiveboxCalls triggered. Current context:', liveboxContextId);
   let context = liveboxContextId;
   if (!context) {
     context = await getLiveboxSession();
-    if (!context) return;
+    if (!context) {
+      console.log('[Livebox] Could not establish session, aborting poll.');
+      return;
+    }
   }
 
   try {
@@ -1163,6 +1177,7 @@ async function pollLiveboxCalls() {
       method: "getCallList",
       parameters: {}
     };
+    console.log('[Livebox] Fetching call list from ws endpoint...');
     const res = await fetch('http://192.168.1.1/ws', {
       method: 'POST',
       headers: {
@@ -1175,8 +1190,10 @@ async function pollLiveboxCalls() {
       body: JSON.stringify(payload)
     });
     const data = await res.json();
+    console.log('[Livebox] Call list response parsed. Keys:', Object.keys(data));
 
     if (data && data.errors && data.errors.some(e => e.error === 'AuthenticationFailed' || e.error === 'InvalidContext')) {
+      console.log('[Livebox] Authentication/Context invalid, resetting context.');
       liveboxContextId = null;
       liveboxCookie = null;
       return;
@@ -1184,6 +1201,7 @@ async function pollLiveboxCalls() {
 
     if (data && data.result) {
       const logs = data.result;
+      console.log(`[Livebox] Retrieved ${Array.isArray(logs) ? logs.length : 'non-array'} call records.`);
       if (!Array.isArray(logs)) return;
 
       // DEBUG: Save last calls to local JSON for inspection
@@ -1201,13 +1219,16 @@ async function pollLiveboxCalls() {
         name: c.contactName || ''
       })).filter(c => c.time > 0);
 
+      console.log(`[Livebox] Mapped ${parsedCalls.length} valid call logs.`);
       if (parsedCalls.length === 0) return;
 
       parsedCalls.sort((a, b) => a.time - b.time);
       const latestCall = parsedCalls[parsedCalls.length - 1];
+      console.log('[Livebox] Latest call in router log:', JSON.stringify(latestCall), 'Last processed time:', liveboxLastCallTime);
 
       if (liveboxLastCallTime === null) {
         liveboxLastCallTime = latestCall.time;
+        console.log('[Livebox] Initialized last call time to:', liveboxLastCallTime);
         return;
       }
 
