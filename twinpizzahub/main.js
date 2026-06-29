@@ -1200,9 +1200,14 @@ async function pollLiveboxCalls() {
     }
 
     if (data && data.result) {
-      const logs = data.result;
+      let logs = data.result;
       console.log('[Livebox] Raw result logs type:', typeof logs, 'isArray:', Array.isArray(logs), 'Content:', JSON.stringify(logs));
-      console.log(`[Livebox] Retrieved ${Array.isArray(logs) ? logs.length : 'non-array'} call records.`);
+      
+      if (logs && !Array.isArray(logs) && Array.isArray(logs.status)) {
+        logs = logs.status;
+      }
+      
+      console.log('[Livebox] Unpacked logs isArray:', Array.isArray(logs), 'Retrieved:', Array.isArray(logs) ? logs.length : 'non-array');
       if (!Array.isArray(logs)) return;
 
       // DEBUG: Save last calls to local JSON for inspection
