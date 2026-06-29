@@ -1,18 +1,5 @@
 [
   {
-    "remoteNumber": "0659731848",
-    "remoteName": "",
-    "terminal": "FXS1",
-    "startTime": "2026-06-26T20:27:48Z",
-    "duration": 43,
-    "callType": "succeeded",
-    "callOrigin": "SIP",
-    "callDestination": "local",
-    "trunkLineNumber": "+33232112613",
-    "viewed": false,
-    "callId": "1061"
-  },
-  {
     "remoteNumber": "0749701515",
     "remoteName": "",
     "terminal": "FXS1",
@@ -778,5 +765,18 @@
     "trunkLineNumber": "+33232112613",
     "viewed": false,
     "callId": "1120"
+  },
+  {
+    "remoteNumber": "0769116301",
+    "remoteName": "",
+    "terminal": "FXS1",
+    "startTime": "2026-06-29T10:16:03Z",
+    "duration": 5,
+    "callType": "succeeded",
+    "callOrigin": "SIP",
+    "callDestination": "local",
+    "trunkLineNumber": "+33232112613",
+    "viewed": false,
+    "callId": "1121"
   }
 ]

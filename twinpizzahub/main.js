@@ -990,12 +990,17 @@ try {
   console.error('Error loading Box config:', e);
 }
 
-// Helper to send call log events to all renderer windows
+// Helper to send call log events to all renderer windows (including webview guests)
 function broadcastFreeboxCall(phoneNumber, name) {
-  const all = [launcherWin, ...Object.values(windows)];
-  all.forEach(w => {
-    if (w && !w.isDestroyed()) {
-      w.webContents.send('freebox-call', { phone: phoneNumber, name: name || null });
+  const { webContents } = require('electron');
+  const allContents = webContents.getAllWebContents();
+  allContents.forEach(wc => {
+    try {
+      if (wc && !wc.isDestroyed()) {
+        wc.send('freebox-call', { phone: phoneNumber, name: name || null });
+      }
+    } catch (e) {
+      // ignore
     }
   });
 }
