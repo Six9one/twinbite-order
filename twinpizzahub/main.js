@@ -973,6 +973,7 @@ let freeboxPollInterval = null;
 // Livebox State
 let liveboxPassword = null;
 let liveboxContextId = null;
+let liveboxCookie = null;
 let liveboxLastCallTime = null;
 let liveboxPollInterval = null;
 
@@ -1080,6 +1081,8 @@ async function pollFreeboxCalls() {
 // ─── LIVEBOX LOGIC ───────────────────────────────────────────────────────────
 async function getLiveboxSession() {
   if (!liveboxPassword) return null;
+  
+  // Method 1: createContext via /ws (New Livebox OS)
   try {
     const authPayload = {
       service: "sah.Device.Information",
@@ -1101,11 +1104,33 @@ async function getLiveboxSession() {
     const data = await res.json();
     if (data && data.data && data.data.contextID) {
       liveboxContextId = data.data.contextID;
+      const cookies = res.headers.get('set-cookie');
+      if (cookies) liveboxCookie = cookies;
       return liveboxContextId;
     }
   } catch (e) {
-    console.error('Livebox login failed:', e);
+    console.warn('Livebox Method 1 auth failed, trying Method 2...', e.message);
   }
+
+  // Method 2: GET/POST to /authenticate (Livebox Pro / Older Livebox OS)
+  try {
+    const res = await fetch(`http://192.168.1.1/authenticate?username=admin&password=${encodeURIComponent(liveboxPassword)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    const data = await res.json();
+    if (data && data.data && data.data.contextID) {
+      liveboxContextId = data.data.contextID;
+      const cookies = res.headers.get('set-cookie');
+      if (cookies) liveboxCookie = cookies;
+      return liveboxContextId;
+    }
+  } catch (e) {
+    console.error('Livebox Method 2 auth failed:', e);
+  }
+
   return null;
 }
 
@@ -1130,7 +1155,8 @@ async function pollLiveboxCalls() {
         'X-Context': context,
         'X-Prototype-Version': '1.7',
         'Content-Type': 'application/x-sah-ws-1-call+json; charset=UTF-8',
-        'Accept': 'text/javascript'
+        'Accept': 'text/javascript',
+        ...(liveboxCookie ? { 'Cookie': liveboxCookie } : {})
       },
       body: JSON.stringify(payload)
     });
@@ -1138,6 +1164,7 @@ async function pollLiveboxCalls() {
 
     if (data && data.errors && data.errors.some(e => e.error === 'AuthenticationFailed' || e.error === 'InvalidContext')) {
       liveboxContextId = null;
+      liveboxCookie = null;
       return;
     }
 
@@ -1178,6 +1205,7 @@ async function pollLiveboxCalls() {
   } catch (e) {
     console.error('Error fetching Livebox call logs:', e);
     liveboxContextId = null;
+    liveboxCookie = null;
   }
 }
 
