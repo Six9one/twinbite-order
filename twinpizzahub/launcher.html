@@ -35,6 +35,7 @@ window.makeQRImg=function(container,text){
   --sidebar-w: 220px;
 }
 body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; user-select:none; }
+body.nav-hidden header { display:none; }
 
 /* ── Hide scrollbars everywhere (touch screen — swipe to scroll) ── */
 *::-webkit-scrollbar { width:0 !important; height:0 !important; background:transparent !important; }
@@ -791,25 +792,28 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('keydown', resetSleepTimer);
   document.addEventListener('mousemove', resetSleepTimer);
 
-  // Default screen = Point de Vente — pre-load immediately
+  // Boot directly into POS — hide nav for full-screen ordering
+  if (!localStorage.getItem('hub-nav-hidden')) {
+    document.body.classList.add('nav-hidden');
+  }
   goTo('pos');
   applyZoom();
 
-  // Hide the loading overlay once the POS webview has rendered its first frame
+  // Hide the loading overlay ASAP once the POS webview has rendered
   const wvPos = document.getElementById('wv-pos');
   const loadingOverlay = document.getElementById('wv-loading');
 
   function hidePosLoading() {
+    if (loadingOverlay.classList.contains('gone')) return;
     loadingOverlay.classList.add('hidden');
-    setTimeout(() => loadingOverlay.classList.add('gone'), 380);
+    setTimeout(() => loadingOverlay.classList.add('gone'), 250);
   }
 
-  // did-stop-loading fires after all resources finish — React has painted by then.
-  // We add 300ms extra so the first React frame is fully composited.
-  wvPos.addEventListener('did-stop-loading', () => setTimeout(hidePosLoading, 300), { once: true });
+  // did-stop-loading: React has painted. Hide immediately.
+  wvPos.addEventListener('did-stop-loading', () => setTimeout(hidePosLoading, 100), { once: true });
 
-  // Safety: hide overlay after 12s max even if event never fires
-  setTimeout(hidePosLoading, 12000);
+  // Safety: hide overlay after 5s max even if event never fires
+  setTimeout(hidePosLoading, 5000);
 });
 
 // ── Clock & date ───────────────────────────────────────────────────────────

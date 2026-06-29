@@ -916,33 +916,35 @@ app.whenReady().then(async () => {
     return;
   }
 
+  // Show the launcher ASAP — everything else loads in background
   createLauncher();
   createTray();
 
-  // Start print server as child process (auto-restarts if crashes)
-  startPrintServer();
+  // All non-critical services start in background (don't block the UI)
+  setImmediate(() => {
+    loadWAHistory();
+    initSupabase();
+    initWhatsApp();
+    startPrintServer();
 
-  // Poll print server status every 15s and broadcast to UI
-  let lastPrintServerOnline = null;
-  const broadcastPrinterStatus = async () => {
-    const s = await getPrintServerStatus();
-    const state = { status: s.online ? 'online' : 'offline', serverUrl: PRINT_SERVER, online: s.online, ...s };
-    const all = [launcherWin, ...Object.values(windows)];
-    all.forEach(w => { if (w && !w.isDestroyed()) w.webContents.send('printer-status', state); });
-    if (lastPrintServerOnline === true && !s.online) {
-      try { new Notification({ title: '🖨️ Serveur impression hors ligne', body: 'Relancez START_ALL_SERVERS.bat' }).show(); } catch(_) {}
-    }
-    if (lastPrintServerOnline === false && s.online) {
-      try { new Notification({ title: '🖨️ Serveur impression reconnecté', body: 'Impression automatique active' }).show(); } catch(_) {}
-    }
-    lastPrintServerOnline = s.online;
-  };
-  broadcastPrinterStatus();
-  setInterval(broadcastPrinterStatus, 15000);
-
-  loadWAHistory(); // restore chats + messages from previous session
-  initSupabase();
-  initWhatsApp();
+    // Poll print server status every 15s and broadcast to UI
+    let lastPrintServerOnline = null;
+    const broadcastPrinterStatus = async () => {
+      const s = await getPrintServerStatus();
+      const state = { status: s.online ? 'online' : 'offline', serverUrl: PRINT_SERVER, online: s.online, ...s };
+      const all = [launcherWin, ...Object.values(windows)];
+      all.forEach(w => { if (w && !w.isDestroyed()) w.webContents.send('printer-status', state); });
+      if (lastPrintServerOnline === true && !s.online) {
+        try { new Notification({ title: '🖨️ Serveur impression hors ligne', body: 'Relancez START_ALL_SERVERS.bat' }).show(); } catch(_) {}
+      }
+      if (lastPrintServerOnline === false && s.online) {
+        try { new Notification({ title: '🖨️ Serveur impression reconnecté', body: 'Impression automatique active' }).show(); } catch(_) {}
+      }
+      lastPrintServerOnline = s.online;
+    };
+    setTimeout(broadcastPrinterStatus, 2000); // delay first check so UI loads first
+    setInterval(broadcastPrinterStatus, 15000);
+  });
 
   app.on('activate', createLauncher);
 });
