@@ -1,16 +1,13 @@
 const { contextBridge, ipcRenderer } = require('electron');
 const path = require('path');
 
-// Guard: prevent double-injection (session.setPreloads + webPreferences.preload)
-try {
-
 contextBridge.exposeInMainWorld('twinHub', {
   // Windows
   openWindow:  (screen) => ipcRenderer.send('open-window', screen),
   getDisplays: ()       => ipcRenderer.invoke('get-displays'),
 
   // WhatsApp
-  getWhatsAppStatus: ()                 => ipcRenderer.invoke('get-whatsapp-status'), // returns { status, qr }
+  getWhatsAppStatus: ()                 => ipcRenderer.invoke('get-whatsapp-status'),
   sendWhatsApp:      (number, message)  => ipcRenderer.invoke('send-whatsapp', { phone: number, message }),
   onWhatsAppStatus:  (cb) => ipcRenderer.on('whatsapp-status', (_, data) => cb(data)),
   onWhatsAppQR:      (cb) => ipcRenderer.on('whatsapp-qr',    (_, qr)   => cb(qr)),
@@ -26,7 +23,7 @@ contextBridge.exposeInMainWorld('twinHub', {
   // Orders
   onNewOrder: (cb) => ipcRenderer.on('new-order', (_, order) => cb(order)),
 
-  // WhatsApp message actually sent (confirmation or review) — with full details
+  // WhatsApp message actually sent (confirmation or review)
   onWhatsAppMessageSent: (cb) => ipcRenderer.on('whatsapp-message-sent', (_, data) => cb(data)),
 
   // WhatsApp conversations
@@ -44,6 +41,7 @@ contextBridge.exposeInMainWorld('twinHub', {
     return () => ipcRenderer.removeListener('update-status', listener);
   },
 
+  // Freebox
   freeboxRegister: () => ipcRenderer.invoke('freebox-register'),
   freeboxCheckAuth: (trackId, appToken) => ipcRenderer.invoke('freebox-check-authorization', { trackId, appToken }),
   freeboxStatus: () => ipcRenderer.invoke('freebox-status'),
@@ -58,8 +56,3 @@ contextBridge.exposeInMainWorld('twinHub', {
   platform: typeof process !== 'undefined' ? process.platform : 'win32',
   appUrl: (typeof process !== 'undefined' && process.argv && process.argv.includes('--dev')) ? 'http://localhost:8080' : 'http://localhost:3456',
 });
-
-} catch(e) {
-  // Already injected in this renderer (e.g. launcher gets it from both webPreferences.preload AND session.setPreloads)
-  // This is safe to ignore — twinHub is already available.
-}
