@@ -1,6 +1,7 @@
 import { useState, useEffect, useReducer, useRef } from 'react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { useCreateOrder, generateOrderNumber, useOrders } from '@/hooks/useSupabaseData';
+import { supabase } from '@/integrations/supabase/client';
 import { useCategories, useProductsByCategory } from '@/hooks/useProducts';
 import { usePizzasByBase } from '@/hooks/useProducts';
 import { useMeatOptions, useSauceOptions, useSupplementOptions, useGarnitureOptions, useCruditesOptions } from '@/hooks/useCustomizationOptions';
@@ -1689,8 +1690,38 @@ function CartItemRow({ ci, onUpdate, onRemove }: { ci:any; onUpdate:(u:any)=>voi
 }
 
 // ── Caisse side panel ─────────────────────────────────────────────────────────
-function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName, phone, setPhone, address, setAddress, notes, setNotes, discount, setDiscount, payMethod, setPayMethod, pizzaPromo, pizzaSaving, discountAmt, ht, tva, total, submitting, handleSubmit, clearCart, setShowFacture }: any) {
+function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName, phone, setPhone, address, setAddress, notes, setNotes, discount, setDiscount, payMethod, setPayMethod, pizzaPromo, pizzaSaving, discountAmt, ht, tva, total, submitting, handleSubmit, clearCart, setShowFacture, mapboxToken, incomingCall, setIncomingCall, handleLinkIncomingCall }: any) {
   const { updateCartItem, removeFromCart } = useOrder();
+  
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  // Mapbox Geocoding Autocomplete
+  useEffect(() => {
+    if (!mapboxToken || !address.trim() || address.length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    // Debounce geocoding requests to Mapbox (proximity set to Grand-Couronne: 1.0135, 49.3564)
+    const timer = setTimeout(async () => {
+      setLoadingSuggestions(true);
+      try {
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxToken}&country=fr&proximity=1.0135,49.3564&limit=5&types=address,poi,house&language=fr`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data && data.features) {
+          setAddressSuggestions(data.features);
+        }
+      } catch (e) {
+        console.error('Error fetching address suggestions:', e);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [address, mapboxToken]);
 
   return (
     <div style={{ height:'100%', display:'flex', flexDirection:'column', background:S.panel }}>
@@ -1701,11 +1732,107 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
         {cart.length > 0 && <span style={{ background:S.accent, color:'#000', borderRadius:99, fontSize:10, fontWeight:800, padding:'1px 7px' }}>{cart.reduce((s:number,i:any)=>s+i.quantity,0)}</span>}
       </div>
 
+      {/* Incoming Call Notification Card */}
+      {incomingCall && (
+        <div style={{
+          background: 'linear-gradient(135deg, #1e3a8a, #0f172a)',
+          borderBottom: `2.5px solid ${S.accent}`,
+          padding: '10px 14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          flexShrink: 0,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 900, color: S.accent, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>📞 APPEL ENTRANT DEPUIS LIGNE</span>
+            <span style={{ width: 6, height: 6, background: '#ef4444', borderRadius: '50%', display: 'inline-block' }} />
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>
+            {incomingCall.phone} {incomingCall.name ? `(${incomingCall.name})` : ''}
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+            <button
+              onClick={() => handleLinkIncomingCall(incomingCall)}
+              style={{
+                background: S.accent, color: '#000', border: 'none', borderRadius: 6,
+                padding: '6px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', flex: 1
+              }}
+            >
+              🚀 Lancer la commande
+            </button>
+            <button
+              onClick={() => setIncomingCall(null)}
+              style={{
+                background: '#374151', color: S.muted, border: 'none', borderRadius: 6,
+                padding: '6px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer'
+              }}
+            >
+              Ignorer
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Client info — compact */}
       <div style={{ padding:'6px 12px', borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
         {needsInfo && <input value={name} onChange={(e:any)=>setName(e.target.value)} placeholder="Nom *" style={{...S.input,marginBottom:4,padding:'4px 8px',fontSize:11}} />}
         <input value={phone} onChange={(e:any)=>setPhone(e.target.value)} placeholder="Téléphone" style={{...S.input,marginBottom:needsInfo?4:0,padding:'4px 8px',fontSize:11}} />
-        {needsInfo && <input value={address} onChange={(e:any)=>setAddress(e.target.value)} placeholder="Adresse *" style={{...S.input,marginBottom:4,padding:'4px 8px',fontSize:11}} />}
+        {needsInfo && (
+          <div style={{ position: 'relative' }}>
+            <input
+              value={address}
+              onChange={(e:any)=>setAddress(e.target.value)}
+              placeholder="Adresse *"
+              style={{...S.input, marginBottom: 4, padding: '4px 8px', fontSize: 11}}
+            />
+            {addressSuggestions.length > 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                background: S.card,
+                border: `1px solid ${S.border}`,
+                borderRadius: 8,
+                zIndex: 100,
+                maxHeight: 180,
+                overflowY: 'auto',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                marginTop: -2
+              }}>
+                {addressSuggestions.map((feat: any) => (
+                  <button
+                    key={feat.id}
+                    onClick={() => {
+                      setAddress(feat.place_name);
+                      setAddressSuggestions([]);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      background: 'none',
+                      border: 'none',
+                      borderBottom: `1px solid ${S.border}`,
+                      color: S.text,
+                      fontSize: 10,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'background 0.1s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#1f2937'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                  >
+                    <span style={{ fontWeight: 700 }}>{feat.text}</span>
+                    <span style={{ color: S.muted, fontSize: 9 }}>{feat.place_name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {needsInfo && <input value={notes} onChange={(e:any)=>setNotes(e.target.value)} placeholder="Notes livraison..." style={{...S.input,padding:'4px 8px',fontSize:11}} />}
       </div>
 
@@ -1803,6 +1930,8 @@ function POSContent() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [pizzaSize, setPizzaSize] = useState<PizzaSizeId>('senior');
+  const [mapboxToken, setMapboxToken] = useState('');
+  const [incomingCall, setIncomingCall] = useState<{ phone: string; name: string | null } | null>(null);
   const leftRef = useRef<ImperativePanelHandle>(null);
 
   const toggleLeft = () => {
@@ -1813,6 +1942,92 @@ function POSContent() {
   };
 
   const needsInfo = orderType === 'livraison';
+
+  // Fetch Mapbox token for autocomplete
+  useEffect(() => {
+    async function fetchToken() {
+      const envToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN || '';
+      if (envToken && envToken.length > 20) {
+        setMapboxToken(envToken);
+        return;
+      }
+      try {
+        const { data } = await supabase.functions.invoke('get-mapbox-token');
+        if (data?.token) setMapboxToken(data.token);
+      } catch (e) {
+        console.error('Error fetching Mapbox token in POS:', e);
+      }
+    }
+    fetchToken();
+  }, []);
+
+  // Listen to incoming calls in realtime via voice_calls table
+  useEffect(() => {
+    const channel = supabase
+      .channel('voice-calls-pos')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'voice_calls' }, (payload) => {
+        const newCall = payload.new;
+        if (newCall && (newCall.status === 'ringing' || newCall.status === 'active') && newCall.phone_number) {
+          setIncomingCall({ phone: newCall.phone_number, name: newCall.customer_name });
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'voice_calls' }, (payload) => {
+        const updatedCall = payload.new;
+        if (updatedCall && (updatedCall.status === 'ringing' || updatedCall.status === 'active') && updatedCall.phone_number) {
+          setIncomingCall({ phone: updatedCall.phone_number, name: updatedCall.customer_name });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Find customer by phone in previous orders and pre-fill details
+  const searchClientByPhone = async (phoneNumber: string) => {
+    const cleanPhone = phoneNumber.trim();
+    if (cleanPhone.length < 8) return;
+    try {
+      const { data } = await supabase
+        .from('orders')
+        .select('customer_name, customer_address, customer_notes')
+        .eq('customer_phone', cleanPhone)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const lastOrder = data[0];
+        if (lastOrder.customer_name && !name) {
+          setName(lastOrder.customer_name);
+        }
+        if (lastOrder.customer_address && !address) {
+          setAddress(lastOrder.customer_address);
+        }
+        if (lastOrder.customer_notes && !notes) {
+          setNotes(lastOrder.customer_notes);
+        }
+        toast.success(`Client trouvé : ${lastOrder.customer_name || cleanPhone}`, { duration: 4000 });
+      }
+    } catch (err) {
+      console.error('Error finding client by phone:', err);
+    }
+  };
+
+  // Trigger search when phone number is fully entered (10 digits)
+  useEffect(() => {
+    const cleanPhone = phone.trim();
+    if (cleanPhone.length === 10) {
+      searchClientByPhone(cleanPhone);
+    }
+  }, [phone]);
+
+  const handleLinkIncomingCall = (incoming: { phone: string; name: string | null }) => {
+    setPhone(incoming.phone);
+    if (incoming.name) setName(incoming.name);
+    setIncomingCall(null);
+    toast.success(`📞 Numéro ${incoming.phone} lié à la caisse`);
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'twinHub' in window) {
@@ -2082,6 +2297,10 @@ function POSContent() {
         submitting={submitting} handleSubmit={handleSubmit}
         clearCart={clearCart}
         setShowFacture={setShowFacture}
+        mapboxToken={mapboxToken}
+        incomingCall={incomingCall}
+        setIncomingCall={setIncomingCall}
+        handleLinkIncomingCall={handleLinkIncomingCall}
       />
       </Panel>
 
