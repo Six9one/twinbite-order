@@ -1134,6 +1134,20 @@ async function getLiveboxSession() {
   return null;
 }
 
+function parseLiveboxTime(t) {
+  if (!t) return 0;
+  if (!isNaN(t)) {
+    const val = Number(t);
+    if (val < 32503680000) {
+      return val * 1000;
+    }
+    return val;
+  }
+  const parsed = Date.parse(t);
+  if (!isNaN(parsed)) return parsed;
+  return 0;
+}
+
 async function pollLiveboxCalls() {
   if (!liveboxPassword) return;
 
@@ -1170,11 +1184,18 @@ async function pollLiveboxCalls() {
 
     if (data && data.result) {
       const logs = data.result;
-      if (!Array.isArray(logs) || logs.length === 0) return;
+      if (!Array.isArray(logs)) return;
+
+      // DEBUG: Save last calls to local JSON for inspection
+      try {
+        fs.writeFileSync(path.join(__dirname, 'last-livebox-calls.json'), JSON.stringify(logs, null, 2));
+      } catch(_) {}
+
+      if (logs.length === 0) return;
 
       const parsedCalls = logs.map(c => ({
-        number: c.number || '',
-        time: Date.parse(c.startTime) || 0,
+        number: c.remoteNumber || c.number || '',
+        time: parseLiveboxTime(c.startTime),
         type: c.callType || '',
         origin: c.callOrigin || '',
         name: c.contactName || ''
@@ -1194,7 +1215,7 @@ async function pollLiveboxCalls() {
         if (log.time > liveboxLastCallTime) {
           if (log.type !== 'placed' && log.type !== 'outgoing' && log.origin !== 'local') {
             const timeDiff = Math.abs(Date.now() - log.time) / 1000;
-            if (timeDiff < 15) {
+            if (timeDiff < 20) {
               broadcastFreeboxCall(log.number, log.name);
             }
           }
