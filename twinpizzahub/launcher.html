@@ -604,13 +604,13 @@ webview {
   </div>
 
   <!-- Webviews for each screen -->
-  <webview id="wv-pos"     src="about:blank" allowpopups></webview>
-  <webview id="wv-admin"   src="about:blank" allowpopups></webview>
-  <webview id="wv-tv"      src="about:blank" allowpopups></webview>
-  <webview id="wv-kiosk"   src="about:blank" allowpopups></webview>
-  <webview id="wv-kitchen" src="about:blank" allowpopups></webview>
-  <webview id="wv-crew"    src="about:blank" allowpopups></webview>
-  <webview id="wv-website" src="about:blank" allowpopups></webview>
+  <webview id="wv-pos"     src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
+  <webview id="wv-admin"   src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
+  <webview id="wv-tv"      src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
+  <webview id="wv-kiosk"   src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
+  <webview id="wv-kitchen" src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
+  <webview id="wv-crew"    src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
+  <webview id="wv-website" src="about:blank" allowpopups webpreferences="contextIsolation=yes, sandbox=no"></webview>
 
   <!-- WhatsApp panel (full WhatsApp Web style) -->
   <div class="panel" id="panel-whatsapp">
