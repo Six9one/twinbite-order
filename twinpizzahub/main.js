@@ -1201,6 +1201,7 @@ async function pollLiveboxCalls() {
 
     if (data && data.result) {
       const logs = data.result;
+      console.log('[Livebox] Raw result logs type:', typeof logs, 'isArray:', Array.isArray(logs), 'Content:', JSON.stringify(logs));
       console.log(`[Livebox] Retrieved ${Array.isArray(logs) ? logs.length : 'non-array'} call records.`);
       if (!Array.isArray(logs)) return;
 
