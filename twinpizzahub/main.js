@@ -1003,6 +1003,32 @@ function broadcastFreeboxCall(phoneNumber, name) {
       // ignore
     }
   });
+
+  // Also publish call event to the local print server webhook to insert it into Supabase voice_calls (triggers cloud banner)
+  try {
+    const payload = JSON.stringify({ phone: phoneNumber, name: name || '' });
+    const req = http.request({
+      hostname: 'localhost',
+      port: 3001,
+      path: '/incoming-call',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    }, (res) => {
+      console.log(`[Hub] Sync call to print-server webhook status: ${res.statusCode}`);
+    });
+
+    req.on('error', (err) => {
+      console.warn(`[Hub] Failed to sync call to print-server webhook:`, err.message);
+    });
+
+    req.write(payload);
+    req.end();
+  } catch (err) {
+    console.warn(`[Hub] Webhook POST error:`, err.message);
+  }
 }
 
 // ─── FREEBOX LOGIC ───────────────────────────────────────────────────────────

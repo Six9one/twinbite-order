@@ -1,4 +1,4 @@
-import { useState, useEffect, useReducer, useRef } from 'react';
+import { useState, useEffect, useReducer, useRef, memo } from 'react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { useCreateOrder, generateOrderNumber, useOrders } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,13 +34,13 @@ const toItems = (products: any[] | undefined, fallback: any[]) =>
 // ── Theme palette (mutable + persisted) ──────────────────────────────────────
 // Colors are plain hex strings so `S.accent + '22'` (alpha) keeps working.
 const DEFAULT_THEME = {
-  bg:     '#0d1117',
-  panel:  '#111827',
-  card:   '#1a2234',
-  border: '#1f2937',
-  muted:  '#6b7280',
-  text:   '#e5e7eb',
-  accent: '#f59e0b',
+  bg:     '#070a13',
+  panel:  '#0f172a',
+  card:   '#1e293b',
+  border: '#334155',
+  muted:  '#64748b',
+  text:   '#f8fafc',
+  accent: '#f97316',
 };
 type ThemeKey = keyof typeof DEFAULT_THEME;
 const THEME_LABELS: Record<ThemeKey,string> = {
@@ -110,30 +110,172 @@ const LOCAL_PIZZA_IMAGES: Record<string, string> = {
 };
 
 // ── Product tile ─────────────────────────────────────────────────────────────
-function ProductTile({ item, selected, onClick, badge, compact, tint }: { item:any; selected:boolean; onClick:()=>void; badge?:string; compact?:boolean; tint?:string }) {
-  // Support both camelCase (imageUrl) and snake_case (image_url from DB), fallback to local images
+const ProductTile = memo(function ProductTile({
+  item,
+  price,
+  selected,
+  onClick,
+  badge,
+  compact,
+  tint,
+  zoom = 100
+}: {
+  item: any;
+  price?: number;
+  selected: boolean;
+  onClick: () => void;
+  badge?: string;
+  compact?: boolean;
+  tint?: string;
+  zoom?: number;
+}) {
+  const [imgError, setImgError] = useState(false);
   const normalizedName = (item.name || '').trim().toLowerCase();
   const img = item.imageUrl || item.image_url || LOCAL_PIZZA_IMAGES[normalizedName];
-  const imgSize = compact ? 44 : 64;
-  const borderColor = selected ? S.accent : (tint || '#2d3748');
+
+  useEffect(() => {
+    setImgError(false);
+  }, [img]);
+
+  // Scale parameters based on zoom factor
+  const scale = zoom / 100;
+  const imgSize = Math.round((compact ? 44 : 64) * scale);
+  const padV = Math.round((compact ? 6 : 10) * scale);
+  const padH = Math.round((compact ? 4 : 8) * scale);
+  const fontSize = Math.round((compact ? 10 : 11) * scale);
+  const borderRadius = Math.round(10 * scale);
+  const displayPrice = price !== undefined ? price : item.price;
+
+  const baseTint = tint || '#2d3748';
+  const borderColor = selected ? baseTint : '#2d3748';
+
+  const cardBg = selected 
+    ? `linear-gradient(135deg, ${S.card}, ${baseTint}33)` 
+    : `linear-gradient(135deg, ${S.card}, #111827)`;
+
   return (
-    <button onClick={onClick} style={{
-      background: selected ? '#f59e0b22' : (tint ? tint + '14' : S.card),
-      border:     `${selected ? 2 : tint ? 2 : 1}px solid ${borderColor}`,
-      borderRadius:8, padding: compact ? '4px 3px' : '8px 6px', cursor:'pointer', textAlign:'center',
-      transition:'all .12s', position:'relative',
-    }}>
-      {badge && <span style={{ position:'absolute', top:4, left:4, background:'#ef4444', color:'#fff', fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:99 }}>{badge}</span>}
-      {selected && <span style={{ position:'absolute', top:4, right:4, background:S.accent, color:'#000', fontSize:10, fontWeight:800, width:18, height:18, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center' }}>✓</span>}
-      {img
-        ? <OptimizedImage src={img} alt={item.name} style={{ width:imgSize, height:imgSize, borderRadius:8, objectFit:'cover', display:'block', margin:`0 auto ${compact?4:6}px` }} containerClassName="mx-auto mb-1 rounded-lg overflow-hidden flex items-center justify-center bg-[#1f2937]" showSkeleton={true} />
-        : <div style={{ width:imgSize, height:imgSize, borderRadius:8, background:'#111827', display:'flex', alignItems:'center', justifyContent:'center', fontSize:compact?22:28, margin:`0 auto ${compact?4:6}px` }}>{CAT_ICON[item.category||''] || '🍽️'}</div>
-      }
-      <div style={{ fontSize: compact?10:11, fontWeight:700, color: selected ? S.accent : S.text, lineHeight:1.15, marginBottom:2 }}>{item.name}</div>
-      {item.price > 0 && <div style={{ fontSize: compact?10:11, color:'#f59e0b', fontWeight:800 }}>{item.price.toFixed(2)}€</div>}
+    <button
+      onClick={onClick}
+      style={{
+        background: cardBg,
+        border: `${selected ? 2 : 1}px solid ${borderColor}`,
+        borderRadius: borderRadius,
+        padding: `${padV}px ${padH}px`,
+        cursor: 'pointer',
+        textAlign: 'center',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        position: 'relative',
+        width: '100%',
+        boxShadow: selected ? `0 0 12px ${baseTint}44` : 'none',
+        outline: 'none',
+      }}
+      className="pizza-card-hover"
+    >
+      {badge && (
+        <span style={{
+          position: 'absolute',
+          top: 4,
+          left: 4,
+          background: '#ef4444',
+          color: '#fff',
+          fontSize: Math.max(8, Math.round(9 * scale)),
+          fontWeight: 700,
+          padding: '1px 5px',
+          borderRadius: 99
+        }}>
+          {badge}
+        </span>
+      )}
+      {selected && (
+        <span style={{
+          position: 'absolute',
+          top: 4,
+          right: 4,
+          background: baseTint,
+          color: '#fff',
+          fontSize: Math.max(9, Math.round(10 * scale)),
+          fontWeight: 800,
+          width: Math.max(14, Math.round(18 * scale)),
+          height: Math.max(14, Math.round(18 * scale)),
+          borderRadius: 99,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+        }}>
+          ✓
+        </span>
+      )}
+      <div style={{
+        width: imgSize,
+        height: imgSize,
+        borderRadius: borderRadius - 2,
+        overflow: 'hidden',
+        background: '#111827',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: Math.max(4, Math.round(6 * scale)),
+      }}
+      className="pizza-card-img-container"
+      >
+        {img && !imgError ? (
+          <img
+            src={img}
+            alt={item.name}
+            loading="eager"
+            decoding="async"
+            onError={() => setImgError(true)}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        ) : (
+          <div style={{ fontSize: Math.round((compact ? 22 : 28) * scale) }}>
+            {CAT_ICON[item.category || ''] || '🍕'}
+          </div>
+        )}
+      </div>
+      <div style={{
+        fontSize: fontSize,
+        fontWeight: 700,
+        color: selected ? '#fff' : (tint === '#ef4444' ? '#ff6b6b' : tint === '#3b82f6' ? '#60a5fa' : S.text),
+        lineHeight: 1.15,
+        marginBottom: 2,
+        wordBreak: 'normal',
+        overflowWrap: 'break-word',
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}>
+        {item.name}
+      </div>
+      {displayPrice !== undefined && displayPrice > 0 && (
+        <div style={{
+          fontSize: fontSize,
+          color: S.accent,
+          fontWeight: 800,
+          marginTop: 'auto'
+        }}>
+          {displayPrice.toFixed(2)}€
+        </div>
+      )}
     </button>
   );
-}
+}, (prev, next) => {
+  return prev.selected === next.selected &&
+         prev.price === next.price &&
+         prev.item.id === next.item.id &&
+         prev.tint === next.tint &&
+         prev.compact === next.compact &&
+         prev.badge === next.badge &&
+         prev.zoom === next.zoom;
+});
 
 // ── Draggable resize handle (between panels) ──────────────────────────────────
 function ResizeBar({ vertical }: { vertical?: boolean }) {
@@ -187,70 +329,149 @@ type PizzaSizeId = typeof PIZZA_SIZES[number]['id'];
 const BASE_TINT = { tomate:'#ef4444', creme:'#3b82f6' }; // red / blue
 
 // ── Pizza panel ───────────────────────────────────────────────────────────────
-function PizzaPanel({ orderType, onAdd, size, setSize }: { orderType:OrderType; onAdd:(item:any,custom:any,price:number)=>void; size:PizzaSizeId; setSize:(size:PizzaSizeId)=>void }) {
+function PizzaPanel({
+  orderType,
+  onAdd,
+  size,
+  setSize,
+  zoom = 125
+}: {
+  orderType: OrderType;
+  onAdd: (item: any, custom: any, price: number) => void;
+  size: PizzaSizeId;
+  setSize: (size: PizzaSizeId) => void;
+  zoom?: number;
+}) {
   const { data: pizzasTomate = [] } = usePizzasByBase('tomate');
   const { data: pizzasCreme  = [] } = usePizzasByBase('creme');
-  const [sel,  setSel]      = useState<any|null>(null);
-  const [supps,setSupps]    = useState<string[]>([]);
-  const [note, setNote]     = useState('');
+  const [sel, setSel] = useState<any | null>(null);
+  const [supps, setSupps] = useState<string[]>([]);
+  const [note, setNote] = useState('');
 
   const basePrice = PIZZA_SIZES.find(s => s.id === size)!.price;
-  const suppTotal = supps.reduce((s,id) => { const x = cheeseSupplementOptions.find(c=>c.id===id); return s+(x?.price||0); }, 0);
+  const suppTotal = supps.reduce((s, id) => {
+    const x = cheeseSupplementOptions.find(c => c.id === id);
+    return s + (x?.price || 0);
+  }, 0);
   const price = basePrice + suppTotal;
 
-  // ONE long list: tomate (red) first, then creme (blue)
-  const allPizzas = [
-    ...pizzasTomate.map((p:any) => ({ ...p, _base:'tomate' as const })),
-    ...pizzasCreme.map((p:any)  => ({ ...p, _base:'creme'  as const })),
-  ];
-
   const handleAdd = () => {
-    if (!sel) { toast.error('Choisissez une pizza'); return; }
+    if (!sel) {
+      toast.error('Choisissez une pizza');
+      return;
+    }
     const sizeLabel = PIZZA_SIZES.find(s => s.id === size)!.label;
     onAdd(
-      { id:sel.id, name:sel.name, price:basePrice, category:'pizzas', description:'' },
-      { size, sizeLabel, base:sel._base, supplements:supps, note, isMenuMidi: size==='menu_midi' || size==='menu_midi_mega' },
+      { id: sel.id, name: sel.name, price: basePrice, category: 'pizzas', description: '' },
+      { size, sizeLabel, base: sel._base, supplements: supps, note, isMenuMidi: size === 'menu_midi' || size === 'menu_midi_mega' },
       price
     );
-    setSel(null); setSupps([]); setNote('');
+    setSel(null);
+    setSupps([]);
+    setNote('');
   };
 
+  const minWidth = Math.round(95 * (zoom / 100));
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
-      {/* Grid — ONE page: tomate=red tiles, creme=blue tiles */}
-      <div style={{ flex:1, overflow:'auto', padding:'8px 10px' }}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:4 }}>
-          {allPizzas.map((p:any) => (
-            <ProductTile
-              key={`${p._base}-${p.id}`}
-              compact
-              tint={BASE_TINT[p._base]}
-              item={{ ...p, price:basePrice }}
-              selected={sel?.id===p.id && sel?._base===p._base}
-              onClick={()=>setSel((sel?.id===p.id && sel?._base===p._base) ? null : p)}
-            />
-          ))}
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+      {/* Scrollable grid container split into Tomato and Cream base */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        
+        {/* Tomato base base section */}
+        <div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 11,
+            fontWeight: 800,
+            color: '#ef4444',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginBottom: 10,
+            paddingLeft: 4,
+            borderLeft: '3px solid #ef4444',
+            padding: '2px 8px'
+          }}>
+            🍅 Sauce Tomate
+            <span style={{ fontSize: 10, color: S.muted, fontWeight: 500, textTransform: 'none', marginLeft: 'auto' }}>
+              {pizzasTomate.length} Pizzas
+            </span>
+          </div>
+          <div className="grid-fade-in" style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`, gap: 8 }}>
+            {pizzasTomate.map((p: any) => (
+              <ProductTile
+                key={`tomate-${p.id}`}
+                compact
+                tint="#ef4444"
+                item={p}
+                price={basePrice}
+                zoom={zoom}
+                selected={sel?.id === p.id && sel?._base === 'tomate'}
+                onClick={() => setSel((sel?.id === p.id && sel?._base === 'tomate') ? null : { ...p, _base: 'tomate' as const })}
+              />
+            ))}
+          </div>
         </div>
+
+        {/* Cream base base section */}
+        <div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 11,
+            fontWeight: 800,
+            color: '#3b82f6',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginBottom: 10,
+            paddingLeft: 4,
+            borderLeft: '3px solid #3b82f6',
+            padding: '2px 8px'
+          }}>
+            🥛 Crème Fraîche
+            <span style={{ fontSize: 10, color: S.muted, fontWeight: 500, textTransform: 'none', marginLeft: 'auto' }}>
+              {pizzasCreme.length} Pizzas
+            </span>
+          </div>
+          <div className="grid-fade-in" style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`, gap: 8 }}>
+            {pizzasCreme.map((p: any) => (
+              <ProductTile
+                key={`creme-${p.id}`}
+                compact
+                tint="#3b82f6"
+                item={p}
+                price={basePrice}
+                zoom={zoom}
+                selected={sel?.id === p.id && sel?._base === 'creme'}
+                onClick={() => setSel((sel?.id === p.id && sel?._base === 'creme') ? null : { ...p, _base: 'creme' as const })}
+              />
+            ))}
+          </div>
+        </div>
+
       </div>
 
       {/* Supplements + Add */}
-      <div style={{ background:'#111827', borderTop:`1px solid ${S.border}`, padding:'10px 14px', flexShrink:0 }}>
+      <div style={{ background: '#111827', borderTop: `1px solid ${S.border}`, padding: '10px 14px', flexShrink: 0 }}>
         {sel && (
           <>
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:8 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
               {cheeseSupplementOptions.map(s => (
-                <Chip key={s.id} label={s.name} extra={`+${s.price}€`} active={supps.includes(s.id)} onClick={()=>setSupps(p=>p.includes(s.id)?p.filter(x=>x!==s.id):[...p,s.id])} />
+                <Chip key={s.id} label={s.name} extra={`+${s.price}€`} active={supps.includes(s.id)} onClick={() => setSupps(p => p.includes(s.id) ? p.filter(x => x !== s.id) : [...p, s.id])} />
               ))}
             </div>
-            <input value={note} onChange={e=>setNote(e.target.value)} placeholder="Note..." style={{...S.input, marginBottom:8}} />
+            <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note..." style={{ ...S.input, marginBottom: 8 }} />
           </>
         )}
         <button onClick={handleAdd} disabled={!sel} style={{
-          width:'100%', padding:'9px', borderRadius:9, border:'none',
+          width: '100%', padding: '9px', borderRadius: 9, border: 'none',
           background: sel ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : '#1f2937',
-          color: sel ? '#000' : '#374151', fontSize:13, fontWeight:800, cursor: sel?'pointer':'not-allowed',
+          color: sel ? '#000' : '#374151', fontSize: 13, fontWeight: 800, cursor: sel ? 'pointer' : 'not-allowed',
         }}>
-          {sel ? `➕ ${sel.name} ${PIZZA_SIZES.find(s=>s.id===size)!.label} — ${price.toFixed(2)}€` : 'Sélectionnez une pizza'}
+          {sel ? `➕ ${sel.name} ${PIZZA_SIZES.find(s => s.id === size)!.label} — ${price.toFixed(2)}€` : 'Sélectionnez une pizza'}
         </button>
       </div>
     </div>
@@ -291,7 +512,7 @@ function CustomizablePanel({ categorySlug, title, onAdd }: { categorySlug:string
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
       {/* Product grid */}
       <div style={{ flex:'0 0 auto', padding:'12px 14px', borderBottom:`1px solid ${S.border}`, overflow:'auto', maxHeight:220 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(95px,1fr))', gap:8 }}>
+        <div className="grid-fade-in" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(95px,1fr))', gap:8 }}>
           {active.map((p:any) => <ProductTile key={p.id} item={{...p, price:p.base_price}} selected={sel?.id===p.id} onClick={()=>setSel(sel?.id===p.id?null:p)} />)}
         </div>
       </div>
@@ -990,7 +1211,7 @@ function SimplePanel({ categorySlug, title, onAdd }: { categorySlug:string; titl
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
       <div style={{ flex:1, overflow:'auto', padding:'12px 14px' }}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))', gap:8 }}>
+        <div className="grid-fade-in" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))', gap:8 }}>
           {products.map((p:any) => <ProductTile key={p.id} item={p} selected={sel?.id===p.id} onClick={()=>{setSel(sel?.id===p.id?null:p);setQty(1);}} />)}
         </div>
       </div>
@@ -2218,6 +2439,19 @@ function POSContent() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [pizzaSize, setPizzaSize] = useState<PizzaSizeId>('senior');
+  const [pizzaZoom, setPizzaZoom] = useState(() => {
+    try {
+      return Number(localStorage.getItem('pos-pizza-zoom')) || 125;
+    } catch {
+      return 125;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('pos-pizza-zoom', String(pizzaZoom));
+    } catch {}
+  }, [pizzaZoom]);
   const [mapboxToken, setMapboxToken] = useState('');
   const [incomingCall, setIncomingCall] = useState<{ phone: string; name: string | null } | null>(null);
   const leftRef = useRef<ImperativePanelHandle>(null);
@@ -2286,15 +2520,33 @@ function POSContent() {
 
   // Find customer by phone in previous orders and pre-fill details
   const searchClientByPhone = async (phoneNumber: string) => {
-    const cleanPhone = phoneNumber.trim();
+    const cleanPhone = phoneNumber.trim().replace(/\s+/g, '');
     if (cleanPhone.length < 8) return;
+
+    // Generate alternate format for French numbers (e.g. 0612345678 <-> +33612345678)
+    let alternatePhone = cleanPhone;
+    if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
+      alternatePhone = '+33' + cleanPhone.substring(1);
+    } else if (cleanPhone.startsWith('+33') && cleanPhone.length === 12) {
+      alternatePhone = '0' + cleanPhone.substring(3);
+    } else if (cleanPhone.startsWith('0033') && cleanPhone.length === 13) {
+      alternatePhone = '0' + cleanPhone.substring(4);
+    }
+
     try {
-      const { data } = await supabase
+      const query = supabase
         .from('orders')
         .select('customer_name, customer_address, customer_notes')
-        .eq('customer_phone', cleanPhone)
         .order('created_at', { ascending: false })
         .limit(1);
+
+      if (alternatePhone !== cleanPhone) {
+        query.or(`customer_phone.eq.${cleanPhone},customer_phone.eq.${alternatePhone}`);
+      } else {
+        query.eq('customer_phone', cleanPhone);
+      }
+
+      const { data } = await query;
 
       if (data && data.length > 0) {
         const lastOrder = data[0];
@@ -2308,6 +2560,8 @@ function POSContent() {
           setNotes(lastOrder.customer_notes);
         }
         toast.success(`Client trouvé : ${lastOrder.customer_name || cleanPhone}`, { duration: 4000 });
+      } else {
+        toast.info(`Nouveau client ou historique indisponible`, { duration: 3000 });
       }
     } catch (err) {
       console.error('Error finding client by phone:', err);
@@ -2367,7 +2621,7 @@ function POSContent() {
         <div style={{ fontSize:13 }}>Choisissez une catégorie à gauche</div>
       </div>
     );
-    if (activeCategory === 'pizzas') return <PizzaPanel orderType={orderType} onAdd={handleAdd} size={pizzaSize} setSize={setPizzaSize} />;
+    if (activeCategory === 'pizzas') return <PizzaPanel orderType={orderType} onAdd={handleAdd} size={pizzaSize} setSize={setPizzaSize} zoom={pizzaZoom} />;
     // Build-it wizards (meat → size): Soufflet, Makloub, Mlawi, Tacos, Panini
     if (WIZARD_MAP[activeCategory]) return <WizardPanel categorySlug={activeCategory} onAdd={handleAdd} />;
     // Sandwich: pick sandwich → sauce + crudités (no meat)
@@ -2469,14 +2723,19 @@ function POSContent() {
             {categories.filter(cat => cat.slug !== 'salades').map(cat => {
               const active = activeCategory === cat.slug;
               return (
-                <button key={cat.id} onClick={() => setActiveCat(active ? null : cat.slug)} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, transition: 'all .12s',
-                  background: active ? S.accent + '22' : S.card,
-                  color:      active ? S.accent     : '#9ca3af',
-                  outline:    active ? `1px solid ${S.accent}44` : 'none',
-                  textAlign: 'left',
-                }}>
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCat(active ? null : cat.slug)}
+                  className={`pos-category-btn ${active ? 'active' : ''}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, transition: 'all .12s',
+                    background: active ? S.accent + '22' : S.card,
+                    color:      active ? S.accent     : '#9ca3af',
+                    outline:    active ? `1px solid ${S.accent}44` : 'none',
+                    textAlign: 'left',
+                  }}
+                >
                   <span style={{ fontSize: 15 }}>{CAT_ICON[cat.slug] || '🍽️'}</span>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
                 </button>
@@ -2487,9 +2746,10 @@ function POSContent() {
           {/* Size Selector Section (only visible when pizzas is active) */}
           {activeCategory === 'pizzas' && (
             <>
+              {/* Pizza Format Selector */}
               <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'2px 0' }} />
               <div style={{ fontSize: 10, fontWeight: 800, color: S.muted, textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 4 }}>
-                Tailles Pizza
+                Format Pizza
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {PIZZA_SIZES.map((s) => {
@@ -2509,6 +2769,75 @@ function POSContent() {
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Pizza Cards Zoom Slider */}
+              <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'2px 0' }} />
+              <div style={{ fontSize: 10, fontWeight: 800, color: S.muted, textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 4, marginBottom: 4 }}>
+                Tailles Pizza
+              </div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                background: '#111827',
+                border: `1px solid ${S.border}`,
+                borderRadius: 99,
+                padding: '6px 12px',
+                justifyContent: 'space-between',
+              }}>
+                <button
+                  onClick={() => setPizzaZoom(z => Math.max(80, z - 5))}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#9ca3af',
+                    fontSize: 16,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    padding: '0 4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  −
+                </button>
+                <input
+                  type="range"
+                  min="80"
+                  max="150"
+                  step="5"
+                  value={pizzaZoom}
+                  onChange={(e) => setPizzaZoom(Number(e.target.value))}
+                  style={{
+                    flex: 1,
+                    accentColor: S.accent,
+                    height: 4,
+                    borderRadius: 2,
+                    background: '#374151',
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={() => setPizzaZoom(z => Math.min(150, z + 5))}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#9ca3af',
+                    fontSize: 16,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    padding: '0 4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  +
+                </button>
+                <span style={{ fontSize: 11, fontWeight: 800, color: S.accent, minWidth: 32, textAlign: 'right' }}>
+                  {pizzaZoom}%
+                </span>
               </div>
             </>
           )}

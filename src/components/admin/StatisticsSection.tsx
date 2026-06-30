@@ -12,6 +12,18 @@ import {
   Pizza,
   ShoppingBag
 } from 'lucide-react';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from 'recharts';
 
 interface StatisticsSectionProps {
   orders: Order[];
@@ -67,6 +79,23 @@ export function StatisticsSection({ orders }: StatisticsSectionProps) {
     const totalRevenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
     const avgOrderValue = completedOrders.length > 0 ? totalRevenue / completedOrders.length : 0;
 
+    const hourData = Object.entries(ordersByHour).map(([hour, count]) => ({
+      hour: `${hour}h`,
+      count
+    }));
+
+    const paymentData = [
+      { name: 'En ligne', value: paymentMethods.en_ligne, color: '#10b981' },
+      { name: 'Carte Bancaire', value: paymentMethods.cb, color: '#3b82f6' },
+      { name: 'Espèces', value: paymentMethods.especes, color: '#f59e0b' },
+    ].filter(d => d.value > 0);
+
+    const orderTypesData = [
+      { name: 'Livraison', value: ordersByType.livraison, color: '#3b82f6' },
+      { name: 'À emporter', value: ordersByType.emporter, color: '#f97316' },
+      { name: 'Sur place', value: ordersByType.surplace, color: '#10b981' },
+    ];
+
     return {
       totalOrders: completedOrders.length,
       totalRevenue,
@@ -74,12 +103,13 @@ export function StatisticsSection({ orders }: StatisticsSectionProps) {
       topItems,
       paymentMethods,
       ordersByHour,
+      ordersByHourData: hourData,
+      paymentData,
+      orderTypesData,
       ordersByType,
       peakHours,
     };
   }, [orders]);
-
-  const maxHourOrders = Math.max(...Object.values(stats.ordersByHour));
 
   return (
     <div className="space-y-6">
@@ -133,79 +163,126 @@ export function StatisticsSection({ orders }: StatisticsSectionProps) {
         </Card>
 
         {/* Payment Methods */}
-        <Card className="p-4">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-amber-500" />
-            Moyens de paiement
-          </h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-green-500" />
-                <span>Paiement en ligne</span>
-              </div>
-              <Badge className="bg-green-500">{stats.paymentMethods.en_ligne}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-blue-500" />
-                <span>Carte bancaire</span>
-              </div>
-              <Badge className="bg-blue-500">{stats.paymentMethods.cb}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Banknote className="w-4 h-4 text-amber-500" />
-                <span>Espèces</span>
-              </div>
-              <Badge className="bg-amber-500">{stats.paymentMethods.especes}</Badge>
-            </div>
+        <Card className="p-4 flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-amber-500" />
+              Moyens de paiement
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">Répartition du volume de commandes</p>
+          </div>
+          <div className="h-48 w-full flex items-center justify-center">
+            {stats.paymentData.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Aucune donnée</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stats.paymentData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={70}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {stats.paymentData.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    formatter={(value: any) => [`${value} commandes`, 'Volume']}
+                    contentStyle={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 8, color: '#f3f4f6' }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
 
         {/* Order Types */}
-        <Card className="p-4">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <ShoppingBag className="w-5 h-5 text-amber-500" />
-            Types de commandes
-          </h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span>🚗 Livraison</span>
-              <Badge className="bg-blue-500">{stats.ordersByType.livraison}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>🛍️ À emporter</span>
-              <Badge className="bg-orange-500">{stats.ordersByType.emporter}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>🍽️ Sur place</span>
-              <Badge className="bg-green-500">{stats.ordersByType.surplace}</Badge>
-            </div>
+        <Card className="p-4 flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5 text-amber-500" />
+              Types de commandes
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">Répartition par canal de distribution</p>
+          </div>
+          <div className="space-y-4 my-auto">
+            {stats.orderTypesData.map((type) => {
+              const total = stats.totalOrders || 1;
+              const pct = ((type.value / total) * 100).toFixed(0);
+              return (
+                <div key={type.name} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">{type.name}</span>
+                    <span className="text-muted-foreground">{type.value} ({pct}%)</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ 
+                        width: `${pct}%`,
+                        backgroundColor: type.color 
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
 
         {/* Orders by Hour Chart */}
-        <Card className="p-4">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Card className="p-4 col-span-1 md:col-span-2">
+          <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
             <Clock className="w-5 h-5 text-amber-500" />
             Commandes par heure
           </h3>
-          <div className="flex items-end gap-1 h-32">
-            {Object.entries(stats.ordersByHour).map(([hour, count]) => (
-              <div key={hour} className="flex-1 flex flex-col items-center">
-                <div 
-                  className="w-full bg-amber-500 rounded-t transition-all"
-                  style={{ 
-                    height: maxHourOrders > 0 ? `${(count / maxHourOrders) * 100}%` : '0%',
-                    minHeight: count > 0 ? '4px' : '0px'
-                  }}
+          <p className="text-xs text-muted-foreground mb-4">Activité et pics de commandes sur la journée</p>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={stats.ordersByHourData}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis 
+                  dataKey="hour" 
+                  stroke="#6b7280" 
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
                 />
-                {parseInt(hour) % 3 === 0 && (
-                  <span className="text-[10px] text-muted-foreground mt-1">{hour}h</span>
-                )}
-              </div>
-            ))}
+                <YAxis 
+                  stroke="#6b7280" 
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  allowDecimals={false}
+                />
+                <RechartsTooltip
+                  contentStyle={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 8, color: '#f3f4f6' }}
+                  labelStyle={{ fontWeight: 'bold', color: '#f59e0b' }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="count" 
+                  name="Commandes"
+                  stroke="#f59e0b" 
+                  strokeWidth={2}
+                  fillOpacity={1} 
+                  fill="url(#colorCount)" 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </Card>
       </div>

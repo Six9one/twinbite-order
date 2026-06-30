@@ -1216,3 +1216,134 @@
     font-size: 16px !important;
   }
 }
+
+/* Pizza card hover micro-animations */
+.pizza-card-hover {
+  will-change: transform, box-shadow;
+}
+
+.pizza-card-hover:hover {
+  transform: translateY(-2px) scale(1.02);
+  filter: brightness(1.08);
+}
+
+.pizza-card-hover:active {
+  transform: translateY(0) scale(0.97) !important;
+}
+
+.pizza-card-hover:hover .pizza-card-img-container img {
+  transform: scale(1.08);
+}
+
+.pizza-card-img-container img {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+/* ========================================
+   POS PREMIUM MODERN THEME ENHANCEMENTS
+   ======================================== */
+
+.pos-root {
+  font-family: 'Comfortaa', 'Segoe UI', system-ui, sans-serif !important;
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sidebar styling overrides */
+.pos-category-btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pos-category-btn:hover {
+  transform: translateX(4px);
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.pos-category-btn:active {
+  transform: translateX(2px) scale(0.98);
+}
+
+.pos-category-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15%;
+  height: 70%;
+  width: 4px;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  border-radius: 0 4px 4px 0;
+}
+
+.pos-category-btn.active::before {
+  opacity: 1;
+}
+
+/* Style range slider (pizza cards zoom slider) */
+.pos-root input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #1f2937;
+  border-radius: 99px;
+  height: 6px;
+  outline: none;
+  transition: background 0.2s ease;
+}
+
+.pos-root input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f97316;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.pos-root input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.3);
+  background: #fb923c;
+}
+
+/* Beautiful styling for the chips / supplement selectors */
+.pos-chip {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pos-chip:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.pos-chip:active {
+  transform: translateY(0) scale(0.96);
+}
+
+/* Add custom subtle active pulse for selected chips */
+@keyframes active-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(249, 115, 22, 0.2); }
+  50% { box-shadow: 0 0 10px rgba(249, 115, 22, 0.5); }
+}
+
+.active-glow-effect {
+  animation: active-glow 2s infinite ease-in-out;
+}
+
+/* Smooth fade-in for product grid */
+.grid-fade-in {
+  animation: gridFade 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes gridFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
