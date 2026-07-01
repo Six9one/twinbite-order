@@ -292,6 +292,51 @@ async function savePrintedOrders() {
 
 const printedOrders = loadPrintedOrders();
 
+// Check and mark order as printed globally in Supabase to prevent duplicate prints across multiple print servers
+async function checkAndMarkPrintedGlobally(orderId) {
+    try {
+        const { data, error } = await supabase
+            .from('admin_settings')
+            .select('setting_value')
+            .eq('setting_key', 'printed_order_ids')
+            .single();
+
+        let printedIds = [];
+        if (!error && data?.setting_value && Array.isArray(data.setting_value.ids)) {
+            printedIds = data.setting_value.ids;
+        }
+
+        // If already printed, return true
+        if (printedIds.includes(orderId)) {
+            return true;
+        }
+
+        // Add to list (keep last 200 IDs to prevent table size bloating)
+        printedIds.push(orderId);
+        if (printedIds.length > 200) {
+            printedIds.shift();
+        }
+
+        // Save back to database
+        const { error: upsertError } = await supabase
+            .from('admin_settings')
+            .upsert({
+                setting_key: 'printed_order_ids',
+                setting_value: { ids: printedIds },
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'setting_key' });
+
+        if (upsertError) {
+            console.error('⚠️ Failed to save global printed orders status:', upsertError.message);
+        }
+
+        return false;
+    } catch (err) {
+        console.error('⚠️ Global printed orders check failed:', err.message);
+        return false; // Fallback to printing in case of database error
+    }
+}
+
 let lastProcessedTestTimestamp = Date.now();
 
 // Execute a test print locally on the print-server
@@ -1504,6 +1549,9 @@ async function printRawWithRetry(ticketData, label) {
 // Ticket 1 → Ethernet cuisine : formatKitchenTicket (disabled for now)
 // Ticket 2 → Star TSP100 USB  : formatCounterTicket (reçu complet client)
 async function printDualTickets(order) {
+    // Refresh settings dynamically right before formatting/printing
+    await fetchTicketSettings();
+
     let kitchenPromise = Promise.resolve(false);
     let counterPromise = Promise.resolve(false);
 
@@ -1552,7 +1600,10 @@ const processingOrders = new Set();
 
 // Handle new order. `force` = bypass the printed cache (used by manual recovery).
 async function handleNewOrder(order, force = false) {
-    // Skip if already printed (unless forced)
+    // Fetch latest ticket settings from Supabase in real-time right before formatting/printing
+    await fetchTicketSettings();
+
+    // Skip if already printed locally (unless forced)
     if (!force && printedOrders.has(order.id)) {
         return; // already handled — do NOT reprint
     }
@@ -1560,6 +1611,22 @@ async function handleNewOrder(order, force = false) {
     if (processingOrders.has(order.id)) {
         return;
     }
+
+    if (!force) {
+        // Randomized delay (0-500ms) to resolve race condition between multiple print servers
+        await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 500)));
+
+        // Check global database cache to prevent duplication across multiple print servers
+        const alreadyPrintedGlobally = await checkAndMarkPrintedGlobally(order.id);
+        if (alreadyPrintedGlobally) {
+            console.log(`🌍 Order #${order.order_number} already printed globally (skipped on this server)`);
+            // Sync local map
+            printedOrders.set(order.id, Date.now());
+            savePrintedOrders();
+            return;
+        }
+    }
+
     processingOrders.add(order.id);
 
     // ── MARQUER IMMÉDIATEMENT pour éviter la duplication ──────────────────────
