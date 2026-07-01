@@ -521,14 +521,18 @@ export default function TVDashboard() {
           playOrderSound();
         }
 
-        // Auto print trigger
+        // Auto print trigger (skip if in Electron, as the print-server automatically handles auto-printing)
         if (autoPrintRef.current) {
-          if (useNetworkPrintRef.current) {
-            printOrder(newestOrder);
-            setLastPrintTime(new Date());
+          if (typeof window !== 'undefined' && 'twinHub' in window) {
+            console.log('🖨️ Skipping TV auto-print because print-server is active in Electron');
           } else {
-            printOrderTicket(newestOrder);
-            setLastPrintTime(new Date());
+            if (useNetworkPrintRef.current) {
+              printOrder(newestOrder);
+              setLastPrintTime(new Date());
+            } else {
+              printOrderTicket(newestOrder);
+              setLastPrintTime(new Date());
+            }
           }
         }
       }

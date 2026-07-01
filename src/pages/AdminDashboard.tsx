@@ -285,11 +285,15 @@ export default function AdminDashboard() {
               });
             }
 
-            // Auto-print if enabled
+            // Auto-print if enabled (skip browser print if in Electron, as the print server handles it)
             if (autoPrintRef.current) {
-              console.log('🖨️ Auto-print enabled, printing order:', newOrder.order_number);
-              autoPrintOrderTicket(newOrder, ticketSettingsRef.current);
-              toast.success(`🖨️ Impression automatique: ${newOrder.order_number}`);
+              if (typeof window !== 'undefined' && 'twinHub' in window) {
+                console.log('🖨️ Skipping browser auto-print because print-server is active in Electron');
+              } else {
+                console.log('🖨️ Auto-print enabled, printing order:', newOrder.order_number);
+                autoPrintOrderTicket(newOrder, ticketSettingsRef.current);
+                toast.success(`🖨️ Impression automatique: ${newOrder.order_number}`);
+              }
             }
           }
         }

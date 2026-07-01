@@ -99,6 +99,32 @@ function getQRCodeString(url) {
     );
 }
 
+// Generates native Star Line Mode QR code command string.
+function getStarQRCodeString(url, size = 120) {
+    const setModel = ESC + GS + 'yS0' + '\x02' + '\x00'; // Model 2
+    const setErrCorr = ESC + GS + 'yS1' + '\x00'; // L (7%)
+    
+    // Map size (60-200) to cellSize (3-6)
+    const cellSize = Math.max(3, Math.min(6, Math.floor(size / 30)));
+    const setCellSize = ESC + GS + 'yS2' + String.fromCharCode(cellSize);
+    
+    const len = url.length;
+    const nL = String.fromCharCode(len & 0xFF);
+    const nH = String.fromCharCode((len >> 8) & 0xFF);
+    const storeData = ESC + GS + 'yD1' + '\x00' + nL + nH + url;
+    const printQR = ESC + GS + 'yP';
+    
+    return (
+        ESC + '\x1D' + 'a' + '1' + // center align
+        setModel +
+        setErrCorr +
+        setCellSize +
+        storeData +
+        printQR +
+        ESC + '\x1D' + 'a' + '0'   // reset left align
+    );
+}
+
 
 
 // ── Get QR URL from template section settings (fallback to default review URL)
@@ -754,8 +780,21 @@ async function formatDynamicTicket(order, template) {
             case 'qrcode': {
                 const qrLabel = s.qrCodeLabel || 'Laissez-nous un avis !';
                 const qrUrl   = (s.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
+                const qrSize  = s.qrCodeSize || 120;
                 visualItems.push({ text: qrLabel + '\n', align: 'center', bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
-                visualItems.push({ text: qrUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
+                
+                if (isKitchen) {
+                    // Dot-matrix kitchen printer cannot print barcodes or graphics, use text fallback
+                    visualItems.push({ text: qrUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
+                } else if (isCounter) {
+                    // Star TSP100 supports native QR code commands in Star Line Mode
+                    const nativeStarQr = getStarQRCodeString(qrUrl, qrSize);
+                    visualItems.push({ buffer: Buffer.from(nativeStarQr, 'binary') });
+                } else {
+                    // Standard ESC/POS QR code (fully offline & native)
+                    const nativeEscPosQr = getQRCodeString(qrUrl);
+                    visualItems.push({ buffer: Buffer.from(nativeEscPosQr, 'binary') });
+                }
                 visualItems.push({ text: '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
                 break;
             }
@@ -1256,7 +1295,9 @@ async function formatCounterTicketClassic(order) {
 
     // Build prefix text (already in t) + close the text portion
     t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + _qrLabel2 + '\n' + ESCPOS_COUNTER.BOLD_OFF;
-    t += ESCPOS_COUNTER.CENTER + _qrUrl2 + '\n';
+
+    // Generate native Star Line Mode QR code binary string
+    const nativeStarQr = getStarQRCodeString(_qrUrl2, _qrSize2);
 
     // Build footer text
     let tAfterQr = ESCPOS_COUNTER.CENTER;
@@ -1270,6 +1311,7 @@ async function formatCounterTicketClassic(order) {
     // Build as buffer
     const cb = new TicketBufferBuilder();
     cb.addText(t); 
+    cb.addBuffer(Buffer.from(nativeStarQr, 'binary'));
     cb.addText(DASH_LINE);
     cb.addText(tAfterQr);
 
@@ -2941,15 +2983,18 @@ function setupHttpServer() {
             const _qrSec3 = (ticketSettings?.counterTemplate?.sections || []).find(s => s.id === 'qrcode');
             const _qrUrl3 = (_qrSec3?.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
             const _qrLabel3 = _qrSec3?.qrCodeLabel || 'Laissez-nous un avis !';
+            const _qrSize3 = _qrSec3?.qrCodeSize || 120;
             
             t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + _qrLabel3 + '\n' + ESCPOS_COUNTER.BOLD_OFF;
-            t += ESCPOS_COUNTER.CENTER + _qrUrl3 + '\n';
-            t += DASH_LINE;
+
+            const nativeStarQr = getStarQRCodeString(_qrUrl3, _qrSize3);
 
             let tAfter = '\n' + ESCPOS_COUNTER.PARTIAL_CUT;
 
             const cb = new TicketBufferBuilder();
             cb.addText(convertToCP1252(t));
+            cb.addBuffer(Buffer.from(nativeStarQr, 'binary'));
+            cb.addText(convertToCP1252(DASH_LINE));
             cb.addText(convertToCP1252(tAfter));
 
             await sendToUSBPrinter(cb.toBuffer(), COUNTER_PRINTER_NAME);
@@ -2977,13 +3022,20 @@ function setupHttpServer() {
         }
     });
 
-    app.listen(HTTP_PORT, '0.0.0.0', () => {
+    const server = app.listen(HTTP_PORT, '0.0.0.0', () => {
         console.log(`🌐 HTTP server listening on port ${HTTP_PORT}`);
         console.log(`   HACCP endpoint: http://localhost:${HTTP_PORT}/print-haccp`);
         console.log(`   Date labels: http://localhost:${HTTP_PORT}/print-date-label`);
         console.log(`   Reprint endpoint: POST http://localhost:${HTTP_PORT}/reprint/:orderNumber`);
         console.log(`   Invoice endpoint: POST http://localhost:${HTTP_PORT}/print-invoice`);
         console.log(`   Recovery endpoint: POST http://localhost:${HTTP_PORT}/recover-prints`);
+    });
+
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.error(`💥 PORT ${HTTP_PORT} ALREADY IN USE. EXITING PROCESS TO PREVENT DUPLICATES.`);
+            process.exit(1);
+        }
     });
 }
 
