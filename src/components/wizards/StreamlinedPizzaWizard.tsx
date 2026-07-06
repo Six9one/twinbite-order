@@ -402,12 +402,14 @@ function PizzaCard({ pizza, count, price, onAdd, onRemove, onCustomize }: PizzaC
         {/* Pizza Thumbnail image */}
         <div className="w-20 h-20 rounded-full overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center border border-muted-foreground/10 shadow-sm">
           {imageUrl ? (
-            <OptimizedImage
-              src={imageUrl}
-              alt={pizza.name}
-              className="w-full h-full object-cover"
-              containerClassName="w-full h-full"
-            />
+            <div className="w-full h-full animate-spin-slow">
+              <OptimizedImage
+                src={imageUrl}
+                alt={pizza.name}
+                className="w-full h-full object-cover"
+                containerClassName="w-full h-full"
+              />
+            </div>
           ) : (
             <Pizza className="w-8 h-8 text-muted-foreground/30" />
           )}
