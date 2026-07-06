@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useRef, memo } from 'react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
-import { useCreateOrder, generateOrderNumber, useOrders } from '@/hooks/useSupabaseData';
+import { useCreateOrder, generateOrderNumber, useOrders, useDrinks } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
 import { useCategories, useProductsByCategory } from '@/hooks/useProducts';
 import { usePizzasByBase } from '@/hooks/useProducts';
@@ -8,7 +8,7 @@ import { useMeatOptions, useSauceOptions, useSupplementOptions, useGarnitureOpti
 import { useSandwichTypes } from '@/hooks/useSandwiches';
 import { calculateTVA, applyPizzaPromotions } from '@/utils/promotions';
 import { pizzaPrices, cheeseSupplementOptions, menuOptionPrices } from '@/data/menu';
-import { wizardSizePrices } from '@/data/pricing';
+import { wizardSizePrices, supplementPrices } from '@/data/pricing';
 import { crepes, gaufres, boissons, frites as staticFrites, croques as staticCroques } from '@/data/menu';
 import { Panel, PanelGroup, PanelResizeHandle, ImperativePanelHandle } from 'react-resizable-panels';
 import { toast } from 'sonner';
@@ -601,7 +601,7 @@ const WIZ_CFG: Record<WizType, { maxMeats:number; garniture:boolean; supplements
   tacos:   { maxMeats:3, garniture:false, supplements:true,  menu:true,  crudite:false }, // frites incluses, pas de garniture
   panini:  { maxMeats:1, garniture:false, supplements:true,  menu:true,  crudite:false }, // meat + sauce + suppléments + option frites/boisson
 };
-const FREE_SAUCES = 2, EXTRA_SAUCE = 0.30;
+const FREE_SAUCES = supplementPrices.freeSaucesCount, EXTRA_SAUCE = supplementPrices.extraSauce;
 
 // Small option tile with image/emoji (compact, dark)
 function OptTile({ name, img, emoji, selected, isDefaultRemovable, price, disabled, onClick }:
@@ -941,12 +941,12 @@ const TX_SNACKS:TxProduct[] = [
   { id:'onionrings', name:'Onion Rings',  unit_price:1.20, image_url:null, category:'snack'  },
 ];
 const TX_FRITES:TxProduct[] = [
-  { id:'petite-barquette', name:'Petite Barquette', unit_price:3.00, image_url:null, category:'frites' },
-  { id:'grande-barquette', name:'Grande Barquette', unit_price:5.00, image_url:null, category:'frites' },
+  { id:'petite-barquette', name:'Petite Barquette', unit_price:2.50, image_url:null, category:'frites' },
+  { id:'grande-barquette', name:'Grande Barquette', unit_price:4.00, image_url:null, category:'frites' },
 ];
 const TX_CROQUES:TxProduct[] = [
-  { id:'croque-monsieur', name:'Croque Monsieur', unit_price:3.00, image_url:null, category:'croque' },
-  { id:'croque-madame',   name:'Croque Madame',   unit_price:4.00, image_url:null, category:'croque' },
+  { id:'croque-monsieur', name:'Croque Monsieur', unit_price:4.50, image_url:null, category:'croque' },
+  { id:'croque-madame',   name:'Croque Madame',   unit_price:5.00, image_url:null, category:'croque' },
 ];
 
 function txGroupOf(name:string):'A'|'B' {
@@ -1124,26 +1124,36 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
 const BOISSON_ITEMS = [
   { id:'canette',   name:'Canette au choix',   price:1.50, hasNote:true  },
   { id:'bouteille', name:'Grande Bouteille',   price:3.50, hasNote:true  },
-  { id:'eau-mini',  name:'Eau Mini (50cl)',     price:1.00, hasNote:false },
+  { id:'eau-mini',  name:'Eau Mini (50cl)',     price:1.50, hasNote:false },
   { id:'eau-grand', name:'Eau Grand (1.5L)',    price:1.50, hasNote:false },
 ];
 function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void }) {
+  const { data: dbDrinks } = useDrinks();
   const [qtys,  setQtys]  = useState<Record<string,number>>({});
   const [notes, setNotes] = useState<Record<string,string>>({});
+
+  const displayDrinks = dbDrinks && dbDrinks.length > 0
+    ? dbDrinks.map(d => ({
+        id: d.id,
+        name: d.name,
+        price: Number(d.price),
+        hasNote: !d.name.toLowerCase().includes('eau')
+      }))
+    : BOISSON_ITEMS;
 
   const changeQty = (id:string, d:number) =>
     setQtys(p => { const n=Math.max(0,(p[id]||0)+d); const r={...p}; if(n===0) delete r[id]; else r[id]=n; return r; });
 
-  const total = BOISSON_ITEMS.reduce((s,b)=>s+(qtys[b.id]||0)*b.price, 0);
+  const total = displayDrinks.reduce((s,b)=>s+(qtys[b.id]||0)*b.price, 0);
   const hasItems = Object.values(qtys).some(q=>q>0);
 
   const handleAdd = () => {
     if (!hasItems) { toast.error('Sélectionnez au moins une boisson'); return; }
-    const lines = BOISSON_ITEMS
+    const lines = displayDrinks
       .filter(b=>(qtys[b.id]||0)>0)
       .map(b=>{ const n=notes[b.id]; return `${qtys[b.id]}x ${b.name}${n?` (${n})`:''}`; });
     // Add each boisson as separate cart item for clarity
-    BOISSON_ITEMS.filter(b=>(qtys[b.id]||0)>0).forEach(b=>{
+    displayDrinks.filter(b=>(qtys[b.id]||0)>0).forEach(b=>{
       const q = qtys[b.id]; const n = notes[b.id];
       onAdd(
         { id:`boisson-${b.id}-${Date.now()}`, name:b.name+(n?` (${n})`:''), price:b.price, category:'boissons', description:'' },
@@ -1157,7 +1167,7 @@ function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
       <div style={{ flex:1, overflow:'auto', padding:'10px 14px' }}>
-        {BOISSON_ITEMS.map(b=>{
+        {displayDrinks.map(b=>{
           const q = qtys[b.id]||0;
           return (
             <div key={b.id} style={{ background:S.card, borderRadius:9, padding:'8px 12px', marginBottom:8, border:`1px solid ${q>0?S.accent:S.border}` }}>
@@ -1174,7 +1184,7 @@ function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void
                 <input
                   value={notes[b.id]||''}
                   onChange={e=>setNotes(p=>({...p,[b.id]:e.target.value}))}
-                  placeholder={b.id==='canette'?'Ex: Coca-Cola, Fanta, Sprite…':'Ex: Coca 1.5L, eau gazeuse…'}
+                  placeholder={b.name.toLowerCase().includes('canette')?'Ex: Coca-Cola, Fanta, Sprite…':'Ex: Coca 1.5L, eau gazeuse…'}
                   style={{ ...S.input, fontSize:11, padding:'5px 8px', marginTop:2 }}
                 />
               )}

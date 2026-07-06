@@ -88,9 +88,14 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
 
   // ─── Add/Remove Pizza Actions ───
   const handleQuickAdd = (pizza: MenuItem) => {
+    // When isMenuMidi, use 'menu_midi' / 'menu_midi_mega' size IDs so that
+    // OrderContext and promotions.ts calculate the correct price.
+    const sizeId = selectedIsMenuMidi
+      ? (selectedSize === 'mega' ? 'menu_midi_mega' : 'menu_midi')
+      : selectedSize;
     const customization: PizzaCustomization = {
       base: activeBase,
-      size: selectedSize,
+      size: sizeId,
       isMenuMidi: selectedIsMenuMidi,
     };
     addToCart(pizza, 1, customization, currentPrice);
@@ -135,9 +140,14 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
   const handleSaveCustomization = () => {
     if (!customizingPizza) return;
 
+    // When isMenuMidi, use 'menu_midi' / 'menu_midi_mega' size IDs so that
+    // OrderContext and promotions.ts calculate the correct price.
+    const sizeId = selectedIsMenuMidi
+      ? (selectedSize === 'mega' ? 'menu_midi_mega' : 'menu_midi')
+      : selectedSize;
     const customization: PizzaCustomization = {
       base: activeBase,
-      size: selectedSize,
+      size: sizeId,
       isMenuMidi: selectedIsMenuMidi,
       note: customNote.trim() || undefined,
       supplements: customSupplements.length > 0 ? customSupplements : undefined,

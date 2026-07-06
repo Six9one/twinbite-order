@@ -272,21 +272,21 @@ export const soufflets: MenuItem[] = [
     id: "souffle-solo",
     name: "Soufflet Solo",
     description: "1 viande, sauce, garnitures au choix",
-    price: 6,
+    price: 7.5,
     category: "soufflets",
   },
   {
     id: "souffle-double",
     name: "Soufflet Double",
     description: "2 viandes, sauces, garnitures au choix",
-    price: 8,
+    price: 9,
     category: "soufflets",
   },
   {
     id: "souffle-triple",
     name: "Soufflet Triple",
     description: "3 viandes, sauces, garnitures au choix",
-    price: 10,
+    price: 10.5,
     category: "soufflets",
   },
 ];
@@ -297,21 +297,21 @@ export const makloub: MenuItem[] = [
     id: "makloub-solo",
     name: "Makloub Solo",
     description: "1 viande, garnitures, sauces",
-    price: 6,
+    price: 7.5,
     category: "makloub",
   },
   {
     id: "makloub-double",
     name: "Makloub Double",
     description: "2 viandes, garnitures, sauces",
-    price: 8,
+    price: 9,
     category: "makloub",
   },
   {
     id: "makloub-triple",
     name: "Makloub Triple",
     description: "3 viandes, garnitures, sauces",
-    price: 10,
+    price: 10.5,
     category: "makloub",
   },
 ];
@@ -322,21 +322,21 @@ export const mlawi: MenuItem[] = [
     id: "mlawi-solo",
     name: "Mlawi Solo",
     description: "1 viande, garnitures, sauces",
-    price: 6,
+    price: 7.5,
     category: "mlawi"
   },
   {
     id: "mlawi-double",
     name: "Mlawi Double",
     description: "2 viandes, garnitures, sauces",
-    price: 8,
+    price: 9,
     category: "mlawi"
   },
   {
     id: "mlawi-triple",
     name: "Mlawi Triple",
     description: "3 viandes, garnitures, sauces",
-    price: 10,
+    price: 10.5,
     category: "mlawi"
   },
 ];
@@ -431,16 +431,10 @@ export const gaufres: MenuItem[] = [
 
 // ============= BOISSONS =============
 export const boissons: MenuItem[] = [
-  { id: "coca-33", name: "Coca-Cola", description: "33cl", price: 0.0, category: "boissons" },
-  { id: "coca-zero", name: "Coca-Cola Zero", description: "33cl", price: 2, category: "boissons" },
-  { id: "fanta", name: "Fanta Orange", description: "33cl", price: 2, category: "boissons" },
-  { id: "sprite", name: "Sprite", description: "33cl", price: 2, category: "boissons" },
-  { id: "ice-tea", name: "Ice Tea", description: "33cl", price: 2, category: "boissons" },
-  { id: "oasis", name: "Oasis", description: "33cl", price: 2, category: "boissons" },
-  { id: "orangina", name: "Orangina", description: "33cl", price: 2, category: "boissons" },
-  { id: "eau", name: "Eau Minérale", description: "50cl", price: 1.5, category: "boissons" },
-  { id: "perrier", name: "Perrier", description: "33cl", price: 2.5, category: "boissons" },
-  { id: "jus-orange", name: "Jus d'Orange", description: "33cl", price: 2.5, category: "boissons" },
+  { id: "canette", name: "Canette au choix", description: "Ex: Coca-Cola, Fanta, Sprite…", price: 1.5, category: "boissons" },
+  { id: "bouteille", name: "Grande Bouteille", description: "Ex: Coca 1.5L, eau gazeuse…", price: 3.5, category: "boissons" },
+  { id: "eau-mini", name: "Eau Mini (50cl)", description: "Eau minérale 50cl", price: 1.5, category: "boissons" },
+  { id: "eau-grand", name: "Eau Grand (1.5L)", description: "Eau minérale 1.5L", price: 1.5, category: "boissons" },
 ];
 
 // ============= SALADES =============

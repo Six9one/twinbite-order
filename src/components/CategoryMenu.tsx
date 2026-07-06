@@ -28,6 +28,26 @@ import { MenuItem, MenuCategory } from '@/types/order';
 import { useProductsByCategory, Product } from '@/hooks/useProducts';
 import { useCategoryImages } from '@/hooks/useCategoryImages';
 import { useDisabledCategories } from '@/hooks/useDisabledCategories';
+import { useDrinks } from '@/hooks/useSupabaseData';
+
+function mapDrinksToMenuItems(
+  drinks: any[] | undefined,
+  fallback: MenuItem[],
+): MenuItem[] {
+  if (!drinks || drinks.length === 0) return fallback;
+  return drinks.map((d) => ({
+    id: d.id,
+    name: d.name,
+    description: d.name.toLowerCase().includes('canette')
+      ? "Ex: Coca-Cola, Fanta, Sprite…"
+      : d.name.toLowerCase().includes('bouteille')
+      ? "Ex: Coca 1.5L, eau gazeuse…"
+      : "Eau minérale",
+    price: Number(d.price),
+    category: 'boissons',
+    imageUrl: d.image_url ?? undefined,
+  }));
+}
 
 interface CategoryMenuProps {
   onBack: () => void;
@@ -140,7 +160,7 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
   const { data: fritesProducts } = useProductsByCategory('frites');
   const { data: crepeProducts } = useProductsByCategory('crepes');
   const { data: gaufreProducts } = useProductsByCategory('gaufres');
-  const { data: boissonsProducts } = useProductsByCategory('boissons');
+  const { data: dbDrinksData } = useDrinks();
   const { data: saladesProducts } = useProductsByCategory('salades');
 
 
@@ -235,7 +255,7 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
       case 'boissons':
         return (
           <SimpleProductWizard
-            items={mapProductsToMenuItems(boissonsProducts, 'boissons', boissons)}
+            items={mapDrinksToMenuItems(dbDrinksData, boissons)}
             title="Boissons"
             onClose={() => setSelectedCategory(null)}
           />

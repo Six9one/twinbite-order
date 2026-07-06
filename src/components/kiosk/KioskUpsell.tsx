@@ -1,6 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useProductsByCategory } from '@/hooks/useProducts';
+import { useDrinks } from '@/hooks/useSupabaseData';
 
 interface KioskUpsellProps {
     onAddItem: (category: string) => void;
@@ -9,7 +9,7 @@ interface KioskUpsellProps {
 
 export function KioskUpsell({ onAddItem, onSkip }: KioskUpsellProps) {
     const { data: fritesProducts } = useProductsByCategory('frites');
-    const { data: boissonsProducts } = useProductsByCategory('boissons');
+    const { data: boissonsProducts } = useDrinks();
 
     return (
         <div className="h-full flex flex-col items-center justify-start pt-12 p-8">
@@ -41,7 +41,7 @@ export function KioskUpsell({ onAddItem, onSkip }: KioskUpsellProps) {
                     <span className="text-6xl block mb-4">🥤</span>
                     <h3 className="text-xl font-bold text-slate-900 mb-1">Boisson</h3>
                     <p className="text-sm text-slate-500">
-                        À partir de {boissonsProducts?.[0]?.base_price?.toFixed(2) ?? '2.00'}€
+                        À partir de {boissonsProducts?.[0]?.price !== undefined ? Number(boissonsProducts?.[0]?.price).toFixed(2) : '2.00'}€
                     </p>
                 </Card>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
-import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
+import { useCreateOrder, generateOrderNumber, useDrinks } from '@/hooks/useSupabaseData';
 import { useIminPrinter, KioskOrderData } from '@/hooks/useIminPrinter';
 import { useNetworkPrinter } from '@/hooks/useNetworkPrinter';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,7 +48,7 @@ function KioskContent() {
     const { data: dbFrites } = useProductsByCategory('frites');
     const { data: dbCrepes } = useProductsByCategory('crepes');
     const { data: dbGaufres } = useProductsByCategory('gaufres');
-    const { data: dbBoissons } = useProductsByCategory('boissons');
+    const { data: dbBoissons } = useDrinks();
     const { data: dbCroques } = useProductsByCategory('croques');
 
     // Convert DB products to MenuItem format
@@ -57,9 +57,13 @@ function KioskContent() {
             return products.filter(p => p.is_active).map((p: any) => ({
                 id: p.id,
                 name: p.name,
-                description: p.description || '',
-                price: p.base_price,
-                category: p.category_slug,
+                description: p.description || (p.name.toLowerCase().includes('canette')
+                  ? "Ex: Coca-Cola, Fanta, Sprite…"
+                  : p.name.toLowerCase().includes('bouteille')
+                  ? "Ex: Coca 1.5L, eau gazeuse…"
+                  : "Eau minérale"),
+                price: p.base_price !== undefined ? Number(p.base_price) : Number(p.price),
+                category: p.category_slug || 'boissons',
                 imageUrl: p.image_url,
             }));
         }

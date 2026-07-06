@@ -4,6 +4,7 @@ import { useOrder } from '@/context/OrderContext';
 import { useSandwichTypes, useCruditeOptions, SandwichType } from '@/hooks/useSandwiches';
 import { useSauceOptions, useSupplementOptions } from '@/hooks/useCustomizationOptions';
 import { menuOptionPrices } from '@/data/menu';
+import { supplementPrices } from '@/data/pricing';
 import { useMenuOptionImages } from '@/hooks/useWizardImages';
 import { SandwichCustomization } from '@/types/order';
 import { trackProductView, trackAddToCart } from '@/hooks/useProductAnalytics';
@@ -15,8 +16,8 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Check, Sandwich, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-const FREE_SAUCES_COUNT = 2;
-const EXTRA_SAUCE_PRICE = 0.30;
+const FREE_SAUCES_COUNT = supplementPrices.freeSaucesCount;
+const EXTRA_SAUCE_PRICE = supplementPrices.extraSauce;
 
 // Emoji fallbacks for sauces when no image_url
 const sauceEmojis: Record<string, string> = {

@@ -109,9 +109,14 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
   // --- Add to Cart ---
   const handleAddToCart = () => {
     if (!selectedPizza) return;
+    // When isMenuMidi, use 'menu_midi' / 'menu_midi_mega' size IDs so that
+    // OrderContext and promotions.ts calculate the correct price (10€/15€).
+    const sizeId = format.isMenuMidi
+      ? (format.size === 'mega' ? 'menu_midi_mega' : 'menu_midi')
+      : format.size;
     const customization: PizzaCustomization = {
       base,
-      size: format.size,
+      size: sizeId,
       isMenuMidi: format.isMenuMidi,
       note: note || undefined,
       supplements: supplements.length > 0 ? supplements : undefined,

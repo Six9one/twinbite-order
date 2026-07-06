@@ -48,6 +48,8 @@ export interface Drink {
   name: string;
   price: number;
   is_active: boolean;
+  image_url?: string | null;
+  display_order?: number;
 }
 
 export interface Dessert {
@@ -55,6 +57,8 @@ export interface Dessert {
   name: string;
   price: number;
   is_active: boolean;
+  image_url?: string | null;
+  display_order?: number;
 }
 
 export interface Order {

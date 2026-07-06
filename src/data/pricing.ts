@@ -103,6 +103,10 @@ export const supplementPrices = {
     fromage: 1,
     viande: 1.5,
     sauce: 0.5,
+
+    // Extra sauce pricing (beyond free allowance)
+    extraSauce: 0.50,
+    freeSaucesCount: 2,
 };
 
 // =============================================================================
@@ -164,16 +168,10 @@ export const croquesPrices = {
 // BOISSONS PRICES
 // =============================================================================
 export const boissonsPrices = {
-    coca33cl: 2,
-    cocoZero: 2,
-    fanta: 2,
-    sprite: 2,
-    iceTea: 2,
-    oasis: 2,
-    orangina: 2,
-    eau50cl: 1.5,
-    perrier: 2.5,
-    jusOrange: 2.5,
+    canette: 1.5,        // Canette au choix (Coca, Fanta, Sprite, Ice Tea, etc.)
+    bouteille: 3.5,    // Grande Bouteille (1.5L)
+    eauMini: 1.5,      // Eau Mini (50cl)
+    eauGrand: 1.5,     // Eau Grand (1.5L)
 };
 
 // =============================================================================

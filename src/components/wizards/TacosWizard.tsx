@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MenuItem, TacosCustomization } from '@/types/order';
 import { tacos, meatOptions as staticMeatOptions, sauceOptions as staticSauceOptions, supplementOptions, cheeseSupplementOptions } from '@/data/menu';
-import { tacosPrices, menuOptionPrices, wizardSizePrices } from '@/data/pricing';
+import { tacosPrices, menuOptionPrices, wizardSizePrices, supplementPrices } from '@/data/pricing';
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { useProductsByCategory, Product } from '@/hooks/useProducts';
@@ -16,8 +16,8 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Check, Plus, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-const FREE_SAUCES_COUNT = 2;
-const EXTRA_SAUCE_PRICE = 0.30;
+const FREE_SAUCES_COUNT = supplementPrices.freeSaucesCount;
+const EXTRA_SAUCE_PRICE = supplementPrices.extraSauce;
 
 // Emoji fallbacks for sauces
 const sauceEmojis: Record<string, string> = {

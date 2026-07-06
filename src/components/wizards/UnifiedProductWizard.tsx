@@ -17,14 +17,14 @@ import {
   sauceOptions as staticSauceOptions,
   cheeseSupplementOptions as staticSupplements,
 } from '@/data/menu';
-import { wizardSizePrices, menuOptionPrices, oldPrices } from '@/data/pricing';
+import { wizardSizePrices, menuOptionPrices, oldPrices, supplementPrices } from '@/data/pricing';
 
 export type ProductType = 'soufflet' | 'mlawi' | 'makloub' | 'panini';
 type ProductSize = string;
 
 // Free sauces count before paying extra
-const FREE_SAUCES_COUNT = 2;
-const EXTRA_SAUCE_PRICE = 0.30;
+const FREE_SAUCES_COUNT = supplementPrices.freeSaucesCount;
+const EXTRA_SAUCE_PRICE = supplementPrices.extraSauce;
 
 // Emoji fallbacks for sauces when no image_url
 const sauceEmojis: Record<string, string> = {
