@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowLeft, Check, Plus, Minus, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { playTossAnimation } from '@/utils/tossAnimation';
 
 interface SimpleProductWizardProps {
   items: MenuItem[];
@@ -29,7 +30,7 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
     return price;
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (event?: React.MouseEvent<HTMLButtonElement>) => {
     if (!selectedItem) return;
 
     const cartItem = {
@@ -43,6 +44,10 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
       : undefined;
 
     addToCart(cartItem, quantity, customization as any);
+
+    if (event) {
+      playTossAnimation(event.currentTarget, selectedItem.category);
+    }
 
     toast({
       title: 'Ajouté au panier',
@@ -207,7 +212,7 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
         <div className="container mx-auto">
           <Button
             className="w-full h-14 text-lg"
-            onClick={handleAddToCart}
+            onClick={(e) => handleAddToCart(e)}
           >
             Ajouter au panier - {calculatePrice().toFixed(2)}€
           </Button>

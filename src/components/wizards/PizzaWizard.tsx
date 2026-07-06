@@ -15,6 +15,67 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Check, Pizza, Sun, Clock, Plus, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { playTossAnimation } from '@/utils/tossAnimation';
+
+const toppingVisuals: Record<string, { emoji: string; positions: { top: string; left: string }[] }> = {
+  chevre: {
+    emoji: '🧀',
+    positions: [
+      { top: '25%', left: '30%' },
+      { top: '35%', left: '60%' },
+      { top: '55%', left: '25%' },
+      { top: '65%', left: '55%' },
+      { top: '45%', left: '45%' },
+    ]
+  },
+  reblochon: {
+    emoji: '🧀',
+    positions: [
+      { top: '20%', left: '45%' },
+      { top: '40%', left: '20%' },
+      { top: '50%', left: '65%' },
+      { top: '70%', left: '35%' },
+    ]
+  },
+  mozzarella: {
+    emoji: '⚪',
+    positions: [
+      { top: '15%', left: '35%' },
+      { top: '30%', left: '50%' },
+      { top: '50%', left: '30%' },
+      { top: '60%', left: '60%' },
+      { top: '40%', left: '75%' },
+    ]
+  },
+  raclette: {
+    emoji: '🟨',
+    positions: [
+      { top: '30%', left: '35%' },
+      { top: '45%', left: '60%' },
+      { top: '60%', left: '40%' },
+    ]
+  },
+  cheddar: {
+    emoji: '🟧',
+    positions: [
+      { top: '25%', left: '55%' },
+      { top: '55%', left: '25%' },
+      { top: '65%', left: '60%' },
+      { top: '40%', left: '40%' },
+    ]
+  },
+  boursin: {
+    emoji: '🌿',
+    positions: [
+      { top: '30%', left: '25%' },
+      { top: '20%', left: '60%' },
+      { top: '50%', left: '50%' },
+      { top: '65%', left: '30%' },
+      { top: '60%', left: '70%' },
+    ]
+  }
+};
+
 
 type WizardStep = 'SELECT_FORMAT' | 'SELECT_PIZZA' | 'CUSTOMIZE';
 
@@ -107,7 +168,7 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
   };
 
   // --- Add to Cart ---
-  const handleAddToCart = () => {
+  const handleAddToCart = (event?: React.MouseEvent<HTMLButtonElement>) => {
     if (!selectedPizza) return;
     // When isMenuMidi, use 'menu_midi' / 'menu_midi_mega' size IDs so that
     // OrderContext and promotions.ts calculate the correct price (10€/15€).
@@ -124,6 +185,11 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
     const cartItem = { ...selectedPizza, id: `${selectedPizza.id}-${Date.now()}` };
     addToCart(cartItem, 1, customization, getPrice());
     trackAddToCart(selectedPizza.id.split('-')[0], selectedPizza.name, 'pizzas');
+    
+    if (event) {
+      playTossAnimation(event.currentTarget, 'pizzas');
+    }
+    
     toast({ title: 'Ajouté au panier', description: `${selectedPizza.name} ${format.size === 'mega' ? 'Mega' : 'Senior'}${format.isMenuMidi ? ' (Menu Midi)' : ''}` });
 
     // Reset for next pizza and show overlay
@@ -416,6 +482,37 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
 
         <Separator />
 
+        {/* Visual Pizza Builder */}
+        <div className="bg-gradient-to-b from-orange-50/50 to-white rounded-3xl p-6 border border-orange-100/70 flex flex-col items-center shadow-sm">
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Aperçu visuel de votre Pizza</h3>
+          <div className="relative w-48 h-48 sm:w-60 sm:h-60 rounded-full bg-white shadow-2xl border-8 border-orange-200/60 flex items-center justify-center overflow-hidden">
+            <div className="w-full h-full relative animate-spin-slow">
+              {selectedPizza?.imageUrl ? (
+                <img src={selectedPizza.imageUrl} alt={selectedPizza.name} className="w-full h-full object-contain" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
+                  <Pizza className="w-24 h-24 text-orange-300" />
+                </div>
+              )}
+              
+              {/* Toppings Overlays */}
+              {supplements.map(supId => {
+                const topping = toppingVisuals[supId];
+                if (!topping) return null;
+                return topping.positions.map((pos, idx) => (
+                  <span 
+                    key={`${supId}-${idx}`}
+                    style={{ top: pos.top, left: pos.left }}
+                    className="absolute text-2xl pointer-events-none drop-shadow-md select-none animate-in zoom-in-50 duration-300 ease-out"
+                  >
+                    {topping.emoji}
+                  </span>
+                ));
+              })}
+            </div>
+          </div>
+        </div>
+
         {/* Pizza Supplements */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -464,7 +561,7 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
       {/* Bottom Action */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 sm:p-4 z-50 safe-bottom">
         <div className="container mx-auto">
-          <Button className="w-full h-14 sm:h-16 text-base sm:text-lg rounded-xl" onClick={handleAddToCart}>
+          <Button className="w-full h-14 sm:h-16 text-base sm:text-lg rounded-xl" onClick={(e) => handleAddToCart(e)}>
             Ajouter au panier - {getPrice().toFixed(2)}€
           </Button>
         </div>

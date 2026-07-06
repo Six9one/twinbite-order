@@ -15,6 +15,67 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Check, Plus, Minus, Pizza, Sun, SlidersHorizontal, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
+import { playTossAnimation } from '@/utils/tossAnimation';
+
+const toppingVisuals: Record<string, { emoji: string; positions: { top: string; left: string }[] }> = {
+  chevre: {
+    emoji: '🧀',
+    positions: [
+      { top: '25%', left: '30%' },
+      { top: '35%', left: '60%' },
+      { top: '55%', left: '25%' },
+      { top: '65%', left: '55%' },
+      { top: '45%', left: '45%' },
+    ]
+  },
+  reblochon: {
+    emoji: '🧀',
+    positions: [
+      { top: '20%', left: '45%' },
+      { top: '40%', left: '20%' },
+      { top: '50%', left: '65%' },
+      { top: '70%', left: '35%' },
+    ]
+  },
+  mozzarella: {
+    emoji: '⚪',
+    positions: [
+      { top: '15%', left: '35%' },
+      { top: '30%', left: '50%' },
+      { top: '50%', left: '30%' },
+      { top: '60%', left: '60%' },
+      { top: '40%', left: '75%' },
+    ]
+  },
+  raclette: {
+    emoji: '🟨',
+    positions: [
+      { top: '30%', left: '35%' },
+      { top: '45%', left: '60%' },
+      { top: '60%', left: '40%' },
+    ]
+  },
+  cheddar: {
+    emoji: '🟧',
+    positions: [
+      { top: '25%', left: '55%' },
+      { top: '55%', left: '25%' },
+      { top: '65%', left: '60%' },
+      { top: '40%', left: '40%' },
+    ]
+  },
+  boursin: {
+    emoji: '🌿',
+    positions: [
+      { top: '30%', left: '25%' },
+      { top: '20%', left: '60%' },
+      { top: '50%', left: '50%' },
+      { top: '65%', left: '30%' },
+      { top: '60%', left: '70%' },
+    ]
+  }
+};
+
 
 interface StreamlinedPizzaWizardProps {
   onClose: () => void;
@@ -87,7 +148,7 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
   };
 
   // ─── Add/Remove Pizza Actions ───
-  const handleQuickAdd = (pizza: MenuItem) => {
+  const handleQuickAdd = (pizza: MenuItem, event?: React.MouseEvent<HTMLButtonElement>) => {
     // When isMenuMidi, use 'menu_midi' / 'menu_midi_mega' size IDs so that
     // OrderContext and promotions.ts calculate the correct price.
     const sizeId = selectedIsMenuMidi
@@ -99,6 +160,9 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
       isMenuMidi: selectedIsMenuMidi,
     };
     addToCart(pizza, 1, customization, currentPrice);
+    if (event) {
+      playTossAnimation(event.currentTarget, 'pizzas');
+    }
     toast.success(`${pizza.name} ajoutée au panier`);
   };
 
@@ -137,7 +201,7 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
     return currentPrice + supplementsPrice;
   };
 
-  const handleSaveCustomization = () => {
+  const handleSaveCustomization = (event?: React.MouseEvent<HTMLButtonElement>) => {
     if (!customizingPizza) return;
 
     // When isMenuMidi, use 'menu_midi' / 'menu_midi_mega' size IDs so that
@@ -154,6 +218,9 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
     };
 
     addToCart(customizingPizza, 1, customization, getCustomizingPrice());
+    if (event) {
+      playTossAnimation(event.currentTarget, 'pizzas');
+    }
     toast.success(`${customizingPizza.name} personnalisée ajoutée !`);
     setCustomizingPizza(null);
   };
@@ -315,6 +382,35 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
           </SheetHeader>
 
           <div className="mt-5 space-y-5">
+            {/* Visual Pizza Builder */}
+            <div className="bg-gradient-to-b from-orange-50/30 to-transparent rounded-2xl p-4 border border-orange-100/50 flex flex-col items-center">
+              <div className="relative w-32 h-32 rounded-full bg-white shadow-lg border-4 border-orange-100 flex items-center justify-center overflow-hidden">
+                <div className="w-full h-full relative animate-spin-slow">
+                  {customizingPizza?.imageUrl ? (
+                    <img src={customizingPizza.imageUrl} alt={customizingPizza.name} className="w-full h-full object-contain" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
+                      <Pizza className="w-12 h-12 text-orange-200" />
+                    </div>
+                  )}
+                  
+                  {/* Toppings Overlays */}
+                  {customSupplements.map(supId => {
+                    const topping = toppingVisuals[supId];
+                    if (!topping) return null;
+                    return topping.positions.map((pos, idx) => (
+                      <span 
+                        key={`${supId}-${idx}`}
+                        style={{ top: pos.top, left: pos.left }}
+                        className="absolute text-lg pointer-events-none drop-shadow-md select-none animate-in zoom-in-50 duration-300 ease-out"
+                      >
+                        {topping.emoji}
+                      </span>
+                    ));
+                  })}
+                </div>
+              </div>
+            </div>
             {/* Supps */}
             <div className="space-y-2">
               <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
@@ -360,7 +456,7 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
             {/* Submit */}
             <div className="pt-2">
               <Button
-                onClick={handleSaveCustomization}
+                onClick={(e) => handleSaveCustomization(e)}
                 className="w-full h-12 bg-amber-400 hover:bg-amber-500 text-black font-bold rounded-xl flex items-center justify-center gap-2"
               >
                 Ajouter au panier - {getCustomizingPrice().toFixed(2)}€
@@ -389,7 +485,7 @@ interface PizzaCardProps {
   pizza: MenuItem;
   count: number;
   price: number;
-  onAdd: (pizza: MenuItem) => void;
+  onAdd: (pizza: MenuItem, event?: React.MouseEvent<HTMLButtonElement>) => void;
   onRemove: (pizzaId: string) => void;
   onCustomize: (pizza: MenuItem) => void;
 }
@@ -449,7 +545,7 @@ function PizzaCard({ pizza, count, price, onAdd, onRemove, onCustomize }: PizzaC
               variant="ghost"
               size="icon"
               className="h-8 w-8 hover:bg-background"
-              onClick={() => onAdd(pizza)}
+              onClick={(e) => onAdd(pizza, e)}
             >
               <Plus className="w-3.5 h-3.5" />
             </Button>
@@ -457,7 +553,7 @@ function PizzaCard({ pizza, count, price, onAdd, onRemove, onCustomize }: PizzaC
         ) : (
           <Button
             size="sm"
-            onClick={() => onAdd(pizza)}
+            onClick={(e) => onAdd(pizza, e)}
             className="h-9 px-4 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-bold flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" /> Ajouter
