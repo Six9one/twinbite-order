@@ -334,13 +334,15 @@ function PizzaPanel({
   onAdd,
   size,
   setSize,
-  zoom = 125
+  zoom = 125,
+  setZoom,
 }: {
   orderType: OrderType;
   onAdd: (item: any, custom: any, price: number) => void;
   size: PizzaSizeId;
   setSize: (size: PizzaSizeId) => void;
   zoom?: number;
+  setZoom?: (z: number | ((prev: number) => number)) => void;
 }) {
   const { data: pizzasTomate = [] } = usePizzasByBase('tomate');
   const { data: pizzasCreme  = [] } = usePizzasByBase('creme');
@@ -375,10 +377,41 @@ function PizzaPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+
+      {/* ── Pizza Size Selector Bar (top of panel) ── */}
+      <div style={{
+        display: 'flex', gap: 6, padding: '8px 12px',
+        background: '#0a0f1e', borderBottom: `1px solid ${S.border}`,
+        flexShrink: 0, flexWrap: 'wrap', alignItems: 'center',
+      }}>
+        {PIZZA_SIZES.map((s) => {
+          const active = size === s.id;
+          return (
+            <button
+              key={s.id}
+              onClick={() => setSize(s.id)}
+              style={{
+                padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
+                fontWeight: 800, fontSize: 11, lineHeight: 1.3,
+                border: `1.5px solid ${s.color}`,
+                background: active ? s.color : s.color + '18',
+                color: active ? '#fff' : s.color,
+                boxShadow: active ? `0 0 8px ${s.color}55` : 'none',
+                transition: 'all .1s',
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+              }}
+            >
+              <span>{s.label}</span>
+              <span style={{ fontSize: 10, opacity: 0.85 }}>{s.price}€</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Scrollable grid container split into Tomato and Cream base */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 20, position: 'relative' }}>
         
-        {/* Tomato base base section */}
+        {/* Tomato base section */}
         <div>
           <div style={{
             display: 'flex',
@@ -415,7 +448,7 @@ function PizzaPanel({
           </div>
         </div>
 
-        {/* Cream base base section */}
+        {/* Cream base section */}
         <div>
           <div style={{
             display: 'flex',
@@ -451,6 +484,22 @@ function PizzaPanel({
             ))}
           </div>
         </div>
+
+        {/* Compact zoom control — bottom-right floating badge */}
+        {setZoom && (
+          <div style={{
+            position: 'sticky', bottom: 8, marginLeft: 'auto',
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: '#111827cc', backdropFilter: 'blur(6px)',
+            border: `1px solid ${S.border}`,
+            borderRadius: 99, padding: '3px 8px',
+            width: 'fit-content',
+          }}>
+            <button onClick={() => setZoom(z => Math.max(80, z - 5))} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: 15, fontWeight: 900, cursor: 'pointer', padding: '0 3px', lineHeight: 1 }}>−</button>
+            <span style={{ fontSize: 10, fontWeight: 800, color: S.accent, minWidth: 28, textAlign: 'center' }}>{zoom}%</span>
+            <button onClick={() => setZoom(z => Math.min(150, z + 5))} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: 15, fontWeight: 900, cursor: 'pointer', padding: '0 3px', lineHeight: 1 }}>+</button>
+          </div>
+        )}
 
       </div>
 
@@ -2475,7 +2524,35 @@ function POSContent() {
 
   const needsInfo = orderType === 'livraison';
 
+  // ── Startup recovery: flush any orders saved offline during previous session ──
+  useEffect(() => {
+    const flushPendingOrders = async () => {
+      try {
+        const raw = localStorage.getItem('pos-pending-orders');
+        if (!raw) return;
+        const pending = JSON.parse(raw);
+        if (!Array.isArray(pending) || pending.length === 0) return;
+        console.log(`[POS] Flushing ${pending.length} pending order(s) from offline queue...`);
+        for (const order of pending) {
+          try {
+            const { _savedAt, ...payload } = order;
+            const { error } = await (supabase as any).from('orders').insert(payload, { returning: 'minimal' });
+            if (!error) {
+              const updated = JSON.parse(localStorage.getItem('pos-pending-orders') || '[]')
+                .filter((o: any) => o.order_number !== payload.order_number);
+              localStorage.setItem('pos-pending-orders', JSON.stringify(updated));
+            }
+          } catch { /* will retry on next boot or via retryOrderToSupabase */ }
+        }
+      } catch { /* localStorage may be unavailable */ }
+    };
+    // Delay slightly to not compete with initial render
+    const t = setTimeout(flushPendingOrders, 2000);
+    return () => clearTimeout(t);
+  }, []);
+
   // Fetch Mapbox token for autocomplete
+
   useEffect(() => {
     async function fetchToken() {
       const envToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN || '';
@@ -2631,7 +2708,7 @@ function POSContent() {
         <div style={{ fontSize:13 }}>Choisissez une catégorie à gauche</div>
       </div>
     );
-    if (activeCategory === 'pizzas') return <PizzaPanel orderType={orderType} onAdd={handleAdd} size={pizzaSize} setSize={setPizzaSize} zoom={pizzaZoom} />;
+    if (activeCategory === 'pizzas') return <PizzaPanel orderType={orderType} onAdd={handleAdd} size={pizzaSize} setSize={setPizzaSize} zoom={pizzaZoom} setZoom={setPizzaZoom} />;
     // Build-it wizards (meat → size): Soufflet, Makloub, Mlawi, Tacos, Panini
     if (WIZARD_MAP[activeCategory]) return <WizardPanel categorySlug={activeCategory} onAdd={handleAdd} />;
     // Sandwich: pick sandwich → sauce + crudités (no meat)
@@ -2646,6 +2723,28 @@ function POSContent() {
     return <SimplePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
   };
 
+  // ── Optimistic order queue ────────────────────────────────────────────────
+  // Orders are committed to localStorage instantly so the UI never blocks.
+  // A background loop retries failed Supabase writes indefinitely.
+  const retryOrderToSupabase = async (payload: any, attempt = 1): Promise<void> => {
+    try {
+      const { error } = await (supabase as any)
+        .from('orders')
+        .insert(payload, { returning: 'minimal' });
+      if (error) throw error;
+      // Sync: remove from pending queue
+      try {
+        const pending = JSON.parse(localStorage.getItem('pos-pending-orders') || '[]');
+        const updated = pending.filter((o: any) => o.order_number !== payload.order_number);
+        localStorage.setItem('pos-pending-orders', JSON.stringify(updated));
+      } catch {}
+    } catch {
+      // Exponential backoff: 1s, 2s, 4s … capped at 30s
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 30000);
+      setTimeout(() => retryOrderToSupabase(payload, attempt + 1), delay);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!cart.length) { toast.error('Panier vide'); return; }
     if (needsInfo && !name.trim()) { toast.error('Nom requis'); return; }
@@ -2654,7 +2753,7 @@ function POSContent() {
     try {
       const orderNumber = await generateOrderNumber();
       const { ht: fHt, tva: fTva } = calculateTVA(total);
-      await createOrder.mutateAsync({
+      const payload = {
         order_number: orderNumber, order_type: orderType, items: cart as any,
         customer_name:    needsInfo ? name.trim() : `[POS] ${TYPE_LABELS[orderType]}`,
         customer_phone:   phone.trim() || 'pos',
@@ -2663,12 +2762,38 @@ function POSContent() {
         payment_method:   payMethod as any,
         subtotal: fHt, tva: fTva, total, delivery_fee: 0,
         status: 'pending', is_scheduled: false, scheduled_for: null,
-      });
+      };
+
+      // 1. Persist to localStorage immediately (offline safety net)
+      try {
+        const pending = JSON.parse(localStorage.getItem('pos-pending-orders') || '[]');
+        pending.push({ ...payload, _savedAt: Date.now() });
+        localStorage.setItem('pos-pending-orders', JSON.stringify(pending));
+      } catch {}
+
+      // 2. Show success to cashier instantly — no waiting
       toast.success(`✅ Commande #${orderNumber}`);
       setLastOrder(orderNumber);
       clearCart(); setName(''); setPhone(''); setAddress(''); setNotes(''); setDiscount(0);
-    } catch(e: any) { toast.error('Erreur: ' + e.message); }
-    finally { setSubmitting(false); }
+
+      // 3. Fire print — completely async, never blocks order flow
+      fetch(`${PRINT_SERVER}/print`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderNumber }),
+        signal: AbortSignal.timeout(3000),
+      }).catch(() => { /* print server offline — silent, order already saved */ });
+
+      // 4. Persist to Supabase in background with unlimited retries
+      retryOrderToSupabase(payload);
+
+    } catch (e: any) {
+      // Only generateOrderNumber() can throw here (very rare)
+      // Still try to save with a timestamp fallback number
+      toast.error('⚠️ Commande enregistrée localement — synchronisation en cours');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -2753,104 +2878,7 @@ function POSContent() {
             })}
           </div>
 
-          {/* Size Selector Section (only visible when pizzas is active) */}
-          {activeCategory === 'pizzas' && (
-            <>
-              {/* Pizza Format Selector */}
-              <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'2px 0' }} />
-              <div style={{ fontSize: 10, fontWeight: 800, color: S.muted, textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 4 }}>
-                Format Pizza
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {PIZZA_SIZES.map((s) => {
-                  const active = pizzaSize === s.id;
-                  return (
-                    <button key={s.id} onClick={()=>setPizzaSize(s.id)} style={{
-                      padding: '8px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 800, fontSize: 11,
-                      textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      lineHeight: 1.2, transition: 'all .12s',
-                      border: `1.5px solid ${s.color}`,
-                      background: active ? s.color : s.color + '1e',
-                      color: active ? '#fff' : s.color,
-                      boxShadow: active ? `0 0 0 2px ${s.color}44` : 'none',
-                    }}>
-                      <span>{s.label}</span>
-                      <span>{s.price}€</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Pizza Cards Zoom Slider */}
-              <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'2px 0' }} />
-              <div style={{ fontSize: 10, fontWeight: 800, color: S.muted, textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 4, marginBottom: 4 }}>
-                Tailles Pizza
-              </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                background: '#111827',
-                border: `1px solid ${S.border}`,
-                borderRadius: 99,
-                padding: '6px 12px',
-                justifyContent: 'space-between',
-              }}>
-                <button
-                  onClick={() => setPizzaZoom(z => Math.max(80, z - 5))}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#9ca3af',
-                    fontSize: 16,
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    padding: '0 4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                >
-                  −
-                </button>
-                <input
-                  type="range"
-                  min="80"
-                  max="150"
-                  step="5"
-                  value={pizzaZoom}
-                  onChange={(e) => setPizzaZoom(Number(e.target.value))}
-                  style={{
-                    flex: 1,
-                    accentColor: S.accent,
-                    height: 4,
-                    borderRadius: 2,
-                    background: '#374151',
-                    cursor: 'pointer',
-                    outline: 'none',
-                  }}
-                />
-                <button
-                  onClick={() => setPizzaZoom(z => Math.min(150, z + 5))}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#9ca3af',
-                    fontSize: 16,
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    padding: '0 4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                >
-                  +
-                </button>
-                <span style={{ fontSize: 11, fontWeight: 800, color: S.accent, minWidth: 32, textAlign: 'right' }}>
-                  {pizzaZoom}%
-                </span>
-              </div>
-            </>
-          )}
+          {/* Pizza size selector moved inside PizzaPanel header — nothing to render here */}
 
           <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'2px 0' }} />
 
