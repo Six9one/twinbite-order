@@ -2040,11 +2040,10 @@ function FactureHubModal({ onClose }: { onClose:()=>void }) {
     setPrintingOrder(orderNumber);
     try {
       const res = await fetch(`${PRINT_SERVER}/print-invoice/${orderNumber}`, { signal: AbortSignal.timeout(3000) });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && (data.success || data.printed)) {
+      if (res.ok) {
         toast.success(`✅ Facture #${orderNumber} imprimée`);
       } else {
-        throw new Error(data.error || `HTTP ${res.status}`);
+        throw new Error(`HTTP ${res.status}`);
       }
     } catch (e: any) {
       toast.error(e.message?.includes('fetch') ? '❌ Serveur impression hors ligne' : '❌ ' + e.message);
