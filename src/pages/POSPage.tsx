@@ -16,6 +16,35 @@ import { OptimizedImage } from '@/components/ui/OptimizedImage';
 
 const PRINT_SERVER = 'http://localhost:3001';
 
+// ── Local image cache (populated at startup from print-server manifest) ────────
+// Maps remote URL → http://localhost:3001/cache/<filename>
+const LOCAL_IMG: Record<string, string> = {};
+let imgCacheLoaded = false;
+
+async function loadImageCache() {
+  if (imgCacheLoaded) return;
+  try {
+    const res = await fetch(`${PRINT_SERVER}/cache/manifest.json`, { signal: AbortSignal.timeout(2000) });
+    if (res.ok) {
+      const manifest = await res.json();
+      Object.assign(LOCAL_IMG, manifest);
+      imgCacheLoaded = true;
+      console.log(`[POS] Image cache loaded: ${Object.keys(manifest).length} images served locally`);
+    }
+  } catch {
+    // Print server not running or no cache yet — fall back to remote URLs silently
+  }
+}
+
+// Call immediately so cache is ready before first render
+loadImageCache();
+
+// Resolve: local first, remote fallback
+function resolveImg(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  return LOCAL_IMG[url] || url;
+}
+
 type OrderType = 'surplace' | 'emporter' | 'livraison';
 type PayMethod  = 'especes' | 'cb' | 'en_ligne';
 
@@ -131,7 +160,7 @@ const ProductTile = memo(function ProductTile({
 }) {
   const [imgError, setImgError] = useState(false);
   const normalizedName = (item.name || '').trim().toLowerCase();
-  const img = item.imageUrl || item.image_url || LOCAL_PIZZA_IMAGES[normalizedName];
+  const img = resolveImg(item.imageUrl || item.image_url || LOCAL_PIZZA_IMAGES[normalizedName]);
 
   useEffect(() => {
     setImgError(false);

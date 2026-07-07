@@ -2331,6 +2331,19 @@ function setupHttpServer() {
     }));
     app.use(express.json({ limit: '2mb' }));
 
+    // ── Local image cache — serve downloaded images at /cache/ ──────────────
+    // Run TELECHARGER_IMAGES.bat once to populate the cache.
+    const imageCacheDir = join(__dirname, 'image-cache');
+    if (existsSync(imageCacheDir)) {
+        app.use('/cache', (req, res, next) => {
+            res.setHeader('Cache-Control', 'public, max-age=86400'); // 24h browser cache
+            next();
+        }, express.static(imageCacheDir));
+        console.log('[PRINT] Image cache served at /cache/');
+    } else {
+        console.log('[PRINT] No image cache yet — run TELECHARGER_IMAGES.bat to create it');
+    }
+
     // Health / status endpoints (both paths, Electron checks /status)
     const statusHandler = (req, res) => {
         res.json({ status: 'ok', online: true, printers: PRINTER_IPS, port: PRINTER_PORT });
