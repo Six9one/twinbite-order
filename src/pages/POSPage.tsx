@@ -1550,25 +1550,6 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
                             >
                               {actionState === 'reprint' ? '⏳...' : '🖨️ Imprimer'}
                             </button>
-                            <button
-                              onClick={() => handleFacture(order.order_number)}
-                              disabled={actionState !== null && actionState !== undefined}
-                              style={{
-                                ...S.btn,
-                                padding: '4px 8px',
-                                fontSize: 10,
-                                fontWeight: 700,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 2,
-                                borderColor: S.accent + '44',
-                                color: S.accent,
-                                background: actionState === 'facture' ? '#1f2937' : S.accent + '0a',
-                                cursor: actionState ? 'wait' : 'pointer'
-                              }}
-                            >
-                              {actionState === 'facture' ? '⏳...' : '🧾 Facture'}
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -2047,82 +2028,219 @@ function UpdatePanel({ onClose }: { onClose:()=>void }) {
   );
 }
 
-// ── Facture modal (custom invoice → ethernet printer) ─────────────────────────
-function FactureModal({ initialTotal, onClose }: { initialTotal:number; onClose:()=>void }) {
+// ── Facture Hub Modal (Consolidated Invoice Hub) ─────────────────────────────
+function FactureHubModal({ onClose }: { onClose:()=>void }) {
+  const [activeTab, setActiveTab] = useState<'recent' | 'manual'>('recent');
+  
+  // Tab 1: Recent orders
+  const { data: orders = [], isLoading } = useOrders(); // no filter = all recent orders
+  const [printingOrder, setPrintingOrder] = useState<string | null>(null);
+
+  const printOrderInvoice = async (orderNumber: string) => {
+    setPrintingOrder(orderNumber);
+    try {
+      const res = await fetch(`${PRINT_SERVER}/print-invoice/${orderNumber}`, { signal: AbortSignal.timeout(3000) });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && (data.success || data.printed)) {
+        toast.success(`✅ Facture #${orderNumber} imprimée`);
+      } else {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+    } catch (e: any) {
+      toast.error(e.message?.includes('fetch') ? '❌ Serveur impression hors ligne' : '❌ ' + e.message);
+    } finally {
+      setPrintingOrder(null);
+    }
+  };
+
+  // Tab 2: Manual Invoice creation
   const [repas,   setRepas]   = useState(1);
-  const [unit,    setUnit]    = useState(initialTotal > 0 ? initialTotal : 0);
+  const [unit,    setUnit]    = useState(0);
   const [label,   setLabel]   = useState('Repas');
   const [tvaRate, setTvaRate] = useState(10);
   const [client,  setClient]  = useState('');
-  const [printing, setPrinting] = useState(false);
+  const [clientSiret, setClientSiret] = useState('');
+  const [clientAddress, setClientAddress] = useState('');
+  const [printingManual, setPrintingManual] = useState(false);
 
   const totalTTC = repas * unit;
   const totalHT  = totalTTC / (1 + tvaRate / 100);
   const tvaAmt   = totalTTC - totalHT;
 
-  const print = async () => {
+  const printManualInvoice = async () => {
     if (totalTTC <= 0) { toast.error('Montant invalide'); return; }
-    setPrinting(true);
+    setPrintingManual(true);
     try {
       const d = new Date();
       const invoiceNumber = `FA-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(Math.floor(Math.random()*900)+100)}`;
       const res = await fetch(`${PRINT_SERVER}/print-custom-invoice`, {
-        method:'POST', headers:{ 'Content-Type':'application/json' },
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify({
-          invoiceNumber, invoiceDate: d.toISOString().slice(0,10),
+          invoiceNumber,
+          invoiceDate: d.toISOString().slice(0,10),
           clientName: client.trim() || undefined,
+          clientSiret: clientSiret.trim() || undefined,
+          clientAddress: clientAddress.trim() || undefined,
           items: [{ description: label.trim() || 'Repas', quantity: repas, unitPrice: unit }],
           tvaRate,
         }),
       });
       const data = await res.json().catch(()=>({}));
-      if (res.ok && data.success) { toast.success(`✅ Facture ${invoiceNumber} imprimée`); onClose(); }
-      else throw new Error(data.error || `HTTP ${res.status}`);
-    } catch (e:any) {
+      if (res.ok && data.success) {
+        toast.success(`✅ Facture ${invoiceNumber} imprimée`);
+        onClose();
+      } else {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+    } catch (e: any) {
       toast.error(e.message?.includes('fetch') ? '❌ Serveur impression hors ligne' : '❌ ' + e.message);
-    } finally { setPrinting(false); }
+    } finally {
+      setPrintingManual(false);
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    } catch {
+      return '';
+    }
   };
 
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div onClick={e=>e.stopPropagation()} style={{ width:380, background:S.panel, border:`1px solid ${S.border}`, borderRadius:14, padding:'20px 22px' }}>
-        <div style={{ fontSize:17, fontWeight:800, color:S.accent, marginBottom:4 }}>🧾 Facture client</div>
-        <div style={{ fontSize:12, color:S.muted, marginBottom:16 }}>SIRET 942 617 358 00018 · TVA FR28942617358</div>
-
-        <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Désignation</label>
-        <input value={label} onChange={e=>setLabel(e.target.value)} style={{ ...S.input, margin:'4px 0 12px' }} />
-
-        <div style={{ display:'flex', gap:10, marginBottom:12 }}>
-          <div style={{ flex:1 }}>
-            <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Nb repas</label>
-            <input type="number" min={1} value={repas} onChange={e=>setRepas(Math.max(1,parseInt(e.target.value)||1))} style={{ ...S.input, marginTop:4 }} />
-          </div>
-          <div style={{ flex:1 }}>
-            <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Prix unit. (€)</label>
-            <input type="number" min={0} step={0.5} value={unit||''} onChange={e=>setUnit(parseFloat(e.target.value)||0)} style={{ ...S.input, marginTop:4 }} />
-          </div>
-          <div style={{ width:80 }}>
-            <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>TVA %</label>
-            <input type="number" min={0} value={tvaRate} onChange={e=>setTvaRate(parseFloat(e.target.value)||0)} style={{ ...S.input, marginTop:4 }} />
-          </div>
+      <div onClick={e=>e.stopPropagation()} style={{ width:540, maxWidth:'95%', background:S.panel, border:`1px solid ${S.border}`, borderRadius:14, padding:'20px 22px', display:'flex', flexDirection:'column' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+          <div style={{ fontSize:17, fontWeight:800, color:S.accent }}>🧾 Factures Client</div>
+          <button onClick={onClose} style={{ ...S.btn, padding:'3px 8px', fontSize:12 }}>✕</button>
         </div>
 
-        <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Client (optionnel)</label>
-        <input value={client} onChange={e=>setClient(e.target.value)} placeholder="Nom / Société" style={{ ...S.input, margin:'4px 0 14px' }} />
-
-        <div style={{ background:S.card, borderRadius:8, padding:'10px 12px', marginBottom:14, fontSize:12, color:S.muted }}>
-          <div style={{ display:'flex', justifyContent:'space-between' }}><span>Total HT</span><span>{totalHT.toFixed(2)} €</span></div>
-          <div style={{ display:'flex', justifyContent:'space-between' }}><span>TVA {tvaRate}%</span><span>{tvaAmt.toFixed(2)} €</span></div>
-          <div style={{ display:'flex', justifyContent:'space-between', color:S.accent, fontWeight:800, fontSize:15, marginTop:4 }}><span>TOTAL TTC</span><span>{totalTTC.toFixed(2)} €</span></div>
+        {/* Tab Selection */}
+        <div style={{ display:'flex', gap:6, background:'#111827', padding:4, borderRadius:8, marginBottom:16 }}>
+          <button
+            onClick={() => setActiveTab('recent')}
+            style={{
+              flex: 1, padding: '7px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700,
+              background: activeTab === 'recent' ? S.accent : 'transparent',
+              color: activeTab === 'recent' ? '#000' : S.muted,
+              transition: 'all .1s'
+            }}
+          >
+            📋 Commandes Récentes
+          </button>
+          <button
+            onClick={() => setActiveTab('manual')}
+            style={{
+              flex: 1, padding: '7px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700,
+              background: activeTab === 'manual' ? S.accent : 'transparent',
+              color: activeTab === 'manual' ? '#000' : S.muted,
+              transition: 'all .1s'
+            }}
+          >
+            ✏️ Créer Facture Libre
+          </button>
         </div>
 
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={onClose} style={{ ...S.btn, flex:1, padding:'11px', fontWeight:700 }}>Annuler</button>
-          <button onClick={print} disabled={printing} style={{
-            flex:2, padding:'11px', borderRadius:8, border:'none', fontWeight:800, cursor:printing?'wait':'pointer',
-            background: printing ? '#374151' : 'linear-gradient(135deg,#f59e0b,#ef4444)', color: printing?'#6b7280':'#000',
-          }}>{printing ? '⏳ Impression...' : '🖨️ Imprimer la facture'}</button>
-        </div>
+        {activeTab === 'recent' ? (
+          /* Tab 1: Recent orders */
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {isLoading ? (
+              <div style={{ display:'flex', justifyContent:'center', padding:40, color:S.muted, fontSize:12 }}>⏳ Chargement des commandes...</div>
+            ) : orders.length === 0 ? (
+              <div style={{ display:'flex', justifyContent:'center', padding:40, color:S.muted, fontSize:12 }}>Aucune commande trouvée</div>
+            ) : (
+              <div style={{ maxHeight: 380, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 2 }}>
+                {orders.slice(0, 30).map((o: any) => (
+                  <div
+                    key={o.id}
+                    style={{
+                      background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: '8px 12px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: S.accent }}>#{o.order_number}</span>
+                        <span style={{ fontSize: 10, color: S.muted }}>{formatDate(o.created_at)}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#e2e8f0', marginTop: 2, textOverflow:'ellipsis', overflow:'hidden', whiteSpace:'nowrap' }}>
+                        {o.customer_name} · <span style={{ textTransform: 'capitalize', fontSize:10, color:S.muted }}>{o.payment_method}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                      <span style={{ fontSize: 13, fontWeight: 800 }}>{o.total?.toFixed(2)}€</span>
+                      <button
+                        disabled={printingOrder !== null}
+                        onClick={() => printOrderInvoice(o.order_number)}
+                        style={{
+                          ...S.btn, padding: '5px 8px', fontSize: 12, cursor: printingOrder ? 'wait' : 'pointer',
+                          borderColor: S.accent + '33', color: S.accent, background: printingOrder === o.order_number ? '#1f2937' : S.accent + '0a'
+                        }}
+                      >
+                        {printingOrder === o.order_number ? '⏳' : '🖨️'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Tab 2: Manual custom invoice */
+          <div>
+            <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Désignation</label>
+            <input value={label} onChange={e=>setLabel(e.target.value)} style={{ ...S.input, margin:'4px 0 10px' }} />
+
+            <div style={{ display:'flex', gap:10, marginBottom:10 }}>
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Nb repas</label>
+                <input type="number" min={1} value={repas} onChange={e=>setRepas(Math.max(1,parseInt(e.target.value)||1))} style={{ ...S.input, marginTop:4 }} />
+              </div>
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Prix unit. (€)</label>
+                <input type="number" min={0} step={0.5} value={unit||''} onChange={e=>setUnit(parseFloat(e.target.value)||0)} style={{ ...S.input, marginTop:4 }} />
+              </div>
+              <div style={{ width:80 }}>
+                <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>TVA %</label>
+                <input type="number" min={0} value={tvaRate} onChange={e=>setTvaRate(parseFloat(e.target.value)||0)} style={{ ...S.input, marginTop:4 }} />
+              </div>
+            </div>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
+              <div>
+                <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Client (Optionnel)</label>
+                <input value={client} onChange={e=>setClient(e.target.value)} placeholder="Nom / Société" style={{ ...S.input, marginTop:4 }} />
+              </div>
+              <div>
+                <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>SIRET (Optionnel)</label>
+                <input value={clientSiret} onChange={e=>setClientSiret(e.target.value)} placeholder="Siret du client" style={{ ...S.input, marginTop:4 }} />
+              </div>
+            </div>
+            
+            <label style={{ fontSize:11, color:S.muted, fontWeight:700 }}>Adresse (Optionnelle)</label>
+            <input value={clientAddress} onChange={e=>setClientAddress(e.target.value)} placeholder="Adresse du client" style={{ ...S.input, margin:'4px 0 14px' }} />
+
+            <div style={{ background:S.card, borderRadius:8, padding:'10px 12px', marginBottom:14, fontSize:12, color:S.muted }}>
+              <div style={{ display:'flex', justifyContent:'space-between' }}><span>Total HT</span><span style={{marginLeft:'auto'}}>{totalHT.toFixed(2)} €</span></div>
+              <div style={{ display:'flex', justifyContent:'space-between', marginTop:2 }}><span>TVA {tvaRate}%</span><span style={{marginLeft:'auto'}}>{tvaAmt.toFixed(2)} €</span></div>
+              <div style={{ display:'flex', justifyContent:'space-between', color:S.accent, fontWeight:800, fontSize:14, marginTop:4, paddingTop:4, borderTop:`1px solid ${S.border}33` }}>
+                <span>TOTAL TTC</span><span style={{marginLeft:'auto'}}>{totalTTC.toFixed(2)} €</span>
+              </div>
+            </div>
+
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={onClose} style={{ ...S.btn, flex:1, padding:'9px', fontWeight:700 }}>Annuler</button>
+              <button onClick={printManualInvoice} disabled={printingManual} style={{
+                flex:2, padding:'9px', borderRadius:8, border:'none', fontWeight:800, cursor:printingManual?'wait':'pointer',
+                background: printingManual ? '#374151' : 'linear-gradient(135deg,#f59e0b,#ef4444)', color: printingManual?'#6b7280':'#000',
+              }}>
+                {printingManual ? '⏳ Impression...' : '🖨️ Imprimer la Facture'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2460,13 +2578,10 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
         }}>
           {submitting ? '⏳...' : cart.length ? `✅ Valider — ${total.toFixed(2)}€` : 'Panier vide'}
         </button>
-        {/* Facture + Vider */}
+        {/* Vider */}
         <div style={{ display:'flex', gap:4, marginTop:5 }}>
-          <button onClick={()=>setShowFacture(true)} style={{ flex:2, padding:'6px', borderRadius:7, border:`1px solid ${S.accent}44`, background:S.accent+'14', color:S.accent, fontSize:10, fontWeight:800, cursor:'pointer' }}>
-            🧾 Facture
-          </button>
           <button onClick={()=>{clearCart();setDiscount(0);}} style={{ flex:1, padding:'6px', borderRadius:7, border:`1px solid ${S.border}`, background:'none', color:S.muted, cursor:'pointer', fontSize:10 }}>
-            🗑️ Vider
+            🗑️ Vider le panier
           </button>
         </div>
       </div>
@@ -2836,6 +2951,24 @@ function POSContent() {
           flexShrink: 0,
           overflowY: 'auto'
         }}>
+          {/* Header with Ellipsis Factures Button */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+            <span style={{ fontSize: 13, fontWeight: 900, color: S.accent }}>TWIN PIZZA</span>
+            <button
+              title="Factures"
+              onClick={() => setShowFacture(true)}
+              style={{
+                width: 26, height: 26, borderRadius: 6, border: 'none',
+                background: '#1f2937', color: S.muted, fontSize: 14, fontWeight: 800,
+                cursor: 'pointer', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', transition: 'all .1s',
+                outline: 'none',
+              }}
+            >
+              ⋮
+            </button>
+          </div>
+
           {/* Order Type Section */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {(['surplace','emporter','livraison'] as OrderType[]).map(t => (
@@ -2984,7 +3117,7 @@ function POSContent() {
       {/* ── Overlays ── */}
       {showSettings && <SettingsPanel onClose={()=>setShowSettings(false)} />}
       {showHistory && <HistoryPanel onClose={()=>setShowHistory(false)} />}
-      {showFacture && <FactureModal initialTotal={total} onClose={()=>setShowFacture(false)} />}
+      {showFacture && <FactureHubModal onClose={()=>setShowFacture(false)} />}
       {showUpdateModal && <UpdatePanel onClose={()=>setShowUpdateModal(false)} />}
     </PanelGroup>
   );
