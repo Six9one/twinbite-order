@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveImg } from '@/utils/resolveImg';
 
 interface CategoryImage {
     category_slug: string;
@@ -26,7 +27,10 @@ export function useCategoryImages() {
             if (!error && data) {
                 const imagesMap: Record<string, CategoryImage> = {};
                 (data as unknown as CategoryImage[]).forEach(img => {
-                    imagesMap[img.category_slug] = img;
+                    imagesMap[img.category_slug] = {
+                        ...img,
+                        image_url: resolveImg(img.image_url) || null
+                    };
                 });
                 setImages(imagesMap);
             }

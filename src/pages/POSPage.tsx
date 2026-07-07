@@ -12,38 +12,9 @@ import { wizardSizePrices, supplementPrices } from '@/data/pricing';
 import { crepes, gaufres, boissons, frites as staticFrites, croques as staticCroques } from '@/data/menu';
 import { Panel, PanelGroup, PanelResizeHandle, ImperativePanelHandle } from 'react-resizable-panels';
 import { toast } from 'sonner';
-import { OptimizedImage } from '@/components/ui/OptimizedImage';
+import { resolveImg } from '@/utils/resolveImg';
 
 const PRINT_SERVER = 'http://localhost:3001';
-
-// ── Local image cache (populated at startup from print-server manifest) ────────
-// Maps remote URL → http://localhost:3001/cache/<filename>
-const LOCAL_IMG: Record<string, string> = {};
-let imgCacheLoaded = false;
-
-async function loadImageCache() {
-  if (imgCacheLoaded) return;
-  try {
-    const res = await fetch(`${PRINT_SERVER}/cache/manifest.json`, { signal: AbortSignal.timeout(2000) });
-    if (res.ok) {
-      const manifest = await res.json();
-      Object.assign(LOCAL_IMG, manifest);
-      imgCacheLoaded = true;
-      console.log(`[POS] Image cache loaded: ${Object.keys(manifest).length} images served locally`);
-    }
-  } catch {
-    // Print server not running or no cache yet — fall back to remote URLs silently
-  }
-}
-
-// Call immediately so cache is ready before first render
-loadImageCache();
-
-// Resolve: local first, remote fallback
-function resolveImg(url?: string | null): string | undefined {
-  if (!url) return undefined;
-  return LOCAL_IMG[url] || url;
-}
 
 type OrderType = 'surplace' | 'emporter' | 'livraison';
 type PayMethod  = 'especes' | 'cb' | 'en_ligne';

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveImg } from '@/utils/resolveImg';
 
 export interface CustomizationOption {
   id: string;
@@ -29,7 +30,10 @@ function makeOptionHook(table: string) {
         .eq('is_active', true)
         .order('display_order', { ascending: true });
       if (error) throw error;
-      return data as CustomizationOption[];
+      return (data as CustomizationOption[]).map(opt => ({
+        ...opt,
+        image_url: resolveImg(opt.image_url) || null
+      }));
     },
     ...QUERY_OPTS,
   });

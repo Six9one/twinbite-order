@@ -1,6 +1,8 @@
 import { useState, ImgHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
+import { resolveImg } from '@/utils/resolveImg';
+
 interface OptimizedImageProps extends ImgHTMLAttributes<HTMLImageElement> {
     /** Whether this image should load eagerly (for above-the-fold content) */
     eager?: boolean;
@@ -30,7 +32,7 @@ export function OptimizedImage({
             )}
 
             <img
-                src={src}
+                src={resolveImg(src)}
                 alt={alt || ''}
                 loading={eager ? 'eager' : 'lazy'}
                 decoding="async"

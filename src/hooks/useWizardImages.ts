@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveImg } from '@/utils/resolveImg';
 
 export type WizardProductType = 
     | 'soufflet' 
@@ -40,7 +41,7 @@ export function useWizardImage(productType: WizardProductType) {
             if (error) throw error;
 
             const value = data?.setting_value as { image_url?: string } | null;
-            return value?.image_url || null;
+            return resolveImg(value?.image_url) || null;
         },
     });
 }
@@ -64,10 +65,11 @@ export function usePizzaFormatImages() {
             if (data) {
                 data.forEach((item: WizardImageSetting) => {
                     const value = item.setting_value as { image_url?: string } | null;
+                    const resolvedUrl = resolveImg(value?.image_url) || null;
                     if (item.setting_key === 'wizard_image_pizza_senior') {
-                        result.senior = value?.image_url || null;
+                        result.senior = resolvedUrl;
                     } else if (item.setting_key === 'wizard_image_pizza_mega') {
-                        result.mega = value?.image_url || null;
+                        result.mega = resolvedUrl;
                     }
                 });
             }
@@ -95,12 +97,13 @@ export function useMenuOptionImages() {
             if (data) {
                 data.forEach((item: WizardImageSetting) => {
                     const value = item.setting_value as { image_url?: string } | null;
+                    const resolvedUrl = resolveImg(value?.image_url) || null;
                     if (item.setting_key === 'wizard_image_option_frites') {
-                        result.frites = value?.image_url || null;
+                        result.frites = resolvedUrl;
                     } else if (item.setting_key === 'wizard_image_option_boisson') {
-                        result.boisson = value?.image_url || null;
+                        result.boisson = resolvedUrl;
                     } else if (item.setting_key === 'wizard_image_option_menu') {
-                        result.menu = value?.image_url || null;
+                        result.menu = resolvedUrl;
                     }
                 });
             }
@@ -146,7 +149,7 @@ export function useAllWizardImages() {
                     const productType = item.setting_key.replace('wizard_image_', '') as WizardProductType;
                     if (productTypes.includes(productType)) {
                         const value = item.setting_value as { image_url?: string } | null;
-                        results[productType] = value?.image_url || null;
+                        results[productType] = resolveImg(value?.image_url) || null;
                     }
                 });
             }
