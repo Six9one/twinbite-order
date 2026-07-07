@@ -15,14 +15,15 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { config } from 'dotenv';
-import { mkdirSync, existsSync, statSync } from 'fs';
-import { writeFile, readFile } from 'fs/promises';
+import { mkdirSync, existsSync, statSync, unlinkSync } from 'fs';
+import { writeFile, readFile, rename } from 'fs/promises';
 import { createWriteStream } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import https from 'https';
 import http from 'http';
 import crypto from 'crypto';
+import { Jimp } from 'jimp';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -78,11 +79,49 @@ function downloadFile(url, destPath) {
 }
 
 async function downloadWithRetry(url, destPath, retries = 3) {
+  const tempPath = destPath + '.tmp';
   for (let i = 0; i < retries; i++) {
     try {
-      await downloadFile(url, destPath);
-      return true;
+      // 1. Download to temp file
+      await downloadFile(url, tempPath);
+
+      // 2. Load with Jimp and compress
+      try {
+        let image = await Jimp.read(tempPath);
+        
+        // Target dimensions: max 320px for high-DPI thumbnails
+        const MAX_DIM = 320;
+        let w = image.width;
+        let h = image.height;
+
+        if (w > MAX_DIM || h > MAX_DIM) {
+          if (w > h) {
+            h = Math.round((h * MAX_DIM) / w);
+            w = MAX_DIM;
+          } else {
+            w = Math.round((w * MAX_DIM) / h);
+            h = MAX_DIM;
+          }
+          image = image.resize({ w, h });
+        }
+
+        // Save back with compression
+        await image.write(destPath);
+
+        // Delete temp file
+        try { unlinkSync(tempPath); } catch {}
+        return true;
+      } catch (jimpError) {
+        // If Jimp fails (e.g. SVG or format issue), fallback to raw file
+        try {
+          await rename(tempPath, destPath);
+          return true;
+        } catch {
+          // Ignore and retry
+        }
+      }
     } catch {
+      try { unlinkSync(tempPath); } catch {}
       if (i < retries - 1) await new Promise(r => setTimeout(r, 1200 * (i + 1)));
     }
   }
@@ -221,10 +260,11 @@ async function main() {
     const pct = String(Math.round(((i + 1) / urls.length) * 100)).padStart(3);
     process.stdout.write(`[${pct}%] `);
 
-    // Skip if already cached and file has real content
+    // Skip if already cached and file is already optimized (size between 200B and 150KB)
     if (manifest[url] && existsSync(destPath)) {
       try {
-        if (statSync(destPath).size > 200) {
+        const size = statSync(destPath).size;
+        if (size > 200 && size < 150 * 1024) {
           process.stdout.write(`SKIP ${filename}\n`);
           skipped++;
           continue;

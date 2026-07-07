@@ -8,14 +8,14 @@ export async function compressImage(
   options: { maxWidth?: number; maxHeight?: number; quality?: number; mimeType?: string } = {}
 ): Promise<File> {
   const {
-    maxWidth = 1024,
-    maxHeight = 1024,
-    quality = 0.8,
-    mimeType = 'image/jpeg'
+    maxWidth = 512,
+    maxHeight = 512,
+    quality = 0.75,
+    mimeType = 'image/webp'
   } = options;
 
-  // Skip if not an image or if it's SVG/GIF or tiny (under 100KB)
-  if (!file.type.startsWith('image/') || file.type === 'image/gif' || file.type === 'image/svg+xml' || file.size < 100 * 1024) {
+  // Skip if not an image or if it's SVG/GIF or tiny (under 50KB)
+  if (!file.type.startsWith('image/') || file.type === 'image/gif' || file.type === 'image/svg+xml' || file.size < 50 * 1024) {
     return file;
   }
 

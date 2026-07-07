@@ -2481,6 +2481,16 @@ function POSContent() {
   const { data: categories = [] } = useCategories();
   const createOrder = useCreateOrder();
 
+  // ── Pre-fetch queries on boot to eliminate category/wizard loading delays ──
+  usePizzasByBase('tomate');
+  usePizzasByBase('creme');
+  useMeatOptions();
+  useSauceOptions();
+  useSupplementOptions();
+  useGarnitureOptions();
+  useCruditesOptions();
+  useSandwichTypes();
+
   const [orderType,  setOrderType]  = useState<OrderType>('surplace');
   const [payMethod,  setPayMethod]  = useState<PayMethod>('especes');
   const [activeCategory, setActiveCat] = useState<string | null>(null);
