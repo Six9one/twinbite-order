@@ -1021,6 +1021,7 @@ async function formatKitchenTicketClassic(order) {
                     if (c.garnitures?.length) details.push(...c.garnitures);
                     if (c.supplements?.length) details.push(...c.supplements.map(sp => '+ ' + sp));
                     if (c.removedIngredients?.length) details.push(...c.removedIngredients.map(r => 'Sans ' + r));
+                    if (c.toppings?.length) details.push(...c.toppings.map(t => '+ ' + t));
                     if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
                         const ml = { frites:'Frite', boisson:'Boisson', supp_frites:'Supp Frites', menu:'Menu complet' };
                         const lbs = c.menuOption.split(',').map(o => ml[o.trim()] || o.trim()).filter(Boolean);
@@ -1278,6 +1279,7 @@ async function formatCounterTicketClassic(order) {
                 if (c.garnitures?.length) otherDetails.push(...c.garnitures);
                 if (c.supplements?.length) otherDetails.push(...c.supplements.map(s => '+ ' + s));
                 if (c.removedIngredients?.length) otherDetails.push(...c.removedIngredients.map(r => 'Sans ' + r));
+                if (c.toppings?.length) otherDetails.push(...c.toppings.map(t => '+ ' + t));
                 if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
                     const parts  = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
                     const ml2    = { frites: 'Frite', boisson: 'Boisson', supp_frites: 'Supp Frites', menu: 'Menu complet' };

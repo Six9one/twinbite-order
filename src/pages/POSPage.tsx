@@ -1252,6 +1252,139 @@ function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void
   );
 }
 
+function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: number) => void }) {
+  const toppingsList = ['Kinder Bueno', 'Oreo', "M&M's", 'Speculoos', 'Nutella', 'Daim'];
+  const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
+  const [qty, setQty] = useState(1);
+  const [note, setNote] = useState('');
+
+  const basePrice = 5.00;
+  const extraToppingsCount = Math.max(0, selectedToppings.length - 1);
+  const extraToppingsPrice = extraToppingsCount * 0.50;
+  const unitPrice = basePrice + extraToppingsPrice;
+  const totalPrice = unitPrice * qty;
+
+  const toggleTopping = (topping: string) => {
+    setSelectedToppings(prev =>
+      prev.includes(topping) ? prev.filter(t => t !== topping) : [...prev, topping]
+    );
+  };
+
+  const handleAdd = () => {
+    onAdd(
+      {
+        id: 'milk-custom-' + Date.now(),
+        name: 'Milkshake',
+        price: unitPrice,
+        category: 'milkshakes',
+        description: 'Base vanille & Chantilly'
+      },
+      {
+        toppings: selectedToppings,
+        note: note
+      },
+      totalPrice
+    );
+    setSelectedToppings([]);
+    setQty(1);
+    setNote('');
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px' }}>
+        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '10px 12px', marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>🥛 Milkshake Personnalisé (5.00€)</div>
+          <div style={{ fontSize: 11, color: '#94a3b8' }}>Base vanille + Crème Chantilly et 1 topping inclus. Topping supplém. +0.50€.</div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 10, color: S.muted, fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>SÉLECTIONNER LES TOPPINGS</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+            {toppingsList.map(t => {
+              const active = selectedToppings.includes(t);
+              return (
+                <button
+                  key={t}
+                  onClick={() => toggleTopping(t)}
+                  style={{
+                    padding: '10px 8px',
+                    borderRadius: 8,
+                    border: `1px solid ${active ? '#f59e0b' : '#374151'}`,
+                    background: active ? 'rgba(245,158,11,0.1)' : '#1f2937',
+                    color: active ? '#f59e0b' : '#e5e7eb',
+                    fontSize: 12,
+                    fontWeight: active ? 700 : 500,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span>{t}</span>
+                  {active && <span style={{ fontSize: 10, background: '#f59e0b', color: '#000', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 10, color: S.muted, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>NOTES / MODIFICATIONS</div>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Ex: Sans chantilly, sauce chocolat..."
+            style={{
+              width: '100%',
+              padding: '8px 10px',
+              borderRadius: 6,
+              border: `1px solid ${S.border}`,
+              background: '#1f2937',
+              color: '#fff',
+              fontSize: 12,
+              outline: 'none'
+            }}
+          />
+        </div>
+      </div>
+
+      <div style={{ padding: '8px 14px', borderTop: `1px solid ${S.border}`, background: '#111827', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <span style={{ fontSize: 12, color: S.muted }}>Qté:</span>
+        <button onClick={() => setQty(Math.max(1, qty - 1))} style={{ ...S.btn, padding: '4px 10px', fontWeight: 800 }}>−</button>
+        <span style={{ fontSize: 14, fontWeight: 700, minWidth: 24, textAlign: 'center' }}>{qty}</span>
+        <button onClick={() => setQty(qty + 1)} style={{ ...S.btn, padding: '4px 10px', fontWeight: 800 }}>+</button>
+      </div>
+
+      <div style={{ padding: '10px 14px', borderTop: `1px solid ${S.border}`, background: '#111827', flexShrink: 0 }}>
+        <button
+          onClick={handleAdd}
+          style={{
+            width: '100%',
+            padding: '10px',
+            borderRadius: 9,
+            border: 'none',
+            background: 'linear-gradient(135deg,#f59e0b,#ef4444)',
+            color: '#000',
+            fontSize: 13,
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 6
+          }}
+        >
+          <span>Ajouter au panier</span>
+          <span style={{ opacity: 0.8 }}>({totalPrice.toFixed(2)}€)</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Simple panel (frites, crêpes, boissons, etc.) ────────────────────────────
 function SimplePanel({ categorySlug, title, onAdd }: { categorySlug:string; title:string; onAdd:(item:any,custom:any,price:number)=>void }) {
   const { data: dbProducts = [] } = useProductsByCategory(categorySlug);
@@ -2841,6 +2974,8 @@ function POSContent() {
     if (activeCategory === 'texmex')   return <TexMexPanel  onAdd={handleAdd} />;
     // Boissons: canette/bouteille avec note + quantité
     if (activeCategory === 'boissons') return <BoissonPanel onAdd={handleAdd} />;
+    // Milkshakes customizable panel
+    if (activeCategory === 'milkshakes') return <MilkshakePanel onAdd={handleAdd} />;
     // Product-based customizable (Croques): pick product then customize
     const CUSTOMIZABLE = ['croques'];
     if (CUSTOMIZABLE.includes(activeCategory)) return <CustomizablePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
