@@ -9,7 +9,7 @@ import { useSandwichTypes } from '@/hooks/useSandwiches';
 import { calculateTVA, applyPizzaPromotions } from '@/utils/promotions';
 import { pizzaPrices, cheeseSupplementOptions, menuOptionPrices } from '@/data/menu';
 import { wizardSizePrices, supplementPrices } from '@/data/pricing';
-import { crepes, gaufres, boissons, frites as staticFrites, croques as staticCroques } from '@/data/menu';
+import { crepes, gaufres, boissons, frites as staticFrites, croques as staticCroques, milkshakes } from '@/data/menu';
 import { Panel, PanelGroup, PanelResizeHandle, ImperativePanelHandle } from 'react-resizable-panels';
 import { toast } from 'sonner';
 import { resolveImg } from '@/utils/resolveImg';
@@ -1255,7 +1255,7 @@ function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void
 // ── Simple panel (frites, crêpes, boissons, etc.) ────────────────────────────
 function SimplePanel({ categorySlug, title, onAdd }: { categorySlug:string; title:string; onAdd:(item:any,custom:any,price:number)=>void }) {
   const { data: dbProducts = [] } = useProductsByCategory(categorySlug);
-  const fallbacks: Record<string,any[]> = { frites:staticFrites, crepes:crepes, gaufres:gaufres, boissons:boissons, croques:staticCroques };
+  const fallbacks: Record<string,any[]> = { frites:staticFrites, crepes:crepes, gaufres:gaufres, boissons:boissons, croques:staticCroques, milkshakes:milkshakes };
   const products = toItems(dbProducts.length ? dbProducts : undefined, fallbacks[categorySlug] || []);
 
   const [sel, setSel] = useState<any|null>(null);
