@@ -2417,6 +2417,89 @@ function setupHttpServer() {
         }
     });
 
+    // Uber Eats direct print & import endpoint (called by Chrome Extension)
+    app.post('/api/print-uber-order', async (req, res) => {
+        try {
+            const body = req.body;
+            console.log('📥 Direct Uber Eats order received from browser extension:', JSON.stringify(body, null, 2));
+
+            const orderId = body.order_id || Math.floor(Math.random() * 100000).toString();
+            const customerName = body.customer_name || "Client Uber Eats";
+            const customerPhone = body.customer_phone || "";
+            const customerAddress = body.customer_address || null;
+            const customerNotes = body.customer_notes || "";
+            
+            const total = Number(body.total || 0);
+            const deliveryFee = Number(body.delivery_fee || 0);
+            const subtotal = Number(body.subtotal || (total - deliveryFee));
+
+            const tvaRate = 10;
+            const subtotalHT = subtotal / (1 + tvaRate / 100);
+            const tvaAmount = subtotal - subtotalHT;
+
+            const rawItems = Array.isArray(body.items) ? body.items : [];
+            const items = rawItems.map((it, index) => {
+                const qty = Number(it.quantity || 1);
+                const itemPrice = Number(it.price || 0);
+                return {
+                    id: `uber-item-${index}-${Date.now()}`,
+                    quantity: qty,
+                    calculatedPrice: itemPrice * qty,
+                    item: {
+                        id: `uber-${index}`,
+                        name: it.name || "Article Uber Eats",
+                        description: it.description || "",
+                        price: itemPrice,
+                        category: "pizzas"
+                    },
+                    customization: it.description ? {
+                        note: it.description
+                    } : undefined
+                };
+            });
+
+            const orderPayload = {
+                order_number: `UBER-${orderId}`,
+                order_type: 'ubereats',
+                items,
+                customer_name: customerName,
+                customer_phone: customerPhone,
+                customer_address: customerAddress,
+                customer_notes: `[UBER EATS] ${customerNotes}`.trim(),
+                payment_method: 'en_ligne',
+                subtotal: Number(subtotalHT.toFixed(2)),
+                tva: Number(tvaAmount.toFixed(2)),
+                total: total,
+                delivery_fee: deliveryFee,
+                status: 'pending',
+                is_scheduled: false,
+                scheduled_for: null
+            };
+
+            // Try to insert in Supabase so TV dashboard and statistics are updated
+            console.log('Saving Uber Eats order to Supabase database...');
+            const { data, error } = await supabase
+                .from('orders')
+                .insert(orderPayload)
+                .select()
+                .single();
+
+            if (error) {
+                console.error('⚠️ Supabase insert failed, printing locally as fallback:', error.message);
+                // Print directly locally if internet/database connection fails
+                const printSuccess = await printDualTickets({ ...orderPayload, id: `temp-${Date.now()}` });
+                return res.json({ success: printSuccess, localOnly: true });
+            }
+
+            console.log('✅ Order saved to Supabase, realtime listener will handle printing.');
+            res.json({ success: true, order_id: data.id });
+
+        } catch (err) {
+            console.error('❌ Error handling direct Uber Eats order:', err.message);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
     // Real-time incoming call webhook endpoint
     app.post('/incoming-call', async (req, res) => {
         const { phone, name } = req.body;

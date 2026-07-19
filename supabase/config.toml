@@ -11,3 +11,7 @@ verify_jwt = false
 
 [functions.send-spin-notification]
 verify_jwt = false
+
+[functions.ubereats-webhook]
+verify_jwt = false
+

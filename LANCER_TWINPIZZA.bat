@@ -115,6 +115,9 @@ echo  (La fenetre Hub s'ouvre maintenant)
 echo  (Cette fenetre peut etre minimisee)
 echo.
 
+:: Lancer Google Chrome sur la page Uber Eats Manager automatiquement
+start "" chrome "https://merchants.ubereats.com/orders"
+
 :: Lancer Electron — sortie visible dans cette fenetre
 cd /d "%~dp0twinpizzahub"
 "!ELECTRON_EXE!" . --enable-logging
