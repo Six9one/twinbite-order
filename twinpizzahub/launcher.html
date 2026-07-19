@@ -613,6 +613,7 @@ webview {
         wv.id = 'wv-' + s;
         wv.src = 'about:blank';
         wv.setAttribute('allowpopups', '');
+        wv.setAttribute('partition', 'persist:twinpizza');
         if (window.twinHub && window.twinHub.preloadPath) {
           wv.setAttribute('preload', window.twinHub.preloadPath);
         }
