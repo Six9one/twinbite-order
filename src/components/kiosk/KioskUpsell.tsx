@@ -1,6 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useDrinks } from '@/hooks/useSupabaseData';
+import { useProductsByCategory } from '@/hooks/useProducts';
 
 interface KioskUpsellProps {
     onAddItem: (category: string) => void;
