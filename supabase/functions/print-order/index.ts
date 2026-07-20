@@ -183,7 +183,8 @@ function formatOrderForPrint(order: OrderData, ticketSettings: any): string {
                 details.push(`📏 ${customization.size.toUpperCase()}`);
             }
             if (customization.base) {
-                details.push(`Base ${customization.base}`);
+                const baseLabel = customization.base === 'creme' ? 'BASE CRÈME 🥛' : 'BASE TOMATE 🍅';
+                details.push(baseLabel);
             }
             if (customization.meats?.length) {
                 details.push(`🥩 ${customization.meats.join(', ')}`);
@@ -202,6 +203,13 @@ function formatOrderForPrint(order: OrderData, ticketSettings: any): string {
             }
             if (customization.supplements?.length) {
                 details.push(`➕ ${customization.supplements.join(', ')}`);
+            }
+            if (customization.removedIngredients?.length) {
+                details.push(`🚫 SANS: ${customization.removedIngredients.join(', ')}`);
+            }
+            if (customization.addedExtras?.length) {
+                const extrasText = customization.addedExtras.map((e: any) => `${e.name}`).join(', ');
+                details.push(`➕ EXTRA: ${extrasText}`);
             }
             if (customization.menuOption && customization.menuOption !== 'none') {
                 const menuLabels: Record<string, string> = {

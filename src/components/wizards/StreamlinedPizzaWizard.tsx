@@ -338,15 +338,16 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
                 : `${selectedSize === 'mega' ? 'Mega 40cm' : 'Senior 31cm'}`
             }
             isKiosk={false}
+            initialBase={customizingPizza.base || activeBase}
             onBack={() => setCustomizingPizza(null)}
-            onConfirm={(removed, extras, noteText) => {
+            onConfirm={(removed, extras, noteText, chosenBase) => {
               const sizeId = selectedIsMenuMidi
                 ? (selectedSize === 'mega' ? 'menu_midi_mega' : 'menu_midi')
                 : selectedSize;
               const extrasPrice = extras.reduce((s: number, e: PizzaExtra) => s + e.price, 0);
               const finalPrice = currentPrice + extrasPrice;
               const customization: PizzaCustomization = {
-                base: activeBase,
+                base: chosenBase,
                 size: sizeId,
                 isMenuMidi: selectedIsMenuMidi,
                 note: noteText.trim() || undefined,

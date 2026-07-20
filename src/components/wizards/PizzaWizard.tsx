@@ -477,11 +477,13 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
         basePrice={format.basePrice}
         formatLabel={formatLabel}
         isKiosk={isKiosk}
+        initialBase={base}
         onBack={() => setStep('SELECT_PIZZA')}
-        onConfirm={(removed, extras, noteText) => {
+        onConfirm={(removed, extras, noteText, chosenBase) => {
           setRemovedIngredients(removed);
           setAddedExtras(extras);
           setNote(noteText);
+          setBase(chosenBase);
           // Directly add to cart
           const sizeId = format.isMenuMidi
             ? (format.size === 'mega' ? 'menu_midi_mega' : 'menu_midi')
@@ -489,7 +491,7 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
           const extrasPrice = extras.reduce((s, e) => s + e.price, 0);
           const finalPrice = format.basePrice + extrasPrice;
           const customization: PizzaCustomization = {
-            base,
+            base: chosenBase,
             size: sizeId,
             isMenuMidi: format.isMenuMidi,
             note: noteText || undefined,

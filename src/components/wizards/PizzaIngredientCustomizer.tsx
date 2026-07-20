@@ -17,7 +17,8 @@ interface PizzaIngredientCustomizerProps {
   pizza: MenuItem;
   basePrice: number;
   formatLabel: string;
-  onConfirm: (removedIngredients: string[], addedExtras: PizzaExtra[], note: string) => void;
+  initialBase?: 'tomate' | 'creme';
+  onConfirm: (removedIngredients: string[], addedExtras: PizzaExtra[], note: string, base: 'tomate' | 'creme') => void;
   onBack: () => void;
   isKiosk?: boolean;
 }
@@ -37,6 +38,7 @@ export function PizzaIngredientCustomizer({
   pizza,
   basePrice,
   formatLabel,
+  initialBase,
   onConfirm,
   onBack,
   isKiosk = false,
@@ -45,6 +47,7 @@ export function PizzaIngredientCustomizer({
   const [removedIngredients, setRemovedIngredients] = useState<string[]>([]);
   const [addedExtras, setAddedExtras] = useState<PizzaExtra[]>([]);
   const [note, setNote] = useState('');
+  const [selectedBase, setSelectedBase] = useState<'tomate' | 'creme'>(initialBase || 'tomate');
 
   const toggleIngredient = (ingredient: string) => {
     setRemovedIngredients(prev =>
@@ -110,6 +113,43 @@ export function PizzaIngredientCustomizer({
             ) : (
               <Pizza className={`text-orange-300 ${isKiosk ? 'w-20 h-20' : 'w-16 h-16'}`} />
             )}
+          </div>
+        </div>
+
+        {/* BASE SAUCE TOGGLE */}
+        <div className={`rounded-2xl border-2 p-4 space-y-3 ${selectedBase !== (initialBase || 'tomate') ? 'border-amber-400 bg-amber-50/60' : 'border-border bg-muted/20'}`}>
+          <div className="flex items-center gap-2">
+            <span className={isKiosk ? 'text-2xl' : 'text-base'}>🫙</span>
+            <h2 className={`font-bold ${isKiosk ? 'text-2xl' : 'text-lg'}`}>Base de sauce</h2>
+            {selectedBase !== (initialBase || 'tomate') && (
+              <span className="ml-auto text-xs font-bold text-amber-600 bg-amber-100 rounded-full px-3 py-1">Modifiée</span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setSelectedBase('tomate')}
+              className={`rounded-xl border-2 font-semibold transition-all flex flex-col items-center justify-center gap-1 ${isKiosk ? 'py-5 text-lg' : 'py-4 text-sm'} ${
+                selectedBase === 'tomate'
+                  ? 'border-red-400 bg-red-50 text-red-700 ring-2 ring-red-200'
+                  : 'border-border hover:border-red-300 hover:bg-red-50/30'
+              }`}
+            >
+              <span className={isKiosk ? 'text-4xl' : 'text-3xl'}>🍅</span>
+              Sauce Tomate
+              {selectedBase === 'tomate' && <span className="text-xs">✓ Sélectionné</span>}
+            </button>
+            <button
+              onClick={() => setSelectedBase('creme')}
+              className={`rounded-xl border-2 font-semibold transition-all flex flex-col items-center justify-center gap-1 ${isKiosk ? 'py-5 text-lg' : 'py-4 text-sm'} ${
+                selectedBase === 'creme'
+                  ? 'border-amber-400 bg-amber-50 text-amber-800 ring-2 ring-amber-200'
+                  : 'border-border hover:border-amber-300 hover:bg-amber-50/30'
+              }`}
+            >
+              <span className={isKiosk ? 'text-4xl' : 'text-3xl'}>🥛</span>
+              Crème Fraîche
+              {selectedBase === 'creme' && <span className="text-xs">✓ Sélectionné</span>}
+            </button>
           </div>
         </div>
 
@@ -234,7 +274,7 @@ export function PizzaIngredientCustomizer({
         <div className={`mx-auto ${isKiosk ? 'max-w-4xl' : 'container'}`}>
           <Button
             className={`w-full rounded-xl font-bold ${kioskBtn}`}
-            onClick={() => onConfirm(removedIngredients, addedExtras, note)}
+            onClick={() => onConfirm(removedIngredients, addedExtras, note, selectedBase)}
           >
             ✅ Ajouter au panier — {totalPrice.toFixed(2)}€
           </Button>

@@ -76,6 +76,12 @@ serve(async (req) => {
       // Remove base sauce from display - not needed
       // Was: if (customization.base) { parts.push(customization.base === 'creme' ? 'Base crème' : 'Base tomate'); }
 
+      // Show base sauce for pizzas (especially when changed from default)
+      if (isPizza && customization.base) {
+        const baseLabel = customization.base === 'creme' ? '🥛 BASE CRÈME FRAÎCHE' : '🍅 BASE TOMATE';
+        parts.push(baseLabel);
+      }
+
       // Menu Midi
       if (customization.isMenuMidi) {
         parts.push('Menu Midi');
