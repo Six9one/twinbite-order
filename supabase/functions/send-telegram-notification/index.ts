@@ -121,6 +121,21 @@ serve(async (req) => {
         parts.push(`🧀 ${customization.cheeseSupplements.join(', ')}`);
       }
 
+      // ─── NEW: Pizza ingredient customization ───
+      // Removed ingredients (customer asked to remove)
+      if (customization.removedIngredients && customization.removedIngredients.length > 0) {
+        parts.push(`🚫 SANS: ${customization.removedIngredients.join(', ')}`);
+      }
+
+      // Added extras (customer paid extras)
+      if (customization.addedExtras && customization.addedExtras.length > 0) {
+        const extrasText = customization.addedExtras
+          .map((e: { name: string; price: number }) => `${e.name} (+${e.price.toFixed(2)}€)`)
+          .join(', ');
+        parts.push(`➕ EXTRA: ${extrasText}`);
+      }
+
+
       // Menu option
       if (customization.menuOption !== undefined) {
         const isSandwichOrPanini = category === 'panini' || productName.toLowerCase().includes('sandwich') || productName.toLowerCase().includes('panini');
