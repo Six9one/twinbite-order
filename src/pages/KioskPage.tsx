@@ -206,32 +206,7 @@ function KioskContent() {
         setScreen('wizard');
     };
 
-    const handleWizardClose = () => {
-        setSelectedCategory(null);
-        // Show upsell after adding first item, then back to menu
-        if (getItemCount() > 0 && showUpsellAfterWizard) {
-            setScreen('upsell');
-            setShowUpsellAfterWizard(false);
-        } else {
-            setScreen('menu');
-        }
-    };
 
-    // After wizard adds an item, trigger upsell next time
-    const handleWizardCloseWithUpsell = () => {
-        setSelectedCategory(null);
-        setShowUpsellAfterWizard(false);
-        setScreen('upsell');
-    };
-
-    const handleUpsellAdd = (category: string) => {
-        setSelectedCategory(category);
-        setScreen('wizard');
-    };
-
-    const handleUpsellSkip = () => {
-        setScreen('menu');
-    };
 
     const handleConfirmOrder = () => {
         processOrder();
@@ -377,11 +352,7 @@ function KioskContent() {
 
         const wizardOnClose = (wasAdded = false) => {
             setSelectedCategory(null);
-            if (wasAdded) {
-                setScreen('upsell');
-            } else {
-                setScreen('menu');
-            }
+            setScreen('menu');
         };
 
         switch (selectedCategory) {
@@ -498,12 +469,7 @@ function KioskContent() {
                     />
                 )}
                 {screen === 'wizard' && renderWizard()}
-                {screen === 'upsell' && (
-                    <KioskUpsell
-                        onAddItem={handleUpsellAdd}
-                        onSkip={handleUpsellSkip}
-                    />
-                )}
+
             </div>
 
             {/* Right panel: cart sidebar */}
