@@ -43,7 +43,9 @@ export interface PizzaCustomization {
   isMenuMidi?: boolean;
   promoApplied?: string;
   note?: string;
-  supplements?: string[]; // Cheese supplements
+  supplements?: string[]; // Cheese supplements (legacy)
+  removedIngredients?: string[]; // Ingredients the customer removed
+  addedExtras?: { id: string; name: string; price: number }[]; // Extras added by customer
 }
 
 export interface TacosCustomization {

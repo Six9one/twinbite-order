@@ -16,6 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Check, Pizza, Sun, Clock, Plus, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { playTossAnimation } from '@/utils/tossAnimation';
+import { PizzaIngredientCustomizer, PizzaExtra } from '@/components/wizards/PizzaIngredientCustomizer';
 
 const toppingVisuals: Record<string, { emoji: string; positions: { top: string; left: string }[] }> = {
   chevre: {
@@ -77,7 +78,7 @@ const toppingVisuals: Record<string, { emoji: string; positions: { top: string; 
 };
 
 
-type WizardStep = 'SELECT_FORMAT' | 'SELECT_PIZZA' | 'CUSTOMIZE';
+type WizardStep = 'SELECT_FORMAT' | 'SELECT_PIZZA' | 'CUSTOMIZE_PIZZA' | 'CUSTOMIZE';
 
 interface FormatSelection {
   size: PizzaSize;
@@ -109,6 +110,9 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
   const [note, setNote] = useState('');
   const [showAddedOverlay, setShowAddedOverlay] = useState(false);
   const [countdown, setCountdown] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
+  // Ingredient customization state
+  const [removedIngredients, setRemovedIngredients] = useState<string[]>([]);
+  const [addedExtras, setAddedExtras] = useState<PizzaExtra[]>([]);
 
   // Data fetching
   const { data: dbPizzasTomate, isLoading: loadingTomate } = usePizzasByBase('tomate');
@@ -151,7 +155,11 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
     setSelectedPizza(menuItem);
     setSelectedProduct(isProduct ? pizza as Product : null);
     setBase(menuItem.base || 'tomate');
-    setStep('CUSTOMIZE');
+    // Reset ingredient customization for the new pizza
+    setRemovedIngredients([]);
+    setAddedExtras([]);
+    setNote('');
+    setStep('CUSTOMIZE_PIZZA');
   };
 
   // --- Supplements ---
@@ -164,7 +172,8 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
       const sup = cheeseSupplementOptions.find(s => s.id === supId);
       return total + (sup?.price || 0);
     }, 0);
-    return format.basePrice + supplementsPrice;
+    const extrasPrice = addedExtras.reduce((total, e) => total + e.price, 0);
+    return format.basePrice + supplementsPrice + extrasPrice;
   };
 
   // --- Add to Cart ---
@@ -181,6 +190,8 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
       isMenuMidi: format.isMenuMidi,
       note: note || undefined,
       supplements: supplements.length > 0 ? supplements : undefined,
+      removedIngredients: removedIngredients.length > 0 ? removedIngredients : undefined,
+      addedExtras: addedExtras.length > 0 ? addedExtras : undefined,
     };
     const cartItem = { ...selectedPizza, id: `${selectedPizza.id}-${Date.now()}` };
     addToCart(cartItem, 1, customization, getPrice());
@@ -452,7 +463,66 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
   }
 
   // ============================================================
-  // STEP 2: CUSTOMIZE (no size selection — already locked)
+  // STEP CUSTOMIZE_PIZZA: Ingredient customization (new)
+  // ============================================================
+  if (step === 'CUSTOMIZE_PIZZA' && selectedPizza) {
+    const isKiosk = window.location.pathname.includes('/kiosk');
+    const formatLabel = format.isMenuMidi
+      ? `Menu Midi ${format.size === 'mega' ? 'Mega' : 'Senior'}`
+      : `${format.size === 'mega' ? 'Mega 40cm' : 'Senior 31cm'}`;
+
+    return (
+      <PizzaIngredientCustomizer
+        pizza={selectedPizza}
+        basePrice={format.basePrice}
+        formatLabel={formatLabel}
+        isKiosk={isKiosk}
+        onBack={() => setStep('SELECT_PIZZA')}
+        onConfirm={(removed, extras, noteText) => {
+          setRemovedIngredients(removed);
+          setAddedExtras(extras);
+          setNote(noteText);
+          // Directly add to cart
+          const sizeId = format.isMenuMidi
+            ? (format.size === 'mega' ? 'menu_midi_mega' : 'menu_midi')
+            : format.size;
+          const extrasPrice = extras.reduce((s, e) => s + e.price, 0);
+          const finalPrice = format.basePrice + extrasPrice;
+          const customization: PizzaCustomization = {
+            base,
+            size: sizeId,
+            isMenuMidi: format.isMenuMidi,
+            note: noteText || undefined,
+            removedIngredients: removed.length > 0 ? removed : undefined,
+            addedExtras: extras.length > 0 ? extras : undefined,
+          };
+          const cartItem = { ...selectedPizza, id: `${selectedPizza.id}-${Date.now()}` };
+          addToCart(cartItem, 1, customization, finalPrice);
+          trackAddToCart(selectedPizza.id.split('-')[0], selectedPizza.name, 'pizzas');
+          if (!isKiosk) {
+            toast({ title: 'Ajouté au panier', description: `${selectedPizza.name} ${format.size === 'mega' ? 'Mega' : 'Senior'}${format.isMenuMidi ? ' (Menu Midi)' : ''}` });
+          }
+          if (isKiosk) {
+            onClose(true);
+            return;
+          }
+          // Non-kiosk: reset and show overlay
+          setSelectedPizza(null);
+          setRemovedIngredients([]);
+          setAddedExtras([]);
+          setNote('');
+          setShowAddedOverlay(true);
+          setTimeout(() => {
+            setShowAddedOverlay(false);
+            setStep('SELECT_PIZZA');
+          }, 3000);
+        }}
+      />
+    );
+  }
+
+  // ============================================================
+  // STEP 2: CUSTOMIZE (legacy cheese supplements — kept for back-compat)
   // ============================================================
   return (
     <div className="min-h-screen bg-background pb-24">

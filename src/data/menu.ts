@@ -351,6 +351,27 @@ export const supplementOptions = [
   { id: "sauce-sup", name: "Sauce Supplémentaire", price: 0.5 },
 ];
 
+// ============= PIZZA INGREDIENT SUPPLEMENTS =============
+// Extras that can be added to any pizza during customization
+export const pizzaIngredientSupplements = [
+  { id: "pi-fromage", name: "Extra Fromage", emoji: "🧀", price: 1.00 },
+  { id: "pi-viande", name: "Extra Viande", emoji: "🥩", price: 1.50 },
+  { id: "pi-sauce", name: "Sauce Supplémentaire", emoji: "🫙", price: 0.50 },
+  { id: "pi-champignons", name: "Champignons", emoji: "🍄", price: 0.50 },
+  { id: "pi-olives", name: "Olives", emoji: "🫒", price: 0.50 },
+  { id: "pi-poivrons", name: "Poivrons", emoji: "🫑", price: 0.30 },
+  { id: "pi-oignons", name: "Oignons", emoji: "🧅", price: 0.30 },
+  { id: "pi-oeuf", name: "Œuf", emoji: "🥚", price: 1.00 },
+  { id: "pi-mozzarella", name: "Mozzarella extra", emoji: "⚪", price: 1.00 },
+  { id: "pi-jambon", name: "Jambon", emoji: "🥓", price: 1.00 },
+  { id: "pi-lardons", name: "Lardons", emoji: "🥓", price: 1.00 },
+  { id: "pi-merguez", name: "Merguez", emoji: "🌭", price: 1.00 },
+  { id: "pi-poulet", name: "Poulet", emoji: "🍗", price: 1.00 },
+  { id: "pi-chorizo", name: "Chorizo", emoji: "🌶️", price: 1.00 },
+  { id: "pi-thon", name: "Thon", emoji: "🐟", price: 1.00 },
+  { id: "pi-chevre", name: "Chèvre", emoji: "🧀", price: 1.00 },
+];
+
 // ============= CATEGORY CONFIG =============
 export const categoryLabels: Record<MenuCategory, string> = {
   pizzas: "🍕 Pizzas",

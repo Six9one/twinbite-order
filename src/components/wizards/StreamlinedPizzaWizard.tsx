@@ -9,13 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Check, Plus, Minus, Pizza, Sun, SlidersHorizontal, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import { playTossAnimation } from '@/utils/tossAnimation';
+import { PizzaIngredientCustomizer, PizzaExtra } from '@/components/wizards/PizzaIngredientCustomizer';
 
 const toppingVisuals: Record<string, { emoji: string; positions: { top: string; left: string }[] }> = {
   chevre: {
@@ -93,7 +90,6 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
   // Customization state
   const [customizingPizza, setCustomizingPizza] = useState<MenuItem | null>(null);
   const [customNote, setCustomNote] = useState('');
-  const [customSupplements, setCustomSupplements] = useState<string[]>([]);
 
   // Database pizzas
   const { data: dbPizzasTomate, isLoading: loadingTomate } = usePizzasByBase('tomate');
@@ -180,49 +176,10 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
     }
   };
 
-  // ─── Customization Drawer Handlers ───
+  // ─── Customization Handler ───
   const openCustomization = (pizza: MenuItem) => {
     setCustomizingPizza(pizza);
     setCustomNote('');
-    setCustomSupplements([]);
-  };
-
-  const toggleSupplement = (supId: string) => {
-    setCustomSupplements(prev =>
-      prev.includes(supId) ? prev.filter(id => id !== supId) : [...prev, supId]
-    );
-  };
-
-  const getCustomizingPrice = () => {
-    const supplementsPrice = customSupplements.reduce((total, supId) => {
-      const sup = cheeseSupplementOptions.find(s => s.id === supId);
-      return total + (sup?.price || 0);
-    }, 0);
-    return currentPrice + supplementsPrice;
-  };
-
-  const handleSaveCustomization = (event?: React.MouseEvent<HTMLButtonElement>) => {
-    if (!customizingPizza) return;
-
-    // When isMenuMidi, use 'menu_midi' / 'menu_midi_mega' size IDs so that
-    // OrderContext and promotions.ts calculate the correct price.
-    const sizeId = selectedIsMenuMidi
-      ? (selectedSize === 'mega' ? 'menu_midi_mega' : 'menu_midi')
-      : selectedSize;
-    const customization: PizzaCustomization = {
-      base: activeBase,
-      size: sizeId,
-      isMenuMidi: selectedIsMenuMidi,
-      note: customNote.trim() || undefined,
-      supplements: customSupplements.length > 0 ? customSupplements : undefined,
-    };
-
-    addToCart(customizingPizza, 1, customization, getCustomizingPrice());
-    if (event) {
-      playTossAnimation(event.currentTarget, 'pizzas');
-    }
-    toast.success(`${customizingPizza.name} personnalisée ajoutée !`);
-    setCustomizingPizza(null);
   };
 
   return (
@@ -369,102 +326,41 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
         </Tabs>
       </div>
 
-      {/* Customization Drawer / Bottom Sheet */}
-      <Sheet open={customizingPizza !== null} onOpenChange={(open) => !open && setCustomizingPizza(null)}>
-        <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto px-4 pb-6 pt-3">
-          <div className="w-12 h-1.5 bg-muted-foreground/20 rounded-full mx-auto mb-4 cursor-grab" />
-          <SheetHeader className="text-left">
-            <SheetTitle className="text-xl font-bold flex items-center gap-2">
-              <SlidersHorizontal className="w-5 h-5 text-amber-500" />
-              Personnaliser : {customizingPizza?.name}
-            </SheetTitle>
-            <p className="text-xs text-muted-foreground leading-relaxed">{customizingPizza?.description}</p>
-          </SheetHeader>
+      {/* Full-Screen Customization (new) */}
+      {customizingPizza && (
+        <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
+          <PizzaIngredientCustomizer
+            pizza={customizingPizza}
+            basePrice={currentPrice}
+            formatLabel={
+              selectedIsMenuMidi
+                ? `Midi ${selectedSize === 'mega' ? 'Mega' : 'Senior'}`
+                : `${selectedSize === 'mega' ? 'Mega 40cm' : 'Senior 31cm'}`
+            }
+            isKiosk={false}
+            onBack={() => setCustomizingPizza(null)}
+            onConfirm={(removed, extras, noteText) => {
+              const sizeId = selectedIsMenuMidi
+                ? (selectedSize === 'mega' ? 'menu_midi_mega' : 'menu_midi')
+                : selectedSize;
+              const extrasPrice = extras.reduce((s: number, e: PizzaExtra) => s + e.price, 0);
+              const finalPrice = currentPrice + extrasPrice;
+              const customization: PizzaCustomization = {
+                base: activeBase,
+                size: sizeId,
+                isMenuMidi: selectedIsMenuMidi,
+                note: noteText.trim() || undefined,
+                removedIngredients: removed.length > 0 ? removed : undefined,
+                addedExtras: extras.length > 0 ? extras : undefined,
+              };
+              addToCart(customizingPizza, 1, customization, finalPrice);
+              toast.success(`${customizingPizza.name} personnalisée ajoutée !`);
+              setCustomizingPizza(null);
+            }}
+          />
+        </div>
+      )}
 
-          <div className="mt-5 space-y-5">
-            {/* Visual Pizza Builder */}
-            <div className="bg-gradient-to-b from-orange-50/30 to-transparent rounded-2xl p-4 border border-orange-100/50 flex flex-col items-center">
-              <div className="relative w-32 h-32 rounded-full bg-white shadow-lg border-4 border-orange-100 flex items-center justify-center overflow-hidden">
-                <div className="w-full h-full relative animate-spin-slow">
-                  {customizingPizza?.imageUrl ? (
-                    <img src={customizingPizza.imageUrl} alt={customizingPizza.name} className="w-full h-full object-contain" />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
-                      <Pizza className="w-12 h-12 text-orange-200" />
-                    </div>
-                  )}
-                  
-                  {/* Toppings Overlays */}
-                  {customSupplements.map(supId => {
-                    const topping = toppingVisuals[supId];
-                    if (!topping) return null;
-                    return topping.positions.map((pos, idx) => (
-                      <span 
-                        key={`${supId}-${idx}`}
-                        style={{ top: pos.top, left: pos.left }}
-                        className="absolute text-lg pointer-events-none drop-shadow-md select-none animate-in zoom-in-50 duration-300 ease-out"
-                      >
-                        {topping.emoji}
-                      </span>
-                    ));
-                  })}
-                </div>
-              </div>
-            </div>
-            {/* Supps */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                🧀 Ajouter des Suppléments (+1.00€)
-              </h4>
-              <div className="grid grid-cols-2 gap-2.5 pt-1">
-                {cheeseSupplementOptions.map((sup) => (
-                  <div 
-                    key={sup.id} 
-                    onClick={() => toggleSupplement(sup.id)}
-                    className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer ${
-                      customSupplements.includes(sup.id)
-                        ? 'border-amber-400 bg-amber-400/5'
-                        : 'border-border hover:bg-muted/50'
-                    }`}
-                  >
-                    <Label htmlFor={`custom-sup-${sup.id}`} className="cursor-pointer font-medium text-xs">
-                      {sup.name}
-                    </Label>
-                    <Checkbox
-                      id={`custom-sup-${sup.id}`}
-                      checked={customSupplements.includes(sup.id)}
-                      onCheckedChange={() => toggleSupplement(sup.id)}
-                      className="rounded-md"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-bold text-slate-800">📝 Notes de préparation</h4>
-              <Textarea
-                placeholder="Ex: Bien cuite, sans origan, sauce piquante..."
-                value={customNote}
-                onChange={(e) => setCustomNote(e.target.value)}
-                className="rounded-xl border bg-muted/40"
-                rows={3}
-              />
-            </div>
-
-            {/* Submit */}
-            <div className="pt-2">
-              <Button
-                onClick={(e) => handleSaveCustomization(e)}
-                className="w-full h-12 bg-amber-400 hover:bg-amber-500 text-black font-bold rounded-xl flex items-center justify-center gap-2"
-              >
-                Ajouter au panier - {getCustomizingPrice().toFixed(2)}€
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
 
       {/* Floating View Cart Footer (Mobile Only) */}
       <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-background/95 backdrop-blur border-t border-border z-35 md:hidden safe-bottom">
