@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Check, Printer } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface KioskSuccessProps {
     orderNumber: string;
@@ -66,6 +67,12 @@ export function KioskSuccess({ orderNumber, customerName, onReset }: KioskSucces
                 Présentez votre ticket à la <strong>caisse</strong> pour payer
             </p>
 
+            <Button
+                onClick={onReset}
+                className="relative z-10 mt-4 px-8 py-4 text-xl font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-2xl shadow-lg border border-emerald-400/30 active:scale-95 transition-all h-14"
+            >
+                🏁 Nouvelle commande
+            </Button>
 
             {/* Countdown */}
             <p className="relative z-10 text-emerald-400/40 text-lg mt-4">

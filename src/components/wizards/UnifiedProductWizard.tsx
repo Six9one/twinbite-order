@@ -167,8 +167,8 @@ const mlawiGarnitures = [
 ];
 
 interface UnifiedProductWizardProps {
-  productType: ProductType;
-  onClose: () => void;
+  productType: string;
+  onClose: (added?: boolean) => void;
 }
 
 function getOptionEmoji(name: string, map: Record<string, string>): string {
@@ -484,12 +484,14 @@ export function UnifiedProductWizard({ productType, onClose }: UnifiedProductWiz
 
     trackAddToCart(baseItem.id, `${config.title} ${size}`, config.categorySlug);
 
-    toast({
-      title: 'Ajouté au panier',
-      description: `${config.title} ${currentSizeConfig.label} - ${meatNames.join(', ')}`,
-    });
+    if (!window.location.pathname.includes('/kiosk')) {
+      toast({
+        title: 'Ajouté au panier',
+        description: `${config.title} ${currentSizeConfig.label} - ${meatNames.join(', ')}`,
+      });
+    }
 
-    onClose();
+    onClose(true);
   };
 
   const renderStep = () => {

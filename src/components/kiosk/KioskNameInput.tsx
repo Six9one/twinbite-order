@@ -64,7 +64,7 @@ export function KioskNameInput({ onSubmit, onBack }: KioskNameInputProps) {
                 <div className="w-full max-w-2xl mb-8">
                     <div className="bg-white/10 backdrop-blur rounded-2xl border-2 border-amber-400/30 px-8 py-6 text-center min-h-[80px] flex items-center justify-center">
                         {name ? (
-                            <span className="text-5xl font-bold text-slate-900 tracking-wider">{name}</span>
+                            <span className="text-5xl font-bold text-white tracking-wider">{name}</span>
                         ) : (
                             <span className="text-3xl text-slate-400">Tapez votre prénom...</span>
                         )}

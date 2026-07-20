@@ -28,7 +28,7 @@ interface SelectedItem {
 }
 
 interface TexMexWizardProps {
-    onClose: () => void;
+    onClose: (added?: boolean) => void;
 }
 
 const FALLBACK_SNACKS: TexMexProduct[] = [
@@ -219,8 +219,10 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
         };
 
         addToCart(texMexItem, 1, undefined, price);
-        toast.success('Tex-Mex ajouté au panier !');
-        onClose();
+        if (!window.location.pathname.includes('/kiosk')) {
+            toast.success('Tex-Mex ajouté au panier !');
+        }
+        onClose(true);
     };
 
     const snacks = products.filter(p => (p.category ?? 'snack') === 'snack');

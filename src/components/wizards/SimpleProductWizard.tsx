@@ -12,7 +12,7 @@ interface SimpleProductWizardProps {
   items: MenuItem[];
   title: string;
   showMenuOption?: boolean;
-  onClose: () => void;
+  onClose: (added?: boolean) => void;
 }
 
 export function SimpleProductWizard({ items, title, showMenuOption = false, onClose }: SimpleProductWizardProps) {
@@ -49,12 +49,14 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
       playTossAnimation(event.currentTarget, selectedItem.category);
     }
 
-    toast({
-      title: 'Ajouté au panier',
-      description: `${quantity}x ${selectedItem.name}`,
-    });
+    if (!window.location.pathname.includes('/kiosk')) {
+      toast({
+        title: 'Ajouté au panier',
+        description: `${quantity}x ${selectedItem.name}`,
+      });
+    }
 
-    onClose();
+    onClose(true);
   };
 
   if (!selectedItem) {

@@ -86,7 +86,7 @@ interface FormatSelection {
 }
 
 interface PizzaWizardProps {
-  onClose: () => void;
+  onClose: (added?: boolean) => void;
   lockedSize?: 'senior' | 'mega' | null;
 }
 
@@ -190,7 +190,14 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
       playTossAnimation(event.currentTarget, 'pizzas');
     }
     
-    toast({ title: 'Ajouté au panier', description: `${selectedPizza.name} ${format.size === 'mega' ? 'Mega' : 'Senior'}${format.isMenuMidi ? ' (Menu Midi)' : ''}` });
+    if (!window.location.pathname.includes('/kiosk')) {
+      toast({ title: 'Ajouté au panier', description: `${selectedPizza.name} ${format.size === 'mega' ? 'Mega' : 'Senior'}${format.isMenuMidi ? ' (Menu Midi)' : ''}` });
+    }
+
+    if (window.location.pathname.includes('/kiosk')) {
+      onClose(true);
+      return;
+    }
 
     // Reset for next pizza and show overlay
     setSelectedPizza(null);
@@ -204,7 +211,7 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
   };
 
   // --- Upsell actions from overlay ---
-  const handleUpsellDrinks = () => { setShowAddedOverlay(false); onClose(); };
+  const handleUpsellDrinks = () => { setShowAddedOverlay(false); onClose(true); };
   const handleUpsellContinue = () => { setShowAddedOverlay(false); setStep('SELECT_PIZZA'); };
 
   // Get format label
@@ -393,7 +400,7 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
     return (
       <div className="min-h-screen bg-background pb-24">
         {/* Added overlay */}
-        {showAddedOverlay && <AddedOverlay onDrinks={handleUpsellDrinks} onContinue={handleUpsellContinue} onClose={() => { setShowAddedOverlay(false); onClose(); }} />}
+        {showAddedOverlay && <AddedOverlay onDrinks={handleUpsellDrinks} onContinue={handleUpsellContinue} onClose={() => { setShowAddedOverlay(false); onClose(true); }} />}
 
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
           <div className="container mx-auto px-4 py-4">
@@ -450,7 +457,7 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Added overlay */}
-      {showAddedOverlay && <AddedOverlay onDrinks={handleUpsellDrinks} onContinue={handleUpsellContinue} onClose={() => { setShowAddedOverlay(false); onClose(); }} />}
+      {showAddedOverlay && <AddedOverlay onDrinks={handleUpsellDrinks} onContinue={handleUpsellContinue} onClose={() => { setShowAddedOverlay(false); onClose(true); }} />}
 
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
         <div className="container mx-auto px-4 py-4">

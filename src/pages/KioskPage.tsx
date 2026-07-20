@@ -14,6 +14,7 @@ import { KioskCategories } from '@/components/kiosk/KioskCategories';
 import { KioskCart } from '@/components/kiosk/KioskCart';
 import { KioskUpsell } from '@/components/kiosk/KioskUpsell';
 import { KioskSuccess } from '@/components/kiosk/KioskSuccess';
+import { KioskPreloader } from '@/components/kiosk/KioskPreloader';
 
 // Existing wizards — reused as-is
 import { PizzaWizard } from '@/components/wizards/PizzaWizard';
@@ -374,11 +375,9 @@ function KioskContent() {
     const renderWizard = () => {
         if (!selectedCategory) return null;
 
-        const wizardOnClose = () => {
-            // If items were added (cart changed), go to upsell
-            const currentCount = getItemCount();
+        const wizardOnClose = (wasAdded = false) => {
             setSelectedCategory(null);
-            if (currentCount > 0) {
+            if (wasAdded) {
                 setScreen('upsell');
             } else {
                 setScreen('menu');
@@ -523,6 +522,7 @@ function KioskContent() {
 export default function KioskPage() {
     return (
         <OrderProvider>
+            <KioskPreloader />
             <KioskContent />
         </OrderProvider>
     );

@@ -12,7 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface MilkshakeWizardProps {
-  onClose: () => void;
+  onClose: (added?: boolean) => void;
 }
 
 const milkshakeToppings = [
@@ -95,12 +95,14 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
 
     trackAddToCart(baseItem.id, `Milkshake`, 'milkshakes');
 
-    toast({
-      title: 'Ajouté au panier',
-      description: `Milkshake ${toppingNames.join(' & ')}`,
-    });
+    if (!window.location.pathname.includes('/kiosk')) {
+      toast({
+        title: 'Ajouté au panier',
+        description: `Milkshake ${toppingNames.join(' & ')}`,
+      });
+    }
 
-    onClose();
+    onClose(true);
   };
 
   const renderStep = () => {

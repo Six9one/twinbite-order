@@ -132,7 +132,7 @@ function OptionCard({
 }
 
 interface TacosWizardProps {
-  onClose: () => void;
+  onClose: (added?: boolean) => void;
 }
 
 type TacosSize = 'solo' | 'double' | 'triple';
@@ -288,12 +288,14 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
     addToCart(cartItem, 1, customization, calculatedPrice);
     trackAddToCart(tacosItem.id, `Tacos ${size}`, 'tacos');
 
-    toast({
-      title: 'Ajouté au panier',
-      description: `Tacos ${size} - ${meatNames.join(', ')}`,
-    });
+    if (!window.location.pathname.includes('/kiosk')) {
+      toast({
+        title: 'Ajouté au panier',
+        description: `Tacos ${size} - ${meatNames.join(', ')}`,
+      });
+    }
 
-    onClose();
+    onClose(true);
   };
 
   const renderStep = () => {

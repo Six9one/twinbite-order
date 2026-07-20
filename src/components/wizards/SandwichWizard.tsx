@@ -77,7 +77,7 @@ const FALLBACK_SANDWICHES: SandwichType[] = [
 ];
 
 interface SandwichWizardProps {
-  onClose: () => void;
+  onClose: (added?: boolean) => void;
 }
 
 function getOptionEmoji(name: string, map: Record<string, string>): string {
@@ -211,18 +211,20 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
 
     trackAddToCart(selectedSandwich.id, selectedSandwich.name, 'sandwiches');
 
-    toast({
-      title: 'Ajouté au panier',
-      description: `${selectedSandwich.name}${
-        selectedOptions.length === 0 ? ' (Sans Frites)' :
-        ` (${selectedOptions.map(opt => {
-          if (opt === 'frites') return 'Avec Frites';
-          if (opt === 'boisson') return '+ Boisson';
-          if (opt === 'supp_frites') return '+ Supplément Frites';
-          return opt;
-        }).join(', ')})`
-      }`,
-    });
+    if (!window.location.pathname.includes('/kiosk')) {
+      toast({
+        title: 'Ajouté au panier',
+        description: `${selectedSandwich.name}${
+          selectedOptions.length === 0 ? ' (Sans Frites)' :
+          ` (${selectedOptions.map(opt => {
+            if (opt === 'frites') return 'Avec Frites';
+            if (opt === 'boisson') return '+ Boisson';
+            if (opt === 'supp_frites') return '+ Supplément Frites';
+            return opt;
+          }).join(', ')})`
+        }`,
+      });
+    }
 
     setSelectedSandwich(null);
     setSelectedSauces([]);
@@ -232,6 +234,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
     setSelectedOptions(['frites']);
     setNote('');
     setStep(1);
+    onClose(true);
   };
 
   const renderStep = () => {
