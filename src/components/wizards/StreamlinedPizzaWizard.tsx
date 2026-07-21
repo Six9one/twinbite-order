@@ -326,20 +326,27 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
         </Tabs>
       </div>
 
-      {/* Full-Screen Customization (new) */}
+      {/* Customization Modal */}
       {customizingPizza && (
-        <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
-          <PizzaIngredientCustomizer
-            pizza={customizingPizza}
-            basePrice={currentPrice}
-            formatLabel={
-              selectedIsMenuMidi
-                ? `Midi ${selectedSize === 'mega' ? 'Mega' : 'Senior'}`
-                : `${selectedSize === 'mega' ? 'Mega 40cm' : 'Senior 31cm'}`
-            }
-            isKiosk={false}
-            initialBase={customizingPizza.base || activeBase}
-            onBack={() => setCustomizingPizza(null)}
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 md:p-4"
+          onClick={() => setCustomizingPizza(null)}
+        >
+          <div
+            className="w-full max-w-4xl max-h-[92vh] h-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <PizzaIngredientCustomizer
+              pizza={customizingPizza}
+              basePrice={currentPrice}
+              formatLabel={
+                selectedIsMenuMidi
+                  ? `Midi ${selectedSize === 'mega' ? 'Mega' : 'Senior'}`
+                  : `${selectedSize === 'mega' ? 'Mega 40cm' : 'Senior 31cm'}`
+              }
+              isKiosk={false}
+              initialBase={customizingPizza.base || activeBase}
+              onBack={() => setCustomizingPizza(null)}
             onConfirm={(removed, extras, noteText, chosenBase) => {
               const sizeId = selectedIsMenuMidi
                 ? (selectedSize === 'mega' ? 'menu_midi_mega' : 'menu_midi')
@@ -358,7 +365,8 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
               toast.success(`${customizingPizza.name} personnalisée ajoutée !`);
               setCustomizingPizza(null);
             }}
-          />
+            />
+          </div>
         </div>
       )}
 

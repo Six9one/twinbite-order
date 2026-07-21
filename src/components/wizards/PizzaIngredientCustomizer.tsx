@@ -2,10 +2,7 @@ import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { MenuItem } from '@/types/order';
 import { pizzaIngredientSupplements } from '@/data/menu';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, X, Plus, Check, Pizza } from 'lucide-react';
+import { X, Plus, Check, Pizza } from 'lucide-react';
 import { resolveImg } from '@/utils/resolveImg';
 import {
   useSupplementOptions,
@@ -86,13 +83,11 @@ const SUPPLEMENT_FALLBACKS: Record<string, string> = {
 
 const SupplementTile = memo(function SupplementTile({
   extra,
-  isKiosk,
   selected,
   onClick,
   imageUrl
 }: {
   extra: any;
-  isKiosk: boolean;
   selected: boolean;
   onClick: (extra: any) => void;
   imageUrl?: string;
@@ -103,52 +98,40 @@ const SupplementTile = memo(function SupplementTile({
     setImgError(false);
   }, [imageUrl]);
 
-  const kioskCard = isKiosk ? 'min-h-[80px] text-lg' : 'min-h-[56px] text-sm';
-
   return (
-    <Card
+    <button
+      type="button"
       onClick={() => onClick(extra)}
-      className={`cursor-pointer transition-all select-none ${kioskCard} p-3 flex flex-col items-center justify-center gap-1 border-2 relative ${
+      className={`relative select-none p-2 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1 ${
         selected
-          ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-          : 'border-border hover:border-primary/40 hover:bg-muted/40'
+          ? 'border-amber-500 bg-amber-500/20 text-white ring-2 ring-amber-500/30'
+          : 'border-slate-800 bg-slate-800/80 text-slate-200 hover:border-slate-600 hover:bg-slate-800'
       }`}
     >
-      <div style={{
-        width: isKiosk ? 50 : 38,
-        height: isKiosk ? 50 : 38,
-        borderRadius: 8,
-        overflow: 'hidden',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#1f2937',
-        border: '1px solid rgba(255,255,255,0.05)',
-        marginBottom: 4,
-      }}>
+      <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center bg-slate-900 border border-slate-700/50">
         {imageUrl && !imgError ? (
           <img
             src={imageUrl}
             alt={extra.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            className="w-full h-full object-cover"
             onError={() => setImgError(true)}
           />
         ) : (
-          <span style={{ fontSize: isKiosk ? 22 : 18 }}>{extra.emoji}</span>
+          <span className="text-base">{extra.emoji}</span>
         )}
       </div>
-      <span className={`font-semibold text-center leading-tight ${isKiosk ? 'text-base' : 'text-xs'}`}>
+      <span className="text-[11px] font-semibold text-center leading-tight truncate w-full px-0.5 text-white">
         {extra.name}
       </span>
-      <span className={`font-bold text-primary ${isKiosk ? 'text-base' : 'text-xs'}`}>
+      <span className="text-[11px] font-bold text-amber-400">
         +{extra.price.toFixed(2)}€
       </span>
       {selected && (
-        <div className="absolute top-2 right-2 bg-primary rounded-full p-0.5">
-          <Check className="w-3 h-3 text-white" />
+        <div className="absolute top-1 right-1 bg-amber-500 rounded-full p-0.5 shadow">
+          <Check className="w-2.5 h-2.5 text-slate-950 font-extrabold" />
         </div>
       )}
-    </Card>
+    </button>
   );
 });
 
@@ -182,10 +165,6 @@ function findDbImage(name: string, dbImageMap: Record<string, string>): string |
   return undefined;
 }
 
-/**
- * Parse a pizza description string into individual ingredient chips.
- * e.g. "Sauce tomate, Mozzarella, merguez, poivron, œuf" → ["Sauce tomate", "Mozzarella", "merguez", "poivron", "œuf"]
- */
 function parseIngredients(description: string): string[] {
   return description
     .split(',')
@@ -246,156 +225,150 @@ export function PizzaIngredientCustomizer({
   const isExtraSelected = (id: string) => addedExtras.some(e => e.id === id);
   const isIngredientRemoved = (ing: string) => removedIngredients.includes(ing);
 
-  // Kiosk-specific large-touch styles
-  const kioskCard = isKiosk ? 'min-h-[80px] text-lg' : 'min-h-[56px] text-sm';
-  const kioskIngChip = isKiosk ? 'text-base px-5 py-3' : 'text-sm px-3 py-1.5';
-  const kioskBtn = isKiosk ? 'h-20 text-xl' : 'h-14 text-base';
-
   return (
-    <div className={`flex flex-col bg-background ${isKiosk ? 'min-h-screen pb-6' : 'min-h-screen pb-24'}`}>
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size={isKiosk ? 'default' : 'icon'} onClick={onBack}
-              className={isKiosk ? 'h-14 w-14' : 'h-10 w-10'}>
-              <ArrowLeft className={isKiosk ? 'w-7 h-7' : 'w-5 h-5'} />
-            </Button>
-            <div className="flex-1 min-w-0">
-              <h1 className={`font-display font-bold truncate ${isKiosk ? 'text-3xl' : 'text-xl'}`}>
-                🍕 {pizza.name}
-              </h1>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
-                  {formatLabel}
-                </Badge>
-              </div>
-            </div>
-            <span className={`font-bold text-primary flex-shrink-0 ${isKiosk ? 'text-3xl' : 'text-xl'}`}>
-              {totalPrice.toFixed(2)}€
+    <div className="flex flex-col h-full max-h-full bg-slate-900 text-slate-100 rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
+      {/* ── HEADER: Clear High Contrast Title & Close Button ── */}
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-950 border-b border-slate-800 flex-shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-2xl">🍕</span>
+          <div className="min-w-0 flex items-center gap-2">
+            <h1 className="text-xl md:text-2xl font-black text-white truncate tracking-wide">
+              {pizza.name}
+            </h1>
+            <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs px-2.5 py-0.5 rounded-full font-bold flex-shrink-0">
+              {formatLabel}
             </span>
           </div>
         </div>
+
+        {/* Right side: Price & Close Button */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span className="text-xl md:text-2xl font-extrabold text-amber-400">
+            {totalPrice.toFixed(2)}€
+          </span>
+          <button
+            type="button"
+            onClick={onBack}
+            className="w-9 h-9 rounded-full bg-slate-800 hover:bg-red-600/90 text-slate-300 hover:text-white flex items-center justify-center transition-all shadow cursor-pointer border border-slate-700"
+            title="Fermer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
-      <div className={`container mx-auto px-4 py-6 space-y-8 ${isKiosk ? 'max-w-4xl' : ''}`}>
-
-        {/* Pizza Image */}
-        <div className="flex justify-center">
-          <div className={`rounded-full overflow-hidden bg-gradient-to-br from-orange-50 to-amber-100 border-4 border-orange-200 shadow-xl flex items-center justify-center ${isKiosk ? 'w-44 h-44' : 'w-36 h-36'}`}>
-            {(() => {
-              const normalizedName = (pizza.name || '').trim().toLowerCase();
-              const pizzaImg = resolveImg(pizza.imageUrl || pizza.image_url || LOCAL_PIZZA_IMAGES[normalizedName]);
-              return pizzaImg ? (
-                <img
-                  src={pizzaImg}
-                  alt={pizza.name}
-                  className="w-full h-full object-cover"
-                  style={{
-                    animation: 'spin 12s linear infinite',
-                    willChange: 'transform'
-                  }}
-                />
-              ) : (
-                <Pizza
-                  className={`text-orange-300 ${isKiosk ? 'w-20 h-20' : 'w-16 h-16'}`}
-                  style={{
-                    animation: 'spin 12s linear infinite',
-                    willChange: 'transform'
-                  }}
-                />
-              );
-            })()}
-          </div>
-        </div>
-
-        {/* BASE SAUCE TOGGLE */}
-        <div className={`rounded-2xl border-2 p-4 space-y-3 ${selectedBase !== (initialBase || 'tomate') ? 'border-amber-400 bg-amber-50/60' : 'border-border bg-muted/20'}`}>
-          <div className="flex items-center gap-2">
-            <span className={isKiosk ? 'text-2xl' : 'text-base'}>🫙</span>
-            <h2 className={`font-bold ${isKiosk ? 'text-2xl' : 'text-lg'}`}>Base de sauce</h2>
-            {selectedBase !== (initialBase || 'tomate') && (
-              <span className="ml-auto text-xs font-bold text-amber-600 bg-amber-100 rounded-full px-3 py-1">Modifiée</span>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setSelectedBase('tomate')}
-              className={`rounded-xl border-2 font-semibold transition-all flex flex-col items-center justify-center gap-1 ${isKiosk ? 'py-5 text-lg' : 'py-4 text-sm'} ${
-                selectedBase === 'tomate'
-                  ? 'border-red-400 bg-red-50 text-red-700 ring-2 ring-red-200'
-                  : 'border-border hover:border-red-300 hover:bg-red-50/30'
-              }`}
-            >
-              <span className={isKiosk ? 'text-4xl' : 'text-3xl'}>🍅</span>
-              Sauce Tomate
-              {selectedBase === 'tomate' && <span className="text-xs">✓ Sélectionné</span>}
-            </button>
-            <button
-              onClick={() => setSelectedBase('creme')}
-              className={`rounded-xl border-2 font-semibold transition-all flex flex-col items-center justify-center gap-1 ${isKiosk ? 'py-5 text-lg' : 'py-4 text-sm'} ${
-                selectedBase === 'creme'
-                  ? 'border-amber-400 bg-amber-50 text-amber-800 ring-2 ring-amber-200'
-                  : 'border-border hover:border-amber-300 hover:bg-amber-50/30'
-              }`}
-            >
-              <span className={isKiosk ? 'text-4xl' : 'text-3xl'}>🥛</span>
-              Crème Fraîche
-              {selectedBase === 'creme' && <span className="text-xs">✓ Sélectionné</span>}
-            </button>
-          </div>
-        </div>
-
-        {/* SECTION 1: Removable Ingredients */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <X className="w-5 h-5 text-red-500" />
-            <h2 className={`font-bold ${isKiosk ? 'text-2xl' : 'text-lg'}`}>
-              Retirer des ingrédients
-            </h2>
-            <span className={`text-muted-foreground ${isKiosk ? 'text-base' : 'text-sm'}`}>(gratuit)</span>
-          </div>
-          <p className={`text-muted-foreground ${isKiosk ? 'text-base' : 'text-sm'}`}>
-            Appuyez pour retirer un ingrédient ✕
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {ingredients.length > 0 ? (
-              ingredients.map(ingredient => {
-                const removed = isIngredientRemoved(ingredient);
-                return (
+      {/* ── BODY: 2 COLUMNS COMPACT ONE-PAGE LAYOUT ── */}
+      <div className="flex-1 overflow-y-auto p-3 md:p-4 grid grid-cols-1 md:grid-cols-12 gap-4">
+        {/* LEFT COLUMN: Pizza image + Base toggle + Ingredients to remove + Note */}
+        <div className="md:col-span-5 flex flex-col gap-3 border-b md:border-b-0 md:border-r border-slate-800 md:pr-4 pb-3 md:pb-0">
+          {/* Pizza Thumbnail & Base Sauce Selection */}
+          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-slate-800 border-2 border-amber-500/50 flex-shrink-0 flex items-center justify-center shadow">
+                {(() => {
+                  const normalizedName = (pizza.name || '').trim().toLowerCase();
+                  const pizzaImg = resolveImg(pizza.imageUrl || pizza.image_url || LOCAL_PIZZA_IMAGES[normalizedName]);
+                  return pizzaImg ? (
+                    <img src={pizzaImg} alt={pizza.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Pizza className="w-7 h-7 text-amber-400" />
+                  );
+                })()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Base de sauce
+                </span>
+                <div className="grid grid-cols-2 gap-1.5">
                   <button
-                    key={ingredient}
-                    onClick={() => toggleIngredient(ingredient)}
-                    className={`rounded-full border-2 font-medium transition-all ${kioskIngChip} ${
-                      removed
-                        ? 'border-red-400 bg-red-50 text-red-400 line-through opacity-60'
-                        : 'border-green-400 bg-green-50 text-green-800 hover:border-red-300 hover:bg-red-50/50'
+                    type="button"
+                    onClick={() => setSelectedBase('tomate')}
+                    className={`py-1.5 px-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                      selectedBase === 'tomate'
+                        ? 'border-red-500 bg-red-500/20 text-red-300 ring-1 ring-red-500/40'
+                        : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700'
                     }`}
                   >
-                    {removed ? '✕ ' : '✓ '}{ingredient}
+                    <span>🍅</span> Tomate
                   </button>
-                );
-              })
-            ) : (
-              <p className="text-muted-foreground text-sm italic">Aucun ingrédient listé.</p>
-            )}
-          </div>
-          {removedIngredients.length > 0 && (
-            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-              <span className="font-semibold">Sans :</span> {removedIngredients.join(', ')}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBase('creme')}
+                    className={`py-1.5 px-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                      selectedBase === 'creme'
+                        ? 'border-amber-400 bg-amber-400/20 text-amber-300 ring-1 ring-amber-400/40'
+                        : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <span>🥛</span> Crème
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
+
+          {/* Retirer des ingrédients */}
+          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider flex items-center gap-1">
+                <X className="w-3.5 h-3.5" /> Retirer des ingrédients
+              </span>
+              <span className="text-[10px] text-slate-500">(gratuit)</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {ingredients.length > 0 ? (
+                ingredients.map(ing => {
+                  const removed = isIngredientRemoved(ing);
+                  return (
+                    <button
+                      key={ing}
+                      type="button"
+                      onClick={() => toggleIngredient(ing)}
+                      className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-all cursor-pointer ${
+                        removed
+                          ? 'border-red-500/60 bg-red-500/20 text-red-400 line-through opacity-70'
+                          : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:border-red-500/50'
+                      }`}
+                    >
+                      {removed ? '✕ ' : '✓ '}{ing}
+                    </button>
+                  );
+                })
+              ) : (
+                <span className="text-xs text-slate-500 italic">Aucun ingrédient spécifique.</span>
+              )}
+            </div>
+          </div>
+
+          {/* Remarques / Note */}
+          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              📝 Note / Instruction
+            </span>
+            <input
+              type="text"
+              placeholder="Ex: bien cuite, sans origan..."
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+            />
+          </div>
         </div>
 
-        {/* SECTION 2: Addable Extras */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Plus className="w-5 h-5 text-green-600" />
-            <h2 className={`font-bold ${isKiosk ? 'text-2xl' : 'text-lg'}`}>
-              Ajouter des extras
-            </h2>
+        {/* RIGHT COLUMN: Extras grid */}
+        <div className="md:col-span-7 flex flex-col gap-2">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+              <Plus className="w-3.5 h-3.5" /> Ajouter des extras
+            </span>
+            {addedExtras.length > 0 && (
+              <span className="text-xs font-bold text-emerald-400">
+                +{extrasTotal.toFixed(2)}€ ({addedExtras.length})
+              </span>
+            )}
           </div>
-          <div className={`grid gap-3 ${isKiosk ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3'}`}>
+
+          <div className="grid grid-cols-3 gap-2 overflow-y-auto max-h-[350px] p-0.5">
             {pizzaIngredientSupplements.map(extra => {
               const selected = isExtraSelected(extra.id);
               const imgUrl = findDbImage(extra.name, dbImageMap) || SUPPLEMENT_FALLBACKS[extra.id];
@@ -403,7 +376,6 @@ export function PizzaIngredientCustomizer({
                 <SupplementTile
                   key={extra.id}
                   extra={extra}
-                  isKiosk={isKiosk}
                   selected={selected}
                   onClick={toggleExtra}
                   imageUrl={imgUrl}
@@ -411,54 +383,27 @@ export function PizzaIngredientCustomizer({
               );
             })}
           </div>
-          {addedExtras.length > 0 && (
-            <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
-              <span className="font-semibold">Extras :</span>{' '}
-              {addedExtras.map(e => `${e.name} (+${e.price.toFixed(2)}€)`).join(', ')}
-              <span className="ml-2 font-bold">= +{extrasTotal.toFixed(2)}€</span>
-            </div>
-          )}
         </div>
-
-        {/* SECTION 3: Note */}
-        {!isKiosk && (
-          <div className="space-y-2">
-            <h2 className="text-lg font-bold">📝 Notes / Remarques</h2>
-            <Textarea
-              placeholder="Ex: bien cuite, sauce à part, sans origan..."
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              className="resize-none"
-              rows={3}
-            />
-          </div>
-        )}
-
-        {/* Kiosk note field */}
-        {isKiosk && (
-          <div className="space-y-2">
-            <h2 className="text-xl font-bold">📝 Remarque</h2>
-            <Textarea
-              placeholder="Ex: bien cuite, sauce à part..."
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              className="resize-none text-lg h-20"
-              rows={2}
-            />
-          </div>
-        )}
       </div>
 
-      {/* Bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
-        <div className={`mx-auto ${isKiosk ? 'max-w-4xl' : 'container'}`}>
-          <Button
-            className={`w-full rounded-xl font-bold ${kioskBtn}`}
-            onClick={() => onConfirm(removedIngredients, addedExtras, note, selectedBase)}
-          >
-            ✅ Ajouter au panier — {totalPrice.toFixed(2)}€
-          </Button>
-        </div>
+      {/* ── FOOTER BAR ── */}
+      <div className="px-4 py-3 bg-slate-950 border-t border-slate-800 flex items-center gap-3 flex-shrink-0">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onBack}
+          className="h-11 px-4 border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl"
+        >
+          Annuler
+        </Button>
+
+        <Button
+          type="button"
+          onClick={() => onConfirm(removedIngredients, addedExtras, note, selectedBase)}
+          className="flex-1 h-11 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-base rounded-xl shadow-lg hover:shadow-orange-500/20 cursor-pointer"
+        >
+          ✅ Ajouter au panier — {totalPrice.toFixed(2)}€
+        </Button>
       </div>
     </div>
   );

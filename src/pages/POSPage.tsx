@@ -4084,8 +4084,14 @@ function POSContent() {
       {showFacture && <FactureHubModal onClose={()=>setShowFacture(false)} />}
       {showUpdateModal && <UpdatePanel onClose={()=>setShowUpdateModal(false)} />}
       {customizingPizza && (
-        <div style={{ position: 'fixed', inset: 0, background: '#000d', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div className="pos-glassy-panel" style={{ background: '#111827', borderRadius: 12, border: `1px solid ${S.border}`, width: '95vw', maxWidth: 800, height: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}
+          onClick={() => setCustomizingPizza(null)}
+        >
+          <div
+            style={{ background: '#0f172a', borderRadius: 16, border: '1px solid #334155', width: '95vw', maxWidth: 850, maxHeight: '92vh', height: 'auto', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <PizzaIngredientCustomizer
               pizza={customizingPizza.item}
               basePrice={customizingPizza.basePrice}
