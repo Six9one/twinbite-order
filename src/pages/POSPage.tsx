@@ -815,61 +815,69 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
         <button onClick={reset} style={{ ...S.btn, marginLeft:'auto', padding:'4px 10px', fontSize:11 }}>↺ Réinit.</button>
       </div>
 
-      {/* Single scroll — all sections */}
-      <div style={{ flex:1, overflow:'auto', padding:'10px 14px' }}>
-        {/* Meats */}
-        <SectionTitle hint={`max ${maxMeats} — détermine la taille`}>Viandes</SectionTitle>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(72px,1fr))', gap:6, marginBottom:12 }}>
-          {meats.map(m => (
-            <OptTile key={m.id} name={m.name} img={m.img} emoji="🥩"
-              selected={selMeats.includes(m.id)}
-              disabled={selMeats.length >= maxMeats && !selMeats.includes(m.id)}
-              onClick={()=>toggle(m.id, selMeats, setMeats, maxMeats)} />
-          ))}
-        </div>
-
-        {/* Sauces */}
-        <SectionTitle hint={`${FREE_SAUCES} gratuites, +${EXTRA_SAUCE.toFixed(2)}€ ensuite`}>Sauces</SectionTitle>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(72px,1fr))', gap:6, marginBottom:12 }}>
-          {sauces.map(s => (
-            <OptTile key={s.id} name={s.name} img={s.img} emoji="🥫"
-              selected={selSauces.includes(s.id)}
-              onClick={()=>toggle(s.id, selSauces, setSauces)} />
-          ))}
-        </div>
-
-        {/* Garnitures */}
-        {hasGarniture && (defaultGarn.length > 0 || extraGarn.length > 0) && (
-          <>
-            <SectionTitle hint="inclus — touchez pour retirer">{isCrudite?'Crudités':'Garnitures'}</SectionTitle>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(72px,1fr))', gap:6, marginBottom:8 }}>
-              {defaultGarn.map(g => (
-                <OptTile key={g.id} name={g.name} img={g.img} emoji="🥗"
-                  selected={!removed.includes(g.id)} isDefaultRemovable
-                  onClick={()=>toggle(g.id, removed, setRemoved)} />
-              ))}
-              {extraGarn.map(g => (
-                <OptTile key={g.id} name={g.name} img={g.img} emoji="➕" price={g.price}
-                  selected={selExtra.includes(g.id)}
-                  onClick={()=>toggle(g.id, selExtra, setExtra)} />
+      {/* 2-Column layout — all sections */}
+      <div style={{ flex:1, overflow:'auto', padding:'10px 14px', display:'flex', flexDirection:'column' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          {/* Left Column: Viandes + Crudités/Garnitures */}
+          <div>
+            {/* Meats */}
+            <SectionTitle hint={`max ${maxMeats} — détermine la taille`}>Viandes</SectionTitle>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:6, marginBottom:12 }}>
+              {meats.map(m => (
+                <OptTile key={m.id} name={m.name} img={m.img} emoji="🥩"
+                  selected={selMeats.includes(m.id)}
+                  disabled={selMeats.length >= maxMeats && !selMeats.includes(m.id)}
+                  onClick={()=>toggle(m.id, selMeats, setMeats, maxMeats)} />
               ))}
             </div>
-          </>
-        )}
 
-        {/* Supplements */}
-        {cfg.supplements && supps.length > 0 && (
-          <>
-            <SectionTitle hint="optionnel">Suppléments</SectionTitle>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(72px,1fr))', gap:6, marginBottom:12 }}>
-              {supps.map(s => (
-                <OptTile key={s.id} name={s.name} img={s.img} emoji="🧀" price={s.price}
-                  selected={selSupps.includes(s.id)}
-                  onClick={()=>toggle(s.id, selSupps, setSelSupps)} />
+            {/* Garnitures */}
+            {hasGarniture && (defaultGarn.length > 0 || extraGarn.length > 0) && (
+              <>
+                <SectionTitle hint="inclus — touchez pour retirer">{isCrudite?'Crudités':'Garnitures'}</SectionTitle>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:6, marginBottom:8 }}>
+                  {defaultGarn.map(g => (
+                    <OptTile key={g.id} name={g.name} img={g.img} emoji="🥗"
+                      selected={!removed.includes(g.id)} isDefaultRemovable
+                      onClick={()=>toggle(g.id, removed, setRemoved)} />
+                  ))}
+                  {extraGarn.map(g => (
+                    <OptTile key={g.id} name={g.name} img={g.img} emoji="➕" price={g.price}
+                      selected={selExtra.includes(g.id)}
+                      onClick={()=>toggle(g.id, selExtra, setExtra)} />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Right Column: Sauces + Suppléments */}
+          <div>
+            {/* Sauces */}
+            <SectionTitle hint={`${FREE_SAUCES} gratuites, +${EXTRA_SAUCE.toFixed(2)}€ ensuite`}>Sauces</SectionTitle>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:6, marginBottom:12 }}>
+              {sauces.map(s => (
+                <OptTile key={s.id} name={s.name} img={s.img} emoji="🥫"
+                  selected={selSauces.includes(s.id)}
+                  onClick={()=>toggle(s.id, selSauces, setSauces)} />
               ))}
             </div>
-          </>
-        )}
+
+            {/* Supplements */}
+            {cfg.supplements && supps.length > 0 && (
+              <>
+                <SectionTitle hint="optionnel">Suppléments</SectionTitle>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:6, marginBottom:12 }}>
+                  {supps.map(s => (
+                    <OptTile key={s.id} name={s.name} img={s.img} emoji="🧀" price={s.price}
+                      selected={selSupps.includes(s.id)}
+                      onClick={()=>toggle(s.id, selSupps, setSelSupps)} />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
 
         {/* Menu */}
         {cfg.menu && (
@@ -969,7 +977,7 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
       {/* Sandwich products */}
-      <div style={{ flex:'0 0 auto', maxHeight:200, overflow:'auto', padding:'10px 14px', borderBottom:`1px solid ${S.border}` }}>
+      <div style={{ flex:'0 0 auto', padding:'10px 14px', borderBottom:`1px solid ${S.border}` }}>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(82px,1fr))', gap:6 }}>
           {active.map((p:any)=>(
             <ProductTile key={p.id} compact item={{...p, price:p.base_price}} selected={sel?.id===p.id}
@@ -982,24 +990,30 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
         {!sel && <div style={{ textAlign:'center', color:'#374151', fontSize:13, paddingTop:24 }}>Choisissez un sandwich ci-dessus</div>}
         {sel && (
           <>
-            <SectionTitle hint={`${FREE_SAUCES} gratuites, +${EXTRA_SAUCE.toFixed(2)}€ ensuite`}>Sauces</SectionTitle>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(72px,1fr))', gap:6, marginBottom:12 }}>
-              {sauces.map(s => (
-                <OptTile key={s.id} name={s.name} img={s.img} emoji="🥫"
-                  selected={selSauces.includes(s.id)} onClick={()=>toggle(s.id, selSauces, setSauces)} />
-              ))}
-            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+              <div>
+                <SectionTitle hint={`${FREE_SAUCES} gratuites, +${EXTRA_SAUCE.toFixed(2)}€ ensuite`}>Sauces</SectionTitle>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:6, marginBottom:12 }}>
+                  {sauces.map(s => (
+                    <OptTile key={s.id} name={s.name} img={s.img} emoji="🥫"
+                      selected={selSauces.includes(s.id)} onClick={()=>toggle(s.id, selSauces, setSauces)} />
+                  ))}
+                </div>
+              </div>
 
-            <SectionTitle hint="inclus — touchez pour retirer">Crudités</SectionTitle>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(72px,1fr))', gap:6, marginBottom:12 }}>
-              {defCrud.map(g => (
-                <OptTile key={g.id} name={g.name} img={g.img} emoji="🥗" isDefaultRemovable
-                  selected={!removed.includes(g.id)} onClick={()=>toggle(g.id, removed, setRemoved)} />
-              ))}
-              {extraCrud.map(g => (
-                <OptTile key={g.id} name={g.name} img={g.img} emoji="➕"
-                  selected={selExtra.includes(g.id)} onClick={()=>toggle(g.id, selExtra, setExtra)} />
-              ))}
+              <div>
+                <SectionTitle hint="inclus — touchez pour retirer">Crudités</SectionTitle>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:6, marginBottom:12 }}>
+                  {defCrud.map(g => (
+                    <OptTile key={g.id} name={g.name} img={g.img} emoji="🥗" isDefaultRemovable
+                      selected={!removed.includes(g.id)} onClick={()=>toggle(g.id, removed, setRemoved)} />
+                  ))}
+                  {extraCrud.map(g => (
+                    <OptTile key={g.id} name={g.name} img={g.img} emoji="➕"
+                      selected={selExtra.includes(g.id)} onClick={()=>toggle(g.id, selExtra, setExtra)} />
+                  ))}
+                </div>
+              </div>
             </div>
 
             <SectionTitle>Menu</SectionTitle>
@@ -2893,6 +2907,7 @@ function POSContent() {
   const [showFacture,  setShowFacture]  = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [quickUpdating, setQuickUpdating] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [pizzaSize, setPizzaSize] = useState<PizzaSizeId>('senior');
   const [pizzaZoom, setPizzaZoom] = useState(() => {
@@ -3077,6 +3092,25 @@ function POSContent() {
     }
   }, []);
 
+  // Quick one-tap update: triggers git pull + build + relaunch instantly
+  const quickUpdate = async () => {
+    if (typeof window === 'undefined' || !('twinHub' in window)) return;
+    if (quickUpdating) return;
+    setQuickUpdating(true);
+    setUpdateAvailable(false);
+    toast.info('🔄 Mise à jour en cours...');
+    // Listen for progress toasts
+    const cleanup = (window as any).twinHub.onUpdateStatus((data: any) => {
+      if (data.status === 'progress') toast.info(`⏳ ${data.message}`);
+      else if (data.status === 'error') { toast.error(`❌ ${data.message}`); setQuickUpdating(false); }
+    });
+    try {
+      const res = await (window as any).twinHub.triggerUpdate();
+      if (!res.success) { toast.error(res.error || 'Mise à jour échouée'); setQuickUpdating(false); }
+    } catch (e: any) { toast.error(e.message || 'Erreur'); setQuickUpdating(false); }
+    if (typeof cleanup === 'function') cleanup();
+  };
+
   const handleOrderType = (t: OrderType) => { setOrderType(t); setCtxOrderType(t as any); };
 
   // Promos
@@ -3247,7 +3281,19 @@ function POSContent() {
           </button>
           <button title="Factures" onClick={() => setShowFacture(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:12 }}>🧾</button>
           {typeof window !== 'undefined' && 'twinHub' in window && (
-            <button title="Mise à jour" onClick={() => { setShowUpdateModal(true); setUpdateAvailable(false); }} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:12, position:'relative', border: updateAvailable ? `1px solid ${S.accent}` : S.btn.border }}>
+            <button
+              title="Clic = MAJ rapide · Clic droit = détails"
+              onClick={quickUpdate}
+              onContextMenu={(e) => { e.preventDefault(); setShowUpdateModal(true); setUpdateAvailable(false); }}
+              disabled={quickUpdating}
+              className="pos-btn-interactive"
+              style={{
+                ...S.btn, padding:'4px 8px', fontSize:12, position:'relative',
+                border: updateAvailable ? `1px solid ${S.accent}` : S.btn.border,
+                opacity: quickUpdating ? 0.5 : 1,
+                animation: quickUpdating ? 'spin 1s linear infinite' : 'none',
+              }}
+            >
               🔄
               {updateAvailable && <span style={{ position:'absolute', top:-2, right:-2, background:'#ef4444', width:6, height:6, borderRadius:'50%', border:'1px solid #111827' }} />}
             </button>
