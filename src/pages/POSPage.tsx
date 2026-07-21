@@ -3,6 +3,7 @@ import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { useCreateOrder, generateOrderNumber, useOrders, useDrinks } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
 import { useCategories, useProductsByCategory } from '@/hooks/useProducts';
+import { useCategoryImages } from '@/hooks/useCategoryImages';
 import { usePizzasByBase } from '@/hooks/useProducts';
 import { useMeatOptions, useSauceOptions, useSupplementOptions, useGarnitureOptions, useCruditesOptions } from '@/hooks/useCustomizationOptions';
 import { useSandwichTypes } from '@/hooks/useSandwiches';
@@ -2864,6 +2865,7 @@ function POSContent() {
   useThemeBump();
   const { cart, clearCart, getTotal, setOrderType: setCtxOrderType } = useOrder();
   const { data: categories = [] } = useCategories();
+  const { getImageOrEmoji, getDisplayName } = useCategoryImages();
   const createOrder = useCreateOrder();
 
   // ── Pre-fetch queries on boot to eliminate category/wizard loading delays ──
@@ -3100,7 +3102,7 @@ function POSContent() {
     if (!activeCategory) return (
       <div style={{ flex:1, minHeight:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:8, color:'#374151' }}>
         <div style={{ fontSize:32 }}>☝️</div>
-        <div style={{ fontSize:13 }}>Choisissez une catégorie à gauche</div>
+        <div style={{ fontSize:13 }}>Choisissez une catégorie</div>
       </div>
     );
     if (activeCategory === 'pizzas') return <PizzaPanel orderType={orderType} onAdd={handleAdd} size={pizzaSize} setSize={setPizzaSize} zoom={pizzaZoom} setZoom={setPizzaZoom} />;
@@ -3218,136 +3220,110 @@ function POSContent() {
       {/* ── LEFT (resizable + collapsible) ── */}
       <Panel ref={leftRef} collapsible collapsedSize={0} defaultSize={72} minSize={35}
         onCollapse={()=>setLeftCollapsed(true)} onExpand={()=>setLeftCollapsed(false)}>
-      <div style={{ display:'flex', flexDirection:'row', height:'100%', minHeight:0, overflow:'hidden' }}>
+      <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, overflow:'hidden' }}>
 
-        {/* ── Vertical Left Sidebar (Order Type, Categories, Pizza Sizes, System Controls) ── */}
+        {/* ── Top Header Bar: Logo + System Buttons + Last Order ── */}
         <div className="pos-glassy-panel" style={{
-          width: 200,
-          background: S.panel,
-          borderRight: `1px solid ${S.border}`,
           display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-          padding: '12px 10px',
+          alignItems: 'center',
+          gap: 8,
+          padding: '5px 10px',
+          background: S.panel,
+          borderBottom: `1px solid ${S.border}`,
           flexShrink: 0,
-          overflowY: 'auto'
         }}>
-          {/* Header with Ellipsis Factures Button */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-            <span style={{ fontSize: 13, fontWeight: 900, color: S.accent }}>TWIN PIZZA</span>
-            <button
-              title="Factures"
-              onClick={() => setShowFacture(true)}
-              className="pos-btn-interactive"
-              style={{
-                width: 26, height: 26, borderRadius: 6, border: 'none',
-                background: '#1f2937', color: S.muted, fontSize: 14, fontWeight: 800,
-                cursor: 'pointer', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', transition: 'all .1s',
-                outline: 'none',
-              }}
-            >
-              ⋮
-            </button>
-          </div>
-
-
+          <span style={{ fontSize: 13, fontWeight: 900, color: S.accent }}>TWIN PIZZA</span>
 
           {lastOrder && (
-            <div style={{ background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'6px 8px', borderRadius:8, fontSize:10, fontWeight:700, textAlign:'center' }}>
-              ✅ Dernier: #{lastOrder}
-            </div>
+            <span style={{ background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'2px 8px', borderRadius:6, fontSize:9, fontWeight:700 }}>
+              ✅ #{lastOrder}
+            </span>
           )}
 
-          <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'2px 0' }} />
+          <div style={{ flex: 1 }} />
 
-          {/* Categories Section */}
-          <div style={{ fontSize: 10, fontWeight: 800, color: S.muted, textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 4 }}>
-            Catégories
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-            {categories.filter(cat => cat.slug !== 'salades').map(cat => {
-              const active = activeCategory === cat.slug;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCat(active ? null : cat.slug)}
-                  className={`pos-category-btn pos-btn-interactive ${active ? 'active' : ''}`}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, transition: 'all .12s',
-                    background: active ? S.accent + '22' : S.card,
-                    color:      active ? S.accent     : '#9ca3af',
-                    outline:    active ? `1px solid ${S.accent}44` : 'none',
-                    textAlign: 'left',
-                  }}
-                >
-                  <span style={{ fontSize: 15 }}>{CAT_ICON[cat.slug] || '🍽️'}</span>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Pizza size selector moved inside PizzaPanel header — nothing to render here */}
-
-          <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'2px 0' }} />
-
-          {/* System/Bottom Buttons */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <button
-              title="Historique & Statistiques"
-              onClick={() => setShowHistory(true)}
-              className="pos-btn-interactive"
-              style={{
-                ...S.btn,
-                flex: 1,
-                padding: '8px 4px',
-                fontSize: 12,
-                fontWeight: 800,
-                color: S.accent,
-                borderColor: S.accent + '33',
-                background: S.accent + '11',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4
-              }}
-            >
-              📊 Stats
+          <button title="Historique & Statistiques" onClick={() => setShowHistory(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:S.accent, borderColor:S.accent+'33', background:S.accent+'11', display:'flex', alignItems:'center', gap:3 }}>
+            📊 Stats
+          </button>
+          <button title="Factures" onClick={() => setShowFacture(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:12 }}>🧾</button>
+          {typeof window !== 'undefined' && 'twinHub' in window && (
+            <button title="Mise à jour" onClick={() => { setShowUpdateModal(true); setUpdateAvailable(false); }} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:12, position:'relative', border: updateAvailable ? `1px solid ${S.accent}` : S.btn.border }}>
+              🔄
+              {updateAvailable && <span style={{ position:'absolute', top:-2, right:-2, background:'#ef4444', width:6, height:6, borderRadius:'50%', border:'1px solid #111827' }} />}
             </button>
-            
-            {typeof window !== 'undefined' && 'twinHub' in window && (
+          )}
+          <button title="Personnaliser" onClick={()=>setShowSettings(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:12 }}>⚙️</button>
+          <button title="Replier" onClick={toggleLeft} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:12 }}>⟨</button>
+        </div>
+
+        {/* ── Horizontal Category Bar with Images ── */}
+        <div className="pos-glassy-panel" style={{
+          display: 'flex',
+          padding: '6px 8px',
+          gap: 4,
+          background: S.panel,
+          borderBottom: `1px solid ${S.border}`,
+          flexShrink: 0,
+          overflow: 'hidden',
+        }}>
+          {categories.filter(cat => cat.slug !== 'salades').map(cat => {
+            const active = activeCategory === cat.slug;
+            const imgData = getImageOrEmoji(cat.slug);
+            return (
               <button
-                title="Mise à jour"
-                onClick={() => { setShowUpdateModal(true); setUpdateAvailable(false); }}
-                className="pos-btn-interactive"
+                key={cat.id}
+                onClick={() => setActiveCat(active ? null : cat.slug)}
+                className={`pos-btn-interactive ${active ? 'pos-cat-top-active' : ''}`}
                 style={{
-                  ...S.btn,
-                  padding: '8px 10px',
-                  fontSize: 14,
-                  position: 'relative',
-                  border: updateAvailable ? `1px solid ${S.accent}` : S.btn.border,
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2,
+                  padding: '4px 2px',
+                  borderRadius: 10,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all .15s cubic-bezier(0.16, 1, 0.3, 1)',
+                  background: active ? S.accent + '22' : 'transparent',
+                  outline: active ? `2px solid ${S.accent}` : '2px solid transparent',
+                  outlineOffset: -1,
                 }}
               >
-                🔄
-                {updateAvailable && (
-                  <span style={{
-                    position: 'absolute',
-                    top: -2,
-                    right: -2,
-                    background: '#ef4444',
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    border: '1px solid #111827'
-                  }} />
-                )}
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: active ? S.accent + '15' : (S.card || '#1f2937'),
+                  flexShrink: 0,
+                  border: `1px solid ${active ? S.accent + '44' : S.border}`,
+                }}>
+                  {imgData.type === 'image'
+                    ? <img src={imgData.value} alt={cat.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} loading="eager" />
+                    : <span style={{ fontSize: 18 }}>{imgData.value}</span>
+                  }
+                </div>
+                <span style={{
+                  fontSize: 8,
+                  fontWeight: 800,
+                  color: active ? S.accent : '#9ca3af',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.02em',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '100%',
+                  lineHeight: 1.2,
+                }}>{getDisplayName(cat.slug) || cat.name}</span>
               </button>
-            )}
-            <button title="Personnaliser" onClick={()=>setShowSettings(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 10px', fontSize:14 }}>⚙️</button>
-            <button title="Replier" onClick={toggleLeft} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 10px', fontSize:14 }}>⟨</button>
-          </div>
+            );
+          })}
         </div>
 
         {/* Products area — takes all remaining space */}
