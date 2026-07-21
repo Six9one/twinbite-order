@@ -1402,6 +1402,54 @@ function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void
   );
 }
 
+const ToppingMedia = ({ name, emoji }: { name: string; emoji: string }) => {
+  const [imgFailed, setImgFailed] = useState(false);
+  const fileSafeName = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const imgSrc = `/toppings/${fileSafeName}.png`;
+
+  if (imgFailed) {
+    return <span style={{ fontSize: 20 }}>{emoji}</span>;
+  }
+
+  return (
+    <img
+      src={imgSrc}
+      alt={name}
+      onError={() => setImgFailed(true)}
+      style={{ width: 28, height: 28, objectFit: 'contain', marginBottom: 2 }}
+    />
+  );
+};
+
+const CupToppingOverlay = ({ name, emoji, style }: { name: string; emoji: string; style: React.CSSProperties }) => {
+  const [imgFailed, setImgFailed] = useState(false);
+  const fileSafeName = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const imgSrc = `/toppings/${fileSafeName}.png`;
+
+  if (imgFailed) {
+    return <span style={{ position: 'absolute', zIndex: 6, userSelect: 'none', pointerEvents: 'none', ...style }}>{emoji}</span>;
+  }
+
+  return (
+    <img
+      src={imgSrc}
+      alt={name}
+      onError={() => setImgFailed(true)}
+      style={{
+        position: 'absolute',
+        width: 32,
+        height: 32,
+        objectFit: 'contain',
+        filter: 'drop-shadow(0 2.5px 5px rgba(0,0,0,0.4))',
+        zIndex: 6,
+        userSelect: 'none',
+        pointerEvents: 'none',
+        ...style
+      }}
+    />
+  );
+};
+
 const FloatingToppingCircle = memo(({ name, emoji, active, onClick, onDragStart, onDragEnd, style }: {
   name: string;
   emoji: string;
@@ -1439,7 +1487,7 @@ const FloatingToppingCircle = memo(({ name, emoji, active, onClick, onDragStart,
         ...style,
       }}
     >
-      <span style={{ fontSize: 20 }}>{emoji}</span>
+      <ToppingMedia name={name} emoji={emoji} />
       <span style={{ fontSize: 9, fontWeight: 900, textAlign: 'center', lineHeight: 1.1, maxWidth: '85%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
       {active && (
         <span style={{
@@ -1473,11 +1521,7 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
   const [note, setNote] = useState('');
   const [isDraggingTopping, setIsDraggingTopping] = useState<string | null>(null);
   const [isDragOverCup, setIsDragOverCup] = useState(false);
-  const [cupImageSrc, setCupImageSrc] = useState('/milkshake_cup.png');
-
-  useEffect(() => {
-    setCupImageSrc(`/milkshake_cup.png?t=${Date.now()}`);
-  }, []);
+  const [cupImageSrc] = useState(() => `/milkshake_cup.png?t=${Date.now()}`);
 
   const basePrice = 5.00;
   const extraToppingsCount = Math.max(0, selectedToppings.length - 1);
@@ -1673,43 +1717,42 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
 
             {/* Topping Sprinkles */}
             {selectedToppings.includes('Nutella') && (
-              <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3, width: '100%', height: '100%' }}>
-                <path d="M 39 23 Q 41 33 43 25 Q 46 35 48 23" fill="none" stroke="#451a03" strokeWidth="3.5" strokeLinecap="round" opacity="0.85" />
-              </svg>
+              <>
+                <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3, width: '100%', height: '100%' }}>
+                  <path d="M 39 23 Q 41 33 43 25 Q 46 35 48 23" fill="none" stroke="#451a03" strokeWidth="3.5" strokeLinecap="round" opacity="0.85" />
+                </svg>
+                <CupToppingOverlay name="Nutella" emoji="🫙" style={{ top: '12%', left: '44%', transform: 'rotate(-5deg)' }} />
+              </>
             )}
             {selectedToppings.includes('Kinder Bueno') && (
               <>
-                <span style={{ position: 'absolute', top: '15%', left: '36%', fontSize: 20, transform: 'rotate(-25deg)', zIndex: 6, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}>🍫</span>
-                <span style={{ position: 'absolute', top: '19%', left: '50%', fontSize: 16, transform: 'rotate(15deg)', zIndex: 6, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}>🍫</span>
+                <CupToppingOverlay name="Kinder Bueno" emoji="🍫" style={{ top: '15%', left: '36%', transform: 'rotate(-25deg)' }} />
+                <CupToppingOverlay name="Kinder Bueno" emoji="🍫" style={{ top: '19%', left: '50%', transform: 'rotate(15deg)' }} />
               </>
             )}
             {selectedToppings.includes('Oreo') && (
               <>
-                <span style={{ position: 'absolute', top: '21%', left: '30%', fontSize: 13, transform: 'rotate(10deg)', zIndex: 6 }}>🍪</span>
-                <span style={{ position: 'absolute', top: '23%', left: '56%', fontSize: 11, transform: 'rotate(-15deg)', zIndex: 6 }}>🍪</span>
-                <div style={{ position: 'absolute', top: '22%', left: '42%', width: 5, height: 5, background: '#1c1917', borderRadius: '50%', zIndex: 6 }} />
-                <div style={{ position: 'absolute', top: '24%', left: '48%', width: 4, height: 4, background: '#27272a', borderRadius: '50%', zIndex: 6 }} />
+                <CupToppingOverlay name="Oreo" emoji="🍪" style={{ top: '21%', left: '30%', transform: 'rotate(10deg)' }} />
+                <CupToppingOverlay name="Oreo" emoji="🍪" style={{ top: '23%', left: '56%', transform: 'rotate(-15deg)' }} />
               </>
             )}
             {selectedToppings.includes("M&M's") && (
               <>
-                <div style={{ position: 'absolute', top: '24%', left: '36%', width: 7, height: 7, background: '#ef4444', borderRadius: '50%', border: '0.8px solid #fff', zIndex: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 5, fontWeight: 900, color: '#fff' }}>m</div>
-                <div style={{ position: 'absolute', top: '20%', left: '48%', width: 7, height: 7, background: '#3b82f6', borderRadius: '50%', border: '0.8px solid #fff', zIndex: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 5, fontWeight: 900, color: '#fff' }}>m</div>
-                <div style={{ position: 'absolute', top: '26%', left: '54%', width: 7, height: 7, background: '#eab308', borderRadius: '50%', border: '0.8px solid #fff', zIndex: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 5, fontWeight: 900, color: '#fff' }}>m</div>
+                <CupToppingOverlay name="M&M's" emoji="🔴" style={{ top: '24%', left: '36%' }} />
+                <CupToppingOverlay name="M&M's" emoji="🟡" style={{ top: '20%', left: '48%' }} />
+                <CupToppingOverlay name="M&M's" emoji="🔵" style={{ top: '26%', left: '54%' }} />
               </>
             )}
             {selectedToppings.includes('Speculoos') && (
               <>
-                <span style={{ position: 'absolute', top: '26%', left: '32%', fontSize: 11, zIndex: 6 }}>🍪</span>
-                <div style={{ position: 'absolute', top: '21%', left: '40%', width: 5, height: 5, background: '#b45309', borderRadius: '50%', zIndex: 6 }} />
-                <div style={{ position: 'absolute', top: '27%', left: '47%', width: 6, height: 6, background: '#d97706', borderRadius: '50%', zIndex: 6 }} />
+                <CupToppingOverlay name="Speculoos" emoji="🍪" style={{ top: '26%', left: '32%' }} />
+                <CupToppingOverlay name="Speculoos" emoji="🍪" style={{ top: '21%', left: '40%' }} />
               </>
             )}
             {selectedToppings.includes('Daim') && (
               <>
-                <div style={{ position: 'absolute', top: '25%', left: '33%', width: 5, height: 5, background: '#dc2626', transform: 'rotate(45deg)', zIndex: 6 }} />
-                <div style={{ position: 'absolute', top: '18%', left: '51%', width: 5, height: 4, background: '#ea580c', transform: 'rotate(15deg)', zIndex: 6 }} />
-                <div style={{ position: 'absolute', top: '27%', left: '42%', width: 4, height: 5, background: '#b91c1c', transform: 'rotate(-30deg)', zIndex: 6 }} />
+                <CupToppingOverlay name="Daim" emoji="🍬" style={{ top: '25%', left: '33%' }} />
+                <CupToppingOverlay name="Daim" emoji="🍬" style={{ top: '18%', left: '51%' }} />
               </>
             )}
 
