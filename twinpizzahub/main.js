@@ -460,8 +460,23 @@ function startFileServer() {
       return;
     }
     fileServer = http.createServer((req, res) => {
-      let p = path.join(distPath, req.url.split('?')[0]);
-      if (!fs.existsSync(p) || fs.statSync(p).isDirectory()) p = path.join(distPath, 'index.html');
+      const cleanUrl = req.url.split('?')[0];
+      let p = path.join(distPath, cleanUrl);
+      const publicPath = path.join(__dirname, '..', 'public', cleanUrl);
+
+      // If requested asset exists in public/ and is newer or missing in dist/, serve directly from public/
+      try {
+        if (fs.existsSync(publicPath) && !fs.statSync(publicPath).isDirectory()) {
+          if (!fs.existsSync(p) || fs.statSync(p).isDirectory() || fs.statSync(publicPath).mtimeMs > fs.statSync(p).mtimeMs) {
+            p = publicPath;
+          }
+        }
+      } catch (_) {}
+
+      if (!fs.existsSync(p) || fs.statSync(p).isDirectory()) {
+        p = path.join(distPath, 'index.html');
+      }
+
       const ext = path.extname(p).toLowerCase();
       const ct = mime[ext] || 'application/octet-stream';
       
@@ -471,7 +486,7 @@ function startFileServer() {
       } else if (['.js', '.css', '.woff', '.woff2'].includes(ext)) {
         headers['Cache-Control'] = 'public, max-age=31536000, immutable';
       } else if (['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif', '.ico'].includes(ext)) {
-        headers['Cache-Control'] = 'public, max-age=604800'; // 1 week
+        headers['Cache-Control'] = 'no-cache, must-revalidate';
       }
 
       fs.readFile(p, (err, data) => {
