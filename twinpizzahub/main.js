@@ -856,7 +856,7 @@ ipcMain.handle('trigger-update', async () => {
     if (stdoutStr.includes('Already up to date') || stdoutStr.includes('Déjà à jour')) {
       sendStatus('L\'application est déjà à jour ! Rechargement...');
       setTimeout(() => {
-        app.relaunch();
+        app.relaunch({ args: [path.join(__dirname)] });
         app.exit(0);
       }, 1000);
       return { success: true };
@@ -897,7 +897,7 @@ ipcMain.handle('trigger-update', async () => {
     
     // Relaunch app
     setTimeout(() => {
-      app.relaunch();
+      app.relaunch({ args: [path.join(__dirname)] });
       app.exit(0);
     }, 2000);
 
