@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MenuItem } from '@/types/order';
 import { pizzaIngredientSupplements } from '@/data/menu';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, X, Plus, Check, Pizza } from 'lucide-react';
+import { resolveImg } from '@/utils/resolveImg';
 
 export interface PizzaExtra {
   id: string;
@@ -21,6 +22,90 @@ interface PizzaIngredientCustomizerProps {
   onConfirm: (removedIngredients: string[], addedExtras: PizzaExtra[], note: string, base: 'tomate' | 'creme') => void;
   onBack: () => void;
   isKiosk?: boolean;
+}
+
+const LOCAL_PIZZA_IMAGES: Record<string, string> = {
+  'margherita': 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=200&q=80',
+  'végétarienne': 'https://images.unsplash.com/photo-1571066811602-71683a3f680d?w=200&q=80',
+  'fruits de mer': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=200&q=80',
+  'mexicaine': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=200&q=80',
+  '4 saisons': 'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=200&q=80',
+  'reine': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=200&q=80',
+  'orientale': 'https://images.unsplash.com/photo-1594007654729-407ededc4963?w=200&q=80',
+  'campione': 'https://images.unsplash.com/photo-1590947132387-155cc02f3212?w=200&q=80',
+  '4 fromages': 'https://images.unsplash.com/photo-1573821663912-569905455b1c?w=200&q=80',
+  'calzone': 'https://images.unsplash.com/photo-1544982503-9f984c14501a?w=200&q=80',
+  'savoyarde': 'https://images.unsplash.com/photo-1595708684082-a173bb3a06c5?w=200&q=80',
+  'pêcheur': 'https://images.unsplash.com/photo-1534080391025-097d02b173e9?w=200&q=80',
+  'pimento': 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?w=200&q=80',
+  'royale': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=200&q=80',
+  '3 jambons': 'https://images.unsplash.com/photo-1555072956-7758afb20a8f?w=200&q=80',
+  'twinzienne': 'https://images.unsplash.com/photo-1595854341625-f33ee10dbf94?w=200&q=80',
+  'tartiflette': 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?w=200&q=80',
+  'kebab': 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=200&q=80',
+  'norvégienne': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&q=80',
+  'buffalo': 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=200&q=80',
+  'raclette': 'https://images.unsplash.com/photo-1544025162-d76694265947?w=200&q=80',
+  'antillaise': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=200&q=80',
+  'chèvre miel': 'https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=200&q=80',
+  'farmer': 'https://images.unsplash.com/photo-1588315029754-2dd089d39a1a?w=200&q=80',
+  'charcutière': 'https://images.unsplash.com/photo-1555072956-7758afb20a8f?w=200&q=80',
+  'boursin': 'https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?w=200&q=80',
+  'biggy': 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=200&q=80',
+  'cheezy': 'https://images.unsplash.com/photo-1548369937-2751babf242d?w=200&q=80',
+  'chicken': 'https://images.unsplash.com/photo-1562967914-6c8273b89a3e?w=200&q=80',
+  'indienne': 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=200&q=80',
+  'la hawaïe': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&q=80',
+};
+
+const SUPPLEMENT_IMAGES: Record<string, string> = {
+  "pi-fromage": "https://images.unsplash.com/photo-1486299267070-83823f5448dd?w=120&auto=format&fit=crop&q=60",
+  "pi-viande": "https://images.unsplash.com/photo-1544025162-d76694265947?w=120&auto=format&fit=crop&q=60",
+  "pi-sauce": "/icons/sauce.png",
+  "pi-champignons": "/icons/mushroom.png",
+  "pi-olives": "https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=120&auto=format&fit=crop&q=60",
+  "pi-poivrons": "https://images.unsplash.com/photo-1566822268153-f72535099c27?w=120&auto=format&fit=crop&q=60",
+  "pi-oignons": "/icons/onion.png",
+  "pi-oeuf": "https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=120&auto=format&fit=crop&q=60",
+  "pi-mozzarella": "https://images.unsplash.com/photo-1558642084-fd07fae5282e?w=120&auto=format&fit=crop&q=60",
+  "pi-jambon": "https://images.unsplash.com/photo-1608039755401-742074f0548d?w=120&auto=format&fit=crop&q=60",
+  "pi-lardons": "https://images.unsplash.com/photo-1606851094655-b2593a9af63f?w=120&auto=format&fit=crop&q=60",
+  "pi-merguez": "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=120&auto=format&fit=crop&q=60",
+  "pi-poulet": "https://images.unsplash.com/photo-1562967914-6c8273b89a3e?w=120&auto=format&fit=crop&q=60",
+  "pi-chorizo": "https://images.unsplash.com/photo-1534482421-64566f976cfa?w=120&auto=format&fit=crop&q=60",
+  "pi-thon": "https://images.unsplash.com/photo-1534604973900-c43ab4c2e0ab?w=120&auto=format&fit=crop&q=60",
+  "pi-chevre": "https://images.unsplash.com/photo-1596450514966-a12da7fb104b?w=120&auto=format&fit=crop&q=60"
+};
+
+function SupplementTile({ extra, isKiosk }: { extra: any; isKiosk: boolean }) {
+  const [imgError, setImgError] = useState(false);
+  const imgUrl = SUPPLEMENT_IMAGES[extra.id];
+
+  return (
+    <div style={{
+      width: isKiosk ? 50 : 38,
+      height: isKiosk ? 50 : 38,
+      borderRadius: 8,
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#1f2937',
+      border: '1px solid rgba(255,255,255,0.05)',
+      marginBottom: 4,
+    }}>
+      {imgUrl && !imgError ? (
+        <img
+          src={imgUrl}
+          alt={extra.name}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <span style={{ fontSize: isKiosk ? 22 : 18 }}>{extra.emoji}</span>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -108,11 +193,23 @@ export function PizzaIngredientCustomizer({
         {/* Pizza Image */}
         <div className="flex justify-center">
           <div className={`rounded-full overflow-hidden bg-gradient-to-br from-orange-50 to-amber-100 border-4 border-orange-200 shadow-xl flex items-center justify-center ${isKiosk ? 'w-44 h-44' : 'w-36 h-36'}`}>
-            {pizza.imageUrl ? (
-              <img src={pizza.imageUrl} alt={pizza.name} className="w-full h-full object-contain animate-spin-slow" />
-            ) : (
-              <Pizza className={`text-orange-300 ${isKiosk ? 'w-20 h-20' : 'w-16 h-16'}`} />
-            )}
+            {(() => {
+              const normalizedName = (pizza.name || '').trim().toLowerCase();
+              const pizzaImg = resolveImg(pizza.imageUrl || pizza.image_url || LOCAL_PIZZA_IMAGES[normalizedName]);
+              return pizzaImg ? (
+                <img
+                  src={pizzaImg}
+                  alt={pizza.name}
+                  className="w-full h-full object-cover animate-spin-slow"
+                  style={{ animation: 'spin 12s linear infinite' }}
+                />
+              ) : (
+                <Pizza
+                  className={`text-orange-300 animate-spin-slow ${isKiosk ? 'w-20 h-20' : 'w-16 h-16'}`}
+                  style={{ animation: 'spin 12s linear infinite' }}
+                />
+              );
+            })()}
           </div>
         </div>
 
@@ -215,7 +312,7 @@ export function PizzaIngredientCustomizer({
                       : 'border-border hover:border-primary/40 hover:bg-muted/40'
                   }`}
                 >
-                  <span className={isKiosk ? 'text-3xl' : 'text-2xl'}>{extra.emoji}</span>
+                  <SupplementTile extra={extra} isKiosk={isKiosk} />
                   <span className={`font-semibold text-center leading-tight ${isKiosk ? 'text-base' : 'text-xs'}`}>
                     {extra.name}
                   </span>
