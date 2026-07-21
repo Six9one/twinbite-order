@@ -1468,8 +1468,8 @@ const FloatingToppingCircle = memo(({ name, emoji, active, onClick, onDragStart,
       className="pos-btn-interactive"
       style={{
         position: 'absolute',
-        width: 80,
-        height: 80,
+        width: 90,
+        height: 90,
         borderRadius: '50%',
         border: `2px solid ${active ? '#f59e0b' : '#374151'}`,
         background: active ? 'rgba(245,158,11,0.15)' : 'rgba(31, 41, 55, 0.85)',
@@ -1644,7 +1644,7 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
         <div style={{
           position: 'relative',
           width: '100%',
-          height: 330,
+          height: 390,
           background: 'rgba(15,23,42,0.15)',
           borderRadius: 20,
           border: '1px solid rgba(255,255,255,0.05)',
@@ -1665,8 +1665,8 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
             onDragStart={handleCupDragStart}
             style={{
               position: 'relative',
-              width: 160,
-              height: 210,
+              width: 220,
+              height: 280,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1824,7 +1824,7 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
             onClick={() => toggleTopping('Kinder Bueno')}
             onDragStart={(e) => handleToppingDragStart(e, 'Kinder Bueno')}
             onDragEnd={handleToppingDragEnd}
-            style={{ top: '6%', left: '12%' }}
+            style={{ top: '4%', left: '8%' }}
           />
 
           {/* Oreo */}
@@ -1835,7 +1835,7 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
             onClick={() => toggleTopping('Oreo')}
             onDragStart={(e) => handleToppingDragStart(e, 'Oreo')}
             onDragEnd={handleToppingDragEnd}
-            style={{ top: '38%', left: '5%' }}
+            style={{ top: '38%', left: '2%' }}
           />
 
           {/* M&M's */}
@@ -1846,7 +1846,7 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
             onClick={() => toggleTopping("M&M's")}
             onDragStart={(e) => handleToppingDragStart(e, "M&M's")}
             onDragEnd={handleToppingDragEnd}
-            style={{ top: '70%', left: '12%' }}
+            style={{ top: '72%', left: '8%' }}
           />
 
           {/* Speculoos */}
@@ -1857,7 +1857,7 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
             onClick={() => toggleTopping('Speculoos')}
             onDragStart={(e) => handleToppingDragStart(e, 'Speculoos')}
             onDragEnd={handleToppingDragEnd}
-            style={{ top: '6%', right: '12%' }}
+            style={{ top: '4%', right: '8%' }}
           />
 
           {/* Nutella */}
@@ -1868,7 +1868,7 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
             onClick={() => toggleTopping('Nutella')}
             onDragStart={(e) => handleToppingDragStart(e, 'Nutella')}
             onDragEnd={handleToppingDragEnd}
-            style={{ top: '38%', right: '5%' }}
+            style={{ top: '38%', right: '2%' }}
           />
 
           {/* Daim */}
@@ -1879,7 +1879,7 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
             onClick={() => toggleTopping('Daim')}
             onDragStart={(e) => handleToppingDragStart(e, 'Daim')}
             onDragEnd={handleToppingDragEnd}
-            style={{ top: '70%', right: '12%' }}
+            style={{ top: '72%', right: '8%' }}
           />
 
           {/* NAPPAGE / DRIZZLE SELECTORS (BOTTOM CENTER) */}
