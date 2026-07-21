@@ -1402,9 +1402,73 @@ function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void
   );
 }
 
+const FloatingToppingCircle = memo(({ name, emoji, active, onClick, onDragStart, onDragEnd, style }: {
+  name: string;
+  emoji: string;
+  active: boolean;
+  onClick: () => void;
+  onDragStart: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+  style: React.CSSProperties;
+}) => {
+  return (
+    <div
+      draggable="true"
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={onClick}
+      className="pos-btn-interactive"
+      style={{
+        position: 'absolute',
+        width: 80,
+        height: 80,
+        borderRadius: '50%',
+        border: `2px solid ${active ? '#f59e0b' : '#374151'}`,
+        background: active ? 'rgba(245,158,11,0.15)' : 'rgba(31, 41, 55, 0.85)',
+        color: active ? '#f59e0b' : '#e5e7eb',
+        cursor: 'grab',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2,
+        boxShadow: active ? '0 0 12px rgba(245,158,11,0.3)' : '0 4px 8px rgba(0,0,0,0.3)',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        backdropFilter: 'blur(4px)',
+        userSelect: 'none',
+        ...style,
+      }}
+    >
+      <span style={{ fontSize: 20 }}>{emoji}</span>
+      <span style={{ fontSize: 9, fontWeight: 900, textAlign: 'center', lineHeight: 1.1, maxWidth: '85%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+      {active && (
+        <span style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          fontSize: 8,
+          background: '#f59e0b',
+          color: '#000',
+          borderRadius: '50%',
+          width: 14,
+          height: 14,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 900,
+          border: '1px solid #111827',
+        }}>
+          ✓
+        </span>
+      )}
+    </div>
+  );
+});
+
 function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: number) => void }) {
   const toppingsList = ['Kinder Bueno', 'Oreo', "M&M's", 'Speculoos', 'Nutella', 'Daim'];
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
+  const [nappage, setNappage] = useState<string[]>([]); // 'Chocolat', 'Caramel'
   const [qty, setQty] = useState(1);
   const [note, setNote] = useState('');
   const [isDraggingTopping, setIsDraggingTopping] = useState<string | null>(null);
@@ -1422,7 +1486,16 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
     );
   }, []);
 
+  const toggleNappage = useCallback((sauce: string) => {
+    setNappage(prev =>
+      prev.includes(sauce) ? prev.filter(s => s !== sauce) : [...prev, sauce]
+    );
+  }, []);
+
   const handleAdd = () => {
+    const finalToppings = [...selectedToppings];
+    nappage.forEach(n => finalToppings.push(`Nappage ${n}`));
+
     onAdd(
       {
         id: 'milk-custom-' + Date.now(),
@@ -1432,13 +1505,14 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
         description: 'Base vanille & Chantilly'
       },
       {
-        toppings: selectedToppings,
-        garnitures: selectedToppings,
+        toppings: finalToppings,
+        garnitures: finalToppings,
         note: note
       },
       totalPrice
     );
     setSelectedToppings([]);
+    setNappage([]);
     setQty(1);
     setNote('');
   };
@@ -1453,9 +1527,12 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
   };
 
   const handleCupDragStart = (e: React.DragEvent) => {
+    const finalToppings = [...selectedToppings];
+    nappage.forEach(n => finalToppings.push(`Nappage ${n}`));
+
     const data = {
       type: 'milkshake-custom',
-      toppings: selectedToppings,
+      toppings: finalToppings,
       unitPrice,
       totalPrice
     };
@@ -1494,9 +1571,6 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
     }
   };
 
-  const leftToppings = ['Kinder Bueno', 'Oreo', "M&M's"];
-  const rightToppings = ['Speculoos', 'Nutella', 'Daim'];
-
   const toppingEmojis: Record<string, string> = {
     'Kinder Bueno': '🍫',
     'Oreo': '🍪',
@@ -1506,283 +1580,327 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
     'Daim': '🍬'
   };
 
-  const toppingColors: Record<string, string> = {
-    'Kinder Bueno': '#c29b61',
-    'Oreo': '#374151',
-    "M&M's": '#ef4444',
-    'Speculoos': '#b45309',
-    'Nutella': '#451a03',
-    'Daim': '#dc2626'
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* Scrollable middle container */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: '10px 14px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         
         {/* Info card */}
-        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, padding: '8px 12px', marginBottom: 12, flexShrink: 0 }}>
+        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, padding: '6px 12px', marginBottom: 10, flexShrink: 0 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: '#f59e0b', marginBottom: 2 }}>🥛 Milkshake Personnalisé (5.00€)</div>
           <div style={{ fontSize: 10, color: '#94a3b8' }}>Base vanille + Crème Chantilly et 1 topping inclus. Topping supplém. +0.50€.</div>
         </div>
 
-        {/* Dynamic 3-Column drag-drop builder */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr 1.2fr', gap: 16, alignItems: 'center', flex: 1, minHeight: 0 }}>
-          
-          {/* Column 1: Left Toppings */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {leftToppings.map(t => {
-              const active = selectedToppings.includes(t);
-              return (
-                <div
-                  key={t}
-                  draggable="true"
-                  onDragStart={(e) => handleToppingDragStart(e, t)}
-                  onDragEnd={handleToppingDragEnd}
-                  onClick={() => toggleTopping(t)}
-                  className="pos-btn-interactive"
-                  style={{
-                    padding: '12px 10px',
-                    borderRadius: 12,
-                    border: `2px solid ${active ? '#f59e0b' : '#374151'}`,
-                    background: active ? 'rgba(245,158,11,0.1)' : '#1f2937',
-                    color: active ? '#f59e0b' : '#e5e7eb',
-                    cursor: 'grab',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                    position: 'relative',
-                    transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: active ? '0 0 10px rgba(245,158,11,0.2)' : 'none',
-                  }}
-                >
-                  <span style={{ fontSize: 22 }}>{toppingEmojis[t]}</span>
-                  <span style={{ fontSize: 11, fontWeight: 800, textAlign: 'center', whiteSpace: 'nowrap' }}>{t}</span>
-                  {active && <span style={{ position: 'absolute', top: 4, right: 4, fontSize: 8, background: '#f59e0b', color: '#000', borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>✓</span>}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Column 2: Milkshake Cup Droppable Target */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <div
-              onDragOver={handleCupDragOver}
-              onDragLeave={handleCupDragLeave}
-              onDrop={handleCupDrop}
-              draggable={selectedToppings.length > 0}
-              onDragStart={handleCupDragStart}
+        {/* Circular Floating Builder Area */}
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          height: 330,
+          background: 'rgba(15,23,42,0.15)',
+          borderRadius: 20,
+          border: '1px solid rgba(255,255,255,0.05)',
+          overflow: 'hidden',
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto',
+          maxWidth: 680,
+        }}>
+          {/* Milkshake Cup in the middle */}
+          <div
+            onDragOver={handleCupDragOver}
+            onDragLeave={handleCupDragLeave}
+            onDrop={handleCupDrop}
+            draggable={selectedToppings.length > 0 || nappage.length > 0}
+            onDragStart={handleCupDragStart}
+            style={{
+              position: 'relative',
+              width: 160,
+              height: 210,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 24,
+              border: isDragOverCup 
+                ? `3.5px dashed #f59e0b` 
+                : (isDraggingTopping ? '2px dashed rgba(255,255,255,0.25)' : '2px dashed transparent'),
+              background: isDragOverCup 
+                ? 'rgba(245,158,11,0.08)' 
+                : (isDraggingTopping ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.1)'),
+              boxShadow: isDragOverCup ? `0 0 30px rgba(245,158,11,0.3)` : 'none',
+              transform: isDragOverCup ? 'scale(1.05)' : 'scale(1)',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              cursor: (selectedToppings.length > 0 || nappage.length > 0) ? 'grab' : 'default',
+              zIndex: 10,
+            }}
+          >
+            {/* Cup Image */}
+            <img
+              src="/milkshake_cup.png"
+              alt="Milkshake Cup"
               style={{
-                position: 'relative',
-                width: 200,
-                height: 250,
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                opacity: isDragOverCup ? 0.8 : 1,
+                filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.5))',
+              }}
+            />
+
+            {/* REACTIVE DRIZZLES & TOPPING SPRINKLES */}
+            
+            {/* Chocolat Nappage */}
+            {nappage.includes('Chocolat') && (
+              <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 4, width: '100%', height: '100%' }}>
+                <path d="M 38 22 Q 42 38 44 26 Q 48 42 52 24 Q 56 42 60 27 Q 65 38 68 22" fill="none" stroke="#2c1a11" strokeWidth="5.5" strokeLinecap="round" opacity="0.95" />
+                <path d="M 44 19 Q 50 35 54 21 Q 58 35 62 19" fill="none" stroke="#2c1a11" strokeWidth="4" strokeLinecap="round" opacity="0.95" />
+              </svg>
+            )}
+
+            {/* Caramel Nappage */}
+            {nappage.includes('Caramel') && (
+              <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5, width: '100%', height: '100%' }}>
+                <path d="M 36 24 Q 40 39 42 27 Q 47 43 50 25 Q 55 43 58 28 Q 63 39 66 24" fill="none" stroke="#b45309" strokeWidth="5" strokeLinecap="round" opacity="0.9" />
+                <path d="M 41 21 Q 48 37 52 23 Q 56 37 60 21" fill="none" stroke="#b45309" strokeWidth="3.5" strokeLinecap="round" opacity="0.9" />
+              </svg>
+            )}
+
+            {/* Topping Sprinkles */}
+            {selectedToppings.includes('Nutella') && (
+              <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3, width: '100%', height: '100%' }}>
+                <path d="M 39 23 Q 41 33 43 25 Q 46 35 48 23" fill="none" stroke="#451a03" strokeWidth="3.5" strokeLinecap="round" opacity="0.85" />
+              </svg>
+            )}
+            {selectedToppings.includes('Kinder Bueno') && (
+              <>
+                <span style={{ position: 'absolute', top: '15%', left: '36%', fontSize: 20, transform: 'rotate(-25deg)', zIndex: 6, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}>🍫</span>
+                <span style={{ position: 'absolute', top: '19%', left: '50%', fontSize: 16, transform: 'rotate(15deg)', zIndex: 6, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}>🍫</span>
+              </>
+            )}
+            {selectedToppings.includes('Oreo') && (
+              <>
+                <span style={{ position: 'absolute', top: '21%', left: '30%', fontSize: 13, transform: 'rotate(10deg)', zIndex: 6 }}>🍪</span>
+                <span style={{ position: 'absolute', top: '23%', left: '56%', fontSize: 11, transform: 'rotate(-15deg)', zIndex: 6 }}>🍪</span>
+                <div style={{ position: 'absolute', top: '22%', left: '42%', width: 5, height: 5, background: '#1c1917', borderRadius: '50%', zIndex: 6 }} />
+                <div style={{ position: 'absolute', top: '24%', left: '48%', width: 4, height: 4, background: '#27272a', borderRadius: '50%', zIndex: 6 }} />
+              </>
+            )}
+            {selectedToppings.includes("M&M's") && (
+              <>
+                <div style={{ position: 'absolute', top: '24%', left: '36%', width: 7, height: 7, background: '#ef4444', borderRadius: '50%', border: '0.8px solid #fff', zIndex: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 5, fontWeight: 900, color: '#fff' }}>m</div>
+                <div style={{ position: 'absolute', top: '20%', left: '48%', width: 7, height: 7, background: '#3b82f6', borderRadius: '50%', border: '0.8px solid #fff', zIndex: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 5, fontWeight: 900, color: '#fff' }}>m</div>
+                <div style={{ position: 'absolute', top: '26%', left: '54%', width: 7, height: 7, background: '#eab308', borderRadius: '50%', border: '0.8px solid #fff', zIndex: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 5, fontWeight: 900, color: '#fff' }}>m</div>
+              </>
+            )}
+            {selectedToppings.includes('Speculoos') && (
+              <>
+                <span style={{ position: 'absolute', top: '26%', left: '32%', fontSize: 11, zIndex: 6 }}>🍪</span>
+                <div style={{ position: 'absolute', top: '21%', left: '40%', width: 5, height: 5, background: '#b45309', borderRadius: '50%', zIndex: 6 }} />
+                <div style={{ position: 'absolute', top: '27%', left: '47%', width: 6, height: 6, background: '#d97706', borderRadius: '50%', zIndex: 6 }} />
+              </>
+            )}
+            {selectedToppings.includes('Daim') && (
+              <>
+                <div style={{ position: 'absolute', top: '25%', left: '33%', width: 5, height: 5, background: '#dc2626', transform: 'rotate(45deg)', zIndex: 6 }} />
+                <div style={{ position: 'absolute', top: '18%', left: '51%', width: 5, height: 4, background: '#ea580c', transform: 'rotate(15deg)', zIndex: 6 }} />
+                <div style={{ position: 'absolute', top: '27%', left: '42%', width: 4, height: 5, background: '#b91c1c', transform: 'rotate(-30deg)', zIndex: 6 }} />
+              </>
+            )}
+
+            {/* Topping Count Badge */}
+            {(selectedToppings.length + nappage.length) > 0 && (
+              <div style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                background: '#f59e0b',
+                color: '#000',
+                borderRadius: '50%',
+                width: 20,
+                height: 20,
+                fontSize: 9,
+                fontWeight: 900,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 24,
-                border: isDragOverCup 
-                  ? `3.5px dashed #f59e0b` 
-                  : (isDraggingTopping ? '2px dashed rgba(255,255,255,0.25)' : '2px dashed transparent'),
-                background: isDragOverCup 
-                  ? 'rgba(245,158,11,0.08)' 
-                  : (isDraggingTopping ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.1)'),
-                boxShadow: isDragOverCup ? `0 0 30px rgba(245,158,11,0.3)` : 'none',
-                transform: isDragOverCup ? 'scale(1.05)' : 'scale(1)',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                cursor: selectedToppings.length > 0 ? 'grab' : 'default',
-              }}
-            >
-              {/* Cup Image */}
-              <img
-                src="/milkshake_cup.png"
-                alt="Milkshake Cup"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  opacity: isDragOverCup ? 0.8 : 1,
-                  filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.5))',
-                }}
-              />
+                boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+                zIndex: 10
+              }}>
+                {selectedToppings.length + nappage.length}
+              </div>
+            )}
 
-              {/* REACTIVE TOPPING OVERLAYS ON WHIPPED CREAM */}
-              
-              {/* Nutella Syrup Drizzle */}
-              {selectedToppings.includes('Nutella') && (
-                <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5, width: '100%', height: '100%' }}>
-                  <path d="M 38 22 Q 42 38 44 26 Q 48 42 52 24 Q 56 42 60 27 Q 65 38 68 22" fill="none" stroke="#27150a" strokeWidth="4.5" strokeLinecap="round" opacity="0.9" />
-                  <path d="M 44 19 Q 50 35 54 21 Q 58 35 62 19" fill="none" stroke="#27150a" strokeWidth="3.5" strokeLinecap="round" opacity="0.9" />
-                </svg>
-              )}
-
-              {/* Kinder Bueno chocolate sticks */}
-              {selectedToppings.includes('Kinder Bueno') && (
-                <>
-                  <span style={{ position: 'absolute', top: '16%', left: '38%', fontSize: 24, transform: 'rotate(-25deg)', zIndex: 6, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}>🍫</span>
-                  <span style={{ position: 'absolute', top: '20%', left: '52%', fontSize: 20, transform: 'rotate(15deg)', zIndex: 6, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}>🍫</span>
-                </>
-              )}
-
-              {/* Oreo cookie crumbs */}
-              {selectedToppings.includes('Oreo') && (
-                <>
-                  <span style={{ position: 'absolute', top: '21%', left: '32%', fontSize: 16, transform: 'rotate(10deg)', zIndex: 6, opacity: 0.95 }}>🍪</span>
-                  <span style={{ position: 'absolute', top: '24%', left: '58%', fontSize: 14, transform: 'rotate(-15deg)', zIndex: 6, opacity: 0.95 }}>🍪</span>
-                  <div style={{ position: 'absolute', top: '22%', left: '44%', width: 6, height: 6, background: '#1c1917', borderRadius: '50%', zIndex: 6 }} />
-                  <div style={{ position: 'absolute', top: '25%', left: '50%', width: 5, height: 5, background: '#27272a', borderRadius: '50%', zIndex: 6 }} />
-                  <div style={{ position: 'absolute', top: '17%', left: '48%', width: 7, height: 6, background: '#1c1917', borderRadius: '40%', zIndex: 6 }} />
-                </>
-              )}
-
-              {/* M&M's colored pieces */}
-              {selectedToppings.includes("M&M's") && (
-                <>
-                  <div style={{ position: 'absolute', top: '24%', left: '38%', width: 7, height: 7, background: '#ef4444', borderRadius: '50%', border: '0.8px solid #fff', zIndex: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 5, fontWeight: 900, color: '#fff' }}>m</div>
-                  <div style={{ position: 'absolute', top: '20%', left: '50%', width: 7, height: 7, background: '#3b82f6', borderRadius: '50%', border: '0.8px solid #fff', zIndex: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 5, fontWeight: 900, color: '#fff' }}>m</div>
-                  <div style={{ position: 'absolute', top: '28%', left: '56%', width: 7, height: 7, background: '#eab308', borderRadius: '50%', border: '0.8px solid #fff', zIndex: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 5, fontWeight: 900, color: '#fff' }}>m</div>
-                  <div style={{ position: 'absolute', top: '25%', left: '46%', width: 7, height: 7, background: '#22c55e', borderRadius: '50%', border: '0.8px solid #fff', zIndex: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 5, fontWeight: 900, color: '#fff' }}>m</div>
-                </>
-              )}
-
-              {/* Speculoos golden crumbs */}
-              {selectedToppings.includes('Speculoos') && (
-                <>
-                  <span style={{ position: 'absolute', top: '27%', left: '33%', fontSize: 13, zIndex: 6 }}>🍪</span>
-                  <div style={{ position: 'absolute', top: '21%', left: '42%', width: 5, height: 5, background: '#b45309', borderRadius: '50%', zIndex: 6 }} />
-                  <div style={{ position: 'absolute', top: '29%', left: '49%', width: 6, height: 6, background: '#d97706', borderRadius: '50%', zIndex: 6 }} />
-                  <div style={{ position: 'absolute', top: '23%', left: '60%', width: 4, height: 4, background: '#92400e', borderRadius: '50%', zIndex: 6 }} />
-                </>
-              )}
-
-              {/* Daim red/orange shards */}
-              {selectedToppings.includes('Daim') && (
-                <>
-                  <div style={{ position: 'absolute', top: '25%', left: '34%', width: 5, height: 5, background: '#dc2626', transform: 'rotate(45deg)', zIndex: 6 }} />
-                  <div style={{ position: 'absolute', top: '18%', left: '53%', width: 6, height: 4, background: '#ea580c', transform: 'rotate(15deg)', zIndex: 6 }} />
-                  <div style={{ position: 'absolute', top: '28%', left: '44%', width: 4, height: 6, background: '#b91c1c', transform: 'rotate(-30deg)', zIndex: 6 }} />
-                  <div style={{ position: 'absolute', top: '23%', left: '58%', width: 5, height: 5, background: '#ea580c', transform: 'rotate(60deg)', zIndex: 6 }} />
-                </>
-              )}
-
-              {/* Topping Count Badge */}
-              {selectedToppings.length > 0 && (
-                <div style={{
-                  position: 'absolute',
-                  top: 10,
-                  right: 10,
-                  background: '#f59e0b',
-                  color: '#000',
-                  borderRadius: '50%',
-                  width: 22,
-                  height: 22,
-                  fontSize: 10,
-                  fontWeight: 900,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
-                  zIndex: 10
-                }}>
-                  {selectedToppings.length}
-                </div>
-              )}
-
-              {/* Drag Prompt */}
-              {isDraggingTopping && !isDragOverCup && (
-                <div style={{
-                  position: 'absolute',
-                  bottom: 10,
-                  background: 'rgba(0,0,0,0.85)',
-                  color: '#f59e0b',
-                  padding: '3px 8px',
-                  borderRadius: 99,
-                  fontSize: 8,
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  pointerEvents: 'none',
-                  zIndex: 10,
-                  border: '1px solid rgba(245,158,11,0.3)',
-                  boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
-                }}>
-                  Relâcher ici !
-                </div>
-              )}
-
-              {/* Drag Cup Prompt */}
-              {selectedToppings.length > 0 && !isDraggingTopping && (
-                <div style={{
-                  position: 'absolute',
-                  bottom: 10,
-                  background: 'rgba(15,23,42,0.8)',
-                  color: '#fff',
-                  padding: '4px 10px',
-                  borderRadius: 99,
-                  fontSize: 8,
-                  fontWeight: 800,
-                  pointerEvents: 'none',
-                  zIndex: 10,
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  backdropFilter: 'blur(4px)',
-                }}>
-                  Glissez vers la caisse ! 👈
-                </div>
-              )}
-            </div>
+            {/* Drag Prompts */}
+            {isDraggingTopping && !isDragOverCup && (
+              <div style={{
+                position: 'absolute',
+                bottom: 8,
+                background: 'rgba(0,0,0,0.85)',
+                color: '#f59e0b',
+                padding: '3px 8px',
+                borderRadius: 99,
+                fontSize: 8,
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                zIndex: 10,
+              }}>
+                Déposer !
+              </div>
+            )}
+            {(selectedToppings.length > 0 || nappage.length > 0) && !isDraggingTopping && (
+              <div style={{
+                position: 'absolute',
+                bottom: 8,
+                background: 'rgba(15,23,42,0.85)',
+                color: '#fff',
+                padding: '3px 8px',
+                borderRadius: 99,
+                fontSize: 8,
+                fontWeight: 800,
+                zIndex: 10,
+                border: '1px solid rgba(255,255,255,0.15)',
+                whiteSpace: 'nowrap',
+              }}>
+                Glisser vers la caisse 👈
+              </div>
+            )}
           </div>
 
-          {/* Column 3: Right Toppings */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {rightToppings.map(t => {
-              const active = selectedToppings.includes(t);
-              return (
-                <div
-                  key={t}
-                  draggable="true"
-                  onDragStart={(e) => handleToppingDragStart(e, t)}
-                  onDragEnd={handleToppingDragEnd}
-                  onClick={() => toggleTopping(t)}
-                  className="pos-btn-interactive"
-                  style={{
-                    padding: '12px 10px',
-                    borderRadius: 12,
-                    border: `2px solid ${active ? '#f59e0b' : '#374151'}`,
-                    background: active ? 'rgba(245,158,11,0.1)' : '#1f2937',
-                    color: active ? '#f59e0b' : '#e5e7eb',
-                    cursor: 'grab',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                    position: 'relative',
-                    transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: active ? '0 0 10px rgba(245,158,11,0.2)' : 'none',
-                  }}
-                >
-                  <span style={{ fontSize: 22 }}>{toppingEmojis[t]}</span>
-                  <span style={{ fontSize: 11, fontWeight: 800, textAlign: 'center', whiteSpace: 'nowrap' }}>{t}</span>
-                  {active && <span style={{ position: 'absolute', top: 4, right: 4, fontSize: 8, background: '#f59e0b', color: '#000', borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>✓</span>}
-                </div>
-              );
-            })}
+          {/* FLOATING TOPPING TILES (CIRCULATING IN AN ARC AROUND THE CUP) */}
+          {/* Kinder Bueno */}
+          <FloatingToppingCircle
+            name="Kinder Bueno"
+            emoji="🍫"
+            active={selectedToppings.includes('Kinder Bueno')}
+            onClick={() => toggleTopping('Kinder Bueno')}
+            onDragStart={(e) => handleToppingDragStart(e, 'Kinder Bueno')}
+            onDragEnd={handleToppingDragEnd}
+            style={{ top: '6%', left: '12%' }}
+          />
+
+          {/* Oreo */}
+          <FloatingToppingCircle
+            name="Oreo"
+            emoji="🍪"
+            active={selectedToppings.includes('Oreo')}
+            onClick={() => toggleTopping('Oreo')}
+            onDragStart={(e) => handleToppingDragStart(e, 'Oreo')}
+            onDragEnd={handleToppingDragEnd}
+            style={{ top: '38%', left: '5%' }}
+          />
+
+          {/* M&M's */}
+          <FloatingToppingCircle
+            name="M&M's"
+            emoji="🔴"
+            active={selectedToppings.includes("M&M's")}
+            onClick={() => toggleTopping("M&M's")}
+            onDragStart={(e) => handleToppingDragStart(e, "M&M's")}
+            onDragEnd={handleToppingDragEnd}
+            style={{ top: '70%', left: '12%' }}
+          />
+
+          {/* Speculoos */}
+          <FloatingToppingCircle
+            name="Speculoos"
+            emoji="🍪"
+            active={selectedToppings.includes('Speculoos')}
+            onClick={() => toggleTopping('Speculoos')}
+            onDragStart={(e) => handleToppingDragStart(e, 'Speculoos')}
+            onDragEnd={handleToppingDragEnd}
+            style={{ top: '6%', right: '12%' }}
+          />
+
+          {/* Nutella */}
+          <FloatingToppingCircle
+            name="Nutella"
+            emoji="🫙"
+            active={selectedToppings.includes('Nutella')}
+            onClick={() => toggleTopping('Nutella')}
+            onDragStart={(e) => handleToppingDragStart(e, 'Nutella')}
+            onDragEnd={handleToppingDragEnd}
+            style={{ top: '38%', right: '5%' }}
+          />
+
+          {/* Daim */}
+          <FloatingToppingCircle
+            name="Daim"
+            emoji="🍬"
+            active={selectedToppings.includes('Daim')}
+            onClick={() => toggleTopping('Daim')}
+            onDragStart={(e) => handleToppingDragStart(e, 'Daim')}
+            onDragEnd={handleToppingDragEnd}
+            style={{ top: '70%', right: '12%' }}
+          />
+
+          {/* NAPPAGE / DRIZZLE SELECTORS (BOTTOM CENTER) */}
+          <div style={{
+            position: 'absolute',
+            bottom: '5%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            gap: 12,
+            background: 'rgba(0,0,0,0.3)',
+            padding: '6px 10px',
+            borderRadius: 14,
+            border: '1px solid rgba(255,255,255,0.05)',
+            zIndex: 15,
+          }}>
+            <button
+              onClick={() => toggleNappage('Chocolat')}
+              className="pos-btn-interactive"
+              style={{
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: `1.5px solid ${nappage.includes('Chocolat') ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
+                background: nappage.includes('Chocolat') ? 'rgba(59,35,20,0.4)' : '#1e293b',
+                color: nappage.includes('Chocolat') ? '#f59e0b' : '#94a3b8',
+                fontSize: 10,
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <span>🍫</span> Chocolat
+            </button>
+            <button
+              onClick={() => toggleNappage('Caramel')}
+              className="pos-btn-interactive"
+              style={{
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: `1.5px solid ${nappage.includes('Caramel') ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
+                background: nappage.includes('Caramel') ? 'rgba(180,83,9,0.3)' : '#1e293b',
+                color: nappage.includes('Caramel') ? '#f59e0b' : '#94a3b8',
+                fontSize: 10,
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <span>🍯</span> Caramel
+            </button>
           </div>
 
         </div>
 
         {/* Notes input */}
-        <div style={{ marginTop: 12, flexShrink: 0 }}>
+        <div style={{ marginTop: 8, flexShrink: 0 }}>
           <div style={{ fontSize: 9, color: S.muted, fontWeight: 800, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>NOTES / MODIFICATIONS</div>
           <input
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Ex: Sans chantilly, sauce chocolat..."
+            placeholder="Ex: Sans chantilly, extra caramel..."
             style={{
               width: '100%',
-              padding: '8px 10px',
+              padding: '6px 10px',
               borderRadius: 8,
               border: `1px solid ${S.border}`,
               background: '#1f2937',
