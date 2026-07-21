@@ -77,16 +77,6 @@ const SpinWheel = () => {
         </div>
       )}
 
-      {/* =================== GOOGLE REVIEW =================== */}
-      {state === 'google-review' && (
-        <div className="sw-body fade-in">
-          <div className="sw-icon">⭐</div>
-          <h2 className="sw-h2">Laissez un avis !</h2>
-          <p className="sw-p">Merci {clientName} ! Laissez-nous un avis Google pour débloquer la roue :</p>
-          <button className="sw-btn sw-google" onClick={openGoogleReview}>⭐ Laisser un avis Google</button>
-          <button className="sw-btn-link" onClick={reviewDone}>J'ai laissé mon avis ➜</button>
-        </div>
-      )}
 
       {/* =================== READY (show wheel + spin) =================== */}
       {state === 'ready' && (

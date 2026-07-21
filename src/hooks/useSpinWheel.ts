@@ -92,10 +92,10 @@ export function useSpinWheel() {
         setState('name-input');
     }, []);
 
-    // Submit name → go to Google Review
+    // Submit name → go directly to wheel
     const submitName = useCallback((name: string) => {
         setClientName(name);
-        setState('google-review');
+        setState('ready');
     }, []);
 
     // Open Google Review → after return, show wheel
