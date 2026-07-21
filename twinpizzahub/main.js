@@ -835,18 +835,40 @@ ipcMain.handle('trigger-update', async () => {
       console.warn('Git pull warning:', pullRes.error, pullRes.stderr);
     }
     
-    // 3. Install packages in root
-    sendStatus('Mise à jour des dépendances principales (npm install)...');
-    const npmRoot = await execPromise('npm install');
-    if (npmRoot.error) {
-      console.error('NPM Root error:', npmRoot.stderr);
-    }
+    const stdoutStr = pullRes.stdout || '';
     
-    // 4. Install packages in twinpizzahub
-    sendStatus('Mise à jour des dépendances de l\'application (twinpizzahub)...');
-    const npmHub = await execPromise('npm install', { cwd: path.join(__dirname) });
-    if (npmHub.error) {
-      console.error('NPM Hub error:', npmHub.stderr);
+    // Check if we are already up to date
+    if (stdoutStr.includes('Already up to date') || stdoutStr.includes('Déjà à jour')) {
+      sendStatus('L\'application est déjà à jour ! Rechargement...');
+      setTimeout(() => {
+        app.relaunch();
+        app.exit(0);
+      }, 1000);
+      return { success: true };
+    }
+
+    // Check if package.json or package-lock.json files were modified in this update
+    sendStatus('Analyse des changements...');
+    const diffRes = await execPromise('git diff --name-only HEAD@{1} HEAD');
+    const changedFiles = (diffRes.stdout || '').split('\n').map(f => f.trim());
+    const needsNpmInstall = changedFiles.some(f => f.includes('package.json') || f.includes('package-lock.json'));
+
+    if (needsNpmInstall) {
+      // 3. Install packages in root
+      sendStatus('Mise à jour des dépendances principales (npm install)...');
+      const npmRoot = await execPromise('npm install');
+      if (npmRoot.error) {
+        console.error('NPM Root error:', npmRoot.stderr);
+      }
+      
+      // 4. Install packages in twinpizzahub
+      sendStatus('Mise à jour des dépendances de l\'application (twinpizzahub)...');
+      const npmHub = await execPromise('npm install', { cwd: path.join(__dirname) });
+      if (npmHub.error) {
+        console.error('NPM Hub error:', npmHub.stderr);
+      }
+    } else {
+      sendStatus('Dépendances déjà à jour. Build direct...');
     }
 
     // 5. Build Vite frontend

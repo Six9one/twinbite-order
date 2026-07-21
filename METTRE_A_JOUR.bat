@@ -10,8 +10,7 @@ echo  ^|           TWINPIZZA HUB  -  MISE A JOUR                     ^|
 echo  ^|  Telecharge les derniers changements et reconstruit          ^|
 echo  +--------------------------------------------------------------+
 echo.
-pause
-
+:: Lancer le nettoyage
 :: Fermer l'app si elle tourne
 tasklist /FI "IMAGENAME eq electron.exe" 2>nul | find /I "electron.exe" >nul
 if not errorlevel 1 (
@@ -38,16 +37,34 @@ if errorlevel 1 (
 :: npm install
 echo.
 echo  [2/3] Verification des packages...
-call npm install --silent
-cd /d "%~dp0twinpizzahub"
-call npm install --silent
-cd /d "%~dp0"
-if exist "%~dp0print-server\package.json" (
-    cd /d "%~dp0print-server"
+git rev-parse HEAD@{1} >nul 2>&1
+if not errorlevel 1 (
+    git diff --name-only HEAD@{1} HEAD | findstr /i "package.json package-lock.json" >nul
+    if errorlevel 1 (
+        echo  OK  Packages deja a jour. Saut de l'installation npm install.
+    ) else (
+        echo  Packages modifies. Execution de npm install...
+        call npm install --silent
+        cd /d "%~dp0twinpizzahub"
+        call npm install --silent
+        cd /d "%~dp0"
+        if exist "%~dp0print-server\package.json" (
+            cd /d "%~dp0print-server"
+            call npm install --silent
+            cd /d "%~dp0"
+        )
+    )
+) else (
+    call npm install --silent
+    cd /d "%~dp0twinpizzahub"
     call npm install --silent
     cd /d "%~dp0"
+    if exist "%~dp0print-server\package.json" (
+        cd /d "%~dp0print-server"
+        call npm install --silent
+        cd /d "%~dp0"
+    )
 )
-echo  OK  Packages a jour.
 
 :: Rebuild
 echo.
