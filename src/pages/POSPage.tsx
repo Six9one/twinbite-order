@@ -2588,7 +2588,7 @@ function CartItemRow({ ci, onUpdate, onRemove }: { ci:any; onUpdate:(u:any)=>voi
 }
 
 // ── Caisse side panel ─────────────────────────────────────────────────────────
-function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName, phone, setPhone, address, setAddress, notes, setNotes, discount, setDiscount, payMethod, setPayMethod, pizzaPromo, pizzaSaving, discountAmt, ht, tva, total, submitting, handleSubmit, clearCart, setShowFacture, mapboxToken, incomingCall, setIncomingCall, handleLinkIncomingCall }: any) {
+function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName, phone, setPhone, address, setAddress, notes, setNotes, discount, setDiscount, payMethod, setPayMethod, pizzaPromo, pizzaSaving, discountAmt, ht, tva, total, submitting, handleSubmit, clearCart, setShowFacture, mapboxToken, incomingCall, setIncomingCall, handleLinkIncomingCall, orderType, handleOrderType }: any) {
   const { updateCartItem, removeFromCart } = useOrder();
   
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
@@ -2628,6 +2628,64 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
         {leftCollapsed && <button onClick={toggleLeft} style={{ ...S.btn, padding:'3px 7px', fontSize:13 }}>⟩</button>}
         🛒 Caisse
         {cart.length > 0 && <span style={{ background:S.accent, color:'#000', borderRadius:99, fontSize:10, fontWeight:800, padding:'1px 7px' }}>{cart.reduce((s:number,i:any)=>s+i.quantity,0)}</span>}
+      </div>
+
+      {/* Order Type Selector */}
+      <div className={currentThemeMode === 'glassy' ? 'pos-segmented-container' : ''} style={{
+        display: 'flex',
+        padding: '8px 10px',
+        gap: 6,
+        background: currentThemeMode === 'glassy' ? 'transparent' : 'rgba(0,0,0,0.2)',
+        borderBottom: `1px solid ${S.border}`,
+        flexShrink: 0,
+        ...(currentThemeMode === 'glassy' ? { margin: '8px 10px' } : {})
+      }}>
+        {(['surplace','emporter','livraison'] as OrderType[]).map(t => {
+          const active = orderType === t;
+          
+          // Vibrant colors for selected states
+          const activeStyles: Record<OrderType, React.CSSProperties> = {
+            surplace: { background: '#0a84ff', color: '#fff', boxShadow: '0 2px 8px rgba(10,132,255,0.4)' },
+            emporter: { background: '#ff9f0a', color: '#fff', boxShadow: '0 2px 8px rgba(255,159,10,0.4)' },
+            livraison: { background: '#30d158', color: '#fff', boxShadow: '0 2px 8px rgba(48,209,88,0.4)' }
+          };
+
+          const inactiveStyles: React.CSSProperties = {
+            background: currentThemeMode === 'glassy' ? 'transparent' : '#1f2937',
+            color: S.muted,
+            border: currentThemeMode === 'glassy' ? 'none' : '1px solid rgba(255,255,255,0.05)'
+          };
+
+          return (
+            <button
+              key={t}
+              onClick={() => handleOrderType(t)}
+              className={`pos-btn-interactive ${currentThemeMode === 'glassy' ? 'pos-segmented-btn' : ''} ${currentThemeMode === 'glassy' && active ? 'active' : ''}`}
+              style={{
+                flex: 1,
+                padding: '6px 4px',
+                borderRadius: 8,
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 10,
+                fontWeight: 800,
+                textAlign: 'center',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 2,
+                ...(active ? activeStyles[t] : inactiveStyles)
+              }}
+            >
+              <span style={{ fontSize: 13 }}>{t === 'surplace' ? '🍽️' : t === 'emporter' ? '🛍️' : '🛵'}</span>
+              <span style={{ fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+                {t === 'surplace' ? 'Sur Place' : t === 'emporter' ? 'Emporter' : 'Livraison'}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Incoming Call Notification Card */}
@@ -3193,21 +3251,7 @@ function POSContent() {
             </button>
           </div>
 
-          {/* Order Type Section */}
-          <div className={currentThemeMode === 'glassy' ? 'pos-segmented-container' : ''} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {(['surplace','emporter','livraison'] as OrderType[]).map(t => (
-              <button key={t} onClick={()=>handleOrderType(t)} className={`pos-btn-interactive ${currentThemeMode === 'glassy' ? 'pos-segmented-btn' : ''} ${currentThemeMode === 'glassy' && orderType === t ? 'active' : ''}`} style={{
-                padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700,
-                background: orderType===t ? S.accent : '#1f2937',
-                color:      orderType===t ? '#000'   : S.muted,
-                textAlign: 'left',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                transition: 'all .12s'
-              }}>{TYPE_LABELS[t]} <span>{t === 'surplace' ? '🍽️' : t === 'emporter' ? '🛍️' : '🛵'}</span></button>
-            ))}
-          </div>
+
 
           {lastOrder && (
             <div style={{ background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'6px 8px', borderRadius:8, fontSize:10, fontWeight:700, textAlign:'center' }}>
@@ -3337,6 +3381,8 @@ function POSContent() {
         incomingCall={incomingCall}
         setIncomingCall={setIncomingCall}
         handleLinkIncomingCall={handleLinkIncomingCall}
+        orderType={orderType}
+        handleOrderType={handleOrderType}
       />
       </Panel>
 
