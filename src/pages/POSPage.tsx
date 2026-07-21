@@ -53,11 +53,63 @@ const S = {
   input:  { width:'100%', background:'#1f2937', border:'1px solid #2d3748', color:'#fff', padding:'8px 10px', borderRadius:8, fontSize:12 } as React.CSSProperties,
 };
 
-// Load saved theme at startup
+let currentThemeMode = 'classic';
 try {
-  const saved = JSON.parse(localStorage.getItem('pos-theme') || '{}');
-  Object.assign(S, saved);
+  currentThemeMode = localStorage.getItem('pos-theme-preset') || 'classic';
 } catch {}
+
+function applyThemePreset(mode: 'classic' | 'glassy') {
+  currentThemeMode = mode;
+  try {
+    localStorage.setItem('pos-theme-preset', mode);
+  } catch {}
+
+  if (mode === 'glassy') {
+    S.bg = 'transparent'; // Let the animated mesh gradient show through
+    S.panel = 'rgba(15, 23, 42, 0.45)';
+    S.card = 'rgba(30, 41, 59, 0.35)';
+    S.border = 'rgba(255, 255, 255, 0.08)';
+    S.muted = '#94a3b8';
+    S.text = '#f8fafc';
+    S.accent = '#0a84ff'; // Apple Blue
+    
+    if (S.btn) {
+      S.btn.background = 'rgba(255, 255, 255, 0.05)';
+      S.btn.border = '1px solid rgba(255, 255, 255, 0.08)';
+      S.btn.color = '#f8fafc';
+    }
+    if (S.input) {
+      S.input.background = 'rgba(255, 255, 255, 0.04)';
+      S.input.border = '1px solid rgba(255, 255, 255, 0.08)';
+      S.input.color = '#fff';
+    }
+  } else {
+    // Reset to classic (load saved colors or default colors)
+    let saved: any = {};
+    try {
+      saved = JSON.parse(localStorage.getItem('pos-theme') || '{}');
+    } catch {}
+    
+    const merged = { ...DEFAULT_THEME, ...saved };
+    (Object.keys(DEFAULT_THEME) as ThemeKey[]).forEach(k => {
+      (S as any)[k] = merged[k];
+    });
+
+    if (S.btn) {
+      S.btn.background = '#1f2937';
+      S.btn.border = '1px solid #2d3748';
+      S.btn.color = '#e5e7eb';
+    }
+    if (S.input) {
+      S.input.background = '#1f2937';
+      S.input.border = '1px solid #2d3748';
+      S.input.color = '#fff';
+    }
+  }
+}
+
+// Initial apply
+applyThemePreset(currentThemeMode as 'classic' | 'glassy');
 
 function saveTheme() {
   const out: Record<string,string> = {};
@@ -169,7 +221,7 @@ const ProductTile = memo(function ProductTile({
         boxShadow: selected ? `0 0 12px ${baseTint}44` : 'none',
         outline: 'none',
       }}
-      className="pizza-card-hover"
+      className={`pizza-card-hover pos-btn-interactive ${selected ? 'selected' : ''}`}
     >
       {badge && (
         <span style={{
@@ -379,10 +431,11 @@ function PizzaPanel({
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
       {/* ── Pizza Size Selector Bar (top of panel) ── */}
-      <div style={{
+      <div className={currentThemeMode === 'glassy' ? 'pos-segmented-container' : ''} style={{
         display: 'flex', gap: 6, padding: '8px 12px',
-        background: '#0a0f1e', borderBottom: `1px solid ${S.border}`,
+        background: currentThemeMode === 'glassy' ? 'transparent' : '#0a0f1e', borderBottom: currentThemeMode === 'glassy' ? 'none' : `1px solid ${S.border}`,
         flexShrink: 0, flexWrap: 'wrap', alignItems: 'center',
+        ...(currentThemeMode === 'glassy' ? { margin: '8px 12px 0' } : {})
       }}>
         {PIZZA_SIZES.map((s) => {
           const active = size === s.id;
@@ -390,15 +443,17 @@ function PizzaPanel({
             <button
               key={s.id}
               onClick={() => setSize(s.id)}
+              className={`pos-btn-interactive ${currentThemeMode === 'glassy' ? 'pos-segmented-btn' : ''} ${currentThemeMode === 'glassy' && active ? 'active' : ''}`}
               style={{
                 padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
                 fontWeight: 800, fontSize: 11, lineHeight: 1.3,
-                border: `1.5px solid ${s.color}`,
-                background: active ? s.color : s.color + '18',
-                color: active ? '#fff' : s.color,
-                boxShadow: active ? `0 0 8px ${s.color}55` : 'none',
+                border: currentThemeMode === 'glassy' ? 'none' : `1.5px solid ${s.color}`,
+                background: currentThemeMode === 'glassy' ? (active ? 'rgba(255,255,255,0.12)' : 'transparent') : (active ? s.color : s.color + '18'),
+                color: currentThemeMode === 'glassy' ? (active ? '#fff' : 'rgba(255,255,255,0.6)') : (active ? '#fff' : s.color),
+                boxShadow: currentThemeMode === 'glassy' ? 'none' : (active ? `0 0 8px ${s.color}55` : 'none'),
                 transition: 'all .1s',
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
+                flex: currentThemeMode === 'glassy' ? 1 : 'unset',
               }}
             >
               <span>{s.label}</span>
@@ -1528,7 +1583,7 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
 
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
-      <div onClick={e=>e.stopPropagation()} style={{ width:480, maxWidth:'90%', height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, display:'flex', flexDirection:'column' }}>
+      <div className="pos-glassy-panel" onClick={e=>e.stopPropagation()} style={{ width:480, maxWidth:'90%', height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, display:'flex', flexDirection:'column' }}>
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
           <div>
@@ -1835,30 +1890,55 @@ function SettingsPanel({ onClose }: { onClose:()=>void }) {
     }
   };  return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
-      <div onClick={e=>e.stopPropagation()} style={{ width:340, height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, padding:'18px 20px', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+      <div className="pos-glassy-panel" onClick={e=>e.stopPropagation()} style={{ width:340, height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, padding:'18px 20px', display:'flex', flexDirection:'column', overflow:'hidden' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexShrink:0 }}>
           <div style={{ fontSize:16, fontWeight:800, color:S.text }}>⚙️ Personnalisation & Caisse</div>
           <button onClick={onClose} style={{ ...S.btn, padding:'5px 12px' }}>✕</button>
         </div>
         
         <div style={{ flex:1, overflowY:'auto', minHeight:0, paddingRight:2 }}>
-          {/* Section 1: Colors */}
-          <div style={{ fontSize:11, color:S.muted, textTransform:'uppercase', fontWeight:800, letterSpacing:'0.05em', marginBottom:10 }}>Thème de l'application</div>
-          <div style={{ display:'flex', flexDirection:'column', gap:2, marginBottom:20 }}>
-            {(Object.keys(DEFAULT_THEME) as ThemeKey[]).map(k => (
-              <div key={k} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:`1px solid ${S.border}` }}>
-                <span style={{ fontSize:13, color:S.text }}>{THEME_LABELS[k]}</span>
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <span style={{ fontSize:11, color:S.muted, fontFamily:'monospace' }}>{(S as any)[k]}</span>
-                  <input type="color" value={(S as any)[k]} onChange={e=>setColor(k, e.target.value)}
-                    style={{ width:38, height:28, border:'none', background:'none', cursor:'pointer', borderRadius:6 }} />
-                </div>
-              </div>
-            ))}
-            <button onClick={resetAll} style={{ ...S.btn, width:'100%', marginTop:10, padding:'8px', fontSize:11, fontWeight:700 }}>
-              ↺ Réinitialiser les couleurs
+          {/* Aesthetic Preset Switcher */}
+          <div style={{ fontSize:11, color:S.muted, textTransform:'uppercase', fontWeight:800, letterSpacing:'0.05em', marginBottom:10 }}>Style Visuel</div>
+          <div className="pos-segmented-container" style={{ display:'flex', gap:2, marginBottom:20 }}>
+            <button 
+              onClick={() => { applyThemePreset('classic'); notifyTheme(); }}
+              className={`pos-segmented-btn pos-btn-interactive ${currentThemeMode === 'classic' ? 'active' : ''}`}
+              style={{ flex:1, padding:'6px', fontSize:11, cursor:'pointer' }}
+            >
+              🎨 Classique
+            </button>
+            <button 
+              onClick={() => { applyThemePreset('glassy'); notifyTheme(); }}
+              className={`pos-segmented-btn pos-btn-interactive ${currentThemeMode === 'glassy' ? 'active' : ''}`}
+              style={{ flex:1, padding:'6px', fontSize:11, cursor:'pointer' }}
+            >
+              🍏 iOS Glass
             </button>
           </div>
+
+          {/* Section 1: Colors */}
+          <div style={{ fontSize:11, color:S.muted, textTransform:'uppercase', fontWeight:800, letterSpacing:'0.05em', marginBottom:10 }}>Thème de l'application</div>
+          {currentThemeMode === 'glassy' ? (
+            <div style={{ fontSize:12, color:S.muted, padding:'14px 10px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, textAlign:'center', marginBottom:20 }}>
+              ✨ Personnalisation des couleurs désactivée en mode Glassmorphism. Repassez en <b>Classique</b> pour éditer.
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:2, marginBottom:20 }}>
+              {(Object.keys(DEFAULT_THEME) as ThemeKey[]).map(k => (
+                <div key={k} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:`1px solid ${S.border}` }}>
+                  <span style={{ fontSize:13, color:S.text }}>{THEME_LABELS[k]}</span>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ fontSize:11, color:S.muted, fontFamily:'monospace' }}>{(S as any)[k]}</span>
+                    <input type="color" value={(S as any)[k]} onChange={e=>setColor(k, e.target.value)}
+                      style={{ width:38, height:28, border:'none', background:'none', cursor:'pointer', borderRadius:6 }} />
+                  </div>
+                </div>
+              ))}
+              <button onClick={resetAll} style={{ ...S.btn, width:'100%', marginTop:10, padding:'8px', fontSize:11, fontWeight:700 }}>
+                ↺ Réinitialiser les couleurs
+              </button>
+            </div>
+          )}
 
           <hr style={{ border:'none', borderTop:`1px solid ${S.border}`, margin:'16px 0' }} />
 
@@ -2080,7 +2160,7 @@ function UpdatePanel({ onClose }: { onClose:()=>void }) {
 
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display: 'flex', justifyContent: 'flex-end' }}>
-      <div onClick={e=>e.stopPropagation()} style={{ width:360, height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, padding:'18px 20px', overflow:'auto', display:'flex', flexDirection:'column' }}>
+      <div className="pos-glassy-panel" onClick={e=>e.stopPropagation()} style={{ width:360, height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, padding:'18px 20px', overflow:'auto', display:'flex', flexDirection:'column' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexShrink:0 }}>
           <div style={{ fontSize:16, fontWeight:800, color:S.text }}>🔄 Mise à jour</div>
           <button onClick={onClose} disabled={updating} style={{ ...S.btn, padding:'5px 12px' }}>✕</button>
@@ -2243,7 +2323,7 @@ function FactureHubModal({ onClose }: { onClose:()=>void }) {
 
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div onClick={e=>e.stopPropagation()} style={{ width:540, maxWidth:'95%', background:S.panel, border:`1px solid ${S.border}`, borderRadius:14, padding:'20px 22px', display:'flex', flexDirection:'column' }}>
+      <div className="pos-glassy-panel" onClick={e=>e.stopPropagation()} style={{ width:540, maxWidth:'95%', background:S.panel, border:`1px solid ${S.border}`, borderRadius:14, padding:'20px 22px', display:'flex', flexDirection:'column' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
           <div style={{ fontSize:17, fontWeight:800, color:S.accent }}>🧾 Factures Client</div>
           <button onClick={onClose} style={{ ...S.btn, padding:'3px 8px', fontSize:12 }}>✕</button>
@@ -2542,7 +2622,7 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
   }, [address, mapboxToken]);
 
   return (
-    <div style={{ height:'100%', display:'flex', flexDirection:'column', background:S.panel }}>
+    <div className="pos-glassy-panel" style={{ height:'100%', display:'flex', flexDirection:'column', background:S.panel }}>
       {/* Header — compact */}
       <div style={{ padding:'7px 12px', borderBottom:`1px solid ${S.border}`, fontSize:13, fontWeight:800, display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
         {leftCollapsed && <button onClick={toggleLeft} style={{ ...S.btn, padding:'3px 7px', fontSize:13 }}>⟩</button>}
@@ -3056,12 +3136,21 @@ function POSContent() {
   };
 
   return (
-    <PanelGroup
-      direction="horizontal"
-      autoSaveId="pos-layout-h"
-      className="pos-root"
-      style={{ height:'100vh', background:S.bg, color:S.text, fontFamily:'Segoe UI,system-ui,sans-serif' }}
-    >
+    <div style={{ position:'relative', width:'100vw', height:'100vh', overflow:'hidden', background: currentThemeMode === 'glassy' ? '#090d16' : S.bg }}>
+      {currentThemeMode === 'glassy' && (
+        <div className="pos-glass-bg">
+          <div className="pos-glass-bg-blob blob-1"></div>
+          <div className="pos-glass-bg-blob blob-2"></div>
+          <div className="pos-glass-bg-blob blob-3"></div>
+          <div className="pos-glass-bg-blob blob-4"></div>
+        </div>
+      )}
+      <PanelGroup
+        direction="horizontal"
+        autoSaveId="pos-layout-h"
+        className={`pos-root ${currentThemeMode === 'glassy' ? 'pos-theme-apple' : ''}`}
+        style={{ height:'100%', background:'transparent', color:S.text }}
+      >
       {/* Hide scrollbars (touch screen) — swipe still works */}
       <style>{`
         .pos-root *::-webkit-scrollbar { width:0 !important; height:0 !important; display:none !important; }
@@ -3074,7 +3163,7 @@ function POSContent() {
       <div style={{ display:'flex', flexDirection:'row', height:'100%', minHeight:0, overflow:'hidden' }}>
 
         {/* ── Vertical Left Sidebar (Order Type, Categories, Pizza Sizes, System Controls) ── */}
-        <div style={{
+        <div className="pos-glassy-panel" style={{
           width: 200,
           background: S.panel,
           borderRight: `1px solid ${S.border}`,
@@ -3091,6 +3180,7 @@ function POSContent() {
             <button
               title="Factures"
               onClick={() => setShowFacture(true)}
+              className="pos-btn-interactive"
               style={{
                 width: 26, height: 26, borderRadius: 6, border: 'none',
                 background: '#1f2937', color: S.muted, fontSize: 14, fontWeight: 800,
@@ -3104,9 +3194,9 @@ function POSContent() {
           </div>
 
           {/* Order Type Section */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className={currentThemeMode === 'glassy' ? 'pos-segmented-container' : ''} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {(['surplace','emporter','livraison'] as OrderType[]).map(t => (
-              <button key={t} onClick={()=>handleOrderType(t)} style={{
+              <button key={t} onClick={()=>handleOrderType(t)} className={`pos-btn-interactive ${currentThemeMode === 'glassy' ? 'pos-segmented-btn' : ''} ${currentThemeMode === 'glassy' && orderType === t ? 'active' : ''}`} style={{
                 padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700,
                 background: orderType===t ? S.accent : '#1f2937',
                 color:      orderType===t ? '#000'   : S.muted,
@@ -3138,7 +3228,7 @@ function POSContent() {
                 <button
                   key={cat.id}
                   onClick={() => setActiveCat(active ? null : cat.slug)}
-                  className={`pos-category-btn ${active ? 'active' : ''}`}
+                  className={`pos-category-btn pos-btn-interactive ${active ? 'active' : ''}`}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, transition: 'all .12s',
@@ -3164,6 +3254,7 @@ function POSContent() {
             <button
               title="Historique & Statistiques"
               onClick={() => setShowHistory(true)}
+              className="pos-btn-interactive"
               style={{
                 ...S.btn,
                 flex: 1,
@@ -3186,6 +3277,7 @@ function POSContent() {
               <button
                 title="Mise à jour"
                 onClick={() => { setShowUpdateModal(true); setUpdateAvailable(false); }}
+                className="pos-btn-interactive"
                 style={{
                   ...S.btn,
                   padding: '8px 10px',
@@ -3209,13 +3301,13 @@ function POSContent() {
                 )}
               </button>
             )}
-            <button title="Personnaliser" onClick={()=>setShowSettings(true)} style={{ ...S.btn, padding:'8px 10px', fontSize:14 }}>⚙️</button>
-            <button title="Replier" onClick={toggleLeft} style={{ ...S.btn, padding:'8px 10px', fontSize:14 }}>⟨</button>
+            <button title="Personnaliser" onClick={()=>setShowSettings(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 10px', fontSize:14 }}>⚙️</button>
+            <button title="Replier" onClick={toggleLeft} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 10px', fontSize:14 }}>⟨</button>
           </div>
         </div>
 
         {/* Products area — takes all remaining space */}
-        <div style={{ flex:1, minHeight:0, overflow:'hidden', display:'flex', flexDirection:'column' }}>
+        <div className="pos-glassy-panel" style={{ flex:1, minHeight:0, overflow:'hidden', display:'flex', flexDirection:'column' }}>
           {renderPanel()}
         </div>
 
@@ -3254,6 +3346,7 @@ function POSContent() {
       {showFacture && <FactureHubModal onClose={()=>setShowFacture(false)} />}
       {showUpdateModal && <UpdatePanel onClose={()=>setShowUpdateModal(false)} />}
     </PanelGroup>
+    </div>
   );
 }
 

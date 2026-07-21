@@ -1346,4 +1346,153 @@
 @keyframes gridFade {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
-}
+}
+
+/* ========================================
+   APPLE GLASS UX & GLASSMORPHISM PRESENTS
+   ======================================== */
+
+.pos-glass-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #090d16 !important;
+  pointer-events: none;
+}
+
+.pos-glass-bg-blob {
+  position: absolute;
+  width: 50vw;
+  height: 50vw;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.38;
+  mix-blend-mode: screen;
+  animation: floatBlob 35s infinite alternate ease-in-out;
+}
+
+.pos-glass-bg-blob.blob-1 {
+  background: radial-gradient(circle, #ff2d55 0%, transparent 80%);
+  top: -10%;
+  left: -10%;
+  animation-delay: 0s;
+}
+
+.pos-glass-bg-blob.blob-2 {
+  background: radial-gradient(circle, #007aff 0%, transparent 80%);
+  bottom: -15%;
+  right: -10%;
+  animation-duration: 40s;
+  animation-delay: -5s;
+}
+
+.pos-glass-bg-blob.blob-3 {
+  background: radial-gradient(circle, #5856d6 0%, transparent 80%);
+  top: 40%;
+  right: 20%;
+  animation-duration: 30s;
+  animation-delay: -10s;
+}
+
+.pos-glass-bg-blob.blob-4 {
+  background: radial-gradient(circle, #ff9500 0%, transparent 80%);
+  bottom: 20%;
+  left: 20%;
+  animation-duration: 45s;
+  animation-delay: -15s;
+}
+
+@keyframes floatBlob {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(80px, 40px) scale(1.15); }
+  100% { transform: translate(-40px, -60px) scale(0.9); }
+}
+
+/* Translucent glass panel filters */
+.pos-theme-apple .pos-glassy-panel {
+  backdrop-filter: blur(25px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(190%) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(15, 23, 42, 0.4) !important;
+}
+
+.pos-theme-apple .pos-btn-interactive {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s, border-color 0.2s !important;
+}
+
+.pos-theme-apple .pos-btn-interactive:active {
+  transform: scale(0.96) !important;
+}
+
+/* iOS Segmented Controls */
+.pos-theme-apple .pos-segmented-container {
+  background: rgba(255, 255, 255, 0.06) !important;
+  padding: 3px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.pos-theme-apple .pos-segmented-btn {
+  border-radius: 7px !important;
+  border: none !important;
+  font-weight: 700 !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  background: transparent !important;
+}
+
+.pos-theme-apple .pos-segmented-btn.active {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Premium Glass Product Cards */
+.pos-theme-apple .pizza-card-hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.pos-theme-apple .pizza-card-hover:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25) !important;
+}
+
+.pos-theme-apple .pizza-card-hover:active {
+  transform: translateY(0) scale(0.96) !important;
+}
+
+.pos-theme-apple .pizza-card-hover.selected {
+  background: rgba(10, 132, 255, 0.15) !important;
+  border-color: #0a84ff !important;
+  box-shadow: 0 0 16px rgba(10, 132, 255, 0.3) !important;
+}
+
+/* Clean fonts and system inputs */
+.pos-theme-apple {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+.pos-theme-apple input, 
+.pos-theme-apple textarea, 
+.pos-theme-apple select {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  color: #fff !important;
+}
+
+.pos-theme-apple input:focus, 
+.pos-theme-apple textarea:focus, 
+.pos-theme-apple select:focus {
+  outline: none !important;
+  border-color: #0a84ff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
