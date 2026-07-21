@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { MenuItem } from '@/types/order';
 import { pizzaIngredientSupplements } from '@/data/menu';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, X, Plus, Check, Pizza } from 'lucide-react';
 import { resolveImg } from '@/utils/resolveImg';
+import {
+  useSupplementOptions,
+  useMeatOptions,
+  useGarnitureOptions,
+  useCruditesOptions,
+  useSauceOptions
+} from '@/hooks/useCustomizationOptions';
 
 export interface PizzaExtra {
   id: string;
@@ -31,7 +38,7 @@ const LOCAL_PIZZA_IMAGES: Record<string, string> = {
   'mexicaine': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=200&q=80',
   '4 saisons': 'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=200&q=80',
   'reine': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=200&q=80',
-  'orientale': 'https://images.unsplash.com/photo-1594007654729-407ededc4963?w=200&q=80',
+  'orientale': 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=200&q=80',
   'campione': 'https://images.unsplash.com/photo-1590947132387-155cc02f3212?w=200&q=80',
   '4 fromages': 'https://images.unsplash.com/photo-1573821663912-569905455b1c?w=200&q=80',
   'calzone': 'https://images.unsplash.com/photo-1544982503-9f984c14501a?w=200&q=80',
@@ -58,54 +65,121 @@ const LOCAL_PIZZA_IMAGES: Record<string, string> = {
   'la hawaïe': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&q=80',
 };
 
-const SUPPLEMENT_IMAGES: Record<string, string> = {
-  "pi-fromage": "https://images.unsplash.com/photo-1486299267070-83823f5448dd?w=120&auto=format&fit=crop&q=60",
-  "pi-viande": "https://images.unsplash.com/photo-1544025162-d76694265947?w=120&auto=format&fit=crop&q=60",
+const SUPPLEMENT_FALLBACKS: Record<string, string> = {
+  "pi-fromage": "https://images.unsplash.com/photo-1486299267070-83823f5448dd?w=120&q=80",
+  "pi-viande": "https://images.unsplash.com/photo-1544025162-d76694265947?w=120&q=80",
   "pi-sauce": "/icons/sauce.png",
   "pi-champignons": "/icons/mushroom.png",
-  "pi-olives": "https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=120&auto=format&fit=crop&q=60",
-  "pi-poivrons": "https://images.unsplash.com/photo-1566822268153-f72535099c27?w=120&auto=format&fit=crop&q=60",
+  "pi-olives": "https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=120&q=80",
+  "pi-poivrons": "https://images.unsplash.com/photo-1566822268153-f72535099c27?w=120&q=80",
   "pi-oignons": "/icons/onion.png",
-  "pi-oeuf": "https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=120&auto=format&fit=crop&q=60",
-  "pi-mozzarella": "https://images.unsplash.com/photo-1558642084-fd07fae5282e?w=120&auto=format&fit=crop&q=60",
-  "pi-jambon": "https://images.unsplash.com/photo-1608039755401-742074f0548d?w=120&auto=format&fit=crop&q=60",
-  "pi-lardons": "https://images.unsplash.com/photo-1606851094655-b2593a9af63f?w=120&auto=format&fit=crop&q=60",
-  "pi-merguez": "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=120&auto=format&fit=crop&q=60",
-  "pi-poulet": "https://images.unsplash.com/photo-1562967914-6c8273b89a3e?w=120&auto=format&fit=crop&q=60",
-  "pi-chorizo": "https://images.unsplash.com/photo-1534482421-64566f976cfa?w=120&auto=format&fit=crop&q=60",
-  "pi-thon": "https://images.unsplash.com/photo-1534604973900-c43ab4c2e0ab?w=120&auto=format&fit=crop&q=60",
-  "pi-chevre": "https://images.unsplash.com/photo-1596450514966-a12da7fb104b?w=120&auto=format&fit=crop&q=60"
+  "pi-oeuf": "https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=120&q=80",
+  "pi-mozzarella": "https://images.unsplash.com/photo-1558642084-fd07fae5282e?w=120&q=80",
+  "pi-jambon": "https://images.unsplash.com/photo-1608039755401-742074f0548d?w=120&q=80",
+  "pi-lardons": "https://images.unsplash.com/photo-1606851094655-b2593a9af63f?w=120&q=80",
+  "pi-merguez": "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=120&q=80",
+  "pi-poulet": "https://images.unsplash.com/photo-1562967914-6c8273b89a3e?w=120&q=80",
+  "pi-chorizo": "https://images.unsplash.com/photo-1534482421-64566f976cfa?w=120&q=80",
+  "pi-thon": "https://images.unsplash.com/photo-1534604973900-c43ab4c2e0ab?w=120&q=80",
+  "pi-chevre": "https://images.unsplash.com/photo-1596450514966-a12da7fb104b?w=120&q=80"
 };
 
-function SupplementTile({ extra, isKiosk }: { extra: any; isKiosk: boolean }) {
+const SupplementTile = memo(function SupplementTile({
+  extra,
+  isKiosk,
+  selected,
+  onClick,
+  imageUrl
+}: {
+  extra: any;
+  isKiosk: boolean;
+  selected: boolean;
+  onClick: (extra: any) => void;
+  imageUrl?: string;
+}) {
   const [imgError, setImgError] = useState(false);
-  const imgUrl = SUPPLEMENT_IMAGES[extra.id];
+
+  useEffect(() => {
+    setImgError(false);
+  }, [imageUrl]);
+
+  const kioskCard = isKiosk ? 'min-h-[80px] text-lg' : 'min-h-[56px] text-sm';
 
   return (
-    <div style={{
-      width: isKiosk ? 50 : 38,
-      height: isKiosk ? 50 : 38,
-      borderRadius: 8,
-      overflow: 'hidden',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#1f2937',
-      border: '1px solid rgba(255,255,255,0.05)',
-      marginBottom: 4,
-    }}>
-      {imgUrl && !imgError ? (
-        <img
-          src={imgUrl}
-          alt={extra.name}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <span style={{ fontSize: isKiosk ? 22 : 18 }}>{extra.emoji}</span>
+    <Card
+      onClick={() => onClick(extra)}
+      className={`cursor-pointer transition-all select-none ${kioskCard} p-3 flex flex-col items-center justify-center gap-1 border-2 relative ${
+        selected
+          ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+          : 'border-border hover:border-primary/40 hover:bg-muted/40'
+      }`}
+    >
+      <div style={{
+        width: isKiosk ? 50 : 38,
+        height: isKiosk ? 50 : 38,
+        borderRadius: 8,
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#1f2937',
+        border: '1px solid rgba(255,255,255,0.05)',
+        marginBottom: 4,
+      }}>
+        {imageUrl && !imgError ? (
+          <img
+            src={imageUrl}
+            alt={extra.name}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <span style={{ fontSize: isKiosk ? 22 : 18 }}>{extra.emoji}</span>
+        )}
+      </div>
+      <span className={`font-semibold text-center leading-tight ${isKiosk ? 'text-base' : 'text-xs'}`}>
+        {extra.name}
+      </span>
+      <span className={`font-bold text-primary ${isKiosk ? 'text-base' : 'text-xs'}`}>
+        +{extra.price.toFixed(2)}€
+      </span>
+      {selected && (
+        <div className="absolute top-2 right-2 bg-primary rounded-full p-0.5">
+          <Check className="w-3 h-3 text-white" />
+        </div>
       )}
-    </div>
+    </Card>
   );
+});
+
+function findDbImage(name: string, dbImageMap: Record<string, string>): string | undefined {
+  const norm = name.trim().toLowerCase();
+  if (dbImageMap[norm]) return dbImageMap[norm];
+
+  const clean = norm
+    .replace('extra', '')
+    .replace('supplémentaire', '')
+    .replace('supplément', '')
+    .trim();
+
+  if (dbImageMap[clean]) return dbImageMap[clean];
+
+  const plural = clean + 's';
+  if (dbImageMap[plural]) return dbImageMap[plural];
+
+  const singular = clean.endsWith('s') ? clean.slice(0, -1) : clean;
+  if (dbImageMap[singular]) return dbImageMap[singular];
+
+  if (clean === 'œuf' && dbImageMap['oeuf']) return dbImageMap['oeuf'];
+  if (clean === 'oeuf' && dbImageMap['œuf']) return dbImageMap['œuf'];
+
+  for (const key of Object.keys(dbImageMap)) {
+    if (key.includes(clean) || clean.includes(key)) {
+      return dbImageMap[key];
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -134,21 +208,37 @@ export function PizzaIngredientCustomizer({
   const [note, setNote] = useState('');
   const [selectedBase, setSelectedBase] = useState<'tomate' | 'creme'>(initialBase || 'tomate');
 
-  const toggleIngredient = (ingredient: string) => {
+  const { data: dbSupps = [] } = useSupplementOptions();
+  const { data: dbMeats = [] } = useMeatOptions();
+  const { data: dbGarn = [] } = useGarnitureOptions();
+  const { data: dbCrud = [] } = useCruditesOptions();
+  const { data: dbSauces = [] } = useSauceOptions();
+
+  const dbImageMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    [...dbSupps, ...dbMeats, ...dbGarn, ...dbCrud, ...dbSauces].forEach(opt => {
+      if (opt.name && opt.image_url) {
+        map[opt.name.trim().toLowerCase()] = opt.image_url;
+      }
+    });
+    return map;
+  }, [dbSupps, dbMeats, dbGarn, dbCrud, dbSauces]);
+
+  const toggleIngredient = useCallback((ingredient: string) => {
     setRemovedIngredients(prev =>
       prev.includes(ingredient)
         ? prev.filter(i => i !== ingredient)
         : [...prev, ingredient]
     );
-  };
+  }, []);
 
-  const toggleExtra = (extra: typeof pizzaIngredientSupplements[0]) => {
+  const toggleExtra = useCallback((extra: typeof pizzaIngredientSupplements[0]) => {
     setAddedExtras(prev => {
       const exists = prev.find(e => e.id === extra.id);
       if (exists) return prev.filter(e => e.id !== extra.id);
       return [...prev, { id: extra.id, name: extra.name, price: extra.price }];
     });
-  };
+  }, []);
 
   const extrasTotal = addedExtras.reduce((sum, e) => sum + e.price, 0);
   const totalPrice = basePrice + extrasTotal;
@@ -200,13 +290,19 @@ export function PizzaIngredientCustomizer({
                 <img
                   src={pizzaImg}
                   alt={pizza.name}
-                  className="w-full h-full object-cover animate-spin-slow"
-                  style={{ animation: 'spin 12s linear infinite' }}
+                  className="w-full h-full object-cover"
+                  style={{
+                    animation: 'spin 12s linear infinite',
+                    willChange: 'transform'
+                  }}
                 />
               ) : (
                 <Pizza
-                  className={`text-orange-300 animate-spin-slow ${isKiosk ? 'w-20 h-20' : 'w-16 h-16'}`}
-                  style={{ animation: 'spin 12s linear infinite' }}
+                  className={`text-orange-300 ${isKiosk ? 'w-20 h-20' : 'w-16 h-16'}`}
+                  style={{
+                    animation: 'spin 12s linear infinite',
+                    willChange: 'transform'
+                  }}
                 />
               );
             })()}
@@ -302,29 +398,16 @@ export function PizzaIngredientCustomizer({
           <div className={`grid gap-3 ${isKiosk ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3'}`}>
             {pizzaIngredientSupplements.map(extra => {
               const selected = isExtraSelected(extra.id);
+              const imgUrl = findDbImage(extra.name, dbImageMap) || SUPPLEMENT_FALLBACKS[extra.id];
               return (
-                <Card
+                <SupplementTile
                   key={extra.id}
-                  onClick={() => toggleExtra(extra)}
-                  className={`cursor-pointer transition-all select-none ${kioskCard} p-3 flex flex-col items-center justify-center gap-1 border-2 ${
-                    selected
-                      ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                      : 'border-border hover:border-primary/40 hover:bg-muted/40'
-                  }`}
-                >
-                  <SupplementTile extra={extra} isKiosk={isKiosk} />
-                  <span className={`font-semibold text-center leading-tight ${isKiosk ? 'text-base' : 'text-xs'}`}>
-                    {extra.name}
-                  </span>
-                  <span className={`font-bold text-primary ${isKiosk ? 'text-base' : 'text-xs'}`}>
-                    +{extra.price.toFixed(2)}€
-                  </span>
-                  {selected && (
-                    <div className="absolute top-2 right-2 bg-primary rounded-full p-0.5">
-                      <Check className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-                </Card>
+                  extra={extra}
+                  isKiosk={isKiosk}
+                  selected={selected}
+                  onClick={toggleExtra}
+                  imageUrl={imgUrl}
+                />
               );
             })}
           </div>

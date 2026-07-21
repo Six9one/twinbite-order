@@ -178,12 +178,12 @@ const ProductTile = memo(function ProductTile({
   item: any;
   price?: number;
   selected: boolean;
-  onClick: () => void;
+  onClick: (item: any) => void;
   badge?: string;
   compact?: boolean;
   tint?: string;
   zoom?: number;
-  onCustomize?: () => void;
+  onCustomize?: (item: any) => void;
 }) {
   const [imgError, setImgError] = useState(false);
   const normalizedName = (item.name || '').trim().toLowerCase();
@@ -211,7 +211,7 @@ const ProductTile = memo(function ProductTile({
 
   return (
     <div
-      onClick={onClick}
+      onClick={() => onClick(item)}
       style={{
         background: cardBg,
         border: `${selected ? 2 : 1}px solid ${borderColor}`,
@@ -328,7 +328,7 @@ const ProductTile = memo(function ProductTile({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onCustomize();
+            onCustomize(item);
           }}
           className="pos-btn-interactive"
           style={{
@@ -430,11 +430,30 @@ function PizzaPanel({
   setZoom?: (z: number | ((prev: number) => number)) => void;
   onCustomize?: (pizza: any, base: 'tomate' | 'creme') => void;
 }) {
-  const { data: pizzasTomate = [] } = usePizzasByBase('tomate');
-  const { data: pizzasCreme  = [] } = usePizzasByBase('creme');
+  const { data: dbPizzasTomate = [] } = usePizzasByBase('tomate');
+  const { data: dbPizzasCreme  = [] } = usePizzasByBase('creme');
+
+  const pizzasTomate = useMemo(() => {
+    return dbPizzasTomate.map((p: any) => ({ ...p, _base: 'tomate' as const }));
+  }, [dbPizzasTomate]);
+
+  const pizzasCreme = useMemo(() => {
+    return dbPizzasCreme.map((p: any) => ({ ...p, _base: 'creme' as const }));
+  }, [dbPizzasCreme]);
+
   const [sel, setSel] = useState<any | null>(null);
   const [supps, setSupps] = useState<string[]>([]);
   const [note, setNote] = useState('');
+
+  const handleTileClick = useCallback((item: any) => {
+    setSel((prev: any) => (prev?.id === item.id && prev?._base === item._base) ? null : item);
+  }, []);
+
+  const handleCustomizeClick = useCallback((item: any) => {
+    if (onCustomize) {
+      onCustomize(item, item._base);
+    }
+  }, [onCustomize]);
 
   const basePrice = PIZZA_SIZES.find(s => s.id === size)!.price;
   const suppTotal = supps.reduce((s, id) => {
@@ -533,8 +552,8 @@ function PizzaPanel({
                 price={basePrice}
                 zoom={zoom}
                 selected={sel?.id === p.id && sel?._base === 'tomate'}
-                onClick={() => setSel((sel?.id === p.id && sel?._base === 'tomate') ? null : { ...p, _base: 'tomate' as const })}
-                onCustomize={onCustomize ? () => onCustomize(p, 'tomate') : undefined}
+                onClick={handleTileClick}
+                onCustomize={onCustomize ? handleCustomizeClick : undefined}
               />
             ))}
           </div>
@@ -573,8 +592,8 @@ function PizzaPanel({
                 price={basePrice}
                 zoom={zoom}
                 selected={sel?.id === p.id && sel?._base === 'creme'}
-                onClick={() => setSel((sel?.id === p.id && sel?._base === 'creme') ? null : { ...p, _base: 'creme' as const })}
-                onCustomize={onCustomize ? () => onCustomize(p, 'creme') : undefined}
+                onClick={handleTileClick}
+                onCustomize={onCustomize ? handleCustomizeClick : undefined}
               />
             ))}
           </div>
@@ -636,6 +655,16 @@ function CustomizablePanel({ categorySlug, title, onAdd }: { categorySlug:string
   const [menu,  setMenu]   = useState<'none'|'frites'|'boisson'>('none');
   const [note,  setNote]   = useState('');
 
+  const active = products.filter((p:any) => p.is_active);
+
+  const productsWithPrice = useMemo(() => {
+    return active.map((p: any) => ({ ...p, price: p.base_price }));
+  }, [active]);
+
+  const handleTileClick = useCallback((item: any) => {
+    setSel((prev: any) => prev?.id === item.id ? null : item);
+  }, []);
+
   const menuAdd = menu !== 'none' ? (menuOptionPrices[menu] || 0) : 0;
   const price   = sel ? (sel.price + menuAdd) : 0;
 
@@ -650,14 +679,19 @@ function CustomizablePanel({ categorySlug, title, onAdd }: { categorySlug:string
     setSel(null); setMeats([]); setSauces([]); setSelSupps([]); setMenu('none'); setNote('');
   };
 
-  const active = products.filter((p:any) => p.is_active);
-
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
       {/* Product grid */}
       <div style={{ flex:'0 0 auto', padding:'12px 14px', borderBottom:`1px solid ${S.border}`, overflow:'auto', maxHeight:220 }}>
         <div className="grid-fade-in" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(95px,1fr))', gap:8 }}>
-          {active.map((p:any) => <ProductTile key={p.id} item={{...p, price:p.base_price}} selected={sel?.id===p.id} onClick={()=>setSel(sel?.id===p.id?null:p)} />)}
+          {productsWithPrice.map((p:any) => (
+            <ProductTile
+              key={p.id}
+              item={p}
+              selected={sel?.id === p.id}
+              onClick={handleTileClick}
+            />
+          ))}
         </div>
       </div>
 
@@ -990,6 +1024,16 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
   const [menu, setMenu] = useState<'none'|'frites'|'boisson'|'menu'>('none');
   const [note, setNote] = useState('');
 
+  const active = products.filter((p:any)=>p.is_active);
+
+  const activeSandwichesWithPrice = useMemo(() => {
+    return active.map((p: any) => ({ ...p, price: p.base_price }));
+  }, [active]);
+
+  const handleTileClick = useCallback((item: any) => {
+    setSel((prev: any) => prev?.id === item.id ? null : item);
+  }, []);
+
   const sauceSurcharge = Math.max(0, selSauces.length - FREE_SAUCES) * EXTRA_SAUCE;
   const price = (sel?.base_price || 0) + menuOptionPrices[menu] + sauceSurcharge;
 
@@ -1011,16 +1055,13 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
     reset();
   };
 
-  const active = products.filter((p:any)=>p.is_active);
-
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
       {/* Sandwich products */}
       <div style={{ flex:'0 0 auto', padding:'10px 14px', borderBottom:`1px solid ${S.border}` }}>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(82px,1fr))', gap:6 }}>
-          {active.map((p:any)=>(
-            <ProductTile key={p.id} compact item={{...p, price:p.base_price}} selected={sel?.id===p.id}
-              onClick={()=>setSel(sel?.id===p.id?null:p)} />
+          {activeSandwichesWithPrice.map((p:any)=>(
+            <ProductTile key={p.id} compact item={p} selected={sel?.id===p.id} onClick={handleTileClick} />
           ))}
         </div>
       </div>
@@ -1503,6 +1544,11 @@ function SimplePanel({ categorySlug, title, onAdd }: { categorySlug:string; titl
   const [sel, setSel] = useState<any|null>(null);
   const [qty, setQty] = useState(1);
 
+  const handleTileClick = useCallback((item: any) => {
+    setSel((prev: any) => prev?.id === item.id ? null : item);
+    setQty(1);
+  }, []);
+
   const handleAdd = () => {
     if (!sel) { toast.error('Choisissez un produit'); return; }
     onAdd({ id:sel.id, name:sel.name, price:sel.price, category:categorySlug, description:'' }, {}, sel.price * qty);
@@ -1513,7 +1559,14 @@ function SimplePanel({ categorySlug, title, onAdd }: { categorySlug:string; titl
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
       <div style={{ flex:1, overflow:'auto', padding:'12px 14px' }}>
         <div className="grid-fade-in" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))', gap:8 }}>
-          {products.map((p:any) => <ProductTile key={p.id} item={p} selected={sel?.id===p.id} onClick={()=>{setSel(sel?.id===p.id?null:p);setQty(1);}} />)}
+          {products.map((p:any) => (
+            <ProductTile
+              key={p.id}
+              item={p}
+              selected={sel?.id === p.id}
+              onClick={handleTileClick}
+            />
+          ))}
         </div>
       </div>
       {sel && (
