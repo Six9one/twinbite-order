@@ -1473,6 +1473,11 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
   const [note, setNote] = useState('');
   const [isDraggingTopping, setIsDraggingTopping] = useState<string | null>(null);
   const [isDragOverCup, setIsDragOverCup] = useState(false);
+  const [cupImageSrc, setCupImageSrc] = useState('/milkshake_cup.png');
+
+  useEffect(() => {
+    setCupImageSrc(`/milkshake_cup.png?t=${Date.now()}`);
+  }, []);
 
   const basePrice = 5.00;
   const extraToppingsCount = Math.max(0, selectedToppings.length - 1);
@@ -1637,7 +1642,7 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
           >
             {/* Cup Image */}
             <img
-              src="/milkshake_cup.png"
+              src={cupImageSrc}
               alt="Milkshake Cup"
               style={{
                 width: '100%',
