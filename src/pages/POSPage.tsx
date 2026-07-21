@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCategories, useProductsByCategory } from '@/hooks/useProducts';
 import { useCategoryImages } from '@/hooks/useCategoryImages';
 import { usePizzasByBase } from '@/hooks/useProducts';
+import { PizzaIngredientCustomizer, PizzaExtra } from '@/components/wizards/PizzaIngredientCustomizer';
 import { useMeatOptions, useSauceOptions, useSupplementOptions, useGarnitureOptions, useCruditesOptions } from '@/hooks/useCustomizationOptions';
 import { useSandwichTypes } from '@/hooks/useSandwiches';
 import { calculateTVA, applyPizzaPromotions } from '@/utils/promotions';
@@ -171,7 +172,8 @@ const ProductTile = memo(function ProductTile({
   badge,
   compact,
   tint,
-  zoom = 100
+  zoom = 100,
+  onCustomize
 }: {
   item: any;
   price?: number;
@@ -181,6 +183,7 @@ const ProductTile = memo(function ProductTile({
   compact?: boolean;
   tint?: string;
   zoom?: number;
+  onCustomize?: () => void;
 }) {
   const [imgError, setImgError] = useState(false);
   const normalizedName = (item.name || '').trim().toLowerCase();
@@ -207,7 +210,7 @@ const ProductTile = memo(function ProductTile({
     : `linear-gradient(135deg, ${S.card}, #111827)`;
 
   return (
-    <button
+    <div
       onClick={onClick}
       style={{
         background: cardBg,
@@ -221,6 +224,9 @@ const ProductTile = memo(function ProductTile({
         width: '100%',
         boxShadow: selected ? `0 0 12px ${baseTint}44` : 'none',
         outline: 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
       }}
       className={`pizza-card-hover pos-btn-interactive ${selected ? 'selected' : ''}`}
     >
@@ -318,7 +324,31 @@ const ProductTile = memo(function ProductTile({
           {displayPrice.toFixed(2)}€
         </div>
       )}
-    </button>
+      {onCustomize && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onCustomize();
+          }}
+          className="pos-btn-interactive"
+          style={{
+            marginTop: 6,
+            width: '100%',
+            padding: '4px 0',
+            borderRadius: 6,
+            background: selected ? 'rgba(255,255,255,0.15)' : 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            color: S.accent,
+            fontSize: Math.max(9, Math.round(9 * scale)),
+            fontWeight: 800,
+            cursor: 'pointer',
+            zIndex: 10,
+          }}
+        >
+          📝 Personnaliser
+        </button>
+      )}
+    </div>
   );
 }, (prev, next) => {
   return prev.selected === next.selected &&
@@ -327,7 +357,8 @@ const ProductTile = memo(function ProductTile({
          prev.tint === next.tint &&
          prev.compact === next.compact &&
          prev.badge === next.badge &&
-         prev.zoom === next.zoom;
+         prev.zoom === next.zoom &&
+         prev.onCustomize === next.onCustomize;
 });
 
 // ── Draggable resize handle (between panels) ──────────────────────────────────
@@ -389,6 +420,7 @@ function PizzaPanel({
   setSize,
   zoom = 125,
   setZoom,
+  onCustomize,
 }: {
   orderType: OrderType;
   onAdd: (item: any, custom: any, price: number) => void;
@@ -396,6 +428,7 @@ function PizzaPanel({
   setSize: (size: PizzaSizeId) => void;
   zoom?: number;
   setZoom?: (z: number | ((prev: number) => number)) => void;
+  onCustomize?: (pizza: any, base: 'tomate' | 'creme') => void;
 }) {
   const { data: pizzasTomate = [] } = usePizzasByBase('tomate');
   const { data: pizzasCreme  = [] } = usePizzasByBase('creme');
@@ -464,11 +497,11 @@ function PizzaPanel({
         })}
       </div>
 
-      {/* Scrollable grid container split into Tomato and Cream base */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 20, position: 'relative' }}>
+      {/* Scrollable grid container split into Tomato and Cream base (2 columns side-by-side) */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', position: 'relative' }}>
         
-        {/* Tomato base section */}
-        <div>
+        {/* Left Column: Tomato base section */}
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -481,7 +514,9 @@ function PizzaPanel({
             marginBottom: 10,
             paddingLeft: 4,
             borderLeft: '3px solid #ef4444',
-            padding: '2px 8px'
+            padding: '2px 8px',
+            background: 'rgba(239, 68, 68, 0.05)',
+            borderRadius: 4
           }}>
             🍅 Sauce Tomate
             <span style={{ fontSize: 10, color: S.muted, fontWeight: 500, textTransform: 'none', marginLeft: 'auto' }}>
@@ -499,13 +534,14 @@ function PizzaPanel({
                 zoom={zoom}
                 selected={sel?.id === p.id && sel?._base === 'tomate'}
                 onClick={() => setSel((sel?.id === p.id && sel?._base === 'tomate') ? null : { ...p, _base: 'tomate' as const })}
+                onCustomize={onCustomize ? () => onCustomize(p, 'tomate') : undefined}
               />
             ))}
           </div>
         </div>
 
-        {/* Cream base section */}
-        <div>
+        {/* Right Column: Cream base section */}
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -518,7 +554,9 @@ function PizzaPanel({
             marginBottom: 10,
             paddingLeft: 4,
             borderLeft: '3px solid #3b82f6',
-            padding: '2px 8px'
+            padding: '2px 8px',
+            background: 'rgba(59, 130, 246, 0.05)',
+            borderRadius: 4
           }}>
             🥛 Crème Fraîche
             <span style={{ fontSize: 10, color: S.muted, fontWeight: 500, textTransform: 'none', marginLeft: 'auto' }}>
@@ -536,6 +574,7 @@ function PizzaPanel({
                 zoom={zoom}
                 selected={sel?.id === p.id && sel?._base === 'creme'}
                 onClick={() => setSel((sel?.id === p.id && sel?._base === 'creme') ? null : { ...p, _base: 'creme' as const })}
+                onCustomize={onCustomize ? () => onCustomize(p, 'creme') : undefined}
               />
             ))}
           </div>
@@ -544,7 +583,7 @@ function PizzaPanel({
         {/* Compact zoom control — bottom-right floating badge */}
         {setZoom && (
           <div style={{
-            position: 'sticky', bottom: 8, marginLeft: 'auto',
+            position: 'absolute', bottom: 8, right: 24, zIndex: 50,
             display: 'flex', alignItems: 'center', gap: 4,
             background: '#111827cc', backdropFilter: 'blur(6px)',
             border: `1px solid ${S.border}`,
@@ -2909,6 +2948,7 @@ function POSContent() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [quickUpdating, setQuickUpdating] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [customizingPizza, setCustomizingPizza] = useState<any | null>(null);
   const [pizzaSize, setPizzaSize] = useState<PizzaSizeId>('senior');
   const [pizzaZoom, setPizzaZoom] = useState(() => {
     try {
@@ -3139,7 +3179,25 @@ function POSContent() {
         <div style={{ fontSize:13 }}>Choisissez une catégorie</div>
       </div>
     );
-    if (activeCategory === 'pizzas') return <PizzaPanel orderType={orderType} onAdd={handleAdd} size={pizzaSize} setSize={setPizzaSize} zoom={pizzaZoom} setZoom={setPizzaZoom} />;
+    if (activeCategory === 'pizzas') return (
+      <PizzaPanel
+        orderType={orderType}
+        onAdd={handleAdd}
+        size={pizzaSize}
+        setSize={setPizzaSize}
+        zoom={pizzaZoom}
+        setZoom={setPizzaZoom}
+        onCustomize={(pizza, base) => {
+          setCustomizingPizza({
+            item: pizza,
+            basePrice: PIZZA_SIZES.find(s => s.id === pizzaSize)!.price,
+            formatLabel: PIZZA_SIZES.find(s => s.id === pizzaSize)!.label,
+            size: pizzaSize,
+            initialBase: base
+          });
+        }}
+      />
+    );
     // Build-it wizards (meat → size): Soufflet, Makloub, Mlawi, Tacos, Panini
     if (WIZARD_MAP[activeCategory]) return <WizardPanel categorySlug={activeCategory} onAdd={handleAdd} />;
     // Sandwich: pick sandwich → sauce + crudités (no meat)
@@ -3413,6 +3471,40 @@ function POSContent() {
       {showHistory && <HistoryPanel onClose={()=>setShowHistory(false)} />}
       {showFacture && <FactureHubModal onClose={()=>setShowFacture(false)} />}
       {showUpdateModal && <UpdatePanel onClose={()=>setShowUpdateModal(false)} />}
+      {customizingPizza && (
+        <div style={{ position: 'fixed', inset: 0, background: '#000d', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div className="pos-glassy-panel" style={{ background: '#111827', borderRadius: 12, border: `1px solid ${S.border}`, width: '95vw', maxWidth: 800, height: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <PizzaIngredientCustomizer
+              pizza={customizingPizza.item}
+              basePrice={customizingPizza.basePrice}
+              formatLabel={customizingPizza.formatLabel}
+              initialBase={customizingPizza.initialBase}
+              onConfirm={(removedIngredients, addedExtras, note, base) => {
+                const sizeLabel = customizingPizza.formatLabel;
+                const extrasTotal = addedExtras.reduce((sum, e) => sum + e.price, 0);
+                const totalPrice = customizingPizza.basePrice + extrasTotal;
+                
+                handleAdd(
+                  { id: customizingPizza.item.id, name: customizingPizza.item.name, price: customizingPizza.basePrice, category: 'pizzas', description: '' },
+                  {
+                    size: customizingPizza.size,
+                    sizeLabel,
+                    base,
+                    removedIngredients,
+                    addedExtras: addedExtras.map(e => e.name),
+                    supplements: addedExtras.map(e => e.name),
+                    note,
+                    isMenuMidi: customizingPizza.size === 'menu_midi' || customizingPizza.size === 'menu_midi_mega'
+                  },
+                  totalPrice
+                );
+                setCustomizingPizza(null);
+              }}
+              onBack={() => setCustomizingPizza(null)}
+            />
+          </div>
+        </div>
+      )}
     </PanelGroup>
     </div>
   );
