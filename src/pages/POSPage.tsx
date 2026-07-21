@@ -1,4 +1,4 @@
-import { useState, useEffect, useReducer, useRef, memo } from 'react';
+import { useState, useEffect, useReducer, useRef, memo, useMemo, useCallback } from 'react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { useCreateOrder, generateOrderNumber, useOrders, useDrinks } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
