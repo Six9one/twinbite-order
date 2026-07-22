@@ -1128,6 +1128,26 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
   );
 }
 
+// ── Local TexMex Images Fallback ──────────────────────────────────────────────
+const LOCAL_TEXMEX_IMAGES: Record<string, string> = {
+  'wings': 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?w=300&q=80',
+  'tenders': 'https://images.unsplash.com/photo-1562967914-6c8273b89a3e?w=300&q=80',
+  'tenders-tx': 'https://images.unsplash.com/photo-1562967914-6c8273b89a3e?w=300&q=80',
+  'nuggets': 'https://images.unsplash.com/photo-1562967914-6c8273b89a3e?w=300&q=80',
+  'nuggets-tx': 'https://images.unsplash.com/photo-1562967914-6c8273b89a3e?w=300&q=80',
+  'mozzastick': 'https://images.unsplash.com/photo-1531749668029-2db88e4276c7?w=300&q=80',
+  'mozza stick': 'https://images.unsplash.com/photo-1531749668029-2db88e4276c7?w=300&q=80',
+  'jalapeños': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=300&q=80',
+  'jalapenos': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=300&q=80',
+  'onion rings': 'https://images.unsplash.com/photo-1639024471283-03518883512d?w=300&q=80',
+  'onionrings': 'https://images.unsplash.com/photo-1639024471283-03518883512d?w=300&q=80',
+  'menu enfant': 'https://images.unsplash.com/photo-1544025162-d76694265947?w=300&q=80',
+  'petite barquette': 'https://images.unsplash.com/photo-1576107232684-1279f390859f?w=300&q=80',
+  'grande barquette': 'https://images.unsplash.com/photo-1576107232684-1279f390859f?w=300&q=80',
+  'croque monsieur': 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=300&q=80',
+  'croque madame': 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=300&q=80',
+};
+
 // ── TexMex panel — Snacks (dégressif) + Menu Enfant + Frites + Croques ────────
 interface TxProduct { id:string; name:string; unit_price:number; image_url:string|null; category?:'snack'|'frites'|'croque'|'menu_enfant'; }
 
@@ -1175,12 +1195,26 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
             setProducts([...TX_SNACKS,...TX_MENUS,...TX_FRITES,...TX_CROQUES]); return;
           }
           const raw = data as unknown as TxProduct[];
-          const hasSnack  = raw.some(p=>(p.category??'snack')==='snack');
+          const rawSnacks = raw.filter(p=>(p.category??'snack')==='snack');
           const hasMenu   = raw.some(p=>p.category==='menu_enfant');
           const hasFrites = raw.some(p=>p.category==='frites');
           const hasCroque = raw.some(p=>p.category==='croque');
+
+          // Ensure all 6 standard snacks are present (including onionrings)
+          const snackMap = new Map<string, TxProduct>();
+          TX_SNACKS.forEach(s => snackMap.set(s.id, s));
+          rawSnacks.forEach(s => {
+            const match = TX_SNACKS.find(t => t.id === s.id || t.name.toLowerCase() === s.name.toLowerCase());
+            if (match) {
+              snackMap.set(match.id, { ...match, ...s, unit_price: s.unit_price || match.unit_price });
+            } else {
+              snackMap.set(s.id, s);
+            }
+          });
+          const mergedSnacks = Array.from(snackMap.values());
+
           setProducts([
-            ...(hasSnack  ? raw.filter(p=>(p.category??'snack')==='snack') : TX_SNACKS),
+            ...mergedSnacks,
             ...(hasMenu   ? raw.filter(p=>p.category==='menu_enfant')       : TX_MENUS),
             ...(hasFrites ? raw.filter(p=>p.category==='frites')           : TX_FRITES),
             ...(hasCroque ? raw.filter(p=>p.category==='croque')           : TX_CROQUES),
@@ -1230,8 +1264,12 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
 
   // Single image tile
   const TxTile = ({ p }:{ p:TxProduct }) => {
+    const [imgError, setImgError] = useState(false);
     const q = qtys[p.id]||0;
     const isFixed = p.category==='frites'||p.category==='croque'||p.category==='menu_enfant';
+    const normName = (p.name || '').trim().toLowerCase();
+    const imgSrc = resolveImg(p.image_url || LOCAL_TEXMEX_IMAGES[normName] || LOCAL_TEXMEX_IMAGES[p.id] || LOCAL_PIZZA_IMAGES[normName]);
+
     return (
       <div style={{
         display:'flex', flexDirection:'column', borderRadius:10,
@@ -1240,10 +1278,10 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
         overflow:'hidden', position:'relative',
         transition:'border-color 0.15s, background 0.15s',
       }}>
-        {/* Image area — 4:3 ratio */}
-        <div style={{ position:'relative', width:'100%', paddingTop:'60%', overflow:'hidden', flexShrink:0 }}>
-          {p.image_url ? (
-            <img src={p.image_url} alt={p.name} style={{
+        {/* Image area — 3:2 aspect ratio for food cards */}
+        <div style={{ position:'relative', width:'100%', paddingTop:'60%', overflow:'hidden', flexShrink:0, background:'#1e293b' }}>
+          {imgSrc && !imgError ? (
+            <img src={imgSrc} alt={p.name} onError={() => setImgError(true)} style={{
               position:'absolute', top:0, left:0, width:'100%', height:'100%', objectFit:'cover',
             }} />
           ) : (
@@ -1294,7 +1332,7 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
       {/* 2-Column Balanced Layout */}
       <div style={{ flex:1, overflow:'auto', padding:'10px 12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
         
-        {/* Left Column: Snacks / Viandes */}
+        {/* Left Column: Snacks / Viandes — 3x2 Grid */}
         <div style={{ display:'flex', flexDirection:'column', minHeight:0 }}>
           <div style={{
             display:'flex', alignItems:'center', gap:6,
@@ -1307,7 +1345,7 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
             <span>🌶️ Snacks / Viandes</span>
             <span style={{ fontSize:9, color:S.muted, fontWeight:500, marginLeft:'auto' }}>Prix Dégressifs</span>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(105px, 1fr))', gap:7 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:7 }}>
             {snacks.map(p=><TxTile key={p.id} p={p} />)}
           </div>
         </div>
@@ -1328,7 +1366,7 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
               }}>
                 <span>👶 Menu Enfant</span>
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(105px, 1fr))', gap:7 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:7 }}>
                 {menus.map(p=><TxTile key={p.id} p={p} />)}
               </div>
             </div>
