@@ -474,6 +474,14 @@ function startFileServer() {
       } catch (_) {}
 
       if (!fs.existsSync(p) || fs.statSync(p).isDirectory()) {
+        const ext = path.extname(cleanUrl).toLowerCase();
+        // If it's a request for a static asset (js, css, image, font, json) or /assets/, return 404 instead of index.html
+        if (cleanUrl.startsWith('/assets/') || (ext && ext !== '.html')) {
+          res.writeHead(404, { 'Content-Type': 'text/plain' });
+          res.end('Asset Not Found');
+          return;
+        }
+        // Single-Page App (SPA) page route fallback: serve index.html
         p = path.join(distPath, 'index.html');
       }
 
@@ -482,7 +490,9 @@ function startFileServer() {
       
       const headers = { 'Content-Type': ct };
       if (ext === '.html') {
-        headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, proxy-revalidate';
+        headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
+        headers['Pragma'] = 'no-cache';
+        headers['Expires'] = '0';
       } else if (['.js', '.css', '.woff', '.woff2'].includes(ext)) {
         headers['Cache-Control'] = 'public, max-age=31536000, immutable';
       } else if (['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif', '.ico'].includes(ext)) {
@@ -495,8 +505,18 @@ function startFileServer() {
         res.end(data);
       });
     });
+    fileServer.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.warn('Port 3456 in use — retrying in 1s...');
+        setTimeout(() => {
+          try { fileServer.close(); } catch(_) {}
+          fileServer.listen(FILE_SERVER_PORT, '127.0.0.1', resolve);
+        }, 1000);
+      } else {
+        reject(err);
+      }
+    });
     fileServer.listen(FILE_SERVER_PORT, '127.0.0.1', resolve);
-    fileServer.on('error', reject);
   });
 }
 
