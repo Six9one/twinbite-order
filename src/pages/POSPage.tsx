@@ -9,6 +9,13 @@ import { PizzaIngredientCustomizer, PizzaExtra } from '@/components/wizards/Pizz
 import { useMeatOptions, useSauceOptions, useSupplementOptions, useGarnitureOptions, useCruditesOptions } from '@/hooks/useCustomizationOptions';
 import { useSandwichTypes } from '@/hooks/useSandwiches';
 import { useProductSizePrices } from '@/hooks/useProductSizePrices';
+import { PizzaManager } from '@/components/admin/PizzaManager';
+import { TexMexManager } from '@/components/admin/TexMexManager';
+import { SandwichManager } from '@/components/admin/SandwichManager';
+import { ProductCategoryManager } from '@/components/admin/ProductCategoryManager';
+import { PriceManager } from '@/components/admin/PriceManager';
+import { AvailabilityManager } from '@/components/admin/AvailabilityManager';
+import { ImageUploadTable } from '@/components/admin/ImageUploadTable';
 import { calculateTVA, applyPizzaPromotions } from '@/utils/promotions';
 import { pizzaPrices, cheeseSupplementOptions, menuOptionPrices } from '@/data/menu';
 import { wizardSizePrices, supplementPrices } from '@/data/pricing';
@@ -2450,6 +2457,187 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
   );
 }
 
+function POSEditModal({ onClose }: { onClose: () => void }) {
+  const [tab, setTab] = useState<'pizzas' | 'texmex' | 'sandwiches' | 'other' | 'options' | 'prices' | 'availability'>('pizzas');
+  const [subCat, setSubCat] = useState<'soufflets' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'drinks'>('tacos');
+  const [subOption, setSubOption] = useState<'meats' | 'sauces' | 'garnitures' | 'crudites' | 'supplements'>('meats');
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.85)',
+        zIndex: 1050,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: '#0d1117',
+          borderRadius: 16,
+          border: '1px solid #334155',
+          width: '96vw',
+          maxWidth: 1200,
+          maxHeight: '94vh',
+          height: '94vh',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ padding: '12px 16px', background: '#161b22', borderBottom: '1px solid #30363d', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>✏️</span>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#f8fafc' }}>Éditeur POS Direct</h3>
+              <p style={{ margin: 0, fontSize: 11, color: '#94a3b8' }}>Modifiez vos produits, prix, tex-mex et options en direct sans quitter la caisse</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: '#21262d', border: '1px solid #30363d', color: '#94a3b8', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Top Tabs */}
+        <div style={{ display: 'flex', gap: 4, padding: '8px 12px', background: '#161b22', borderBottom: '1px solid #30363d', overflowX: 'auto', flexShrink: 0 }}>
+          {[
+            { id: 'pizzas', label: '🍕 Pizzas' },
+            { id: 'texmex', label: '🌶️ Tex-Mex' },
+            { id: 'sandwiches', label: '🥖 Sandwiches' },
+            { id: 'other', label: '📦 Tacos & Produits' },
+            { id: 'options', label: '🥩 Viandes & Options' },
+            { id: 'prices', label: '💰 Tous les Prix' },
+            { id: 'availability', label: '⚡ Épuisé / Dispo' },
+          ].map((t) => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id as any)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 8,
+                  border: 'none',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  background: active ? '#f59e0b' : '#21262d',
+                  color: active ? '#000' : '#c9d1d9',
+                  transition: 'all .12s'
+                }}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Sub-tabs for Other */}
+        {tab === 'other' && (
+          <div style={{ display: 'flex', gap: 4, padding: '6px 12px', background: '#0d1117', borderBottom: '1px solid #30363d', overflowX: 'auto', flexShrink: 0 }}>
+            {[
+              { id: 'tacos', label: '🌮 Tacos' },
+              { id: 'soufflets', label: '🥙 Soufflé' },
+              { id: 'makloub', label: '🍛 Makloub' },
+              { id: 'mlawi', label: '🫓 Mlawi' },
+              { id: 'panini', label: '🥪 Panini' },
+              { id: 'croques', label: '🧀 Croques' },
+              { id: 'frites', label: '🍟 Frites' },
+              { id: 'milkshakes', label: '🥤 Milkshakes' },
+              { id: 'crepes', label: '🥞 Crêpes' },
+              { id: 'gaufres', label: '🧇 Gaufres' },
+              { id: 'drinks', label: '🧃 Boissons' },
+            ].map((st) => {
+              const active = subCat === st.id;
+              return (
+                <button
+                  key={st.id}
+                  onClick={() => setSubCat(st.id as any)}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #30363d',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    background: active ? '#38bdf8' : '#161b22',
+                    color: active ? '#000' : '#8b949e',
+                  }}
+                >
+                  {st.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Sub-tabs for Options */}
+        {tab === 'options' && (
+          <div style={{ display: 'flex', gap: 4, padding: '6px 12px', background: '#0d1117', borderBottom: '1px solid #30363d', overflowX: 'auto', flexShrink: 0 }}>
+            {[
+              { id: 'meats', label: '🥩 Viandes' },
+              { id: 'sauces', label: '🍅 Sauces' },
+              { id: 'garnitures', label: '🥬 Garnitures' },
+              { id: 'crudites', label: '🥗 Crudités' },
+              { id: 'supplements', label: '➕ Suppléments' },
+            ].map((so) => {
+              const active = subOption === so.id;
+              return (
+                <button
+                  key={so.id}
+                  onClick={() => setSubOption(so.id as any)}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #30363d',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    background: active ? '#38bdf8' : '#161b22',
+                    color: active ? '#000' : '#8b949e',
+                  }}
+                >
+                  {so.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Modal Body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#0d1117', color: '#f8fafc' }}>
+          {tab === 'pizzas' && <PizzaManager />}
+          {tab === 'texmex' && <TexMexManager />}
+          {tab === 'sandwiches' && <SandwichManager />}
+          {tab === 'other' && subCat === 'drinks' && <ImageUploadTable tableName="drinks" title="Boissons" hasImage />}
+          {tab === 'other' && subCat !== 'drinks' && <ProductCategoryManager categorySlug={subCat} title={subCat.toUpperCase()} />}
+          {tab === 'options' && subOption === 'meats' && <ImageUploadTable tableName="meat_options" title="Options viandes" hasImage />}
+          {tab === 'options' && subOption === 'sauces' && <ImageUploadTable tableName="sauce_options" title="Options sauces" hasImage />}
+          {tab === 'options' && subOption === 'garnitures' && <ImageUploadTable tableName="garniture_options" title="Options garnitures" hasImage />}
+          {tab === 'options' && subOption === 'crudites' && <ImageUploadTable tableName="crudites_options" title="Crudités" hasImage />}
+          {tab === 'options' && subOption === 'supplements' && <ImageUploadTable tableName="supplement_options" title="Suppléments" hasImage />}
+          {tab === 'prices' && <PriceManager />}
+          {tab === 'availability' && <AvailabilityManager />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Settings panel (theme / colors + Freebox) ───────────────────────────────
 function SettingsPanel({ onClose }: { onClose:()=>void }) {
   useThemeBump();
@@ -3683,6 +3871,7 @@ function POSContent() {
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showFacture,  setShowFacture]  = useState(false);
+  const [showQuickEdit, setShowQuickEdit] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [quickUpdating, setQuickUpdating] = useState(false);
@@ -4073,6 +4262,9 @@ function POSContent() {
 
           <div style={{ flex: 1 }} />
 
+          <button title="Éditer le menu en direct" onClick={() => setShowQuickEdit(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:'#38bdf8', borderColor:'#38bdf833', background:'#38bdf811', display:'flex', alignItems:'center', gap:3 }}>
+            ✏️ Éditer Menu
+          </button>
           <button title="Historique & Statistiques" onClick={() => setShowHistory(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:S.accent, borderColor:S.accent+'33', background:S.accent+'11', display:'flex', alignItems:'center', gap:3 }}>
             📊 Stats
           </button>
@@ -4206,6 +4398,7 @@ function POSContent() {
       </Panel>
 
       {/* ── Overlays ── */}
+      {showQuickEdit && <POSEditModal onClose={() => setShowQuickEdit(false)} />}
       {showSettings && <SettingsPanel onClose={()=>setShowSettings(false)} />}
       {showHistory && <HistoryPanel onClose={()=>setShowHistory(false)} />}
       {showFacture && <FactureHubModal onClose={()=>setShowFacture(false)} />}
