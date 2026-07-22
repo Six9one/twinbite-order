@@ -449,13 +449,46 @@ function PizzaPanel({
     return dbPizzasCreme.map((p: any) => ({ ...p, _base: 'creme' as const }));
   }, [dbPizzasCreme]);
 
+  const [pizzaSelectMode, setPizzaSelectMode] = useState<'multi' | 'direct'>('multi');
+  const [multiSelections, setMultiSelections] = useState<Record<string, { item: any; count: number }>>({});
   const [sel, setSel] = useState<any | null>(null);
   const [supps, setSupps] = useState<string[]>([]);
   const [note, setNote] = useState('');
 
+  const basePrice = PIZZA_SIZES.find(s => s.id === size)!.price;
+  const suppTotal = supps.reduce((s, id) => {
+    const x = cheeseSupplementOptions.find(c => c.id === id);
+    return s + (x?.price || 0);
+  }, 0);
+  const singlePrice = basePrice + suppTotal;
+
+  const totalMultiCount = useMemo(() => {
+    return Object.values(multiSelections).reduce((acc, curr) => acc + curr.count, 0);
+  }, [multiSelections]);
+
+  const totalMultiPrice = useMemo(() => {
+    return totalMultiCount * basePrice;
+  }, [totalMultiCount, basePrice]);
+
   const handleTileClick = useCallback((item: any) => {
-    setSel((prev: any) => (prev?.id === item.id && prev?._base === item._base) ? null : item);
-  }, []);
+    const key = `${item._base}-${item.id}`;
+    if (pizzaSelectMode === 'direct') {
+      const sizeLabel = PIZZA_SIZES.find(s => s.id === size)!.label;
+      onAdd(
+        { id: item.id, name: item.name, price: basePrice, category: 'pizzas', description: '' },
+        { size, sizeLabel, base: item._base, supplements: supps, note, isMenuMidi: size === 'menu_midi' || size === 'menu_midi_mega' },
+        singlePrice
+      );
+      toast.success(`➕ ${item.name} (${sizeLabel}) ajouté!`, { duration: 1500 });
+    } else {
+      setMultiSelections(prev => {
+        const existing = prev[key];
+        const newCount = (existing?.count || 0) + 1;
+        return { ...prev, [key]: { item, count: newCount } };
+      });
+      setSel(item);
+    }
+  }, [pizzaSelectMode, size, basePrice, supps, note, singlePrice, onAdd]);
 
   const handleCustomizeClick = useCallback((item: any) => {
     if (onCustomize) {
@@ -463,24 +496,38 @@ function PizzaPanel({
     }
   }, [onCustomize]);
 
-  const basePrice = PIZZA_SIZES.find(s => s.id === size)!.price;
-  const suppTotal = supps.reduce((s, id) => {
-    const x = cheeseSupplementOptions.find(c => c.id === id);
-    return s + (x?.price || 0);
-  }, 0);
-  const price = basePrice + suppTotal;
-
-  const handleAdd = () => {
-    if (!sel) {
-      toast.error('Choisissez une pizza');
-      return;
-    }
+  const handleAddBatch = () => {
     const sizeLabel = PIZZA_SIZES.find(s => s.id === size)!.label;
-    onAdd(
-      { id: sel.id, name: sel.name, price: basePrice, category: 'pizzas', description: '' },
-      { size, sizeLabel, base: sel._base, supplements: supps, note, isMenuMidi: size === 'menu_midi' || size === 'menu_midi_mega' },
-      price
-    );
+    const itemsList = Object.values(multiSelections);
+
+    if (itemsList.length === 0 && sel) {
+      onAdd(
+        { id: sel.id, name: sel.name, price: basePrice, category: 'pizzas', description: '' },
+        { size, sizeLabel, base: sel._base, supplements: supps, note, isMenuMidi: size === 'menu_midi' || size === 'menu_midi_mega' },
+        singlePrice
+      );
+      toast.success(`➕ ${sel.name} (${sizeLabel}) ajouté!`);
+    } else if (itemsList.length > 0) {
+      itemsList.forEach(({ item, count }) => {
+        for (let i = 0; i < count; i++) {
+          onAdd(
+            { id: item.id, name: item.name, price: basePrice, category: 'pizzas', description: '' },
+            { size, sizeLabel, base: item._base, supplements: supps, note, isMenuMidi: size === 'menu_midi' || size === 'menu_midi_mega' },
+            singlePrice
+          );
+        }
+      });
+      toast.success(`✅ ${totalMultiCount} pizza(s) ajoutées au panier!`);
+    }
+
+    setMultiSelections({});
+    setSel(null);
+    setSupps([]);
+    setNote('');
+  };
+
+  const handleClearMulti = () => {
+    setMultiSelections({});
     setSel(null);
     setSupps([]);
     setNote('');
@@ -495,33 +542,62 @@ function PizzaPanel({
       <div className={currentThemeMode === 'glassy' ? 'pos-segmented-container' : ''} style={{
         display: 'flex', gap: 6, padding: '8px 12px',
         background: currentThemeMode === 'glassy' ? 'transparent' : '#0a0f1e', borderBottom: currentThemeMode === 'glassy' ? 'none' : `1px solid ${S.border}`,
-        flexShrink: 0, flexWrap: 'wrap', alignItems: 'center',
+        flexShrink: 0, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
         ...(currentThemeMode === 'glassy' ? { margin: '8px 12px 0' } : {})
       }}>
-        {PIZZA_SIZES.map((s) => {
-          const active = size === s.id;
-          return (
-            <button
-              key={s.id}
-              onClick={() => setSize(s.id)}
-              className={`pos-btn-interactive ${currentThemeMode === 'glassy' ? 'pos-segmented-btn' : ''} ${currentThemeMode === 'glassy' && active ? 'active' : ''}`}
-              style={{
-                padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
-                fontWeight: 800, fontSize: 11, lineHeight: 1.3,
-                border: currentThemeMode === 'glassy' ? 'none' : `1.5px solid ${s.color}`,
-                background: currentThemeMode === 'glassy' ? (active ? 'rgba(255,255,255,0.12)' : 'transparent') : (active ? s.color : s.color + '18'),
-                color: currentThemeMode === 'glassy' ? (active ? '#fff' : 'rgba(255,255,255,0.6)') : (active ? '#fff' : s.color),
-                boxShadow: currentThemeMode === 'glassy' ? 'none' : (active ? `0 0 8px ${s.color}55` : 'none'),
-                transition: 'all .1s',
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                flex: currentThemeMode === 'glassy' ? 1 : 'unset',
-              }}
-            >
-              <span>{s.label}</span>
-              <span style={{ fontSize: 10, opacity: 0.85 }}>{s.price}€</span>
-            </button>
-          );
-        })}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {PIZZA_SIZES.map((s) => {
+            const active = size === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setSize(s.id)}
+                className={`pos-btn-interactive ${currentThemeMode === 'glassy' ? 'pos-segmented-btn' : ''} ${currentThemeMode === 'glassy' && active ? 'active' : ''}`}
+                style={{
+                  padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
+                  fontWeight: 800, fontSize: 11, lineHeight: 1.3,
+                  border: currentThemeMode === 'glassy' ? 'none' : `1.5px solid ${s.color}`,
+                  background: currentThemeMode === 'glassy' ? (active ? 'rgba(255,255,255,0.12)' : 'transparent') : (active ? s.color : s.color + '18'),
+                  color: currentThemeMode === 'glassy' ? (active ? '#fff' : 'rgba(255,255,255,0.6)') : (active ? '#fff' : s.color),
+                  boxShadow: currentThemeMode === 'glassy' ? 'none' : (active ? `0 0 8px ${s.color}55` : 'none'),
+                  transition: 'all .1s',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                }}
+              >
+                <span>{s.label}</span>
+                <span style={{ fontSize: 10, opacity: 0.85 }}>{s.price}€</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Mode Toggle: Multi-selection vs Direct 1-tap add */}
+        <div style={{ display: 'flex', gap: 4, background: '#111827', padding: '3px 4px', borderRadius: 8, border: `1px solid ${S.border}` }}>
+          <button
+            onClick={() => setPizzaSelectMode('multi')}
+            style={{
+              padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+              fontSize: 10, fontWeight: 800,
+              background: pizzaSelectMode === 'multi' ? '#22c55e' : 'transparent',
+              color: pizzaSelectMode === 'multi' ? '#000' : S.muted,
+              transition: 'all .12s'
+            }}
+          >
+            ☑️ Multiple ({totalMultiCount})
+          </button>
+          <button
+            onClick={() => setPizzaSelectMode('direct')}
+            style={{
+              padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+              fontSize: 10, fontWeight: 800,
+              background: pizzaSelectMode === 'direct' ? S.accent : 'transparent',
+              color: pizzaSelectMode === 'direct' ? '#000' : S.muted,
+              transition: 'all .12s'
+            }}
+          >
+            ⚡ 1-Clic Direct
+          </button>
+        </div>
       </div>
 
       {/* Scrollable grid container split into Tomato and Cream base (2 columns side-by-side) */}
@@ -551,19 +627,24 @@ function PizzaPanel({
             </span>
           </div>
           <div className="grid-fade-in" style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`, gap: 8 }}>
-            {pizzasTomate.map((p: any) => (
-              <ProductTile
-                key={`tomate-${p.id}`}
-                compact
-                tint="#ef4444"
-                item={p}
-                price={basePrice}
-                zoom={zoom}
-                selected={sel?.id === p.id && sel?._base === 'tomate'}
-                onClick={handleTileClick}
-                onCustomize={onCustomize ? handleCustomizeClick : undefined}
-              />
-            ))}
+            {pizzasTomate.map((p: any) => {
+              const key = `tomate-${p.id}`;
+              const count = multiSelections[key]?.count || 0;
+              return (
+                <ProductTile
+                  key={`tomate-${p.id}`}
+                  compact
+                  tint="#ef4444"
+                  item={p}
+                  price={basePrice}
+                  zoom={zoom}
+                  badge={count > 0 ? `x${count}` : undefined}
+                  selected={count > 0 || (sel?.id === p.id && sel?._base === 'tomate')}
+                  onClick={handleTileClick}
+                  onCustomize={onCustomize ? handleCustomizeClick : undefined}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -591,19 +672,24 @@ function PizzaPanel({
             </span>
           </div>
           <div className="grid-fade-in" style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`, gap: 8 }}>
-            {pizzasCreme.map((p: any) => (
-              <ProductTile
-                key={`creme-${p.id}`}
-                compact
-                tint="#3b82f6"
-                item={p}
-                price={basePrice}
-                zoom={zoom}
-                selected={sel?.id === p.id && sel?._base === 'creme'}
-                onClick={handleTileClick}
-                onCustomize={onCustomize ? handleCustomizeClick : undefined}
-              />
-            ))}
+            {pizzasCreme.map((p: any) => {
+              const key = `creme-${p.id}`;
+              const count = multiSelections[key]?.count || 0;
+              return (
+                <ProductTile
+                  key={`creme-${p.id}`}
+                  compact
+                  tint="#3b82f6"
+                  item={p}
+                  price={basePrice}
+                  zoom={zoom}
+                  badge={count > 0 ? `x${count}` : undefined}
+                  selected={count > 0 || (sel?.id === p.id && sel?._base === 'creme')}
+                  onClick={handleTileClick}
+                  onCustomize={onCustomize ? handleCustomizeClick : undefined}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -627,9 +713,10 @@ function PizzaPanel({
 
       {/* Supplements + Add */}
       <div style={{ background: '#111827', borderTop: `1px solid ${S.border}`, padding: '10px 14px', flexShrink: 0 }}>
-        {sel && (
+        {(sel || totalMultiCount > 0) && (
           <>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 10, color: S.muted, fontWeight: 700, textTransform: 'uppercase' }}>Suppléments fromage:</span>
               {cheeseSupplementOptions.map(s => (
                 <Chip key={s.id} label={s.name} extra={`+${s.price}€`} active={supps.includes(s.id)} onClick={() => setSupps(p => p.includes(s.id) ? p.filter(x => x !== s.id) : [...p, s.id])} />
               ))}
@@ -637,13 +724,34 @@ function PizzaPanel({
             <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note..." style={{ ...S.input, marginBottom: 8 }} />
           </>
         )}
-        <button onClick={handleAdd} disabled={!sel} style={{
-          width: '100%', padding: '9px', borderRadius: 9, border: 'none',
-          background: sel ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : '#1f2937',
-          color: sel ? '#000' : '#374151', fontSize: 13, fontWeight: 800, cursor: sel ? 'pointer' : 'not-allowed',
-        }}>
-          {sel ? `➕ ${sel.name} ${PIZZA_SIZES.find(s => s.id === size)!.label} — ${price.toFixed(2)}€` : 'Sélectionnez une pizza'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {totalMultiCount > 0 && (
+            <button
+              onClick={handleClearMulti}
+              style={{
+                padding: '9px 14px', borderRadius: 9, border: '1px solid #ef444455',
+                background: '#ef444418', color: '#ef4444', fontSize: 12, fontWeight: 800, cursor: 'pointer'
+              }}
+            >
+              🗑️ Annuler ({totalMultiCount})
+            </button>
+          )}
+          <button
+            onClick={handleAddBatch}
+            disabled={totalMultiCount === 0 && !sel}
+            style={{
+              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              background: (totalMultiCount > 0 || sel) ? 'linear-gradient(135deg,#22c55e,#16a34a)' : '#1f2937',
+              color: (totalMultiCount > 0 || sel) ? '#fff' : '#374151', fontSize: 13, fontWeight: 800,
+              cursor: (totalMultiCount > 0 || sel) ? 'pointer' : 'not-allowed',
+              boxShadow: totalMultiCount > 0 ? '0 0 14px rgba(34, 197, 94, 0.4)' : 'none'
+            }}
+          >
+            {totalMultiCount > 0
+              ? `➕ Ajouter ${totalMultiCount} pizza(s) au panier — ${totalMultiPrice.toFixed(2)}€`
+              : (sel ? `➕ ${sel.name} ${PIZZA_SIZES.find(s => s.id === size)!.label} — ${singlePrice.toFixed(2)}€` : (pizzaSelectMode === 'direct' ? '⚡ Mode Clic Direct actif — Cliquez sur n\'importe quelle pizza' : 'Sélectionnez vos pizzas'))}
+          </button>
+        </div>
       </div>
     </div>
   );
