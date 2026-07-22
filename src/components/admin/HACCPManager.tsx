@@ -185,9 +185,10 @@ export function HACCPManager() {
             console.log('✅ HACCP: History refreshed, count:', history.length);
 
             if (printSuccess) {
-                toast.success(`✅ Ticket HACCP imprimé pour ${product.name}`);
+                toast.success(`✅ Ticket HACCP envoyé pour ${product.name}`);
             } else {
-                toast.warning(`⚠️ Enregistré mais impression échouée - vérifiez le serveur d'impression`);
+                printHACCPTicket(product, category, now, dlcDate, storageTemp, userName);
+                toast.info(`🖨️ Impression via le navigateur pour ${product.name}`);
             }
         } catch (error) {
             console.error('❌ HACCP error:', error);
@@ -511,6 +512,63 @@ export function HACCPManager() {
         'Olives', 'Champignon', 'Lardons', 'Pommes de Terre',
     ];
 
+    const printBatchIngredientLabelsBrowser = (items: Array<{ product_name: string; action_date: string; dlc_date: string; operator: string }>) => {
+        const labelsHtml = items.map(item => `
+          <div class="label-card">
+            <div class="header">TWIN PIZZA</div>
+            <div class="divider"></div>
+            <div class="title">${item.product_name}</div>
+            <div class="divider"></div>
+            <div class="info">Préparé le: ${item.action_date}</div>
+            <div class="dlc">À CONSOMMER AVANT LE:<br/>${item.dlc_date}</div>
+            <div class="warning">NE PAS DÉPASSER 3 JOURS</div>
+            <div class="footer">Par: ${item.operator}</div>
+          </div>
+        `).join('');
+
+        const ticketHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Étiquettes Ingrédients HACCP (${items.length})</title>
+        <style>
+          @page { size: 80mm auto; margin: 0; }
+          @media print { 
+            body { width: 80mm; margin: 0; } 
+            * { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+          }
+          body { font-family: 'Courier New', monospace; font-size: 13px; width: 80mm; padding: 2mm; color: #000; text-align: center; }
+          .label-card { padding: 4mm 2mm; margin-bottom: 4mm; border-bottom: 2px dashed #000; box-sizing: border-box; }
+          .header { font-weight: bold; font-size: 16px; }
+          .divider { border-bottom: 1.5px dashed #000; margin: 6px 0; }
+          .title { font-size: 22px; font-weight: bold; margin: 6px 0; }
+          .info { font-size: 14px; font-weight: bold; text-align: left; margin: 4px 0; }
+          .dlc { font-size: 17px; font-weight: bold; border: 2px solid #000; padding: 4px; margin: 6px 0; background: #fff; }
+          .warning { font-size: 11px; font-weight: bold; margin: 4px 0; }
+          .footer { font-size: 11px; margin-top: 4px; }
+        </style>
+      </head>
+      <body>
+        ${labelsHtml}
+      </body>
+      </html>`;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
+        document.body.appendChild(iframe);
+        const doc = iframe.contentWindow?.document;
+        if (doc) {
+            doc.open();
+            doc.write(ticketHtml);
+            doc.close();
+            setTimeout(() => {
+                iframe.contentWindow?.focus();
+                iframe.contentWindow?.print();
+                setTimeout(() => iframe.remove(), 4000);
+            }, 400);
+        }
+    };
+
     const printAllIngredientLabels = async () => {
         setPrintingLabels(true);
         try {
@@ -536,9 +594,25 @@ export function HACCPManager() {
                 .from('haccp_print_queue' as any)
                 .insert(rows as any);
 
-            if (error) {
-                console.error('Failed to queue ingredient labels:', error);
-                toast.error('Erreur impression étiquettes');
+            let printSuccess = false;
+            for (const row of rows) {
+                const ok = await printHACCPDirect({
+                    productName: row.product_name,
+                    categoryName: row.category_name,
+                    categoryColor: row.category_color,
+                    actionDate: row.action_date,
+                    dlcDate: row.dlc_date,
+                    storageTemp: row.storage_temp,
+                    operator: row.operator,
+                    dlcHours: row.dlc_hours,
+                    actionLabel: row.action_label,
+                });
+                if (ok) printSuccess = true;
+            }
+
+            if (!printSuccess || error) {
+                printBatchIngredientLabelsBrowser(rows);
+                toast.info(`🖨️ ${INGREDIENT_LABELS.length} étiquettes envoyées à l'impression navigateur`);
             } else {
                 toast.success(`✅ ${INGREDIENT_LABELS.length} étiquettes envoyées à l'imprimante !`);
             }

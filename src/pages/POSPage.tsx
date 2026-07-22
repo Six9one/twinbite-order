@@ -23,6 +23,8 @@ import { crepes, gaufres, boissons, frites as staticFrites, croques as staticCro
 import { Panel, PanelGroup, PanelResizeHandle, ImperativePanelHandle } from 'react-resizable-panels';
 import { toast } from 'sonner';
 import { resolveImg } from '@/utils/resolveImg';
+import { useVirtualKeyboard } from '@/context/VirtualKeyboardContext';
+import { printDateLabel } from '@/config/printConfig';
 
 const PRINT_SERVER = 'http://localhost:3001';
 
@@ -4061,6 +4063,87 @@ function POSContent() {
   const [showFacture,  setShowFacture]  = useState(false);
   const [showQuickEdit, setShowQuickEdit] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const { toggleKeyboard } = useVirtualKeyboard();
+  const [printingIngredientsPOS, setPrintingIngredientsPOS] = useState(false);
+
+  const handlePrintIngredientLabelsPOS = async () => {
+    setPrintingIngredientsPOS(true);
+    const INGREDIENT_LABELS = [
+      'Salade', 'Tomate', 'Oignon', 'Sauce Tomate',
+      'Crème Fraîche', 'Merguez', 'Poivrons', 'Jambon',
+      'Olives', 'Champignon', 'Lardons', 'Pommes de Terre',
+    ];
+    try {
+      const now = new Date();
+      const dlcDate = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+      const dateStr = now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const dlcStr = dlcDate.toLocaleDateString('fr-FR') + ' ' + dlcDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+      const rows = INGREDIENT_LABELS.map(name => ({
+        product_name: name,
+        category_name: 'ETIQUETTE_INGREDIENT',
+        category_color: '#16a34a',
+        action_date: dateStr,
+        dlc_date: dlcStr,
+        storage_temp: '0°C à +3°C',
+        operator: 'Staff POS',
+        dlc_hours: 72,
+        action_label: 'Préparé le',
+      }));
+
+      await supabase.from('haccp_print_queue' as any).insert(rows as any);
+
+      let printSuccess = false;
+      for (const row of rows) {
+        const ok = await printDateLabel({
+          productName: row.product_name,
+          madeDate: row.action_date,
+          useByDate: row.dlc_date,
+          actionType: 'fait',
+          operator: row.operator,
+          copies: 1,
+        });
+        if (ok) printSuccess = true;
+      }
+
+      if (!printSuccess) {
+        const labelsHtml = rows.map(item => `
+          <div style="padding:4mm 2mm;margin-bottom:4mm;border-bottom:2px dashed #000;text-align:center;">
+            <div style="font-weight:bold;font-size:16px;">TWIN PIZZA</div>
+            <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+            <div style="font-size:22px;font-weight:bold;margin:6px 0;">${item.product_name}</div>
+            <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
+            <div style="font-size:14px;font-weight:bold;text-align:left;">Préparé le: ${item.action_date}</div>
+            <div style="font-size:17px;font-weight:bold;border:2px solid #000;padding:4px;margin:6px 0;">À CONSOMMER AVANT LE:<br/>${item.dlc_date}</div>
+            <div style="font-size:11px;font-weight:bold;">NE PAS DÉPASSER 3 JOURS</div>
+            <div style="font-size:11px;margin-top:4px;">Par: ${item.operator}</div>
+          </div>
+        `).join('');
+
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
+        document.body.appendChild(iframe);
+        const doc = iframe.contentWindow?.document;
+        if (doc) {
+          doc.open();
+          doc.write(`<!DOCTYPE html><html><head><title>Étiquettes Ingrédients</title><style>@page{size:80mm auto;margin:0;}@media print{body{width:80mm;margin:0;}*{print-color-adjust:exact !important;}}body{font-family:'Courier New',monospace;width:80mm;padding:2mm;color:#000;}</style></head><body>${labelsHtml}</body></html>`);
+          doc.close();
+          setTimeout(() => {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+            setTimeout(() => iframe.remove(), 4000);
+          }, 300);
+        }
+        toast.info(`🖨️ ${INGREDIENT_LABELS.length} étiquettes ouvertes dans le navigateur`);
+      } else {
+        toast.success(`✅ ${INGREDIENT_LABELS.length} étiquettes envoyées à l'imprimante !`);
+      }
+    } catch {
+      toast.error('Erreur impression étiquettes');
+    } finally {
+      setPrintingIngredientsPOS(false);
+    }
+  };
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [quickUpdating, setQuickUpdating] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -4452,6 +4535,12 @@ function POSContent() {
 
           <button title="Éditer le menu en direct" onClick={() => setShowQuickEdit(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:'#38bdf8', borderColor:'#38bdf833', background:'#38bdf811', display:'flex', alignItems:'center', gap:3 }}>
             ✏️ Éditer Menu
+          </button>
+          <button title="Imprimer directement les 12 étiquettes d'ingrédients" onClick={handlePrintIngredientLabelsPOS} disabled={printingIngredientsPOS} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:'#22c55e', borderColor:'#22c55e33', background:'#22c55e11', display:'flex', alignItems:'center', gap:3 }}>
+            🏷️ 12 Étiquettes
+          </button>
+          <button title="Ouvrir le clavier virtuel tactile" onClick={toggleKeyboard} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:'#f59e0b', borderColor:'#f59e0b33', background:'#f59e0b11', display:'flex', alignItems:'center', gap:3 }}>
+            ⌨️ Clavier
           </button>
           <button title="Historique & Statistiques" onClick={() => setShowHistory(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:S.accent, borderColor:S.accent+'33', background:S.accent+'11', display:'flex', alignItems:'center', gap:3 }}>
             📊 Stats

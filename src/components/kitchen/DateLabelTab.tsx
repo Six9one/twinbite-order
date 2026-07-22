@@ -96,6 +96,52 @@ export function DateLabelTab() {
             + ' ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     };
 
+    const printDateLabelBrowser = (pName: string, actionLabel: string, mDate: string, uDate?: string, numCopies: number = 1) => {
+        const ticketHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Étiquette Date - ${pName}</title>
+        <style>
+          @page { size: 80mm auto; margin: 0; }
+          @media print { body { width: 80mm; margin: 0; } * { print-color-adjust: exact !important; } }
+          body { font-family: 'Courier New', monospace; font-size: 14px; width: 80mm; padding: 4mm; color: #000; text-align: center; }
+          .title { font-size: 24px; font-weight: bold; margin: 8px 0; }
+          .divider { border-bottom: 2px dashed #000; margin: 8px 0; }
+          .date-box { font-size: 16px; font-weight: bold; margin: 6px 0; text-align: left; }
+          .dlc-box { font-size: 18px; font-weight: bold; border: 2px solid #000; padding: 4px; margin: 8px 0; }
+        </style>
+      </head>
+      <body>
+        <div style="font-weight: bold; font-size: 16px;">TWIN PIZZA</div>
+        <div class="divider"></div>
+        <div class="title">${pName}</div>
+        <div class="divider"></div>
+        <div class="date-box">${actionLabel}: ${mDate}</div>
+        ${uDate ? `<div class="dlc-box">À CONSOMMER AVANT LE:<br/>${uDate}</div>` : ''}
+        <div class="divider"></div>
+        <div style="font-size: 12px;">Par: Staff</div>
+      </body>
+      </html>`;
+
+        for (let i = 0; i < numCopies; i++) {
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
+            document.body.appendChild(iframe);
+            const doc = iframe.contentWindow?.document;
+            if (doc) {
+                doc.open();
+                doc.write(ticketHtml);
+                doc.close();
+                setTimeout(() => {
+                    iframe.contentWindow?.focus();
+                    iframe.contentWindow?.print();
+                    setTimeout(() => iframe.remove(), 3000);
+                }, 300);
+            }
+        }
+    };
+
     const handlePrint = async () => {
         if (!productName.trim()) {
             toast.error('Choisissez un produit');
@@ -120,7 +166,9 @@ export function DateLabelTab() {
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
                 fetchRecentLabels();
             } else {
-                toast.error('❌ Erreur — vérifiez l\'imprimante et le serveur');
+                printDateLabelBrowser(productName.trim(), actionType === 'fait' ? 'Fait le' : 'Ouvert le', madeDate, useByDate, copies);
+                toast.info(`🖨️ Impression via le navigateur pour "${productName}"`);
+                fetchRecentLabels();
             }
         } catch {
             toast.error('Erreur lors de l\'impression');
@@ -140,7 +188,12 @@ export function DateLabelTab() {
                 operator: 'Staff',
                 copies: 1,
             });
-            toast[success ? 'success' : 'error'](success ? `✅ Réimprimé: ${label.product_name}` : '❌ Erreur');
+            if (success) {
+                toast.success(`✅ Réimprimé: ${label.product_name}`);
+            } else {
+                printDateLabelBrowser(label.product_name, actionType === 'fait' ? 'Fait le' : 'Ouvert le', label.action_date, label.dlc_date || undefined, 1);
+                toast.info(`🖨️ Impression via le navigateur pour ${label.product_name}`);
+            }
         } catch {
             toast.error('Erreur');
         } finally {

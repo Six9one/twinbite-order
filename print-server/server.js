@@ -1510,7 +1510,21 @@ function sendToUSBPrinter(data, printerName) {
 async function sendToAllPrinters(ticketData, label) {
     let success = false;
 
-    // 1. Try USB Printer (Ethernet is frozen for now)
+    // 1. Try Ethernet Printers (if PRINTER_IPS configured)
+    if (PRINTER_IPS.length > 0) {
+        try {
+            console.log(`🖨️  Printing [${label}] to Ethernet printer(s): ${PRINTER_IPS.join(', ')}`);
+            const results = await Promise.allSettled(
+                PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, label))
+            );
+            const ethSuccess = results.some(r => r.status === 'fulfilled' && r.value === true);
+            if (ethSuccess) success = true;
+        } catch (err) {
+            console.error(`❌ Ethernet Printers error for [${label}]: ${err.message}`);
+        }
+    }
+
+    // 2. Try USB Printer (if COUNTER_PRINTER_NAME configured)
     const usbPrinterName = COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME;
     if (usbPrinterName && usbPrinterName.trim()) {
         try {
@@ -1523,7 +1537,7 @@ async function sendToAllPrinters(ticketData, label) {
     }
 
     if (!success) {
-        console.error(`❌ Printer failed for [${label}]. USB printer: ${usbPrinterName}`);
+        console.error(`❌ All printers failed for [${label}]. USB: "${usbPrinterName}", Ethernet: ${PRINTER_IPS.join(', ')}`);
     }
 
     return success;
@@ -2011,29 +2025,42 @@ async function pollForUnprintedOrders(lookbackMs) {
 
         const lookback = lookbackMs || 5 * 60 * 1000; // Default: last 5 minutes
         const since = new Date(Date.now() - lookback).toISOString();
+
+        // 1. Poll unprinted orders
         const { data: orders, error } = await supabase
             .from('orders')
             .select('*')
             .gte('created_at', since)
             .order('created_at', { ascending: true });
 
-        if (error) {
-            console.log('⚠️ Poll check failed:', error.message);
-            return;
-        }
-
-        let caught = 0;
-        for (const order of (orders || [])) {
-            if (!printedOrders.has(order.id)) {
-                console.log(`🔍 POLL CATCH: Order #${order.order_number} missed by realtime! Printing now...`);
-                await handleNewOrder(order);
-                caught++;
+        if (!error && orders) {
+            let caught = 0;
+            for (const order of orders) {
+                if (!printedOrders.has(order.id)) {
+                    console.log(`🔍 POLL CATCH: Order #${order.order_number} missed by realtime! Printing now...`);
+                    await handleNewOrder(order);
+                    caught++;
+                }
+            }
+            if (caught > 0) {
+                console.log(`⚠️ Poll caught ${caught} missed order(s) — forcing realtime reconnect...`);
+                handleDisconnect();
             }
         }
 
-        if (caught > 0) {
-            console.log(`⚠️ Poll caught ${caught} missed order(s) — forcing realtime reconnect...`);
-            handleDisconnect();
+        // 2. Poll unprinted HACCP jobs from haccp_print_queue
+        const { data: haccpJobs, error: haccpError } = await supabase
+            .from('haccp_print_queue')
+            .select('*')
+            .or('printed.eq.false,printed.is.null')
+            .order('created_at', { ascending: true })
+            .limit(20);
+
+        if (!haccpError && haccpJobs && haccpJobs.length > 0) {
+            console.log(`🔍 POLL CATCH: Found ${haccpJobs.length} unprinted HACCP job(s)! Enqueuing...`);
+            for (const job of haccpJobs) {
+                enqueueHACCPPrint(job);
+            }
         }
     } catch (err) {
         console.log('⚠️ Poll error:', err.message);
@@ -2190,7 +2217,7 @@ function formatFreezerTicket(data) {
     // Storage rules
     ticket += ESCPOS.CENTER;
     ticket += ESCPOS.BOLD_ON;
-    ticket += 'Conservation: -18.C\n';
+    ticket += 'Conservation: -18°C\n';
     ticket += '3 MOIS MAXIMUM\n';
     ticket += ESCPOS.BOLD_OFF;
     ticket += '\n';
@@ -2264,7 +2291,7 @@ function formatHACCPTicket(data) {
 
     // Rules
     ticket += ESCPOS.BOLD_ON;
-    ticket += 'ETIQUETER - Frigo 0-3C\n';
+    ticket += 'ETIQUETER - Frigo 0-3°C\n';
     ticket += ESCPOS.BOLD_OFF;
     ticket += ESCPOS.LINE_42;
 
@@ -2543,17 +2570,60 @@ function setupHttpServer() {
 
         try {
             const data = req.body;
+            const productName = data.productName || data.product_name;
+            const categoryName = data.categoryName || data.category_name || '';
 
-            if (!data.productName || !data.categoryName) {
-                return res.status(400).json({ error: 'Missing required fields' });
+            if (!productName) {
+                return res.status(400).json({ error: 'Missing required field: productName' });
             }
 
-            console.log(`   Product: ${data.productName}`);
-            console.log(`   Category: ${data.categoryName}`);
+            console.log(`   Product: ${productName}`);
+            console.log(`   Category: ${categoryName}`);
 
+            const isDateLabel = categoryName === 'ETIQUETTE_DATE';
+            const isIngredientLabel = categoryName === 'ETIQUETTE_INGREDIENT';
+            const isFreezerLabel = categoryName === 'Congélation';
 
-            const ticketData = formatHACCPTicket(data);
-            const success = await printRawWithRetry(ticketData, `HACCP-HTTP: ${data.productName}`);
+            let ticketData;
+            if (isDateLabel || isIngredientLabel) {
+                const useByDate = (data.dlcDate || data.dlc_date) && (data.dlcDate || data.dlc_date) !== (data.actionDate || data.action_date)
+                    ? (data.dlcDate || data.dlc_date) : '';
+                ticketData = formatDateLabel({
+                    productName,
+                    actionLabel: data.actionLabel || data.action_label || 'Fait le',
+                    actionDate: data.actionDate || data.action_date || '',
+                    useByDate,
+                    operator: data.operator || 'Staff',
+                    warning: isIngredientLabel ? 'NE PAS DEPASSER 3 JOURS' : '',
+                });
+            } else if (isFreezerLabel) {
+                let extra = {};
+                try { if (data.notes) extra = typeof data.notes === 'string' ? JSON.parse(data.notes) : data.notes; } catch {}
+                ticketData = formatFreezerTicket({
+                    productName,
+                    frozenDate: data.actionDate || data.action_date || '',
+                    expiryDate: data.dlcDate || data.dlc_date || '',
+                    originalDlc: extra.originalDlc || data.originalDlc || 'N/A',
+                    lotNumber: extra.lotNumber || data.lotNumber || 'N/A',
+                    weight: extra.weight || data.weight || '',
+                    origin: extra.origin || data.origin || '',
+                    operator: data.operator || 'Staff',
+                });
+            } else {
+                ticketData = formatHACCPTicket({
+                    productName,
+                    categoryName: categoryName || 'HACCP',
+                    categoryColor: data.categoryColor || data.category_color || '#f59e0b',
+                    actionDate: data.actionDate || data.action_date || '',
+                    dlcDate: data.dlcDate || data.dlc_date || '',
+                    storageTemp: data.storageTemp || data.storage_temp || '0°C à +3°C',
+                    operator: data.operator || 'Staff',
+                    dlcHours: data.dlcHours || data.dlc_hours || 72,
+                    actionLabel: data.actionLabel || data.action_label || 'Ouverture',
+                });
+            }
+
+            const success = await printRawWithRetry(ticketData, `HACCP-HTTP: ${productName}`);
 
             if (success) {
                 console.log('✅ HACCP ticket printed successfully');

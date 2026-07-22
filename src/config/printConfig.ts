@@ -1,10 +1,32 @@
 // Print Server Configuration
-// Used for direct thermal printing from admin panels via Supabase realtime
+// Used for direct thermal printing from admin/kitchen panels via local HTTP fast-path or Supabase realtime queue
 
 import { supabase } from '@/integrations/supabase/client';
 
-// Print HACCP ticket by adding to print queue
-// The print server listens for new entries via Supabase realtime
+const LOCAL_PRINT_SERVER = 'http://localhost:3001';
+
+async function sendDirectHTTPHACCP(payload: Record<string, any>): Promise<boolean> {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(`${LOCAL_PRINT_SERVER}/print-haccp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+            const data = await res.json();
+            return !!data.success;
+        }
+    } catch {
+        // Direct HTTP print server not available on localhost or timed out
+    }
+    return false;
+}
+
+// Print HACCP ticket by adding to print queue + direct HTTP fast path
 export async function printHACCPDirect(data: {
     productName: string;
     categoryName: string;
@@ -16,6 +38,7 @@ export async function printHACCPDirect(data: {
     dlcHours: number;
     actionLabel: string;
 }): Promise<boolean> {
+    let queued = false;
     try {
         const { error } = await supabase
             .from('haccp_print_queue' as any)
@@ -31,16 +54,14 @@ export async function printHACCPDirect(data: {
                 action_label: data.actionLabel,
             } as any);
 
-        if (error) {
-            console.error('Failed to queue HACCP print:', error);
-            return false;
-        }
-
-        return true;
+        if (!error) queued = true;
+        else console.error('Failed to queue HACCP print:', error);
     } catch (error) {
         console.error('Failed to queue HACCP print:', error);
-        return false;
     }
+
+    const httpSuccess = await sendDirectHTTPHACCP(data);
+    return queued || httpSuccess;
 }
 
 // Print Freezer/Congélation ticket
@@ -54,6 +75,7 @@ export async function printFreezerLabel(data: {
     expiryDate: string;
     operator: string;
 }): Promise<boolean> {
+    let queued = false;
     try {
         const { error } = await supabase
             .from('haccp_print_queue' as any)
@@ -67,7 +89,6 @@ export async function printFreezerLabel(data: {
                 operator: data.operator,
                 dlc_hours: 2160, // 90 days = 3 months
                 action_label: 'Mise en congélation',
-                // Additional freezer-specific fields stored in notes
                 notes: JSON.stringify({
                     type: 'freezer',
                     originalDlc: data.originalDlc,
@@ -77,20 +98,30 @@ export async function printFreezerLabel(data: {
                 }),
             } as any);
 
-        if (error) {
-            console.error('Failed to queue freezer label print:', error);
-            return false;
-        }
-
-        return true;
+        if (!error) queued = true;
+        else console.error('Failed to queue freezer label print:', error);
     } catch (error) {
         console.error('Failed to queue freezer label print:', error);
-        return false;
     }
+
+    const httpSuccess = await sendDirectHTTPHACCP({
+        productName: data.productName,
+        categoryName: 'Congélation',
+        actionDate: data.frozenDate,
+        dlcDate: data.expiryDate,
+        operator: data.operator,
+        notes: JSON.stringify({
+            originalDlc: data.originalDlc,
+            lotNumber: data.lotNumber,
+            weight: data.weight,
+            origin: data.origin,
+        }),
+    });
+
+    return queued || httpSuccess;
 }
 
 // Print a simple date label ("Fait le / À consommer avant le")
-// For sticking on sauces, bottles, and other kitchen items
 export async function printDateLabel(data: {
     productName: string;
     madeDate: string;
@@ -99,6 +130,7 @@ export async function printDateLabel(data: {
     operator: string;
     copies: number;
 }): Promise<boolean> {
+    let queued = false;
     try {
         const rows = Array.from({ length: data.copies }, () => ({
             product_name: data.productName,
@@ -116,15 +148,24 @@ export async function printDateLabel(data: {
             .from('haccp_print_queue' as any)
             .insert(rows as any);
 
-        if (error) {
-            console.error('Failed to queue date label print:', error);
-            return false;
-        }
-
-        return true;
+        if (!error) queued = true;
+        else console.error('Failed to queue date label print:', error);
     } catch (error) {
         console.error('Failed to queue date label print:', error);
-        return false;
     }
-}
 
+    let httpSuccess = false;
+    for (let i = 0; i < data.copies; i++) {
+        const ok = await sendDirectHTTPHACCP({
+            productName: data.productName,
+            categoryName: 'ETIQUETTE_DATE',
+            actionDate: data.madeDate,
+            dlcDate: data.useByDate || data.madeDate,
+            actionLabel: data.actionType === 'fait' ? 'Fait le' : 'Ouvert le',
+            operator: data.operator,
+        });
+        if (ok) httpSuccess = true;
+    }
+
+    return queued || httpSuccess;
+}

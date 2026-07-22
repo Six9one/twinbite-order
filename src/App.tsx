@@ -8,6 +8,8 @@ import { runAutoReleve } from "@/lib/kitchenAutoReleve";
 
 import { LanguageProvider } from "@/context/LanguageContext";
 import { OrderProvider } from "@/context/OrderContext";
+import { VirtualKeyboardProvider } from "@/context/VirtualKeyboardContext";
+import { VirtualKeyboard } from "@/components/VirtualKeyboard";
 
 // PWA Components
 import { PWAInstallPrompt, OfflineIndicator } from "@/components/PWAComponents";
@@ -59,6 +61,7 @@ const App = () => {
             <QueryClientProvider client={queryClient}>
                 <LanguageProvider>
                     <TooltipProvider>
+                        <VirtualKeyboardProvider>
                             <UmamiTracker />
                             <Toaster />
                             <Sonner />
@@ -90,7 +93,9 @@ const App = () => {
                                     <Route path="*" element={<NotFound />} />
                                 </Routes>
                                 <PWAInstallPrompt />
+                                <VirtualKeyboard />
                             </BrowserRouter>
+                        </VirtualKeyboardProvider>
                     </TooltipProvider>
                 </LanguageProvider>
             </QueryClientProvider>

@@ -87,6 +87,51 @@ export function TraceabilityTab() {
     const getActiveCategory = () => categories.find(c => c.slug === activeCategory);
     const calculateSecondaryDlc = (dlcHours: number) => new Date(Date.now() + dlcHours * 60 * 60 * 1000);
 
+    const printTraceabilityBrowser = (pName: string, catName: string, actionLabel: string, actionDate: string, dlcDate: string, storageTemp: string) => {
+        const ticketHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>HACCP - ${pName}</title>
+        <style>
+          @page { size: 80mm auto; margin: 0; }
+          @media print { body { width: 80mm; margin: 0; } * { print-color-adjust: exact !important; } }
+          body { font-family: 'Courier New', monospace; font-size: 14px; width: 80mm; padding: 4mm; color: #000; text-align: center; }
+          .title { font-size: 24px; font-weight: bold; margin: 8px 0; }
+          .divider { border-bottom: 2px dashed #000; margin: 8px 0; }
+          .dlc-box { font-size: 18px; font-weight: bold; border: 2px solid #000; padding: 6px; margin: 8px 0; }
+        </style>
+      </head>
+      <body>
+        <div style="font-weight: bold; font-size: 18px;">HACCP • TWIN PIZZA</div>
+        <div class="divider"></div>
+        <div style="font-size: 14px; font-weight: bold;">${catName}</div>
+        <div class="title">${pName}</div>
+        <div class="divider"></div>
+        <div style="text-align: left;">${actionLabel}: ${actionDate}</div>
+        <div class="dlc-box">*** DATE LIMITE ***<br/>${dlcDate}</div>
+        <div style="text-align: left;">Conservation: ${storageTemp}</div>
+        <div class="divider"></div>
+        <div style="font-size: 12px;">Par: Staff</div>
+      </body>
+      </html>`;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
+        document.body.appendChild(iframe);
+        const doc = iframe.contentWindow?.document;
+        if (doc) {
+            doc.open();
+            doc.write(ticketHtml);
+            doc.close();
+            setTimeout(() => {
+                iframe.contentWindow?.focus();
+                iframe.contentWindow?.print();
+                setTimeout(() => iframe.remove(), 3000);
+            }, 300);
+        }
+    };
+
     const handleQuickPrint = async (product: HACCPProduct) => {
         const category = categories.find(c => c.id === product.category_id);
         if (!category) return;
@@ -99,8 +144,15 @@ export function TraceabilityTab() {
             await supabase.from('kitchen_traceability' as any).insert({ product_name: product.name, dlc_hours: dlcHours, secondary_dlc: dlcDate.toISOString(), opened_by: 'Staff' } as any);
             await supabase.from('haccp_history' as any).insert({ product_id: product.id, category_id: category.id, product_name: product.name, category_name: category.name, action_type: category.slug === 'congele-decongele' ? 'defrost' : 'open', action_datetime: now.toISOString(), dlc_datetime: dlcDate.toISOString(), storage_temp: storageTemp, printed_by: 'Staff' } as any);
             const actionLabel = category.slug === 'congele-decongele' ? 'Décongélation' : 'Ouverture';
-            const printSuccess = await printHACCPDirect({ productName: product.name, categoryName: category.name, categoryColor: category.color, actionDate: now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), dlcDate: dlcDate.toLocaleDateString('fr-FR') + ' ' + dlcDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), storageTemp, operator: 'Staff', dlcHours, actionLabel });
-            toast.success(printSuccess ? `✅ Imprimé: ${product.name}` : '⚠️ Enregistré mais impression échouée');
+            const actionDateStr = now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            const dlcDateStr = dlcDate.toLocaleDateString('fr-FR') + ' ' + dlcDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            const printSuccess = await printHACCPDirect({ productName: product.name, categoryName: category.name, categoryColor: category.color, actionDate: actionDateStr, dlcDate: dlcDateStr, storageTemp, operator: 'Staff', dlcHours, actionLabel });
+            if (printSuccess) {
+                toast.success(`✅ Imprimé: ${product.name}`);
+            } else {
+                printTraceabilityBrowser(product.name, category.name, actionLabel, actionDateStr, dlcDateStr, storageTemp);
+                toast.info(`🖨️ Impression via le navigateur pour ${product.name}`);
+            }
             fetchData();
         } catch { toast.error('Erreur'); } finally { setPrinting(null); }
     };
