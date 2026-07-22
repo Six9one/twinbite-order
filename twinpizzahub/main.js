@@ -817,7 +817,20 @@ ipcMain.handle('check-for-updates', async () => {
   }
 });
 
-// IPC handler to pull changes, npm install, npm build, and relaunch app
+// Helper to reload all renderer windows & webviews ignoring cache
+function reloadAllWindows() {
+  const { webContents } = require('electron');
+  const all = webContents.getAllWebContents();
+  all.forEach(wc => {
+    try {
+      if (wc && !wc.isDestroyed()) {
+        wc.reloadIgnoringCache();
+      }
+    } catch (_) {}
+  });
+}
+
+// IPC handler to pull changes, npm install, npm build, and refresh app seamlessly
 ipcMain.handle('trigger-update', async () => {
   const sendStatus = (msg) => {
     Object.values(windows).forEach(win => {
@@ -856,17 +869,17 @@ ipcMain.handle('trigger-update', async () => {
     if (stdoutStr.includes('Already up to date') || stdoutStr.includes('Déjà à jour')) {
       sendStatus('L\'application est déjà à jour ! Rechargement...');
       setTimeout(() => {
-        app.relaunch({ args: [path.join(__dirname)] });
-        app.exit(0);
-      }, 1000);
+        reloadAllWindows();
+      }, 500);
       return { success: true };
     }
 
-    // Check if package.json or package-lock.json files were modified in this update
+    // Check if package.json or main.js files were modified in this update
     sendStatus('Analyse des changements...');
     const diffRes = await execPromise('git diff --name-only HEAD@{1} HEAD');
     const changedFiles = (diffRes.stdout || '').split('\n').map(f => f.trim());
     const needsNpmInstall = changedFiles.some(f => f.includes('package.json') || f.includes('package-lock.json'));
+    const needsMainRelaunch = changedFiles.some(f => f.includes('twinpizzahub/main.js') || f.includes('twinpizzahub/preload.js'));
 
     if (needsNpmInstall) {
       // 3. Install packages in root
@@ -893,13 +906,18 @@ ipcMain.handle('trigger-update', async () => {
       throw new Error(`Erreur lors de la reconstruction: ${buildRes.stderr}`);
     }
 
-    sendStatus('Mise à jour réussie ! Rechargement en cours...');
-    
-    // Relaunch app
-    setTimeout(() => {
-      app.relaunch({ args: [path.join(__dirname)] });
-      app.exit(0);
-    }, 2000);
+    if (needsMainRelaunch) {
+      sendStatus('Mise à jour du cœur Hub — Redémarrage...');
+      setTimeout(() => {
+        app.relaunch({ args: [path.join(__dirname)] });
+        app.exit(0);
+      }, 1500);
+    } else {
+      sendStatus('Mise à jour réussie ! Rechargement de l\'interface...');
+      setTimeout(() => {
+        reloadAllWindows();
+      }, 800);
+    }
 
     return { success: true };
   } catch (error) {
