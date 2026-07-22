@@ -493,8 +493,14 @@ function startFileServer() {
         headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
         headers['Pragma'] = 'no-cache';
         headers['Expires'] = '0';
-      } else if (['.js', '.css', '.woff', '.woff2'].includes(ext)) {
-        headers['Cache-Control'] = 'public, max-age=31536000, immutable';
+      } else if (['.js', '.css'].includes(ext)) {
+        // Do NOT use immutable — asset filenames change between builds.
+        // Always revalidate so the new bundle is fetched after a MAJ update.
+        headers['Cache-Control'] = 'no-cache, must-revalidate, max-age=0';
+        headers['Pragma'] = 'no-cache';
+      } else if (['.woff', '.woff2'].includes(ext)) {
+        // Fonts rarely change — safe to cache longer
+        headers['Cache-Control'] = 'public, max-age=86400';
       } else if (['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif', '.ico'].includes(ext)) {
         headers['Cache-Control'] = 'no-cache, must-revalidate';
       }
@@ -837,14 +843,16 @@ ipcMain.handle('check-for-updates', async () => {
   }
 });
 
-// Helper to reload all renderer windows & webviews ignoring cache
+// Helper to reload only top-level BrowserWindow renderers (NOT embedded <webview> guests).
+// Reloading webview guests causes a race condition with the launcher reinitialising them
+// via goTo() on DOMContentLoaded, leaving the webview in a broken/black state.
 function reloadAllWindows() {
-  const { webContents } = require('electron');
-  const all = webContents.getAllWebContents();
-  all.forEach(wc => {
+  // Collect the webContents IDs of all known top-level BrowserWindows
+  const { BrowserWindow: BW } = require('electron');
+  BW.getAllWindows().forEach(win => {
     try {
-      if (wc && !wc.isDestroyed()) {
-        wc.reloadIgnoringCache();
+      if (win && !win.isDestroyed()) {
+        win.webContents.reloadIgnoringCache();
       }
     } catch (_) {}
   });
