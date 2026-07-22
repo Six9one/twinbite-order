@@ -895,10 +895,17 @@ ipcMain.handle('trigger-update', async () => {
     
     // Check if we are already up to date
     if (stdoutStr.includes('Already up to date') || stdoutStr.includes('Déjà à jour')) {
-      sendStatus('L\'application est déjà à jour ! Rechargement...');
+      // Even when up-to-date, always rebuild to ensure dist/index.html matches assets.
+      // A stale dist/index.html with wrong asset hashes causes a black screen.
+      sendStatus('Vérification du build local...');
+      const buildRes2 = await execPromise('cmd /c npm run build', { timeout: 120000 });
+      if (buildRes2.error) {
+        console.warn('Build warning (already up to date):', buildRes2.stderr);
+      }
+      sendStatus('Application à jour ! Rechargement...');
       setTimeout(() => {
         reloadAllWindows();
-      }, 500);
+      }, 800);
       return { success: true };
     }
 
@@ -927,9 +934,9 @@ ipcMain.handle('trigger-update', async () => {
       sendStatus('Dépendances déjà à jour. Build direct...');
     }
 
-    // 5. Build Vite frontend
+    // 5. Build Vite frontend — use cmd /c to bypass PowerShell execution policy on npm.ps1
     sendStatus('Reconstruction de l\'application (npm run build)...');
-    const buildRes = await execPromise('npm run build');
+    const buildRes = await execPromise('cmd /c npm run build', { timeout: 120000 });
     if (buildRes.error) {
       throw new Error(`Erreur lors de la reconstruction: ${buildRes.stderr}`);
     }
