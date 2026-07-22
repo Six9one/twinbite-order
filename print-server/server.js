@@ -1904,9 +1904,20 @@ let haccpQueueProcessing = false;
 const HACCP_DELAY_BETWEEN_TICKETS = 2000; // 2s between each ticket
 const HACCP_RETRY_COUNT = 3;
 const HACCP_RETRY_DELAY = 3000; // 3s between retries
+const processedHACCPJobIds = new Set();
 
 // Add job to HACCP queue
 function enqueueHACCPPrint(job) {
+    if (!job || !job.id) return;
+    if (processedHACCPJobIds.has(job.id)) {
+        return; // Prevent duplicate printing!
+    }
+    processedHACCPJobIds.add(job.id);
+    if (processedHACCPJobIds.size > 2000) {
+        const first = processedHACCPJobIds.values().next().value;
+        processedHACCPJobIds.delete(first);
+    }
+
     haccpQueue.push(job);
     console.log(`📥 HACCP queued: ${job.product_name} (queue size: ${haccpQueue.length})`);
     // Start processing if not already running
@@ -2078,18 +2089,22 @@ async function pollForUnprintedOrders(lookbackMs) {
             }
         }
 
-        // 2. Poll unprinted HACCP jobs from haccp_print_queue
+        // 2. Poll unprinted HACCP jobs from haccp_print_queue (ONLY from last 10 minutes)
+        const haccpSince = new Date(Date.now() - 10 * 60 * 1000).toISOString();
         const { data: haccpJobs, error: haccpError } = await supabase
             .from('haccp_print_queue')
             .select('*')
+            .gte('created_at', haccpSince)
             .or('printed.eq.false,printed.is.null')
             .order('created_at', { ascending: true })
             .limit(20);
 
         if (!haccpError && haccpJobs && haccpJobs.length > 0) {
-            console.log(`🔍 POLL CATCH: Found ${haccpJobs.length} unprinted HACCP job(s)! Enqueuing...`);
             for (const job of haccpJobs) {
-                enqueueHACCPPrint(job);
+                if (!processedHACCPJobIds.has(job.id)) {
+                    console.log(`🔍 POLL CATCH: Found unprinted HACCP job #${job.id} (${job.product_name})! Enqueuing...`);
+                    enqueueHACCPPrint(job);
+                }
             }
         }
     } catch (err) {
