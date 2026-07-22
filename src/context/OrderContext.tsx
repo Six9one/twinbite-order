@@ -121,30 +121,32 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
 
   const addToCart = (item: MenuItem, quantity = 1, customization?: ProductCustomization | SouffletOrder, calculatedPrice?: number) => {
-    const cartItemId = customization 
-      ? `${item.id}-${Date.now()}` 
-      : item.id;
+    setCart(prevCart => {
+      const finalPrice = calculatedPrice ?? calculateItemPrice(item, customization);
+      
+      const existingIndex = prevCart.findIndex(ci => 
+        ci.item.id === item.id && 
+        JSON.stringify(ci.customization || {}) === JSON.stringify(customization || {})
+      );
 
-    const existingItem = cart.find(ci => ci.id === item.id && !customization);
-    
-    // Calculate price if not provided
-    const finalPrice = calculatedPrice ?? calculateItemPrice(item, customization);
-    
-    if (existingItem && !customization) {
-      setCart(cart.map(ci => 
-        ci.id === item.id 
-          ? { ...ci, quantity: ci.quantity + quantity }
-          : ci
-      ));
-    } else {
-      setCart([...cart, { 
-        id: cartItemId, 
-        item, 
-        quantity, 
-        customization,
-        calculatedPrice: finalPrice
-      }]);
-    }
+      if (existingIndex > -1) {
+        const copy = [...prevCart];
+        copy[existingIndex] = {
+          ...copy[existingIndex],
+          quantity: copy[existingIndex].quantity + quantity
+        };
+        return copy;
+      } else {
+        const cartItemId = `${item.id}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        return [...prevCart, { 
+          id: cartItemId, 
+          item, 
+          quantity, 
+          customization,
+          calculatedPrice: finalPrice
+        }];
+      }
+    });
   };
 
   const removeFromCart = (itemId: string) => {

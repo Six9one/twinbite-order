@@ -181,7 +181,10 @@ const ProductTile = memo(function ProductTile({
   compact,
   tint,
   zoom = 100,
-  onCustomize
+  onCustomize,
+  count = 0,
+  onDecrement,
+  onIncrement,
 }: {
   item: any;
   price?: number;
@@ -192,6 +195,9 @@ const ProductTile = memo(function ProductTile({
   tint?: string;
   zoom?: number;
   onCustomize?: (item: any) => void;
+  count?: number;
+  onDecrement?: (item: any) => void;
+  onIncrement?: (item: any) => void;
 }) {
   const [imgError, setImgError] = useState(false);
   const normalizedName = (item.name || '').trim().toLowerCase();
@@ -220,6 +226,12 @@ const ProductTile = memo(function ProductTile({
   return (
     <div
       onClick={() => onClick(item)}
+      onContextMenu={(e) => {
+        if (onDecrement && count > 0) {
+          e.preventDefault();
+          onDecrement(item);
+        }
+      }}
       style={{
         background: cardBg,
         border: `${selected ? 2 : 1}px solid ${borderColor}`,
@@ -238,7 +250,7 @@ const ProductTile = memo(function ProductTile({
       }}
       className={`pizza-card-hover pos-btn-interactive ${selected ? 'selected' : ''}`}
     >
-      {badge && (
+      {badge && !onDecrement && (
         <span style={{
           position: 'absolute',
           top: 4,
@@ -253,7 +265,49 @@ const ProductTile = memo(function ProductTile({
           {badge}
         </span>
       )}
-      {selected && (
+      {count > 0 && onDecrement ? (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            top: 2,
+            right: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            background: '#0f172a',
+            borderRadius: 99,
+            padding: '2px 4px',
+            border: `1.5px solid ${baseTint}`,
+            boxShadow: '0 4px 10px rgba(0,0,0,0.6)',
+            zIndex: 15
+          }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); onDecrement(item); }}
+            style={{
+              background: '#ef4444', color: '#fff', border: 'none', borderRadius: 99,
+              width: Math.max(18, Math.round(20 * scale)), height: Math.max(18, Math.round(20 * scale)),
+              fontSize: 13, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1
+            }}
+            title="Diminuer la quantité (−1)"
+          >
+            −
+          </button>
+          <span style={{ fontSize: Math.max(10, Math.round(11 * scale)), fontWeight: 900, color: '#fff', padding: '0 4px' }}>{count}</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onIncrement ? onIncrement(item) : onClick(item); }}
+            style={{
+              background: '#22c55e', color: '#fff', border: 'none', borderRadius: 99,
+              width: Math.max(18, Math.round(20 * scale)), height: Math.max(18, Math.round(20 * scale)),
+              fontSize: 13, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1
+            }}
+            title="Augmenter la quantité (+1)"
+          >
+            +
+          </button>
+        </div>
+      ) : selected ? (
         <span style={{
           position: 'absolute',
           top: 4,
@@ -272,7 +326,7 @@ const ProductTile = memo(function ProductTile({
         }}>
           ✓
         </span>
-      )}
+      ) : null}
       <div style={{
         width: imgSize,
         height: imgSize,
@@ -366,6 +420,7 @@ const ProductTile = memo(function ProductTile({
          prev.compact === next.compact &&
          prev.badge === next.badge &&
          prev.zoom === next.zoom &&
+         prev.count === next.count &&
          prev.onCustomize === next.onCustomize;
 });
 
@@ -470,6 +525,28 @@ function PizzaPanel({
     return totalMultiCount * basePrice;
   }, [totalMultiCount, basePrice]);
 
+  const handleDecreaseCount = useCallback((item: any) => {
+    const key = `${item._base}-${item.id}`;
+    setMultiSelections(prev => {
+      const existing = prev[key];
+      if (!existing || existing.count <= 1) {
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      }
+      return { ...prev, [key]: { item, count: existing.count - 1 } };
+    });
+  }, []);
+
+  const handleIncreaseCount = useCallback((item: any) => {
+    const key = `${item._base}-${item.id}`;
+    setMultiSelections(prev => {
+      const existing = prev[key];
+      const newCount = (existing?.count || 0) + 1;
+      return { ...prev, [key]: { item, count: newCount } };
+    });
+  }, []);
+
   const handleTileClick = useCallback((item: any) => {
     const key = `${item._base}-${item.id}`;
     if (pizzaSelectMode === 'direct') {
@@ -477,18 +554,15 @@ function PizzaPanel({
       onAdd(
         { id: item.id, name: item.name, price: basePrice, category: 'pizzas', description: '' },
         { size, sizeLabel, base: item._base, supplements: supps, note, isMenuMidi: size === 'menu_midi' || size === 'menu_midi_mega' },
-        singlePrice
+        singlePrice,
+        1
       );
       toast.success(`➕ ${item.name} (${sizeLabel}) ajouté!`, { duration: 1500 });
     } else {
-      setMultiSelections(prev => {
-        const existing = prev[key];
-        const newCount = (existing?.count || 0) + 1;
-        return { ...prev, [key]: { item, count: newCount } };
-      });
+      handleIncreaseCount(item);
       setSel(item);
     }
-  }, [pizzaSelectMode, size, basePrice, supps, note, singlePrice, onAdd]);
+  }, [pizzaSelectMode, size, basePrice, supps, note, singlePrice, onAdd, handleIncreaseCount]);
 
   const handleCustomizeClick = useCallback((item: any) => {
     if (onCustomize) {
@@ -504,18 +578,18 @@ function PizzaPanel({
       onAdd(
         { id: sel.id, name: sel.name, price: basePrice, category: 'pizzas', description: '' },
         { size, sizeLabel, base: sel._base, supplements: supps, note, isMenuMidi: size === 'menu_midi' || size === 'menu_midi_mega' },
-        singlePrice
+        singlePrice,
+        1
       );
       toast.success(`➕ ${sel.name} (${sizeLabel}) ajouté!`);
     } else if (itemsList.length > 0) {
       itemsList.forEach(({ item, count }) => {
-        for (let i = 0; i < count; i++) {
-          onAdd(
-            { id: item.id, name: item.name, price: basePrice, category: 'pizzas', description: '' },
-            { size, sizeLabel, base: item._base, supplements: supps, note, isMenuMidi: size === 'menu_midi' || size === 'menu_midi_mega' },
-            singlePrice
-          );
-        }
+        onAdd(
+          { id: item.id, name: item.name, price: basePrice, category: 'pizzas', description: '' },
+          { size, sizeLabel, base: item._base, supplements: supps, note, isMenuMidi: size === 'menu_midi' || size === 'menu_midi_mega' },
+          singlePrice,
+          count
+        );
       });
       toast.success(`✅ ${totalMultiCount} pizza(s) ajoutées au panier!`);
     }
@@ -639,6 +713,9 @@ function PizzaPanel({
                   price={basePrice}
                   zoom={zoom}
                   badge={count > 0 ? `x${count}` : undefined}
+                  count={count}
+                  onDecrement={handleDecreaseCount}
+                  onIncrement={handleIncreaseCount}
                   selected={count > 0 || (sel?.id === p.id && sel?._base === 'tomate')}
                   onClick={handleTileClick}
                   onCustomize={onCustomize ? handleCustomizeClick : undefined}
@@ -684,6 +761,9 @@ function PizzaPanel({
                   price={basePrice}
                   zoom={zoom}
                   badge={count > 0 ? `x${count}` : undefined}
+                  count={count}
+                  onDecrement={handleDecreaseCount}
+                  onIncrement={handleIncreaseCount}
                   selected={count > 0 || (sel?.id === p.id && sel?._base === 'creme')}
                   onClick={handleTileClick}
                   onCustomize={onCustomize ? handleCustomizeClick : undefined}
@@ -4202,8 +4282,8 @@ function POSContent() {
 
   // Add to cart handler (for all inline panels)
   const { addToCart } = useOrder();
-  const handleAdd = (item: any, customization: any, calculatedPrice: number) => {
-    addToCart(item, 1, customization, calculatedPrice);
+  const handleAdd = (item: any, customization: any, calculatedPrice: number, quantity = 1) => {
+    addToCart(item, quantity, customization, calculatedPrice);
     // No toast on add — the cart on the right already shows it instantly
   };
 
