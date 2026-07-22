@@ -1507,6 +1507,33 @@ function sendToUSBPrinter(data, printerName) {
 }
 
 // Send formatted data to all printers (parallel, queued globally)
+// Send formatted data ONLY to Ethernet kitchen printer(s) (for HACCP & Date Labels)
+async function sendToEthernetPrintersOnly(ticketData, label) {
+    let success = false;
+
+    if (PRINTER_IPS.length > 0) {
+        try {
+            console.log(`🖨️  Printing [${label}] ONLY to Ethernet kitchen printer(s): ${PRINTER_IPS.join(', ')}`);
+            const results = await Promise.allSettled(
+                PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, label))
+            );
+            const ethSuccess = results.some(r => r.status === 'fulfilled' && r.value === true);
+            if (ethSuccess) success = true;
+        } catch (err) {
+            console.error(`❌ Ethernet Printers error for [${label}]: ${err.message}`);
+        }
+    } else {
+        console.warn(`⚠️ No Ethernet PRINTER_IPS configured — skipping Ethernet print for [${label}]`);
+    }
+
+    if (!success) {
+        console.error(`❌ Ethernet print failed for [${label}]. Target IPs: ${PRINTER_IPS.join(', ')}`);
+    }
+
+    return success;
+}
+
+// Send formatted data to all configured printers (for invoices / dual prints)
 async function sendToAllPrinters(ticketData, label) {
     let success = false;
 
@@ -1544,7 +1571,6 @@ async function sendToAllPrinters(ticketData, label) {
 }
 
 // Print order ticket (QUEUED) — dual: cuisine (Ethernet) + caisse (USB)
-// Print order ticket (QUEUED) — dual: cuisine (Ethernet) + caisse (USB)
 async function printWithRetry(order) {
     const label = `Order #${order.order_number}`;
     return enqueuePrintJob(async () => {
@@ -1553,11 +1579,15 @@ async function printWithRetry(order) {
     }, label);
 }
 
-// Print raw pre-formatted data (QUEUED) — for invoices, HACCP, etc.
-async function printRawWithRetry(ticketData, label) {
+// Print raw pre-formatted data (QUEUED) — target defaults to 'ethernet_only' for HACCP & date labels
+async function printRawWithRetry(ticketData, label, target = 'ethernet_only') {
     return enqueuePrintJob(async () => {
-        console.log(`🖨️  Printing [${label}]...`);
-        return sendToAllPrinters(ticketData, label);
+        console.log(`🖨️  Printing [${label}] (target: ${target})...`);
+        if (target === 'ethernet_only') {
+            return sendToEthernetPrintersOnly(ticketData, label);
+        } else {
+            return sendToAllPrinters(ticketData, label);
+        }
     }, label);
 }
 
@@ -2848,7 +2878,7 @@ function setupHttpServer() {
             ticket += ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
             const ticketData = convertToCP1252(ticket);
-            const success = await printRawWithRetry(ticketData, `INVOICE-${invoiceNumber}`);
+            const success = await printRawWithRetry(ticketData, `INVOICE-${invoiceNumber}`, 'all');
 
             if (success) {
                 console.log(`✅ Invoice ${invoiceNumber} printed`);
@@ -2997,7 +3027,7 @@ function setupHttpServer() {
             ticket += ESCPOS.PARTIAL_CUT;
 
             const ticketData = convertToCP1252(ticket);
-            const success = await printRawWithRetry(ticketData, `INVOICE-${invoiceNumber}`);
+            const success = await printRawWithRetry(ticketData, `INVOICE-${invoiceNumber}`, 'all');
 
             if (success) {
                 console.log(`✅ Invoice ${invoiceNumber} printed successfully`);
@@ -3130,7 +3160,7 @@ function setupHttpServer() {
             t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
 
             const ticketData = convertToCP1252(t);
-            const success = await printRawWithRetry(ticketData, `FACTURE-${invoiceNumber}`);
+            const success = await printRawWithRetry(ticketData, `FACTURE-${invoiceNumber}`, 'all');
 
             if (success) {
                 console.log(`✅ Invoice ${invoiceNumber} printed`);
