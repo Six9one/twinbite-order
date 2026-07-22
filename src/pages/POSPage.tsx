@@ -8,6 +8,7 @@ import { usePizzasByBase } from '@/hooks/useProducts';
 import { PizzaIngredientCustomizer, PizzaExtra } from '@/components/wizards/PizzaIngredientCustomizer';
 import { useMeatOptions, useSauceOptions, useSupplementOptions, useGarnitureOptions, useCruditesOptions } from '@/hooks/useCustomizationOptions';
 import { useSandwichTypes } from '@/hooks/useSandwiches';
+import { useProductSizePrices } from '@/hooks/useProductSizePrices';
 import { calculateTVA, applyPizzaPromotions } from '@/utils/promotions';
 import { pizzaPrices, cheeseSupplementOptions, menuOptionPrices } from '@/data/menu';
 import { wizardSizePrices, supplementPrices } from '@/data/pricing';
@@ -816,7 +817,19 @@ function SectionTitle({ children, hint }: { children:React.ReactNode; hint?:stri
 function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item:any,custom:any,price:number)=>void }) {
   const type = WIZARD_MAP[categorySlug] || 'soufflet';
   const cfg = WIZ_CFG[type];
-  const sizes = (wizardSizePrices as any)[type] as { id:string; label:string; maxMeats:number; price:number }[];
+  const { data: dbSizePrices = [] } = useProductSizePrices(type);
+  const fallbackSizes = (wizardSizePrices as any)[type] as { id:string; label:string; maxMeats:number; price:number }[];
+  const sizes = useMemo(() => {
+    if (dbSizePrices && dbSizePrices.length > 0) {
+      return dbSizePrices.map(s => ({
+        id: s.size_id,
+        label: s.size_label,
+        maxMeats: s.max_meats,
+        price: Number(s.price)
+      }));
+    }
+    return fallbackSizes;
+  }, [dbSizePrices, fallbackSizes]);
   const maxMeats = cfg.maxMeats;
   const hasGarniture = cfg.garniture;
   const isCrudite = cfg.crudite;
