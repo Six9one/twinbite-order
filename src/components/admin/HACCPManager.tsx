@@ -590,10 +590,6 @@ export function HACCPManager() {
                 action_label: 'Préparé le',
             }));
 
-            const { error } = await supabase
-                .from('haccp_print_queue' as any)
-                .insert(rows as any);
-
             let printSuccess = false;
             for (const row of rows) {
                 const ok = await printHACCPDirect({
@@ -610,7 +606,7 @@ export function HACCPManager() {
                 if (ok) printSuccess = true;
             }
 
-            if (!printSuccess || error) {
+            if (!printSuccess) {
                 printBatchIngredientLabelsBrowser(rows);
                 toast.info(`🖨️ ${INGREDIENT_LABELS.length} étiquettes envoyées à l'impression navigateur`);
             } else {
