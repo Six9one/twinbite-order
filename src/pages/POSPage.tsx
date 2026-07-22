@@ -1128,8 +1128,8 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
   );
 }
 
-// ── TexMex panel — Snacks (dégressif) + Frites (fixe) + Croques (fixe) ───────
-interface TxProduct { id:string; name:string; unit_price:number; image_url:string|null; category?:'snack'|'frites'|'croque'; }
+// ── TexMex panel — Snacks (dégressif) + Menu Enfant + Frites + Croques ────────
+interface TxProduct { id:string; name:string; unit_price:number; image_url:string|null; category?:'snack'|'frites'|'croque'|'menu_enfant'; }
 
 const TX_SNACKS:TxProduct[] = [
   { id:'wings',      name:'Wings',        unit_price:1.40, image_url:null, category:'snack'  },
@@ -1139,12 +1139,15 @@ const TX_SNACKS:TxProduct[] = [
   { id:'jalapenos',  name:'Jalapeños',    unit_price:1.20, image_url:null, category:'snack'  },
   { id:'onionrings', name:'Onion Rings',  unit_price:1.20, image_url:null, category:'snack'  },
 ];
+const TX_MENUS:TxProduct[] = [
+  { id:'menu-enfant-tx', name:'Menu Enfant', unit_price:6.50, image_url:null, category:'menu_enfant' },
+];
 const TX_FRITES:TxProduct[] = [
-  { id:'petite-barquette', name:'Petite Barquette', unit_price:2.50, image_url:null, category:'frites' },
-  { id:'grande-barquette', name:'Grande Barquette', unit_price:4.00, image_url:null, category:'frites' },
+  { id:'petite-barquette', name:'Petite Barquette', unit_price:3.00, image_url:null, category:'frites' },
+  { id:'grande-barquette', name:'Grande Barquette', unit_price:5.00, image_url:null, category:'frites' },
 ];
 const TX_CROQUES:TxProduct[] = [
-  { id:'croque-monsieur', name:'Croque Monsieur', unit_price:4.50, image_url:null, category:'croque' },
+  { id:'croque-monsieur', name:'Croque Monsieur', unit_price:3.00, image_url:null, category:'croque' },
   { id:'croque-madame',   name:'Croque Madame',   unit_price:5.00, image_url:null, category:'croque' },
 ];
 
@@ -1169,14 +1172,16 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
       supabase.from('texmex_products' as any).select('*').eq('is_active',true).order('display_order')
         .then(({ data, error }) => {
           if (error || !data || !(data as any[]).length) {
-            setProducts([...TX_SNACKS,...TX_FRITES,...TX_CROQUES]); return;
+            setProducts([...TX_SNACKS,...TX_MENUS,...TX_FRITES,...TX_CROQUES]); return;
           }
           const raw = data as unknown as TxProduct[];
           const hasSnack  = raw.some(p=>(p.category??'snack')==='snack');
+          const hasMenu   = raw.some(p=>p.category==='menu_enfant');
           const hasFrites = raw.some(p=>p.category==='frites');
           const hasCroque = raw.some(p=>p.category==='croque');
           setProducts([
             ...(hasSnack  ? raw.filter(p=>(p.category??'snack')==='snack') : TX_SNACKS),
+            ...(hasMenu   ? raw.filter(p=>p.category==='menu_enfant')       : TX_MENUS),
             ...(hasFrites ? raw.filter(p=>p.category==='frites')           : TX_FRITES),
             ...(hasCroque ? raw.filter(p=>p.category==='croque')           : TX_CROQUES),
           ]);
@@ -1188,6 +1193,7 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
     setQtys(prev => { const n = Math.max(0,(prev[id]||0)+delta); const next={...prev}; if(n===0) delete next[id]; else next[id]=n; return next; });
 
   const snacks  = products.filter(p=>(p.category??'snack')==='snack');
+  const menus   = products.filter(p=>p.category==='menu_enfant');
   const frites  = products.filter(p=>p.category==='frites');
   const croques = products.filter(p=>p.category==='croque');
 
@@ -1195,7 +1201,7 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
     let qA=0,qB=0,fixed=0;
     Object.entries(qtys).forEach(([id,qty])=>{
       const p = products.find(x=>x.id===id); if(!p||qty<=0) return;
-      if(p.category==='frites'||p.category==='croque') fixed += p.unit_price*qty;
+      if(p.category==='frites'||p.category==='croque'||p.category==='menu_enfant') fixed += p.unit_price*qty;
       else { const g = txGroupOf(p.name); if(g==='A') qA+=qty; else qB+=qty; }
     });
     return txGroupPrice(qA,'A')+txGroupPrice(qB,'B')+fixed;
@@ -1216,15 +1222,16 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
     setQtys({});
   };
 
-  const catEmoji = (cat?:string) => cat==='frites' ? '🍟' : cat==='croque' ? '🥪' : '🌶️';
-  const catGrad  = (cat?:string) => cat==='frites' ? 'linear-gradient(135deg,#f59e0b,#d97706)'
+  const catEmoji = (cat?:string) => cat==='menu_enfant' ? '👶' : cat==='frites' ? '🍟' : cat==='croque' ? '🥪' : '🌶️';
+  const catGrad  = (cat?:string) => cat==='menu_enfant' ? 'linear-gradient(135deg,#8b5cf6,#6366f1)'
+    : cat==='frites' ? 'linear-gradient(135deg,#f59e0b,#d97706)'
     : cat==='croque' ? 'linear-gradient(135deg,#a16207,#78350f)'
     : 'linear-gradient(135deg,#ef4444,#f97316)';
 
   // Single image tile
   const TxTile = ({ p }:{ p:TxProduct }) => {
     const q = qtys[p.id]||0;
-    const isFixed = p.category==='frites'||p.category==='croque';
+    const isFixed = p.category==='frites'||p.category==='croque'||p.category==='menu_enfant';
     return (
       <div style={{
         display:'flex', flexDirection:'column', borderRadius:10,
@@ -1234,7 +1241,7 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
         transition:'border-color 0.15s, background 0.15s',
       }}>
         {/* Image area — 4:3 ratio */}
-        <div style={{ position:'relative', width:'100%', paddingTop:'75%', overflow:'hidden', flexShrink:0 }}>
+        <div style={{ position:'relative', width:'100%', paddingTop:'60%', overflow:'hidden', flexShrink:0 }}>
           {p.image_url ? (
             <img src={p.image_url} alt={p.name} style={{
               position:'absolute', top:0, left:0, width:'100%', height:'100%', objectFit:'cover',
@@ -1243,7 +1250,7 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
             <div style={{
               position:'absolute', top:0, left:0, width:'100%', height:'100%',
               background: catGrad(p.category),
-              display:'flex', alignItems:'center', justifyContent:'center', fontSize:28,
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:24,
             }}>{catEmoji(p.category)}</div>
           )}
           {/* Qty badge */}
@@ -1252,13 +1259,13 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
               position:'absolute', top:4, right:4,
               background:'#f59e0b', color:'#000', borderRadius:'50%',
               width:20, height:20, display:'flex', alignItems:'center', justifyContent:'center',
-              fontSize:11, fontWeight:900, lineHeight:1,
+              fontSize:11, fontWeight:900, lineHeight:1, boxShadow:'0 2px 4px rgba(0,0,0,0.4)'
             }}>{q}</div>
           )}
         </div>
         {/* Name + price */}
-        <div style={{ padding:'4px 5px 3px', flex:1 }}>
-          <div style={{ fontSize:10, fontWeight:800, color:S.text, lineHeight:1.25, marginBottom:1, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{p.name}</div>
+        <div style={{ padding:'4px 5px 3px', flex:1, display:'flex', flexDirection:'column', justifyContent:'center' }}>
+          <div style={{ fontSize:10, fontWeight:800, color:S.text, lineHeight:1.2, marginBottom:1, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{p.name}</div>
           <div style={{ fontSize:9, color:S.accent, fontWeight:600 }}>
             {isFixed ? `${p.unit_price.toFixed(2)}€` : `${p.unit_price.toFixed(2)}€/p.`}
           </div>
@@ -1270,40 +1277,107 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
             disabled={q===0}
             style={{ flex:1, padding:'4px 0', border:'none', background:'transparent',
               color: q ? '#ef4444' : '#374151', cursor: q ? 'pointer' : 'not-allowed',
-              fontSize:15, fontWeight:900, borderRight:`1px solid ${S.border}`,
+              fontSize:14, fontWeight:900, borderRight:`1px solid ${S.border}`,
             }}>−</button>
           <button
             onClick={(e)=>{ e.stopPropagation(); change(p.id,+1); }}
             style={{ flex:1, padding:'4px 0', border:'none', background:'transparent',
-              color:'#22c55e', cursor:'pointer', fontSize:15, fontWeight:900,
+              color:'#22c55e', cursor:'pointer', fontSize:14, fontWeight:900,
             }}>+</button>
         </div>
       </div>
     );
   };
 
-  // Section label spanning full grid width + tiles
-  const renderSection = (emoji:string, title:string, items:TxProduct[]) => items.length===0 ? null : (
-    <>
-      <div style={{
-        gridColumn:'1 / -1', fontSize:10, fontWeight:900, color:S.accent,
-        textTransform:'uppercase', letterSpacing:1.2, marginTop:4,
-      }}>{emoji} {title}</div>
-      {items.map(p=><TxTile key={p.id} p={p} />)}
-    </>
-  );
-
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
-      <div style={{ flex:1, overflow:'auto', padding:'6px 8px' }}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:5 }}>
-          {renderSection('🌶️','Snacks', snacks)}
-          {renderSection('🍟','Frites', frites)}
-          {renderSection('🥪','Croques',croques)}
+      {/* 2-Column Balanced Layout */}
+      <div style={{ flex:1, overflow:'auto', padding:'10px 12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+        
+        {/* Left Column: Snacks / Viandes */}
+        <div style={{ display:'flex', flexDirection:'column', minHeight:0 }}>
+          <div style={{
+            display:'flex', alignItems:'center', gap:6,
+            fontSize:11, fontWeight:800, color:'#ef4444',
+            textTransform:'uppercase', letterSpacing:'0.05em',
+            marginBottom:8, padding:'3px 8px',
+            borderLeft:'3px solid #ef4444',
+            background:'rgba(239, 68, 68, 0.06)', borderRadius:4
+          }}>
+            <span>🌶️ Snacks / Viandes</span>
+            <span style={{ fontSize:9, color:S.muted, fontWeight:500, marginLeft:'auto' }}>Prix Dégressifs</span>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(105px, 1fr))', gap:7 }}>
+            {snacks.map(p=><TxTile key={p.id} p={p} />)}
+          </div>
         </div>
+
+        {/* Right Column: Menu Enfant + Frites + Croques */}
+        <div style={{ display:'flex', flexDirection:'column', gap:12, minHeight:0 }}>
+          
+          {/* Menu Enfant Section */}
+          {menus.length > 0 && (
+            <div>
+              <div style={{
+                display:'flex', alignItems:'center', gap:6,
+                fontSize:11, fontWeight:800, color:'#a855f7',
+                textTransform:'uppercase', letterSpacing:'0.05em',
+                marginBottom:6, padding:'3px 8px',
+                borderLeft:'3px solid #a855f7',
+                background:'rgba(168, 85, 247, 0.06)', borderRadius:4
+              }}>
+                <span>👶 Menu Enfant</span>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(105px, 1fr))', gap:7 }}>
+                {menus.map(p=><TxTile key={p.id} p={p} />)}
+              </div>
+            </div>
+          )}
+
+          {/* Frites Section */}
+          {frites.length > 0 && (
+            <div>
+              <div style={{
+                display:'flex', alignItems:'center', gap:6,
+                fontSize:11, fontWeight:800, color:'#f59e0b',
+                textTransform:'uppercase', letterSpacing:'0.05em',
+                marginBottom:6, padding:'3px 8px',
+                borderLeft:'3px solid #f59e0b',
+                background:'rgba(245, 158, 11, 0.06)', borderRadius:4
+              }}>
+                <span>🍟 Frites</span>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:7 }}>
+                {frites.map(p=><TxTile key={p.id} p={p} />)}
+              </div>
+            </div>
+          )}
+
+          {/* Croques Section */}
+          {croques.length > 0 && (
+            <div>
+              <div style={{
+                display:'flex', alignItems:'center', gap:6,
+                fontSize:11, fontWeight:800, color:'#eab308',
+                textTransform:'uppercase', letterSpacing:'0.05em',
+                marginBottom:6, padding:'3px 8px',
+                borderLeft:'3px solid #eab308',
+                background:'rgba(234, 179, 8, 0.06)', borderRadius:4
+              }}>
+                <span>🥪 Croques</span>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:7 }}>
+                {croques.map(p=><TxTile key={p.id} p={p} />)}
+              </div>
+            </div>
+          )}
+
+        </div>
+
       </div>
+
       {/* Dégressif info + Add button */}
-      <div style={{ padding:'7px 8px', borderTop:`1px solid ${S.border}`, background:S.panel, flexShrink:0 }}>
+      <div style={{ padding:'7px 12px', borderTop:`1px solid ${S.border}`, background:S.panel, flexShrink:0 }}>
         {hasItems && (
           <div style={{ fontSize:9, color:S.muted, marginBottom:4, textAlign:'center' }}>
             Snacks: A (Wings/Tenders/Nuggets) 1.40€ · 5=7€ · 10=13€ &nbsp;|&nbsp; B (autres) 1.20€ · 5=6€ · 10=10€
@@ -1312,7 +1386,9 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
         <button onClick={handleAdd} disabled={!hasItems} style={{
           width:'100%', padding:'10px', borderRadius:9, border:'none',
           background:hasItems?'linear-gradient(135deg,#f59e0b,#ef4444)':'#1f2937',
-          color:hasItems?'#000':'#374151', fontSize:14, fontWeight:800, cursor:hasItems?'pointer':'not-allowed',
+          color:hasItems?'#000':'#4b5563', fontSize:13, fontWeight:900, cursor:hasItems?'pointer':'not-allowed',
+          transition:'all 0.15s ease',
+          boxShadow:hasItems?'0 4px 12px rgba(245, 158, 11, 0.3)':'none',
         }}>➕ Ajouter au panier — {total.toFixed(2)}€</button>
       </div>
     </div>
