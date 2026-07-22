@@ -4079,44 +4079,30 @@ function POSContent() {
       const dateStr = now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       const dlcStr = dlcDate.toLocaleDateString('fr-FR') + ' ' + dlcDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-      const rows = INGREDIENT_LABELS.map(name => ({
-        product_name: name,
-        category_name: 'ETIQUETTE_INGREDIENT',
-        category_color: '#16a34a',
-        action_date: dateStr,
-        dlc_date: dlcStr,
-        storage_temp: '0°C à +3°C',
-        operator: 'Staff POS',
-        dlc_hours: 72,
-        action_label: 'Préparé le',
-      }));
-
-      await supabase.from('haccp_print_queue' as any).insert(rows as any);
-
       let printSuccess = false;
-      for (const row of rows) {
+      for (const name of INGREDIENT_LABELS) {
         const ok = await printDateLabel({
-          productName: row.product_name,
-          madeDate: row.action_date,
-          useByDate: row.dlc_date,
+          productName: name,
+          madeDate: dateStr,
+          useByDate: dlcStr,
           actionType: 'fait',
-          operator: row.operator,
+          operator: 'Staff POS',
           copies: 1,
         });
         if (ok) printSuccess = true;
       }
 
       if (!printSuccess) {
-        const labelsHtml = rows.map(item => `
+        const labelsHtml = INGREDIENT_LABELS.map(name => `
           <div style="padding:4mm 2mm;margin-bottom:4mm;border-bottom:2px dashed #000;text-align:center;">
             <div style="font-weight:bold;font-size:16px;">TWIN PIZZA</div>
             <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
-            <div style="font-size:22px;font-weight:bold;margin:6px 0;">${item.product_name}</div>
+            <div style="font-size:22px;font-weight:bold;margin:6px 0;">${name}</div>
             <div style="border-bottom:1.5px dashed #000;margin:6px 0;"></div>
-            <div style="font-size:14px;font-weight:bold;text-align:left;">Préparé le: ${item.action_date}</div>
-            <div style="font-size:17px;font-weight:bold;border:2px solid #000;padding:4px;margin:6px 0;">À CONSOMMER AVANT LE:<br/>${item.dlc_date}</div>
+            <div style="font-size:14px;font-weight:bold;text-align:left;">Préparé le: ${dateStr}</div>
+            <div style="font-size:17px;font-weight:bold;border:2px solid #000;padding:4px;margin:6px 0;">À CONSOMMER AVANT LE:<br/>${dlcStr}</div>
             <div style="font-size:11px;font-weight:bold;">NE PAS DÉPASSER 3 JOURS</div>
-            <div style="font-size:11px;margin-top:4px;">Par: ${item.operator}</div>
+            <div style="font-size:11px;margin-top:4px;">Par: Staff POS</div>
           </div>
         `).join('');
 

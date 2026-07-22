@@ -26,7 +26,7 @@ async function sendDirectHTTPHACCP(payload: Record<string, any>): Promise<boolea
     return false;
 }
 
-// Print HACCP ticket by adding to print queue + direct HTTP fast path
+// Print HACCP ticket by direct HTTP fast path, or fallback to Supabase queue if server is remote/cloud
 export async function printHACCPDirect(data: {
     productName: string;
     categoryName: string;
@@ -38,7 +38,11 @@ export async function printHACCPDirect(data: {
     dlcHours: number;
     actionLabel: string;
 }): Promise<boolean> {
-    let queued = false;
+    // 1. Direct local HTTP fast-path (prevents double-printing)
+    const httpSuccess = await sendDirectHTTPHACCP(data);
+    if (httpSuccess) return true;
+
+    // 2. Fallback to Supabase queue for remote/cloud client
     try {
         const { error } = await supabase
             .from('haccp_print_queue' as any)
@@ -54,14 +58,11 @@ export async function printHACCPDirect(data: {
                 action_label: data.actionLabel,
             } as any);
 
-        if (!error) queued = true;
-        else console.error('Failed to queue HACCP print:', error);
+        return !error;
     } catch (error) {
         console.error('Failed to queue HACCP print:', error);
+        return false;
     }
-
-    const httpSuccess = await sendDirectHTTPHACCP(data);
-    return queued || httpSuccess;
 }
 
 // Print Freezer/Congélation ticket
@@ -75,36 +76,7 @@ export async function printFreezerLabel(data: {
     expiryDate: string;
     operator: string;
 }): Promise<boolean> {
-    let queued = false;
-    try {
-        const { error } = await supabase
-            .from('haccp_print_queue' as any)
-            .insert({
-                product_name: data.productName,
-                category_name: 'Congélation',
-                category_color: '#3b82f6', // blue
-                action_date: data.frozenDate,
-                dlc_date: data.expiryDate,
-                storage_temp: '-18°C',
-                operator: data.operator,
-                dlc_hours: 2160, // 90 days = 3 months
-                action_label: 'Mise en congélation',
-                notes: JSON.stringify({
-                    type: 'freezer',
-                    originalDlc: data.originalDlc,
-                    lotNumber: data.lotNumber,
-                    weight: data.weight,
-                    origin: data.origin,
-                }),
-            } as any);
-
-        if (!error) queued = true;
-        else console.error('Failed to queue freezer label print:', error);
-    } catch (error) {
-        console.error('Failed to queue freezer label print:', error);
-    }
-
-    const httpSuccess = await sendDirectHTTPHACCP({
+    const payload = {
         productName: data.productName,
         categoryName: 'Congélation',
         actionDate: data.frozenDate,
@@ -116,9 +88,34 @@ export async function printFreezerLabel(data: {
             weight: data.weight,
             origin: data.origin,
         }),
-    });
+    };
 
-    return queued || httpSuccess;
+    // 1. Direct local HTTP fast-path
+    const httpSuccess = await sendDirectHTTPHACCP(payload);
+    if (httpSuccess) return true;
+
+    // 2. Fallback to Supabase queue
+    try {
+        const { error } = await supabase
+            .from('haccp_print_queue' as any)
+            .insert({
+                product_name: data.productName,
+                category_name: 'Congélation',
+                category_color: '#3b82f6',
+                action_date: data.frozenDate,
+                dlc_date: data.expiryDate,
+                storage_temp: '-18°C',
+                operator: data.operator,
+                dlc_hours: 2160,
+                action_label: 'Mise en congélation',
+                notes: payload.notes,
+            } as any);
+
+        return !error;
+    } catch (error) {
+        console.error('Failed to queue freezer label print:', error);
+        return false;
+    }
 }
 
 // Print a simple date label ("Fait le / À consommer avant le")
@@ -130,9 +127,24 @@ export async function printDateLabel(data: {
     operator: string;
     copies: number;
 }): Promise<boolean> {
-    let queued = false;
+    let httpSuccess = false;
+    for (let i = 0; i < (data.copies || 1); i++) {
+        const ok = await sendDirectHTTPHACCP({
+            productName: data.productName,
+            categoryName: 'ETIQUETTE_DATE',
+            actionDate: data.madeDate,
+            dlcDate: data.useByDate || data.madeDate,
+            actionLabel: data.actionType === 'fait' ? 'Fait le' : 'Ouvert le',
+            operator: data.operator,
+        });
+        if (ok) httpSuccess = true;
+    }
+
+    if (httpSuccess) return true;
+
+    // Fallback to Supabase queue only if HTTP fast-path failed
     try {
-        const rows = Array.from({ length: data.copies }, () => ({
+        const rows = Array.from({ length: data.copies || 1 }, () => ({
             product_name: data.productName,
             category_name: 'ETIQUETTE_DATE',
             category_color: '#f59e0b',
@@ -148,24 +160,9 @@ export async function printDateLabel(data: {
             .from('haccp_print_queue' as any)
             .insert(rows as any);
 
-        if (!error) queued = true;
-        else console.error('Failed to queue date label print:', error);
+        return !error;
     } catch (error) {
         console.error('Failed to queue date label print:', error);
+        return false;
     }
-
-    let httpSuccess = false;
-    for (let i = 0; i < data.copies; i++) {
-        const ok = await sendDirectHTTPHACCP({
-            productName: data.productName,
-            categoryName: 'ETIQUETTE_DATE',
-            actionDate: data.madeDate,
-            dlcDate: data.useByDate || data.madeDate,
-            actionLabel: data.actionType === 'fait' ? 'Fait le' : 'Ouvert le',
-            operator: data.operator,
-        });
-        if (ok) httpSuccess = true;
-    }
-
-    return queued || httpSuccess;
 }
