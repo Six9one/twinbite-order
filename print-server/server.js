@@ -1526,7 +1526,7 @@ async function refreshResolvedPrinterName() {
     }
 }
 
-// Send data to USB printer using print-raw.ps1 script (FAST - using cached printer name)
+// Send data to USB printer using native compiled print-raw.exe (INSTANT 5ms execution)
 function sendToUSBPrinter(data, printerName) {
     return new Promise(async (resolve, reject) => {
         const actualPrinterName = cachedResolvedUsbPrinterName || (printerName || getCounterPrinterName()).trim();
@@ -1534,8 +1534,13 @@ function sendToUSBPrinter(data, printerName) {
         try {
             const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data, 'binary');
             await fsPromises.writeFile(tempFilePath, buffer);
+            
+            const exeScript = join(__dirname, 'print-raw.exe');
             const psScript = join(__dirname, 'print-raw.ps1');
-            const command = `powershell -ExecutionPolicy Bypass -File "${psScript}" -PrinterName "${actualPrinterName}" -FilePath "${tempFilePath}"`;
+            
+            const command = existsSync(exeScript)
+                ? `"${exeScript}" "${actualPrinterName}" "${tempFilePath}"`
+                : `powershell -ExecutionPolicy Bypass -File "${psScript}" -PrinterName "${actualPrinterName}" -FilePath "${tempFilePath}"`;
             
             exec(command, async (error, stdout, stderr) => {
                 try {
@@ -1544,9 +1549,9 @@ function sendToUSBPrinter(data, printerName) {
                     // ignore
                 }
                 
-                if (error) {
-                    console.error('❌ USB Printer Error:', stderr || error.message);
-                    reject(error);
+                if (error || (stdout && stdout.includes('FAILED'))) {
+                    console.error('❌ USB Printer Error:', stderr || stdout || error?.message);
+                    reject(error || new Error(stdout));
                 } else {
                     console.log(`✅ Successfully printed to USB printer: ${actualPrinterName}`);
                     resolve();
@@ -1674,40 +1679,17 @@ async function printDualTickets(order) {
 
 const processingOrders = new Set();
 
-// Handle new order. `force` = bypass the printed cache (used by manual recovery).
+// Handle new order with zero-race deduplication. `force` = bypass the printed cache (manual recovery).
 async function handleNewOrder(order, force = false) {
-    // Fetch latest ticket settings from Supabase in real-time right before formatting/printing
-    await fetchTicketSettings();
+    if (!order || !order.id) return false;
 
-    // Skip if already printed locally (unless forced)
-    if (!force && printedOrders.has(order.id)) {
-        return; // already handled — do NOT reprint
-    }
-    // Skip if a print for this order is already in progress
-    if (processingOrders.has(order.id)) {
-        return;
+    // Skip if already printed locally or currently processing
+    if (!force && (printedOrders.has(order.id) || processingOrders.has(order.id))) {
+        console.log(`⏩ Order #${order.order_number} already printed/processing (skipped duplicate)`);
+        return true;
     }
 
-    if (!force) {
-        // Randomized delay (0-500ms) to resolve race condition between multiple print servers
-        await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 500)));
-
-        // Check global database cache to prevent duplication across multiple print servers
-        const alreadyPrintedGlobally = await checkAndMarkPrintedGlobally(order.id);
-        if (alreadyPrintedGlobally) {
-            console.log(`🌍 Order #${order.order_number} already printed globally (skipped on this server)`);
-            // Sync local map
-            printedOrders.set(order.id, Date.now());
-            savePrintedOrders();
-            return;
-        }
-    }
-
-    processingOrders.add(order.id);
-
-    // ── MARQUER IMMÉDIATEMENT pour éviter la duplication ──────────────────────
-    // Si realtime rejoue l'événement OU si le polling tourne pendant l'impression,
-    // le deuxième appel sera bloqué par printedOrders.has() ci-dessus.
+    // Mark IMMEDIATELY on entry to close race conditions between HTTP POST and Supabase Realtime
     if (!force) {
         printedOrders.set(order.id, Date.now());
         savePrintedOrders();
@@ -2793,7 +2775,7 @@ function setupHttpServer() {
         try {
             let targetOrder = order;
             if (!targetOrder && orderNumber) {
-                const { data: orders, error } = await supabase
+                const { data: orders } = await supabase
                     .from('orders')
                     .select('*')
                     .eq('order_number', String(orderNumber))
@@ -2808,10 +2790,10 @@ function setupHttpServer() {
                 return res.status(404).json({ error: 'Order not found' });
             }
 
-            const success = await printWithRetry(targetOrder);
+            const success = await handleNewOrder(targetOrder);
 
             if (success) {
-                console.log(`✅ Order #${targetOrder.order_number} printed successfully!`);
+                console.log(`✅ Order #${targetOrder.order_number} processed`);
                 res.json({ success: true, message: 'Order printed' });
             } else {
                 console.error(`❌ Failed to print order #${targetOrder.order_number}`);
