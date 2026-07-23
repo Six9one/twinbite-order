@@ -26,6 +26,10 @@ const PRINTER_IPS = (process.env.PRINTER_IPS || process.env.PRINTER_IP || '').sp
 const PRINTER_PORT = parseInt(process.env.PRINTER_PORT || '9100', 10);
 // Star TSP100 USB (PC restaurant / caisse) — ticket client avec prix
 let COUNTER_PRINTER_NAME = (process.env.COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME || '').trim();
+function getCounterPrinterName() {
+    return (COUNTER_PRINTER_NAME || process.env.COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME || 'Star TSP100 Cutter (TSP143)').trim();
+}
+
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 250;
 const SETTINGS_REFRESH_INTERVAL = 60000;
