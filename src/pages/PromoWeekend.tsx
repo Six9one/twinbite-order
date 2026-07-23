@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useOrder } from '@/context/OrderContext';
 import { MenuItem } from '@/types/order';
 import { pizzasTomate, pizzasCreme } from '@/data/menu';
@@ -11,9 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { 
-  Pizza, 
   Check, 
-  ShoppingBag, 
   Phone, 
   ArrowLeft, 
   Trash2, 
@@ -26,14 +24,57 @@ import {
   MapPin,
   X,
   PartyPopper,
-  Clock,
   Flame,
   Wine,
   ChevronRight,
   ShieldCheck,
-  PhoneCall
+  SlidersHorizontal,
+  Info,
+  Search,
+  ShoppingCart
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+
+// ─── High Quality Pizza Image Fallbacks ───
+const LOCAL_PIZZA_IMAGES: Record<string, string> = {
+  'margherita': 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=500&q=80',
+  'végétarienne': 'https://images.unsplash.com/photo-1571066811602-71683a3f680d?w=500&q=80',
+  'fruits de mer': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=500&q=80',
+  'mexicaine': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=500&q=80',
+  '4 saisons': 'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=500&q=80',
+  'reine': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80',
+  'orientale': 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=500&q=80',
+  'campione': 'https://images.unsplash.com/photo-1590947132387-155cc02f3212?w=500&q=80',
+  '4 fromages': 'https://images.unsplash.com/photo-1573821663912-569905455b1c?w=500&q=80',
+  'calzone': 'https://images.unsplash.com/photo-1544982503-9f984c14501a?w=500&q=80',
+  'savoyarde': 'https://images.unsplash.com/photo-1595708684082-a173bb3a06c5?w=500&q=80',
+  'pêcheur': 'https://images.unsplash.com/photo-1534080391025-097d02b173e9?w=500&q=80',
+  'pimento': 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?w=500&q=80',
+  'royale': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80',
+  '3 jambons': 'https://images.unsplash.com/photo-1555072956-7758afb20a8f?w=500&q=80',
+  'twinizienne': 'https://images.unsplash.com/photo-1595854341625-f33ee10dbf94?w=500&q=80',
+  'tartiflette': 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?w=500&q=80',
+  'kebab': 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=500&q=80',
+  'norvégienne': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80',
+  'buffalo': 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=500&q=80',
+  'raclette': 'https://images.unsplash.com/photo-1544025162-d76694265947?w=500&q=80',
+  'antillaise': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=500&q=80',
+  'chèvre miel': 'https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=500&q=80',
+  'farmer': 'https://images.unsplash.com/photo-1588315029754-2dd089d39a1a?w=500&q=80',
+  'charcutière': 'https://images.unsplash.com/photo-1555072956-7758afb20a8f?w=500&q=80',
+  'boursin': 'https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?w=500&q=80',
+  'biggy': 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=500&q=80',
+  'cheezy': 'https://images.unsplash.com/photo-1548369937-2751babf242d?w=500&q=80',
+  'chicken': 'https://images.unsplash.com/photo-1562967914-6c8273b89a3e?w=500&q=80',
+  'indienne': 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500&q=80',
+  'la hawaïe': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&q=80',
+};
+
+function getPizzaImage(name: string, defaultUrl?: string): string {
+  if (defaultUrl && defaultUrl.startsWith('http')) return defaultUrl;
+  const key = name.toLowerCase().trim();
+  return LOCAL_PIZZA_IMAGES[key] || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80';
+}
 
 // ─── Available Free Drink Choices ───
 const FREE_DRINKS = [
@@ -48,10 +89,25 @@ const FREE_DRINKS = [
   { id: 'perrier-33', name: 'Perrier 33cl', icon: '🫧' }
 ];
 
+// ─── Custom Extra Options ───
+const EXTRA_OPTIONS = [
+  { id: 'ex-mozza', name: 'Supplément Mozzarella', price: 1.5 },
+  { id: 'ex-chevre', name: 'Supplément Chèvre', price: 1.5 },
+  { id: 'ex-reblochon', name: 'Supplément Reblochon', price: 1.5 },
+  { id: 'ex-poulet', name: 'Supplément Poulet', price: 2.0 },
+  { id: 'ex-viande', name: 'Supplément Viande Hachée', price: 2.0 },
+  { id: 'ex-merguez', name: 'Supplément Merguez', price: 2.0 },
+  { id: 'ex-harissa', name: 'Sauce Harissa', price: 0.5 },
+  { id: 'ex-barbecue', name: 'Sauce Barbecue', price: 0.5 }
+];
+
 // ─── Pizza Item in Selection ───
 interface PizzaOfferItem {
   pizza: MenuItem;
   note: string;
+  base: 'tomate' | 'creme';
+  removedIngredients: string[];
+  addedExtras: { name: string; price: number }[];
   drinks: string[]; // Needs exactly 2 drinks per pizza
 }
 
@@ -77,6 +133,13 @@ export default function PromoWeekend() {
   const [activeBase, setActiveBase] = useState<'tomate' | 'creme'>('tomate');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPizzas, setSelectedPizzas] = useState<PizzaOfferItem[]>([]);
+
+  // Customization Modal State
+  const [customizingPizza, setCustomizingPizza] = useState<MenuItem | null>(null);
+  const [customBase, setCustomBase] = useState<'tomate' | 'creme'>('tomate');
+  const [customNote, setCustomNote] = useState('');
+  const [customRemoved, setCustomRemoved] = useState<string[]>([]);
+  const [customExtras, setCustomExtras] = useState<{ name: string; price: number }[]>([]);
 
   // DB Pizzas query
   const { data: dbPizzasTomate } = usePizzasByBase('tomate');
@@ -109,9 +172,54 @@ export default function PromoWeekend() {
   const displayPizzas = (activeBase === 'tomate' ? displayPizzasTomate : displayPizzasCreme)
     .filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  // Add pizza to selection
-  const handleAddPizza = (pizza: MenuItem) => {
-    setSelectedPizzas(prev => [...prev, { pizza, note: '', drinks: [] }]);
+  // Open Customization Modal for a Pizza
+  const openCustomizer = (pizza: MenuItem) => {
+    setCustomizingPizza(pizza);
+    setCustomBase(pizza.base || activeBase);
+    setCustomNote('');
+    setCustomRemoved([]);
+    setCustomExtras([]);
+  };
+
+  // Confirm Customization and Add to Cart
+  const handleConfirmCustomization = () => {
+    if (!customizingPizza) return;
+
+    setSelectedPizzas(prev => [
+      ...prev,
+      {
+        pizza: customizingPizza,
+        note: customNote,
+        base: customBase,
+        removedIngredients: customRemoved,
+        addedExtras: customExtras,
+        drinks: []
+      }
+    ]);
+
+    toast({
+      title: `🍕 ${customizingPizza.name} ajoutée !`,
+      description: `Prix spécial: 10,90€ + 2 boissons offertes`,
+      className: "bg-amber-600 text-white border-none font-bold",
+      duration: 1500,
+    });
+
+    setCustomizingPizza(null);
+  };
+
+  // Add pizza directly (default customization)
+  const handleAddPizzaDirect = (pizza: MenuItem) => {
+    setSelectedPizzas(prev => [
+      ...prev,
+      {
+        pizza,
+        note: '',
+        base: pizza.base || activeBase,
+        removedIngredients: [],
+        addedExtras: [],
+        drinks: []
+      }
+    ]);
     toast({
       title: `🍕 ${pizza.name} ajoutée !`,
       description: `Prix spécial: 10,90€ (2 boissons offertes incluses)`,
@@ -125,11 +233,6 @@ export default function PromoWeekend() {
     setSelectedPizzas(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Update Note for a Pizza
-  const handleUpdateNote = (index: number, note: string) => {
-    setSelectedPizzas(prev => prev.map((item, i) => i === index ? { ...item, note } : item));
-  };
-
   // Handle Drink selection per pizza
   const toggleDrinkForPizza = (pizzaIndex: number, drinkName: string) => {
     setSelectedPizzas(prev => prev.map((item, i) => {
@@ -139,7 +242,6 @@ export default function PromoWeekend() {
         return { ...item, drinks: currentDrinks.filter(d => d !== drinkName) };
       } else {
         if (currentDrinks.length >= 2) {
-          // Replace second drink if already 2 selected
           return { ...item, drinks: [currentDrinks[0], drinkName] };
         }
         return { ...item, drinks: [...currentDrinks, drinkName] };
@@ -147,8 +249,11 @@ export default function PromoWeekend() {
     }));
   };
 
-  // Total Calculation: 10.90€ per Senior Pizza
-  const totalPrice = selectedPizzas.length * 10.90;
+  // Total Calculation: 10.90€ + extras per Senior Pizza
+  const totalPrice = selectedPizzas.reduce((acc, item) => {
+    const extrasTotal = item.addedExtras.reduce((eAcc, e) => eAcc + e.price, 0);
+    return acc + 10.90 + extrasTotal;
+  }, 0);
 
   // Validation before going to drinks step
   const handleProceedToDrinks = () => {
@@ -166,11 +271,10 @@ export default function PromoWeekend() {
 
   // Validation before going to checkout step
   const handleProceedToCheckout = () => {
-    // Check if every pizza has 2 drinks selected
     const incompleteIndex = selectedPizzas.findIndex(p => p.drinks.length < 2);
     if (incompleteIndex !== -1) {
       toast({
-        title: "Sélection de boissons incomplète",
+        title: "Boissons incomplètes",
         description: `Veuillez choisir 2 boissons offertes pour la pizza N°${incompleteIndex + 1} (${selectedPizzas[incompleteIndex].pizza.name}).`,
         variant: "destructive"
       });
@@ -205,29 +309,37 @@ export default function PromoWeekend() {
 
       // Build items array formatted for Supabase orders table
       const orderItems = selectedPizzas.map((item, idx) => {
+        const itemPrice = 10.90 + item.addedExtras.reduce((eAcc, e) => eAcc + e.price, 0);
+        const customDetails: string[] = [];
+        if (item.base) customDetails.push(`Base: ${item.base}`);
+        if (item.removedIngredients.length > 0) customDetails.push(`Sans: ${item.removedIngredients.join(', ')}`);
+        if (item.addedExtras.length > 0) customDetails.push(`Suppléments: ${item.addedExtras.map(e => e.name).join(', ')}`);
+        customDetails.push(`Boissons Offertes: ${item.drinks.join(', ')}`);
+        if (item.note) customDetails.push(`Note: ${item.note}`);
+
         return {
           id: `promo-1090-${idx}-${Date.now()}`,
           item: {
             ...item.pizza,
-            price: 10.90
+            price: itemPrice
           },
           quantity: 1,
           customization: {
-            base: item.pizza.base || 'tomate',
+            base: item.base,
             size: 'senior',
             promoApplied: 'senior_10.90_2_drinks',
-            note: item.note ? `Note: ${item.note} | Boissons: ${item.drinks.join(', ')}` : `Boissons: ${item.drinks.join(', ')}`,
+            note: customDetails.join(' | '),
             freeDrinks: item.drinks
           },
-          calculatedPrice: 10.90
+          calculatedPrice: itemPrice
         };
       });
 
       // Combine notes
       const notesList: string[] = [];
-      if (globalNotes.trim()) notesList.push(`Note client: ${globalNotes.trim()}`);
+      if (globalNotes.trim()) notesList.push(`Note globale: ${globalNotes.trim()}`);
       selectedPizzas.forEach((p, i) => {
-        notesList.push(`Pizza ${i + 1} (${p.pizza.name}): Boissons [${p.drinks.join(', ')}]${p.note ? ` (${p.note})` : ''}`);
+        notesList.push(`Pizza ${i + 1} (${p.pizza.name}): Base ${p.base} | Boissons [${p.drinks.join(', ')}]${p.note ? ` (${p.note})` : ''}`);
       });
       const finalNotes = `🔥 OFFRE CE SOIR (10.90€ + 2 BOISSONS) 🔥 | ` + notesList.join(' | ');
 
@@ -270,7 +382,7 @@ export default function PromoWeekend() {
             items: orderItems.map(i => ({
               name: `${i.item.name} (Senior 10.90€ + 2 Boissons: ${i.customization.freeDrinks.join(', ')})`,
               quantity: 1,
-              price: 10.90,
+              price: i.calculatedPrice,
               customization: i.customization
             })),
             isScheduled: false,
@@ -359,9 +471,9 @@ export default function PromoWeekend() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 font-sans pb-28">
+    <div className="min-h-screen bg-stone-950 text-stone-100 font-sans pb-32">
       {/* ─── PROMO BANNER HEADER ─── */}
-      <header className="sticky top-0 z-50 bg-stone-950/95 backdrop-blur border-b border-amber-500/30 px-4 py-3 shadow-lg">
+      <header className="sticky top-0 z-40 bg-stone-950/95 backdrop-blur border-b border-amber-500/30 px-4 py-3 shadow-lg">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-amber-500 text-stone-950 font-black rounded-xl flex items-center justify-center text-xl shadow-lg">
@@ -388,24 +500,24 @@ export default function PromoWeekend() {
       <section className="bg-gradient-to-b from-amber-500/10 via-stone-950 to-stone-950 px-4 py-6 border-b border-stone-800">
         <div className="max-w-4xl mx-auto text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/20 border border-amber-500/40 rounded-full text-xs font-extrabold text-amber-400 animate-pulse">
-            <Flame className="w-4 h-4 text-amber-400" /> OFFRE DU SOIR - 1 PIZZA SENIOR + 2 BOISSONS
+            <Flame className="w-4 h-4 text-amber-400" /> OFFRE CE SOIR - 1 PIZZA SENIOR + 2 BOISSONS OFFERTES
           </div>
 
           <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight">
             1 Pizza Senior = <span className="text-amber-400">10,90 €</span>
           </h2>
           <p className="text-stone-300 text-sm md:text-base max-w-xl mx-auto">
-            Choisissez n'importe quelle Pizza Senior au menu à seulement <strong className="text-amber-400 font-bold">10,90 €</strong> et recevez <strong className="text-green-400 font-bold">2 Boissons OFFERTES</strong> !
+            Sélectionnez votre Pizza Senior au choix à <strong className="text-amber-400 font-bold">10,90 €</strong> et personnalisez vos ingrédients comme d'habitude !
           </p>
 
           {/* Wizard Step Indicator */}
           <div className="flex justify-center items-center gap-2 pt-2 text-xs font-bold">
             <span className={`px-3 py-1 rounded-full ${step === 'pizza' ? 'bg-amber-500 text-stone-950 font-black' : 'bg-stone-800 text-stone-400'}`}>
-              1. Pizza (10.90€)
+              1. Pizzas (10.90€)
             </span>
             <ChevronRight className="w-3 h-3 text-stone-600" />
             <span className={`px-3 py-1 rounded-full ${step === 'drinks' ? 'bg-amber-500 text-stone-950 font-black' : 'bg-stone-800 text-stone-400'}`}>
-              2. Boissons Offertes
+              2. 2 Boissons Offertes
             </span>
             <ChevronRight className="w-3 h-3 text-stone-600" />
             <span className={`px-3 py-1 rounded-full ${step === 'checkout' ? 'bg-amber-500 text-stone-950 font-black' : 'bg-stone-800 text-stone-400'}`}>
@@ -416,7 +528,7 @@ export default function PromoWeekend() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          STEP 1: PIZZA SELECTION
+          STEP 1: PIZZA SELECTION (WITH HIGH QUALITY IMAGES & CUSTOMIZER)
          ═══════════════════════════════════════════════════════════════ */}
       {step === 'pizza' && (
         <main className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
@@ -445,50 +557,90 @@ export default function PromoWeekend() {
               </button>
             </div>
 
-            <Input 
-              type="text"
-              placeholder="Rechercher une pizza..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-stone-950 border-stone-800 text-white placeholder:text-stone-500 rounded-xl text-xs w-full sm:w-64"
-            />
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-stone-500" />
+              <Input 
+                type="text"
+                placeholder="Rechercher une pizza..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-stone-950 border-stone-800 text-white placeholder:text-stone-500 rounded-xl text-xs pl-9 w-full"
+              />
+            </div>
           </div>
 
-          {/* Pizza Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Pizza Grid Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {displayPizzas.map((pizza) => {
               const countInCart = selectedPizzas.filter(p => p.pizza.id === pizza.id).length;
+              const imageUrl = getPizzaImage(pizza.name, pizza.imageUrl);
 
               return (
                 <div 
                   key={pizza.id}
-                  className="bg-stone-900 border border-stone-800 hover:border-amber-500/50 rounded-2xl p-4 flex justify-between gap-4 transition-all shadow-lg group relative overflow-hidden"
+                  className="bg-stone-900 border border-stone-800 hover:border-amber-500/50 rounded-2xl overflow-hidden flex flex-col justify-between transition-all shadow-xl group relative"
                 >
-                  <div className="flex-1 flex flex-col justify-between space-y-2">
+                  {/* Pizza Image with Badges */}
+                  <div className="relative h-44 w-full bg-stone-950 overflow-hidden">
+                    <img 
+                      src={imageUrl} 
+                      alt={pizza.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-transparent to-black/40"></div>
+                    
+                    <span className="absolute top-3 left-3 bg-amber-500 text-stone-950 text-[11px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                      OFFRE 10,90 €
+                    </span>
+
+                    <span className="absolute top-3 right-3 bg-green-500/90 text-white text-[10px] font-extrabold px-2 py-1 rounded-full shadow-lg backdrop-blur">
+                      +2 Boissons Offertes
+                    </span>
+
+                    {countInCart > 0 && (
+                      <span className="absolute bottom-3 right-3 bg-amber-500 text-stone-950 font-black text-xs px-2.5 py-0.5 rounded-full shadow-lg">
+                        {countInCart} dans le panier
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-extrabold text-white text-base group-hover:text-amber-400 transition-colors">
-                          {pizza.name}
-                        </h3>
-                        <span className="bg-amber-500/20 text-amber-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-amber-500/30">
-                          Senior
-                        </span>
-                      </div>
-                      <p className="text-stone-400 text-xs mt-1 line-clamp-2">{pizza.description}</p>
+                      <h3 className="font-extrabold text-white text-lg group-hover:text-amber-400 transition-colors">
+                        {pizza.name}
+                      </h3>
+                      <p className="text-stone-400 text-xs mt-1 line-clamp-2 leading-relaxed">{pizza.description}</p>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-xl font-black text-amber-400">10,90 €</span>
-                        <span className="text-xs text-stone-500 line-through font-bold">18,00 €</span>
+                    {/* Price and Action Buttons */}
+                    <div className="pt-2 border-t border-stone-800 flex flex-col gap-2">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-xl font-black text-amber-400">10,90 €</span>
+                          <span className="text-xs text-stone-500 line-through font-bold">18,00 €</span>
+                        </div>
+                        <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">Format Senior</span>
                       </div>
 
-                      <Button
-                        onClick={() => handleAddPizza(pizza)}
-                        className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black rounded-xl text-xs px-4 py-2 flex items-center gap-1.5 shadow-md"
-                      >
-                        <Plus className="w-4 h-4" /> Ajouter
-                      </Button>
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => openCustomizer(pizza)}
+                          className="border-stone-800 hover:border-amber-500 text-stone-300 hover:text-white rounded-xl text-xs py-2 font-bold flex items-center justify-center gap-1"
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5" /> Personnaliser
+                        </Button>
+
+                        <Button
+                          type="button"
+                          onClick={() => handleAddPizzaDirect(pizza)}
+                          className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black rounded-xl text-xs py-2 flex items-center justify-center gap-1 shadow-md"
+                        >
+                          <Plus className="w-4 h-4" /> Ajouter
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -496,14 +648,14 @@ export default function PromoWeekend() {
             })}
           </div>
 
-          {/* Selected Pizzas Summary Drawer at bottom */}
+          {/* Sticky Bottom Cart Bar for Mobile & Desktop */}
           {selectedPizzas.length > 0 && (
-            <div className="fixed bottom-0 left-0 right-0 z-40 bg-stone-900 border-t border-amber-500/40 p-4 shadow-2xl">
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-stone-900/95 backdrop-blur border-t border-amber-500/40 p-4 shadow-2xl">
               <div className="max-w-4xl mx-auto space-y-3">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h4 className="font-extrabold text-white text-sm">Votre sélection de pizzas ({selectedPizzas.length})</h4>
-                    <p className="text-xs text-amber-400">Total : {totalPrice.toFixed(2)} € • 2 boissons offertes par pizza</p>
+                    <h4 className="font-extrabold text-white text-sm">Votre Panier ({selectedPizzas.length} pizza{selectedPizzas.length > 1 ? 's' : ''})</h4>
+                    <p className="text-xs text-amber-400 font-bold">Total : {totalPrice.toFixed(2)} € • {selectedPizzas.length * 2} boissons offertes incluses</p>
                   </div>
                   <Button 
                     onClick={handleProceedToDrinks}
@@ -513,10 +665,11 @@ export default function PromoWeekend() {
                   </Button>
                 </div>
 
-                <div className="flex gap-2 overflow-x-auto pb-1">
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                   {selectedPizzas.map((item, idx) => (
                     <div key={idx} className="bg-stone-950 border border-stone-800 rounded-xl px-3 py-1.5 text-xs flex items-center gap-2 flex-shrink-0">
                       <span className="font-bold text-white">{idx + 1}. {item.pizza.name}</span>
+                      {item.addedExtras.length > 0 && <span className="text-[10px] text-amber-400">(+{item.addedExtras.reduce((a, b) => a + b.price, 0).toFixed(2)}€)</span>}
                       <button 
                         onClick={() => handleRemovePizza(idx)}
                         className="text-stone-500 hover:text-red-400 ml-1"
@@ -530,6 +683,128 @@ export default function PromoWeekend() {
             </div>
           )}
         </main>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          PIZZA CUSTOMIZATION MODAL (COMME D'HABITUDE BRO)
+         ═══════════════════════════════════════════════════════════════ */}
+      {customizingPizza && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-stone-900 border border-stone-800 w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-200">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-stone-800 flex justify-between items-center bg-stone-950">
+              <div className="flex items-center gap-3">
+                <img 
+                  src={getPizzaImage(customizingPizza.name, customizingPizza.imageUrl)} 
+                  alt={customizingPizza.name}
+                  className="w-12 h-12 rounded-xl object-cover border border-amber-500/30"
+                />
+                <div>
+                  <h3 className="font-extrabold text-white text-base">{customizingPizza.name}</h3>
+                  <p className="text-xs text-amber-400 font-bold">Pizza Senior • 10,90 €</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setCustomizingPizza(null)}
+                className="p-2 rounded-xl bg-stone-900 text-stone-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-5 flex-1 text-xs">
+              {/* Sauce Base Selection */}
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-stone-300">Sauce de Base</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCustomBase('tomate')}
+                    className={`py-2.5 px-3 rounded-xl font-bold border transition-all text-xs ${
+                      customBase === 'tomate'
+                        ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-md'
+                        : 'bg-stone-950 border-stone-800 text-stone-400'
+                    }`}
+                  >
+                    🍅 Base Sauce Tomate
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomBase('creme')}
+                    className={`py-2.5 px-3 rounded-xl font-bold border transition-all text-xs ${
+                      customBase === 'creme'
+                        ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-md'
+                        : 'bg-stone-950 border-stone-800 text-stone-400'
+                    }`}
+                  >
+                    🥛 Base Crème Fraîche
+                  </button>
+                </div>
+              </div>
+
+              {/* Extras & Suppléments */}
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-stone-300">Ajouter des Suppléments / Extras</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {EXTRA_OPTIONS.map((extra) => {
+                    const isAdded = customExtras.some(e => e.id === extra.id);
+
+                    return (
+                      <button
+                        key={extra.id}
+                        type="button"
+                        onClick={() => {
+                          if (isAdded) {
+                            setCustomExtras(prev => prev.filter(e => e.id !== extra.id));
+                          } else {
+                            setCustomExtras(prev => [...prev, extra]);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border text-left flex justify-between items-center transition-all ${
+                          isAdded
+                            ? 'bg-amber-500/20 border-amber-500 text-white font-bold'
+                            : 'bg-stone-950 border-stone-800 text-stone-400'
+                        }`}
+                      >
+                        <span>{extra.name}</span>
+                        <span className="text-amber-400 font-bold">+{extra.price.toFixed(2)}€</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Specific Pizza Note */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-stone-300">Instructions Particulières pour le Chef</Label>
+                <Input 
+                  type="text"
+                  placeholder="Ex: Bien cuite, sans oignons, découper en 8..."
+                  value={customNote}
+                  onChange={(e) => setCustomNote(e.target.value)}
+                  className="bg-stone-950 border-stone-800 text-white text-xs rounded-xl"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-stone-800 bg-stone-950 flex justify-between items-center">
+              <div>
+                <div className="text-[10px] text-stone-400">Prix total pizza</div>
+                <div className="text-lg font-black text-amber-400">
+                  {(10.90 + customExtras.reduce((a, b) => a + b.price, 0)).toFixed(2)} €
+                </div>
+              </div>
+              <Button
+                onClick={handleConfirmCustomization}
+                className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black px-6 py-3 rounded-xl text-sm"
+              >
+                Ajouter au Panier (10,90 €)
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
@@ -555,7 +830,7 @@ export default function PromoWeekend() {
 
           <div className="space-y-6">
             {selectedPizzas.map((item, pizzaIdx) => (
-              <div key={pizzaIdx} className="bg-stone-900 border border-stone-800 rounded-2xl p-5 space-y-4">
+              <div key={pizzaIdx} className="bg-stone-900 border border-stone-800 rounded-2xl p-5 space-y-4 shadow-xl">
                 <div className="flex justify-between items-center border-b border-stone-800 pb-3">
                   <div>
                     <h3 className="font-black text-amber-400 text-base">
@@ -570,18 +845,6 @@ export default function PromoWeekend() {
                       <Check className="w-3.5 h-3.5" /> Boissons Choisies
                     </span>
                   )}
-                </div>
-
-                {/* Optional note per pizza */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-stone-400">Instructions pour cette pizza (ex: Bien cuite, sans oignons...)</Label>
-                  <Input 
-                    type="text"
-                    placeholder="Note particulière pour le chef..."
-                    value={item.note}
-                    onChange={(e) => handleUpdateNote(pizzaIdx, e.target.value)}
-                    className="bg-stone-950 border-stone-800 text-white text-xs rounded-xl"
-                  />
                 </div>
 
                 {/* Drinks selection grid */}
@@ -759,8 +1022,9 @@ export default function PromoWeekend() {
                   <div>
                     <span className="font-bold text-white">{item.pizza.name} (Senior)</span>
                     <div className="text-[11px] text-stone-400">Boissons : {item.drinks.join(', ')}</div>
+                    {item.addedExtras.length > 0 && <div className="text-[11px] text-amber-400">Extras: {item.addedExtras.map(e => e.name).join(', ')}</div>}
                   </div>
-                  <span className="font-bold text-amber-400">10,90 €</span>
+                  <span className="font-bold text-amber-400">{(10.90 + item.addedExtras.reduce((a, b) => a + b.price, 0)).toFixed(2)} €</span>
                 </div>
               ))}
               <div className="flex justify-between items-center pt-2 border-t border-stone-800 text-sm font-extrabold text-white">
