@@ -102,13 +102,13 @@ const SupplementTile = memo(function SupplementTile({
     <button
       type="button"
       onClick={() => onClick(extra)}
-      className={`relative select-none p-2 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1 ${
+      className={`relative select-none p-2 rounded-xl border-2 transition-all flex flex-col items-center justify-between min-h-[90px] gap-1 ${
         selected
-          ? 'border-amber-500 bg-amber-500/20 text-white ring-2 ring-amber-500/30'
-          : 'border-slate-800 bg-slate-800/80 text-slate-200 hover:border-slate-600 hover:bg-slate-800'
+          ? 'border-amber-500 bg-amber-500/25 text-white ring-2 ring-amber-500/40 shadow-md'
+          : 'border-slate-800 bg-slate-900/90 text-slate-200 hover:border-slate-600 hover:bg-slate-800'
       }`}
     >
-      <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center bg-slate-900 border border-slate-700/50">
+      <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-slate-950 border border-slate-700/60 shrink-0 shadow-inner">
         {imageUrl && !imgError ? (
           <img
             src={imageUrl}
@@ -117,18 +117,18 @@ const SupplementTile = memo(function SupplementTile({
             onError={() => setImgError(true)}
           />
         ) : (
-          <span className="text-base">{extra.emoji}</span>
+          <span className="text-lg">{extra.emoji || '🍕'}</span>
         )}
       </div>
-      <span className="text-[11px] font-semibold text-center leading-tight truncate w-full px-0.5 text-white">
+      <span className="text-[11px] font-bold text-center leading-snug line-clamp-2 w-full text-white px-0.5 my-auto">
         {extra.name}
       </span>
-      <span className="text-[11px] font-bold text-amber-400">
+      <span className="text-[11px] font-black text-amber-400 shrink-0 bg-slate-950/80 px-2 py-0.5 rounded-full border border-amber-500/20">
         +{extra.price.toFixed(2)}€
       </span>
       {selected && (
-        <div className="absolute top-1 right-1 bg-amber-500 rounded-full p-0.5 shadow">
-          <Check className="w-2.5 h-2.5 text-slate-950 font-extrabold" />
+        <div className="absolute top-1 right-1 bg-amber-500 rounded-full p-0.5 shadow-md">
+          <Check className="w-3 h-3 text-slate-950 font-extrabold" />
         </div>
       )}
     </button>
@@ -368,7 +368,7 @@ export function PizzaIngredientCustomizer({
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-2 overflow-y-auto max-h-[350px] p-0.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 overflow-y-auto max-h-[400px] p-1">
             {pizzaIngredientSupplements.map(extra => {
               const selected = isExtraSelected(extra.id);
               const imgUrl = findDbImage(extra.name, dbImageMap) || SUPPLEMENT_FALLBACKS[extra.id];

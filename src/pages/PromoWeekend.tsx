@@ -471,9 +471,9 @@ export default function PromoWeekend() {
       {/* ─── PROMO BANNER HEADER ─── */}
       <header className="sticky top-0 z-40 bg-stone-900 text-white border-b border-stone-800 px-4 py-3 shadow-lg">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-amber-500 text-stone-950 font-black rounded-xl flex items-center justify-center text-xl shadow-lg">
-              🍕
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-stone-950 border-2 border-amber-500 rounded-xl p-1 shadow-lg shadow-amber-500/20 overflow-hidden flex items-center justify-center shrink-0">
+              <img src="/favicon.png" alt="Twin Pizza Logo" className="w-full h-full object-contain pizza-continuous-spin" />
             </div>
             <div>
               <h1 className="text-base font-black tracking-tight text-white flex items-center gap-1.5">
@@ -495,6 +495,12 @@ export default function PromoWeekend() {
       {/* ─── HERO INTRO BANNER ─── */}
       <section className="bg-gradient-to-b from-stone-900 to-[#fcf8f2] text-white px-4 py-6 border-b border-stone-200">
         <div className="max-w-4xl mx-auto text-center space-y-3">
+          <div className="flex justify-center mb-1">
+            <div className="relative w-20 h-20 bg-stone-900 border-4 border-amber-500 rounded-full p-2 shadow-2xl shadow-amber-500/40 flex items-center justify-center animate-pulse">
+              <img src="/favicon.png" alt="Twin Pizza Logo" className="w-full h-full object-contain pizza-continuous-spin" />
+            </div>
+          </div>
+
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/20 border border-amber-500/40 rounded-full text-xs font-extrabold text-amber-400 animate-pulse">
             <Flame className="w-4 h-4 text-amber-400" /> OFFRE CE SOIR - 1 PIZZA SENIOR + 2 BOISSONS OFFERTES
           </div>
