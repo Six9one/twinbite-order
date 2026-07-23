@@ -102,9 +102,9 @@ const SupplementTile = memo(function SupplementTile({
     <button
       type="button"
       onClick={() => onClick(extra)}
-      className={`relative select-none p-2 rounded-xl border-2 transition-all flex flex-col items-center justify-between min-h-[90px] gap-1 ${
+      className={`relative select-none p-2.5 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1.5 w-full min-h-[105px] text-center ${
         selected
-          ? 'border-amber-500 bg-amber-500/25 text-white ring-2 ring-amber-500/40 shadow-md'
+          ? 'border-amber-500 bg-amber-500/25 text-white ring-2 ring-amber-500/40 shadow-lg'
           : 'border-slate-800 bg-slate-900/90 text-slate-200 hover:border-slate-600 hover:bg-slate-800'
       }`}
     >
@@ -117,18 +117,22 @@ const SupplementTile = memo(function SupplementTile({
             onError={() => setImgError(true)}
           />
         ) : (
-          <span className="text-lg">{extra.emoji || '🍕'}</span>
+          <span className="text-xl">{extra.emoji || '🍕'}</span>
         )}
       </div>
-      <span className="text-[11px] font-bold text-center leading-snug line-clamp-2 w-full text-white px-0.5 my-auto">
-        {extra.name}
-      </span>
-      <span className="text-[11px] font-black text-amber-400 shrink-0 bg-slate-950/80 px-2 py-0.5 rounded-full border border-amber-500/20">
-        +{extra.price.toFixed(2)}€
-      </span>
+
+      <div className="flex flex-col items-center justify-center leading-tight">
+        <span className="text-[12px] font-extrabold text-white text-center block px-0.5 break-words">
+          {extra.name}
+        </span>
+        <span className="text-[11px] font-black text-amber-400 mt-1 inline-block bg-slate-950/80 px-2 py-0.5 rounded-md border border-amber-500/30">
+          +{extra.price.toFixed(2)}€
+        </span>
+      </div>
+
       {selected && (
-        <div className="absolute top-1 right-1 bg-amber-500 rounded-full p-0.5 shadow-md">
-          <Check className="w-3 h-3 text-slate-950 font-extrabold" />
+        <div className="absolute top-1.5 right-1.5 bg-amber-500 rounded-full p-0.5 shadow-md">
+          <Check className="w-3.5 h-3.5 text-slate-950 font-black" />
         </div>
       )}
     </button>
