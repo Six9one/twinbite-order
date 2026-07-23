@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
+import { useLocation } from 'react-router-dom';
 import { useVirtualKeyboard, KeyboardLayout } from '@/context/VirtualKeyboardContext';
 import {
   Keyboard as KeyboardIcon,
@@ -14,6 +15,10 @@ import {
 import { cn } from '@/lib/utils';
 
 export function VirtualKeyboard() {
+  const location = useLocation();
+  const isElectron = typeof window !== 'undefined' && ('twinHub' in window || (navigator.userAgent && navigator.userAgent.toLowerCase().includes('electron')));
+  const isPosElectron = isElectron && location.pathname.startsWith('/pos');
+
   const {
     isOpen,
     autoOpen,
@@ -140,51 +145,13 @@ export function VirtualKeyboard() {
     actionFn();
   };
 
+  if (!isOpen) return null;
   if (typeof document === 'undefined' || !document.body) return null;
 
   return ReactDOM.createPortal(
-    <>
-      {/* Floating Action Button (FAB) - Always visible when keyboard is closed */}
-      {!isOpen && (
-        <button
-          type="button"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleKeyboard();
-          }}
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            zIndex: 2147483646,
-            backgroundColor: '#10b981',
-            color: '#020617',
-            padding: '12px 18px',
-            borderRadius: '16px',
-            border: '2px solid #34d399',
-            fontWeight: 900,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            boxShadow: '0 12px 35px rgba(0,0,0,0.75), 0 0 20px rgba(16, 185, 129, 0.5)',
-            fontSize: '14px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          }}
-          className="virtual-keyboard-fab cursor-pointer active:scale-95 transition-transform"
-          title="Ouvrir le clavier virtuel"
-        >
-          <KeyboardIcon style={{ width: 22, height: 22, color: '#020617' }} />
-          <span>Clavier</span>
-        </button>
-      )}
-
-      {/* Virtual Keyboard Overlay */}
-      {isOpen && (
-        <div
-          tabIndex={-1}
+    /* Virtual Keyboard Overlay */
+    <div
+      tabIndex={-1}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -447,9 +414,7 @@ export function VirtualKeyboard() {
               </div>
             </div>
           )}
-        </div>
-      )}
-    </>,
+        </div>,
     document.body
   );
 }

@@ -31,9 +31,9 @@ export function VirtualKeyboardProvider({ children }: { children: ReactNode }) {
   const [autoOpen, setAutoOpenState] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_AUTO_OPEN);
-      return stored !== null ? stored === 'true' : true;
+      return stored !== null ? stored === 'true' : false;
     } catch {
-      return true;
+      return false;
     }
   });
   const [layout, setLayout] = useState<KeyboardLayout>('azerty');
@@ -129,9 +129,13 @@ export function VirtualKeyboardProvider({ children }: { children: ReactNode }) {
     });
   }, [activeElement, detectLabelAndLayout]);
 
-  // Global event listener to detect any interaction with input fields
+  // Global event listener to detect any interaction with input fields (Electron POS app only)
   useEffect(() => {
     const handleInputInteraction = (e: Event) => {
+      const isElectron = typeof window !== 'undefined' && ('twinHub' in window || (navigator.userAgent && navigator.userAgent.toLowerCase().includes('electron')));
+      const isPosElectron = isElectron && window.location.pathname.startsWith('/pos');
+      if (!isPosElectron) return;
+
       const target = e.target as HTMLElement;
       if (!target) return;
 
@@ -158,7 +162,9 @@ export function VirtualKeyboardProvider({ children }: { children: ReactNode }) {
 
         setActiveElement(inputEl);
         detectLabelAndLayout(inputEl);
-        setIsOpen(true);
+        if (autoOpen) {
+          setIsOpen(true);
+        }
       }
     };
 
