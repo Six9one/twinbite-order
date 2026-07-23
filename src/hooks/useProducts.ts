@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveImg } from '@/utils/resolveImg';
+import { pizzasTomate, pizzasCreme, menuItems } from '@/data/menu';
 
 // Menu data changes rarely — cache hard for instant POS loading.
 const MENU_CACHE = {
@@ -34,18 +35,38 @@ export interface Category {
   is_active: boolean;
 }
 
+const DEFAULT_CATEGORIES: Category[] = [
+  { id: '1', name: 'Pizzas', slug: 'pizzas', display_order: 1, is_active: true },
+  { id: '2', name: 'Tacos', slug: 'tacos', display_order: 2, is_active: true },
+  { id: '3', name: 'Soufflets', slug: 'soufflets', display_order: 3, is_active: true },
+  { id: '4', name: 'Makloub', slug: 'makloub', display_order: 4, is_active: true },
+  { id: '5', name: 'Mlawi', slug: 'mlawi', display_order: 5, is_active: true },
+  { id: '6', name: 'Panini', slug: 'panini', display_order: 6, is_active: true },
+  { id: '7', name: 'Croques', slug: 'croques', display_order: 7, is_active: true },
+  { id: '8', name: 'Tex-Mex', slug: 'texmex', display_order: 8, is_active: true },
+  { id: '9', name: 'Frites', slug: 'frites', display_order: 9, is_active: true },
+  { id: '10', name: 'Milkshakes', slug: 'milkshakes', display_order: 10, is_active: true },
+  { id: '11', name: 'Crêpes', slug: 'crepes', display_order: 11, is_active: true },
+  { id: '12', name: 'Gaufres', slug: 'gaufres', display_order: 12, is_active: true },
+  { id: '13', name: 'Boissons', slug: 'boissons', display_order: 13, is_active: true },
+];
+
 // Fetch all categories
 export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
-      if (error) throw error;
-      return data as Category[];
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+        if (error || !data || data.length === 0) return DEFAULT_CATEGORIES;
+        return data as Category[];
+      } catch (e) {
+        return DEFAULT_CATEGORIES;
+      }
     },
     ...MENU_CACHE,
   });
@@ -56,26 +77,42 @@ export function useProductsByCategory(categorySlug: string) {
   return useQuery({
     queryKey: ['products', categorySlug],
     queryFn: async () => {
-      const { data: category } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('slug', categorySlug)
-        .single();
-
-      if (!category) return [];
-
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('category_id', category.id)
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
-
-      if (error) throw error;
-      return (data as Product[]).map(p => ({
-        ...p,
-        image_url: resolveImg(p.image_url) || null
+      const fallback = menuItems.filter((i: any) => i.category === categorySlug).map((i: any) => ({
+        id: i.id,
+        name: i.name,
+        description: i.description || null,
+        base_price: i.price,
+        pizza_base: i.base || null,
+        category_id: i.category,
+        image_url: i.imageUrl || i.image_url || null,
+        display_order: 1,
+        is_active: true,
       }));
+
+      try {
+        const { data: category } = await supabase
+          .from('categories')
+          .select('id')
+          .eq('slug', categorySlug)
+          .single();
+
+        if (!category) return fallback as Product[];
+
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('category_id', category.id)
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+
+        if (error || !data || data.length === 0) return fallback as Product[];
+        return (data as Product[]).map(p => ({
+          ...p,
+          image_url: resolveImg(p.image_url) || null
+        }));
+      } catch (e) {
+        return fallback as Product[];
+      }
     },
     enabled: !!categorySlug,
     ...MENU_CACHE,
@@ -84,30 +121,47 @@ export function useProductsByCategory(categorySlug: string) {
 
 // Fetch pizzas by base (tomate or creme)
 export function usePizzasByBase(base: 'tomate' | 'creme') {
+  const fallbackList = base === 'tomate' ? pizzasTomate : pizzasCreme;
+  const fallbackProducts: Product[] = fallbackList.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description || null,
+    base_price: p.price || 18,
+    pizza_base: base,
+    category_id: 'pizzas',
+    image_url: p.imageUrl || p.image_url || null,
+    display_order: 1,
+    is_active: true,
+  }));
+
   return useQuery({
     queryKey: ['pizzas', base],
     queryFn: async () => {
-      const { data: category } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('slug', 'pizzas')
-        .single();
+      try {
+        const { data: category } = await supabase
+          .from('categories')
+          .select('id')
+          .eq('slug', 'pizzas')
+          .single();
 
-      if (!category) return [];
+        if (!category) return fallbackProducts;
 
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('category_id', category.id)
-        .eq('pizza_base', base)
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('category_id', category.id)
+          .eq('pizza_base', base)
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
 
-      if (error) throw error;
-      return (data as Product[]).map(p => ({
-        ...p,
-        image_url: resolveImg(p.image_url) || null
-      }));
+        if (error || !data || data.length === 0) return fallbackProducts;
+        return (data as Product[]).map(p => ({
+          ...p,
+          image_url: resolveImg(p.image_url) || null
+        }));
+      } catch (e) {
+        return fallbackProducts;
+      }
     },
     ...MENU_CACHE,
   });

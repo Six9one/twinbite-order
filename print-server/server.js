@@ -26,6 +26,10 @@ const PRINTER_IPS = (process.env.PRINTER_IPS || process.env.PRINTER_IP || '').sp
 const PRINTER_PORT = parseInt(process.env.PRINTER_PORT || '9100', 10);
 // Star TSP100 USB (PC restaurant / caisse) — ticket client avec prix
 let COUNTER_PRINTER_NAME = (process.env.COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME || '').trim();
+function getCounterPrinterName() {
+    return (COUNTER_PRINTER_NAME || process.env.COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME || 'Star TSP100 Cutter (TSP143)').trim();
+}
+
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 const SETTINGS_REFRESH_INTERVAL = 300000;
@@ -573,7 +577,7 @@ async function formatDynamicTicket(order, template) {
         NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
         UNDERLINE_ON: ESC + '-' + '\x01',
         UNDERLINE_OFF: ESC + '-' + '\x00',
-        PARTIAL_CUT: ESC + 'd' + '\x03',  
+        PARTIAL_CUT: ESC + 'd' + '\x03' + GS + 'V' + '\x01',  
         FEED: '',                        
         UPSIDE_ON:  '',
         UPSIDE_OFF: '',
@@ -1142,7 +1146,7 @@ async function formatCounterTicketClassic(order) {
         NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
         UNDERLINE_ON: ESC + '-' + '\x01',
         UNDERLINE_OFF: ESC + '-' + '\x00',
-        PARTIAL_CUT: ESC + 'd' + '\x03',  
+        PARTIAL_CUT: ESC + 'd' + '\x03' + GS + 'V' + '\x01',  
         FEED: '',                        
         UPSIDE_ON:  '',
         UPSIDE_OFF: '',
@@ -1475,14 +1479,56 @@ async function printToSinglePrinter(data, ip, orderLabel) {
     return false;
 }
 
+// Dynamic resolution of Windows printer name with fallback fuzzy search
+async function getActualWindowsPrinterName(requestedName) {
+    const target = (requestedName || getCounterPrinterName()).trim();
+    return new Promise((resolve) => {
+        exec('powershell -Command "Get-Printer | Select-Object Name | ConvertTo-Json"', (err, stdout) => {
+            if (err || !stdout) return resolve(target);
+            try {
+                const parsed = JSON.parse(stdout);
+                const printers = Array.isArray(parsed)
+                    ? parsed.map(p => p.Name).filter(Boolean)
+                    : (parsed && parsed.Name ? [parsed.Name] : []);
+
+                if (printers.length === 0) return resolve(target);
+
+                // 1. Exact match
+                if (printers.includes(target)) return resolve(target);
+
+                // 2. Case-insensitive match
+                const ciMatch = printers.find(p => p.toLowerCase() === target.toLowerCase());
+                if (ciMatch) return resolve(ciMatch);
+
+                // 3. Partial match with requested name
+                const partialMatch = printers.find(p => p.toLowerCase().includes(target.toLowerCase()) || target.toLowerCase().includes(p.toLowerCase()));
+                if (partialMatch) return resolve(partialMatch);
+
+                // 4. Fuzzy search for any Star / TSP / Thermal / Receipt / POS printer installed on Windows
+                const starMatch = printers.find(p => /star|tsp|thermal|receipt|pos/i.test(p));
+                if (starMatch) {
+                    console.log(`🔌 Dynamic printer fallback matched: "${target}" ➔ "${starMatch}"`);
+                    return resolve(starMatch);
+                }
+
+                resolve(target);
+            } catch {
+                resolve(target);
+            }
+        });
+    });
+}
+
 // Send data to USB printer using print-raw.ps1 script
 function sendToUSBPrinter(data, printerName) {
     return new Promise(async (resolve, reject) => {
+        const actualPrinterName = await getActualWindowsPrinterName(printerName);
         const tempFilePath = join(__dirname, `temp_ticket_${Date.now()}_${Math.floor(Math.random() * 1000)}.bin`);
         try {
-            await fsPromises.writeFile(tempFilePath, data, 'binary');
+            const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data, 'binary');
+            await fsPromises.writeFile(tempFilePath, buffer);
             const psScript = join(__dirname, 'print-raw.ps1');
-            const command = `powershell -ExecutionPolicy Bypass -File "${psScript}" -PrinterName "${printerName}" -FilePath "${tempFilePath}"`;
+            const command = `powershell -ExecutionPolicy Bypass -File "${psScript}" -PrinterName "${actualPrinterName}" -FilePath "${tempFilePath}"`;
             
             exec(command, async (error, stdout, stderr) => {
                 // Clean up temp file
@@ -1496,7 +1542,7 @@ function sendToUSBPrinter(data, printerName) {
                     console.error('❌ USB Printer Error:', stderr || error.message);
                     reject(error);
                 } else {
-                    console.log(`✅ Successfully printed to USB printer: ${printerName}`);
+                    console.log(`✅ Successfully printed to USB printer: ${actualPrinterName}`);
                     resolve();
                 }
             });
@@ -1622,20 +1668,21 @@ async function printDualTickets(order) {
     }
 
     // ── 2. TICKET CAISSE → Star TSP100 USB (Parallel, does not block Ethernet) ──
-    if (COUNTER_PRINTER_NAME) {
+    const targetCounterPrinter = getCounterPrinterName();
+    if (targetCounterPrinter) {
         counterPromise = (async () => {
             try {
                 const data = await formatCounterTicket(order);
-                await sendToUSBPrinter(data, COUNTER_PRINTER_NAME);
-                console.log(`✅ Ticket caisse → "${COUNTER_PRINTER_NAME}"`);
+                await sendToUSBPrinter(data, targetCounterPrinter);
+                console.log(`✅ Ticket caisse → "${targetCounterPrinter}"`);
                 return true;
             } catch (err) {
-                console.error(`❌ Imprimante caisse "${COUNTER_PRINTER_NAME}" échouée: ${err.message}`);
+                console.error(`❌ Imprimante caisse "${targetCounterPrinter}" échouée: ${err.message}`);
                 return false;
             }
         })();
     } else {
-        console.log('⚠️  COUNTER_PRINTER_NAME non configuré dans .env — ticket caisse ignoré');
+        console.log('⚠️  Aucun nom d\'imprimante caisse USB configuré dans .env — ticket caisse ignoré');
     }
 
     const [kitchenOk, counterOk] = await Promise.all([kitchenPromise, counterPromise]);
@@ -2755,6 +2802,44 @@ function setupHttpServer() {
         }
     });
 
+    // Print order ticket (POST - called directly by POSPage on order creation)
+    app.post('/print', async (req, res) => {
+        const { orderNumber, order } = req.body;
+        console.log(`\n📥 Direct POS print request for order #${orderNumber || order?.order_number}`);
+
+        try {
+            let targetOrder = order;
+            if (!targetOrder && orderNumber) {
+                const { data: orders, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('order_number', String(orderNumber))
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                targetOrder = orders?.[0];
+            }
+
+            if (!targetOrder) {
+                console.error(`❌ Order #${orderNumber} not found for printing`);
+                return res.status(404).json({ error: 'Order not found' });
+            }
+
+            const success = await printWithRetry(targetOrder);
+
+            if (success) {
+                console.log(`✅ Order #${targetOrder.order_number} printed successfully!`);
+                res.json({ success: true, message: 'Order printed' });
+            } else {
+                console.error(`❌ Failed to print order #${targetOrder.order_number}`);
+                res.status(500).json({ error: 'Print failed after retries' });
+            }
+        } catch (error) {
+            console.error('❌ Direct POS print error:', error.message);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     // Reprint an order by order number (POST)
     app.post('/reprint/:orderNumber', async (req, res) => {
         const orderNumber = req.params.orderNumber;
@@ -2890,7 +2975,7 @@ function setupHttpServer() {
             ticket += 'Twin Pizza - Entreprise individuelle\n';
             ticket += 'SIRET: 942 617 358 00018\n';
             ticket += 'TVA: FR28942617358\n\n';
-            ticket += ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
+            ticket += ESCPOS.FEED + ESC + 'd' + '\x03' + GS + 'V' + '\x01';
 
             const ticketData = convertToCP1252(ticket);
             const success = await printRawWithRetry(ticketData, `INVOICE-${invoiceNumber}`, 'all');
@@ -3038,8 +3123,7 @@ function setupHttpServer() {
             ticket += 'TVA: FR28942617358\n';
             ticket += '\n';
 
-            ticket += ESCPOS.FEED;
-            ticket += ESCPOS.PARTIAL_CUT;
+            ticket += ESCPOS.FEED + ESC + 'd' + '\x03' + GS + 'V' + '\x01';
 
             const ticketData = convertToCP1252(ticket);
             const success = await printRawWithRetry(ticketData, `INVOICE-${invoiceNumber}`, 'all');
@@ -3172,7 +3256,7 @@ function setupHttpServer() {
             t += '\nMerci de votre confiance!\n';
             t += 'Twin Pizza - Entreprise individuelle\n';
             t += 'SIRET: 942 617 358 00018  TVA: FR28942617358\n';
-            t += '\n' + ESCPOS.FEED + ESCPOS.PARTIAL_CUT;
+            t += '\n' + ESCPOS.FEED + ESC + 'd' + '\x03' + GS + 'V' + '\x01';
 
             const ticketData = convertToCP1252(t);
             const success = await printRawWithRetry(ticketData, `FACTURE-${invoiceNumber}`, 'all');

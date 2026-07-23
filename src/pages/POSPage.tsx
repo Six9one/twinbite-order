@@ -4050,7 +4050,7 @@ function POSContent() {
 
   const [orderType,  setOrderType]  = useState<OrderType>('surplace');
   const [payMethod,  setPayMethod]  = useState<PayMethod>('especes');
-  const [activeCategory, setActiveCat] = useState<string | null>(null);
+  const [activeCategory, setActiveCat] = useState<string | null>('pizzas');
   const [phone,    setPhone]    = useState('');
   const [name,     setName]     = useState('');
   const [address,  setAddress]  = useState('');
@@ -4150,13 +4150,24 @@ function POSContent() {
   }, [pizzaZoom]);
   const [mapboxToken, setMapboxToken] = useState('');
   const [incomingCall, setIncomingCall] = useState<{ phone: string; name: string | null } | null>(null);
-  const leftRef = useRef<ImperativePanelHandle>(null);
+  // ── Auto-reset collapsed layout if saved layout in localStorage collapsed the left panel ──
+  useEffect(() => {
+    try {
+      const savedLayout = localStorage.getItem('pos-layout-h');
+      if (savedLayout) {
+        const parsed = JSON.parse(savedLayout);
+        if (Array.isArray(parsed) && (parsed[0] < 20 || parsed.length < 2)) {
+          localStorage.removeItem('pos-layout-h');
+        }
+      }
+    } catch {}
+  }, []);
 
   const toggleLeft = () => {
     const p = leftRef.current;
     if (!p) return;
-    if (p.isCollapsed()) { p.expand(); setLeftCollapsed(false); }
-    else { p.collapse(); setLeftCollapsed(true); }
+    if (p.isCollapsed() || p.getSize() < 30) { p.resize(70); setLeftCollapsed(false); }
+    else { p.resize(35); }
   };
 
   const needsInfo = orderType === 'livraison';
@@ -4359,9 +4370,20 @@ function POSContent() {
   // Render the active category's inline panel
   const renderPanel = () => {
     if (!activeCategory) return (
-      <div style={{ flex:1, minHeight:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:8, color:'#374151' }}>
-        <div style={{ fontSize:32 }}>☝️</div>
-        <div style={{ fontSize:13 }}>Choisissez une catégorie</div>
+      <div style={{ flex:1, minHeight:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:16, padding:24, color: S.text }}>
+        <div style={{ fontSize:40 }}>🍕</div>
+        <div style={{ fontSize:16, fontWeight:800, color: S.accent }}>Veuillez choisir une catégorie ci-dessus</div>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:8, justifyContent:'center', maxWidth:600 }}>
+          {categories.map(c => (
+            <button
+              key={c.id}
+              onClick={() => setActiveCat(c.slug)}
+              style={{ padding:'8px 16px', borderRadius:10, background:'#1e293b', border:`1px solid ${S.border}`, color:'#fff', fontWeight:700, cursor:'pointer', fontSize:13 }}
+            >
+              {CAT_ICON[c.slug] || '🍽️'} {c.name}
+            </button>
+          ))}
+        </div>
       </div>
     );
     if (activeCategory === 'pizzas') return (
@@ -4494,8 +4516,8 @@ function POSContent() {
         .pos-root * { scrollbar-width:none !important; -ms-overflow-style:none !important; }
       `}</style>
 
-      {/* ── LEFT (resizable + collapsible) ── */}
-      <Panel ref={leftRef} collapsible collapsedSize={0} defaultSize={72} minSize={35}
+      {/* ── LEFT (resizable) ── */}
+      <Panel ref={leftRef} defaultSize={70} minSize={30}
         onCollapse={()=>setLeftCollapsed(true)} onExpand={()=>setLeftCollapsed(false)}>
       <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, overflow:'hidden' }}>
 
