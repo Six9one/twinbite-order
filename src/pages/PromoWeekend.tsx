@@ -6,6 +6,7 @@ import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateTVA } from '@/utils/promotions';
 import { usePizzasByBase } from '@/hooks/useProducts';
+import { playTossAnimation } from '@/utils/tossAnimation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,7 +36,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-// ─── High Quality Pizza Image Fallbacks ───
+// ─── High Quality Pizza Disk Images ───
 const LOCAL_PIZZA_IMAGES: Record<string, string> = {
   'margherita': 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=500&q=80',
   'végétarienne': 'https://images.unsplash.com/photo-1571066811602-71683a3f680d?w=500&q=80',
@@ -207,8 +208,10 @@ export default function PromoWeekend() {
     setCustomizingPizza(null);
   };
 
-  // Add pizza directly (default customization)
-  const handleAddPizzaDirect = (pizza: MenuItem) => {
+  // Add pizza directly (default customization) with Toss Animation
+  const handleAddPizzaDirect = (e: React.MouseEvent<HTMLButtonElement>, pizza: MenuItem) => {
+    playTossAnimation(e.currentTarget, 'pizzas');
+    
     setSelectedPizzas(prev => [
       ...prev,
       {
@@ -488,7 +491,7 @@ export default function PromoWeekend() {
           </div>
 
           {selectedPizzas.length > 0 && (
-            <div className="bg-amber-500/20 border border-amber-500/40 px-3 py-1.5 rounded-xl text-right">
+            <div className="bg-amber-500/20 border border-amber-500/40 px-3 py-1.5 rounded-xl text-right shopping-cart-btn">
               <div className="text-[10px] text-stone-400 font-bold">Panier</div>
               <div className="text-sm font-black text-amber-400">{totalPrice.toFixed(2)} € ({selectedPizzas.length})</div>
             </div>
@@ -507,7 +510,7 @@ export default function PromoWeekend() {
             1 Pizza Senior = <span className="text-amber-400">10,90 €</span>
           </h2>
           <p className="text-stone-300 text-sm md:text-base max-w-xl mx-auto">
-            Sélectionnez votre Pizza Senior au choix à <strong className="text-amber-400 font-bold">10,90 €</strong> et personnalisez vos ingrédients comme d'habitude !
+            Sélectionnez votre Pizza Senior au choix à <strong className="text-amber-400 font-bold">10,90 €</strong> et personnalisez vos ingrédients avec l'animation de rotation !
           </p>
 
           {/* Wizard Step Indicator */}
@@ -528,7 +531,7 @@ export default function PromoWeekend() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          STEP 1: PIZZA SELECTION (WITH HIGH QUALITY IMAGES & CUSTOMIZER)
+          STEP 1: PIZZA SELECTION (ROUNDED ROTATING PIZZA DISKS + TOSS ANIMATION)
          ═══════════════════════════════════════════════════════════════ */}
       {step === 'pizza' && (
         <main className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
@@ -569,8 +572,8 @@ export default function PromoWeekend() {
             </div>
           </div>
 
-          {/* Pizza Grid Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Pizza Grid Cards with Rotating Pizza Disks */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {displayPizzas.map((pizza) => {
               const countInCart = selectedPizzas.filter(p => p.pizza.id === pizza.id).length;
               const imageUrl = getPizzaImage(pizza.name, pizza.imageUrl);
@@ -578,65 +581,64 @@ export default function PromoWeekend() {
               return (
                 <div 
                   key={pizza.id}
-                  className="bg-stone-900 border border-stone-800 hover:border-amber-500/50 rounded-2xl overflow-hidden flex flex-col justify-between transition-all shadow-xl group relative"
+                  className="bg-stone-900 border border-stone-800 hover:border-amber-500/60 rounded-3xl p-5 flex flex-col justify-between transition-all shadow-xl group relative overflow-hidden"
                 >
-                  {/* Pizza Image with Badges */}
-                  <div className="relative h-44 w-full bg-stone-950 overflow-hidden">
-                    <img 
-                      src={imageUrl} 
-                      alt={pizza.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-transparent to-black/40"></div>
-                    
-                    <span className="absolute top-3 left-3 bg-amber-500 text-stone-950 text-[11px] font-black px-2.5 py-1 rounded-full shadow-lg">
-                      OFFRE 10,90 €
+                  {/* Pizza Disk with Image Spin Rotation */}
+                  <div className="flex justify-center items-center py-3 relative">
+                    <div className="w-40 h-40 rounded-full p-1 border-4 border-amber-500/30 group-hover:border-amber-400 shadow-2xl relative transition-all duration-700 bg-stone-950 overflow-hidden flex items-center justify-center">
+                      <img 
+                        src={imageUrl} 
+                        alt={pizza.name}
+                        className="w-full h-full object-cover rounded-full transition-transform duration-1000 ease-out group-hover:rotate-[360deg] active:scale-95 cursor-pointer"
+                        onClick={() => openCustomizer(pizza)}
+                      />
+                    </div>
+
+                    <span className="absolute top-0 left-0 bg-amber-500 text-stone-950 text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                      10,90 €
                     </span>
 
-                    <span className="absolute top-3 right-3 bg-green-500/90 text-white text-[10px] font-extrabold px-2 py-1 rounded-full shadow-lg backdrop-blur">
-                      +2 Boissons Offertes
+                    <span className="absolute top-0 right-0 bg-green-500/90 text-white text-[10px] font-extrabold px-2 py-1 rounded-full shadow-lg backdrop-blur">
+                      +2 Boissons
                     </span>
 
                     {countInCart > 0 && (
-                      <span className="absolute bottom-3 right-3 bg-amber-500 text-stone-950 font-black text-xs px-2.5 py-0.5 rounded-full shadow-lg">
-                        {countInCart} dans le panier
+                      <span className="absolute bottom-0 right-2 bg-amber-500 text-stone-950 font-black text-xs px-2.5 py-0.5 rounded-full shadow-lg">
+                        {countInCart} en panier
                       </span>
                     )}
                   </div>
 
                   {/* Content */}
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                  <div className="text-center space-y-2 pt-2 flex-1 flex flex-col justify-between">
                     <div>
-                      <h3 className="font-extrabold text-white text-lg group-hover:text-amber-400 transition-colors">
+                      <h3 className="font-black text-white text-lg group-hover:text-amber-400 transition-colors">
                         {pizza.name}
                       </h3>
-                      <p className="text-stone-400 text-xs mt-1 line-clamp-2 leading-relaxed">{pizza.description}</p>
+                      <p className="text-stone-400 text-xs line-clamp-2 leading-relaxed mt-1">{pizza.description}</p>
                     </div>
 
                     {/* Price and Action Buttons */}
-                    <div className="pt-2 border-t border-stone-800 flex flex-col gap-2">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-xl font-black text-amber-400">10,90 €</span>
-                          <span className="text-xs text-stone-500 line-through font-bold">18,00 €</span>
-                        </div>
-                        <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">Format Senior</span>
+                    <div className="pt-3 border-t border-stone-800 space-y-2">
+                      <div className="flex justify-center items-baseline gap-2">
+                        <span className="text-2xl font-black text-amber-400">10,90 €</span>
+                        <span className="text-xs text-stone-500 line-through font-bold">18,00 €</span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div className="grid grid-cols-2 gap-2">
                         <Button
                           type="button"
                           variant="outline"
                           onClick={() => openCustomizer(pizza)}
-                          className="border-stone-800 hover:border-amber-500 text-stone-300 hover:text-white rounded-xl text-xs py-2 font-bold flex items-center justify-center gap-1"
+                          className="border-stone-800 hover:border-amber-500 text-stone-300 hover:text-white rounded-xl text-xs py-2.5 font-bold flex items-center justify-center gap-1"
                         >
-                          <SlidersHorizontal className="w-3.5 h-3.5" /> Personnaliser
+                          <SlidersHorizontal className="w-3.5 h-3.5" /> Modifier
                         </Button>
 
                         <Button
                           type="button"
-                          onClick={() => handleAddPizzaDirect(pizza)}
-                          className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black rounded-xl text-xs py-2 flex items-center justify-center gap-1 shadow-md"
+                          onClick={(e) => handleAddPizzaDirect(e, pizza)}
+                          className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black rounded-xl text-xs py-2.5 flex items-center justify-center gap-1 shadow-md"
                         >
                           <Plus className="w-4 h-4" /> Ajouter
                         </Button>
@@ -648,7 +650,7 @@ export default function PromoWeekend() {
             })}
           </div>
 
-          {/* Sticky Bottom Cart Bar for Mobile & Desktop */}
+          {/* Sticky Bottom Cart Bar */}
           {selectedPizzas.length > 0 && (
             <div className="fixed bottom-0 left-0 right-0 z-40 bg-stone-900/95 backdrop-blur border-t border-amber-500/40 p-4 shadow-2xl">
               <div className="max-w-4xl mx-auto space-y-3">
@@ -659,7 +661,7 @@ export default function PromoWeekend() {
                   </div>
                   <Button 
                     onClick={handleProceedToDrinks}
-                    className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black px-6 py-3 rounded-xl text-sm flex items-center gap-2 shadow-lg animate-pulse"
+                    className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black px-6 py-3 rounded-xl text-sm flex items-center gap-2 shadow-lg animate-pulse shopping-cart-btn"
                   >
                     Choisir mes boissons offertes <ChevronRight className="w-4 h-4" />
                   </Button>
@@ -697,7 +699,7 @@ export default function PromoWeekend() {
                 <img 
                   src={getPizzaImage(customizingPizza.name, customizingPizza.imageUrl)} 
                   alt={customizingPizza.name}
-                  className="w-12 h-12 rounded-xl object-cover border border-amber-500/30"
+                  className="w-14 h-14 rounded-full object-cover border-2 border-amber-500 animate-spin-slow"
                 />
                 <div>
                   <h3 className="font-extrabold text-white text-base">{customizingPizza.name}</h3>
