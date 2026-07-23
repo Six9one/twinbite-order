@@ -26,13 +26,11 @@ const PRINTER_IPS = (process.env.PRINTER_IPS || process.env.PRINTER_IP || '').sp
 const PRINTER_PORT = parseInt(process.env.PRINTER_PORT || '9100', 10);
 // Star TSP100 USB (PC restaurant / caisse) — ticket client avec prix
 let COUNTER_PRINTER_NAME = (process.env.COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME || '').trim();
-function getCounterPrinterName() {
-    return (COUNTER_PRINTER_NAME || process.env.COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME || 'Star TSP100 Cutter (TSP143)').trim();
-}
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 250;
+const SETTINGS_REFRESH_INTERVAL = 60000;
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 1000;
-const SETTINGS_REFRESH_INTERVAL = 300000;
+let cachedResolvedUsbPrinterName = getCounterPrinterName();
 
 // Logo ESC/POS bytes — preloaded once at startup
 let logoBytes = null;
@@ -1398,7 +1396,7 @@ function sendToPrinter(data, targetIp) {
     return new Promise((resolve, reject) => {
         const socket = new Socket();
 
-        socket.setTimeout(3000); // 3 second timeout (LAN printers respond in <100ms)
+        socket.setTimeout(800); // 800ms fast LAN timeout (LAN printers respond in <50ms)
 
         socket.on('timeout', () => {
             socket.destroy();
@@ -1451,10 +1449,6 @@ async function processPrintQueue() {
             console.error(`❌ Queue job [${label}] failed:`, err.message);
             resolve(false); // Don't reject — keep queue moving
         }
-        // Brief pause between jobs so the printer can breathe
-        if (printQueue.length > 0) {
-            await new Promise(r => setTimeout(r, 500));
-        }
     }
 
     printQueueProcessing = false;
@@ -1493,18 +1487,14 @@ async function getActualWindowsPrinterName(requestedName) {
 
                 if (printers.length === 0) return resolve(target);
 
-                // 1. Exact match
                 if (printers.includes(target)) return resolve(target);
 
-                // 2. Case-insensitive match
                 const ciMatch = printers.find(p => p.toLowerCase() === target.toLowerCase());
                 if (ciMatch) return resolve(ciMatch);
 
-                // 3. Partial match with requested name
                 const partialMatch = printers.find(p => p.toLowerCase().includes(target.toLowerCase()) || target.toLowerCase().includes(p.toLowerCase()));
                 if (partialMatch) return resolve(partialMatch);
 
-                // 4. Fuzzy search for any Star / TSP / Thermal / Receipt / POS printer installed on Windows
                 const starMatch = printers.find(p => /star|tsp|thermal|receipt|pos/i.test(p));
                 if (starMatch) {
                     console.log(`🔌 Dynamic printer fallback matched: "${target}" ➔ "${starMatch}"`);
@@ -1519,10 +1509,23 @@ async function getActualWindowsPrinterName(requestedName) {
     });
 }
 
-// Send data to USB printer using print-raw.ps1 script
+// Background async refresh for resolved USB printer name (never blocks print requests)
+async function refreshResolvedPrinterName() {
+    try {
+        const target = getCounterPrinterName();
+        const resolved = await getActualWindowsPrinterName(target);
+        if (resolved) {
+            cachedResolvedUsbPrinterName = resolved;
+        }
+    } catch {
+        // keep existing cached name
+    }
+}
+
+// Send data to USB printer using print-raw.ps1 script (FAST - using cached printer name)
 function sendToUSBPrinter(data, printerName) {
     return new Promise(async (resolve, reject) => {
-        const actualPrinterName = await getActualWindowsPrinterName(printerName);
+        const actualPrinterName = cachedResolvedUsbPrinterName || (printerName || getCounterPrinterName()).trim();
         const tempFilePath = join(__dirname, `temp_ticket_${Date.now()}_${Math.floor(Math.random() * 1000)}.bin`);
         try {
             const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data, 'binary');
@@ -1531,7 +1534,6 @@ function sendToUSBPrinter(data, printerName) {
             const command = `powershell -ExecutionPolicy Bypass -File "${psScript}" -PrinterName "${actualPrinterName}" -FilePath "${tempFilePath}"`;
             
             exec(command, async (error, stdout, stderr) => {
-                // Clean up temp file
                 try {
                     await fsPromises.unlink(tempFilePath);
                 } catch (err) {
@@ -1552,68 +1554,51 @@ function sendToUSBPrinter(data, printerName) {
     });
 }
 
-// Send formatted data to all printers (parallel, queued globally)
-// Send formatted data ONLY to Ethernet kitchen printer(s) (for HACCP & Date Labels)
+// Send formatted data ONLY to Ethernet kitchen printer(s)
 async function sendToEthernetPrintersOnly(ticketData, label) {
-    let success = false;
-
-    if (PRINTER_IPS.length > 0) {
-        try {
-            console.log(`🖨️  Printing [${label}] ONLY to Ethernet kitchen printer(s): ${PRINTER_IPS.join(', ')}`);
-            const results = await Promise.allSettled(
-                PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, label))
-            );
-            const ethSuccess = results.some(r => r.status === 'fulfilled' && r.value === true);
-            if (ethSuccess) success = true;
-        } catch (err) {
-            console.error(`❌ Ethernet Printers error for [${label}]: ${err.message}`);
-        }
-    } else {
+    if (PRINTER_IPS.length === 0) {
         console.warn(`⚠️ No Ethernet PRINTER_IPS configured — skipping Ethernet print for [${label}]`);
+        return false;
     }
 
-    if (!success) {
-        console.error(`❌ Ethernet print failed for [${label}]. Target IPs: ${PRINTER_IPS.join(', ')}`);
+    try {
+        console.log(`🖨️  Printing [${label}] ONLY to Ethernet kitchen printer(s): ${PRINTER_IPS.join(', ')}`);
+        const results = await Promise.allSettled(
+            PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, label))
+        );
+        return results.some(r => r.status === 'fulfilled' && r.value === true);
+    } catch (err) {
+        console.error(`❌ Ethernet Printers error for [${label}]: ${err.message}`);
+        return false;
     }
-
-    return success;
 }
 
-// Send formatted data to all configured printers (for invoices / dual prints)
+// Send formatted data strictly in parallel to all configured printers (for invoices / dual prints)
 async function sendToAllPrinters(ticketData, label) {
-    let success = false;
-
-    // 1. Try Ethernet Printers (if PRINTER_IPS configured)
-    if (PRINTER_IPS.length > 0) {
-        try {
+    const ethPromise = PRINTER_IPS.length > 0
+        ? (async () => {
             console.log(`🖨️  Printing [${label}] to Ethernet printer(s): ${PRINTER_IPS.join(', ')}`);
             const results = await Promise.allSettled(
                 PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, label))
             );
-            const ethSuccess = results.some(r => r.status === 'fulfilled' && r.value === true);
-            if (ethSuccess) success = true;
-        } catch (err) {
-            console.error(`❌ Ethernet Printers error for [${label}]: ${err.message}`);
-        }
-    }
+            return results.some(r => r.status === 'fulfilled' && r.value === true);
+          })()
+        : Promise.resolve(false);
 
-    // 2. Try USB Printer (if COUNTER_PRINTER_NAME configured)
-    const usbPrinterName = COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME;
-    if (usbPrinterName && usbPrinterName.trim()) {
-        try {
+    const usbPrinterName = getCounterPrinterName();
+    const usbPromise = (usbPrinterName && usbPrinterName.trim())
+        ? (async () => {
             console.log(`🖨️  Printing [${label}] on USB printer "${usbPrinterName}"`);
             await sendToUSBPrinter(ticketData, usbPrinterName);
-            success = true;
-        } catch (err) {
-            console.error(`❌ USB Printer failed: ${err.message}`);
-        }
-    }
+            return true;
+          })()
+        : Promise.resolve(false);
 
-    if (!success) {
-        console.error(`❌ All printers failed for [${label}]. USB: "${usbPrinterName}", Ethernet: ${PRINTER_IPS.join(', ')}`);
-    }
+    const [ethRes, usbRes] = await Promise.allSettled([ethPromise, usbPromise]);
+    const ethOk = ethRes.status === 'fulfilled' && ethRes.value === true;
+    const usbOk = usbRes.status === 'fulfilled' && usbRes.value === true;
 
-    return success;
+    return ethOk || usbOk;
 }
 
 // Print order ticket (QUEUED) — dual: cuisine (Ethernet) + caisse (USB)
@@ -1625,7 +1610,7 @@ async function printWithRetry(order) {
     }, label);
 }
 
-// Print raw pre-formatted data (QUEUED) — target defaults to 'ethernet_only' for HACCP & date labels
+// Print raw pre-formatted data (QUEUED)
 async function printRawWithRetry(ticketData, label, target = 'ethernet_only') {
     return enqueuePrintJob(async () => {
         console.log(`🖨️  Printing [${label}] (target: ${target})...`);
@@ -1637,17 +1622,12 @@ async function printRawWithRetry(ticketData, label, target = 'ethernet_only') {
     }, label);
 }
 
-// ── DUAL PRINT (direct — do NOT wrap in enqueuePrintJob, already called from one) ──
-// Ticket 1 → Ethernet cuisine : formatKitchenTicket (disabled for now)
-// Ticket 2 → Star TSP100 USB  : formatCounterTicket (reçu complet client)
+// ── DUAL PRINT (direct parallel execution — 0ms blocking) ──
 async function printDualTickets(order) {
-    // Refresh settings dynamically right before formatting/printing
-    await fetchTicketSettings();
-
     let kitchenPromise = Promise.resolve(false);
     let counterPromise = Promise.resolve(false);
 
-    // ── 1. TICKET CUISINE → Ethernet (Parallel, does not block USB) ──
+    // ── 1. TICKET CUISINE → Ethernet (Parallel with USB) ──
     if (PRINTER_IPS.length > 0) {
         kitchenPromise = (async () => {
             try {
@@ -1663,11 +1643,9 @@ async function printDualTickets(order) {
                 return false;
             }
         })();
-    } else {
-        console.log('⚠️  Aucun PRINTER_IPS configuré — ticket cuisine ignoré');
     }
 
-    // ── 2. TICKET CAISSE → Star TSP100 USB (Parallel, does not block Ethernet) ──
+    // ── 2. TICKET CAISSE → Star TSP100 USB (Parallel with Ethernet) ──
     const targetCounterPrinter = getCounterPrinterName();
     if (targetCounterPrinter) {
         counterPromise = (async () => {
@@ -1681,11 +1659,12 @@ async function printDualTickets(order) {
                 return false;
             }
         })();
-    } else {
-        console.log('⚠️  Aucun nom d\'imprimante caisse USB configuré dans .env — ticket caisse ignoré');
     }
 
-    const [kitchenOk, counterOk] = await Promise.all([kitchenPromise, counterPromise]);
+    const [kitchenRes, counterRes] = await Promise.allSettled([kitchenPromise, counterPromise]);
+    const kitchenOk = kitchenRes.status === 'fulfilled' && kitchenRes.value === true;
+    const counterOk = counterRes.status === 'fulfilled' && counterRes.value === true;
+
     return kitchenOk || counterOk;
 }
 
@@ -3420,15 +3399,18 @@ async function startServer() {
 ╚════════════════════════════════════════════════════════╝
 `);
 
-    // Fetch initial settings
+    // Fetch initial settings & resolve USB printer queue name in background
     await fetchTicketSettings();
+    await refreshResolvedPrinterName();
     console.log(`📋 Active template: ${ticketSettings.activeTemplate}`);
     console.log(`📏 Paper width: ${ticketSettings.paperWidth}`);
     console.log(`🔤 Font size: ${ticketSettings.fontSize}`);
+    console.log(`🖨️ Resolved USB printer queue: "${cachedResolvedUsbPrinterName}"`);
 
-    // Refresh settings periodically
+    // Refresh settings & printer resolution periodically in background
     setInterval(async () => {
         await fetchTicketSettings();
+        await refreshResolvedPrinterName();
     }, SETTINGS_REFRESH_INTERVAL);
 
     // Setup realtime subscription
