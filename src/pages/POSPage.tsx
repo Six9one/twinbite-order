@@ -4163,6 +4163,8 @@ function POSContent() {
     } catch {}
   }, []);
 
+  const leftRef = useRef<ImperativePanelHandle>(null);
+
   const toggleLeft = () => {
     const p = leftRef.current;
     if (!p) return;
