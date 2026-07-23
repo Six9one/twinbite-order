@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useOrder } from '@/context/OrderContext';
 import { MenuItem } from '@/types/order';
 import { pizzasTomate, pizzasCreme } from '@/data/menu';
@@ -7,13 +7,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { calculateTVA } from '@/utils/promotions';
 import { usePizzasByBase } from '@/hooks/useProducts';
 import { playTossAnimation } from '@/utils/tossAnimation';
+import { PizzaIngredientCustomizer, PizzaExtra } from '@/components/wizards/PizzaIngredientCustomizer';
+import { resolveImg } from '@/utils/resolveImg';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { 
   Check, 
-  Phone, 
   ArrowLeft, 
   Trash2, 
   Plus, 
@@ -22,17 +22,13 @@ import {
   CreditCard,
   Banknote,
   Loader2,
-  MapPin,
   X,
   PartyPopper,
   Flame,
   Wine,
   ChevronRight,
-  ShieldCheck,
   SlidersHorizontal,
-  Info,
-  Search,
-  ShoppingCart
+  Search
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -72,7 +68,7 @@ const LOCAL_PIZZA_IMAGES: Record<string, string> = {
 };
 
 function getPizzaImage(name: string, defaultUrl?: string): string {
-  if (defaultUrl && defaultUrl.startsWith('http')) return defaultUrl;
+  if (defaultUrl && defaultUrl.startsWith('http')) return resolveImg(defaultUrl) || defaultUrl;
   const key = name.toLowerCase().trim();
   return LOCAL_PIZZA_IMAGES[key] || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80';
 }
@@ -90,25 +86,13 @@ const FREE_DRINKS = [
   { id: 'perrier-33', name: 'Perrier 33cl', icon: '🫧' }
 ];
 
-// ─── Custom Extra Options ───
-const EXTRA_OPTIONS = [
-  { id: 'ex-mozza', name: 'Supplément Mozzarella', price: 1.5 },
-  { id: 'ex-chevre', name: 'Supplément Chèvre', price: 1.5 },
-  { id: 'ex-reblochon', name: 'Supplément Reblochon', price: 1.5 },
-  { id: 'ex-poulet', name: 'Supplément Poulet', price: 2.0 },
-  { id: 'ex-viande', name: 'Supplément Viande Hachée', price: 2.0 },
-  { id: 'ex-merguez', name: 'Supplément Merguez', price: 2.0 },
-  { id: 'ex-harissa', name: 'Sauce Harissa', price: 0.5 },
-  { id: 'ex-barbecue', name: 'Sauce Barbecue', price: 0.5 }
-];
-
 // ─── Pizza Item in Selection ───
 interface PizzaOfferItem {
   pizza: MenuItem;
   note: string;
   base: 'tomate' | 'creme';
   removedIngredients: string[];
-  addedExtras: { name: string; price: number }[];
+  addedExtras: PizzaExtra[];
   drinks: string[]; // Needs exactly 2 drinks per pizza
 }
 
@@ -135,12 +119,8 @@ export default function PromoWeekend() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPizzas, setSelectedPizzas] = useState<PizzaOfferItem[]>([]);
 
-  // Customization Modal State
+  // Customization Modal State using PizzaIngredientCustomizer
   const [customizingPizza, setCustomizingPizza] = useState<MenuItem | null>(null);
-  const [customBase, setCustomBase] = useState<'tomate' | 'creme'>('tomate');
-  const [customNote, setCustomNote] = useState('');
-  const [customRemoved, setCustomRemoved] = useState<string[]>([]);
-  const [customExtras, setCustomExtras] = useState<{ name: string; price: number }[]>([]);
 
   // DB Pizzas query
   const { data: dbPizzasTomate } = usePizzasByBase('tomate');
@@ -173,33 +153,34 @@ export default function PromoWeekend() {
   const displayPizzas = (activeBase === 'tomate' ? displayPizzasTomate : displayPizzasCreme)
     .filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  // Open Customization Modal for a Pizza
+  // Open Customization Modal
   const openCustomizer = (pizza: MenuItem) => {
     setCustomizingPizza(pizza);
-    setCustomBase(pizza.base || activeBase);
-    setCustomNote('');
-    setCustomRemoved([]);
-    setCustomExtras([]);
   };
 
-  // Confirm Customization and Add to Cart
-  const handleConfirmCustomization = () => {
+  // Callback from PizzaIngredientCustomizer when user confirms customization
+  const handleConfirmIngredientCustomizer = (
+    removedIngredients: string[],
+    addedExtras: PizzaExtra[],
+    note: string,
+    base: 'tomate' | 'creme'
+  ) => {
     if (!customizingPizza) return;
 
     setSelectedPizzas(prev => [
       ...prev,
       {
         pizza: customizingPizza,
-        note: customNote,
-        base: customBase,
-        removedIngredients: customRemoved,
-        addedExtras: customExtras,
+        note,
+        base,
+        removedIngredients,
+        addedExtras,
         drinks: []
       }
     ]);
 
     toast({
-      title: `🍕 ${customizingPizza.name} ajoutée !`,
+      title: `🍕 ${customizingPizza.name} personnalisée !`,
       description: `Prix spécial: 10,90€ + 2 boissons offertes`,
       className: "bg-amber-600 text-white border-none font-bold",
       duration: 1500,
@@ -223,6 +204,7 @@ export default function PromoWeekend() {
         drinks: []
       }
     ]);
+
     toast({
       title: `🍕 ${pizza.name} ajoutée !`,
       description: `Prix spécial: 10,90€ (2 boissons offertes incluses)`,
@@ -254,7 +236,7 @@ export default function PromoWeekend() {
 
   // Total Calculation: 10.90€ + extras per Senior Pizza
   const totalPrice = selectedPizzas.reduce((acc, item) => {
-    const extrasTotal = item.addedExtras.reduce((eAcc, e) => eAcc + e.price, 0);
+    const extrasTotal = item.addedExtras.reduce((eAcc, e) => eAcc + (e.price || 0), 0);
     return acc + 10.90 + extrasTotal;
   }, 0);
 
@@ -312,7 +294,7 @@ export default function PromoWeekend() {
 
       // Build items array formatted for Supabase orders table
       const orderItems = selectedPizzas.map((item, idx) => {
-        const itemPrice = 10.90 + item.addedExtras.reduce((eAcc, e) => eAcc + e.price, 0);
+        const itemPrice = 10.90 + item.addedExtras.reduce((eAcc, e) => eAcc + (e.price || 0), 0);
         const customDetails: string[] = [];
         if (item.base) customDetails.push(`Base: ${item.base}`);
         if (item.removedIngredients.length > 0) customDetails.push(`Sans: ${item.removedIngredients.join(', ')}`);
@@ -474,9 +456,20 @@ export default function PromoWeekend() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 font-sans pb-32">
+    <div className="min-h-screen bg-[#fcf8f2] text-stone-900 font-sans pb-32">
+      {/* CSS Keyframe Animation for Continuous Slow Pizza Disk Rotation */}
+      <style>{`
+        @keyframes continuous-pizza-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .pizza-continuous-spin {
+          animation: continuous-pizza-spin 25s linear infinite;
+        }
+      `}</style>
+
       {/* ─── PROMO BANNER HEADER ─── */}
-      <header className="sticky top-0 z-40 bg-stone-950/95 backdrop-blur border-b border-amber-500/30 px-4 py-3 shadow-lg">
+      <header className="sticky top-0 z-40 bg-stone-900 text-white border-b border-stone-800 px-4 py-3 shadow-lg">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-amber-500 text-stone-950 font-black rounded-xl flex items-center justify-center text-xl shadow-lg">
@@ -492,7 +485,7 @@ export default function PromoWeekend() {
 
           {selectedPizzas.length > 0 && (
             <div className="bg-amber-500/20 border border-amber-500/40 px-3 py-1.5 rounded-xl text-right shopping-cart-btn">
-              <div className="text-[10px] text-stone-400 font-bold">Panier</div>
+              <div className="text-[10px] text-stone-300 font-bold">Panier</div>
               <div className="text-sm font-black text-amber-400">{totalPrice.toFixed(2)} € ({selectedPizzas.length})</div>
             </div>
           )}
@@ -500,7 +493,7 @@ export default function PromoWeekend() {
       </header>
 
       {/* ─── HERO INTRO BANNER ─── */}
-      <section className="bg-gradient-to-b from-amber-500/10 via-stone-950 to-stone-950 px-4 py-6 border-b border-stone-800">
+      <section className="bg-gradient-to-b from-stone-900 to-[#fcf8f2] text-white px-4 py-6 border-b border-stone-200">
         <div className="max-w-4xl mx-auto text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/20 border border-amber-500/40 rounded-full text-xs font-extrabold text-amber-400 animate-pulse">
             <Flame className="w-4 h-4 text-amber-400" /> OFFRE CE SOIR - 1 PIZZA SENIOR + 2 BOISSONS OFFERTES
@@ -510,7 +503,7 @@ export default function PromoWeekend() {
             1 Pizza Senior = <span className="text-amber-400">10,90 €</span>
           </h2>
           <p className="text-stone-300 text-sm md:text-base max-w-xl mx-auto">
-            Sélectionnez votre Pizza Senior au choix à <strong className="text-amber-400 font-bold">10,90 €</strong> et personnalisez vos ingrédients avec l'animation de rotation !
+            Sélectionnez votre Pizza Senior au choix à <strong className="text-amber-400 font-bold">10,90 €</strong> et personnalisez vos ingrédients comme d'habitude !
           </p>
 
           {/* Wizard Step Indicator */}
@@ -518,11 +511,11 @@ export default function PromoWeekend() {
             <span className={`px-3 py-1 rounded-full ${step === 'pizza' ? 'bg-amber-500 text-stone-950 font-black' : 'bg-stone-800 text-stone-400'}`}>
               1. Pizzas (10.90€)
             </span>
-            <ChevronRight className="w-3 h-3 text-stone-600" />
+            <ChevronRight className="w-3 h-3 text-stone-500" />
             <span className={`px-3 py-1 rounded-full ${step === 'drinks' ? 'bg-amber-500 text-stone-950 font-black' : 'bg-stone-800 text-stone-400'}`}>
               2. 2 Boissons Offertes
             </span>
-            <ChevronRight className="w-3 h-3 text-stone-600" />
+            <ChevronRight className="w-3 h-3 text-stone-500" />
             <span className={`px-3 py-1 rounded-full ${step === 'checkout' ? 'bg-amber-500 text-stone-950 font-black' : 'bg-stone-800 text-stone-400'}`}>
               3. Validation
             </span>
@@ -531,19 +524,19 @@ export default function PromoWeekend() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          STEP 1: PIZZA SELECTION (ROUNDED ROTATING PIZZA DISKS + TOSS ANIMATION)
+          STEP 1: PIZZA SELECTION (WITH CONTINUOUS SLOW SPINNING PIZZA DISKS)
          ═══════════════════════════════════════════════════════════════ */}
       {step === 'pizza' && (
         <main className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
           {/* Base selector & Search */}
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-stone-900 p-3 rounded-2xl border border-stone-800">
-            <div className="flex bg-stone-950 p-1 rounded-xl w-full sm:w-auto border border-stone-800">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-3 rounded-2xl border border-stone-200 shadow-sm">
+            <div className="flex bg-stone-100 p-1 rounded-xl w-full sm:w-auto border border-stone-200">
               <button
                 onClick={() => setActiveBase('tomate')}
                 className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-xs font-black transition-all ${
                   activeBase === 'tomate'
                     ? 'bg-amber-500 text-stone-950 shadow-md'
-                    : 'text-stone-400 hover:text-white'
+                    : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
                 Base Tomate ({displayPizzasTomate.length})
@@ -553,7 +546,7 @@ export default function PromoWeekend() {
                 className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-xs font-black transition-all ${
                   activeBase === 'creme'
                     ? 'bg-amber-500 text-stone-950 shadow-md'
-                    : 'text-stone-400 hover:text-white'
+                    : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
                 Base Crème ({displayPizzasCreme.length})
@@ -561,19 +554,19 @@ export default function PromoWeekend() {
             </div>
 
             <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-stone-500" />
+              <Search className="w-4 h-4 absolute left-3 top-3 text-stone-400" />
               <Input 
                 type="text"
                 placeholder="Rechercher une pizza..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-stone-950 border-stone-800 text-white placeholder:text-stone-500 rounded-xl text-xs pl-9 w-full"
+                className="bg-white border-stone-300 text-stone-900 placeholder:text-stone-400 rounded-xl text-xs pl-9 w-full"
               />
             </div>
           </div>
 
-          {/* Pizza Grid Cards with Rotating Pizza Disks */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Pizza List Cards - Styled Matching Main Site (Screenshot 1) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {displayPizzas.map((pizza) => {
               const countInCart = selectedPizzas.filter(p => p.pizza.id === pizza.id).length;
               const imageUrl = getPizzaImage(pizza.name, pizza.imageUrl);
@@ -581,78 +574,74 @@ export default function PromoWeekend() {
               return (
                 <div 
                   key={pizza.id}
-                  className="bg-stone-900 border border-stone-800 hover:border-amber-500/60 rounded-3xl p-5 flex flex-col justify-between transition-all shadow-xl group relative overflow-hidden"
+                  className="bg-white border border-stone-200/90 hover:border-amber-500/60 rounded-2xl p-4 flex flex-col justify-between transition-all shadow-md group relative overflow-hidden"
                 >
-                  {/* Pizza Disk with Image Spin Rotation */}
-                  <div className="flex justify-center items-center py-3 relative">
-                    <div className="w-40 h-40 rounded-full p-1 border-4 border-amber-500/30 group-hover:border-amber-400 shadow-2xl relative transition-all duration-700 bg-stone-950 overflow-hidden flex items-center justify-center">
+                  {/* Top section: Rotating pizza disk + Name/Description/Price */}
+                  <div className="flex gap-4 items-center">
+                    {/* Continuous Slow Rotating Pizza Disk Image */}
+                    <div 
+                      className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-stone-200 group-hover:border-amber-500/80 shadow-md relative shrink-0 overflow-hidden bg-stone-900 flex items-center justify-center cursor-pointer"
+                      onClick={() => openCustomizer(pizza)}
+                    >
                       <img 
                         src={imageUrl} 
                         alt={pizza.name}
-                        className="w-full h-full object-cover rounded-full transition-transform duration-1000 ease-out group-hover:rotate-[360deg] active:scale-95 cursor-pointer"
-                        onClick={() => openCustomizer(pizza)}
+                        className="w-full h-full object-cover rounded-full pizza-continuous-spin"
                       />
                     </div>
 
-                    <span className="absolute top-0 left-0 bg-amber-500 text-stone-950 text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
-                      10,90 €
-                    </span>
+                    {/* Details */}
+                    <div className="flex-1 space-y-1">
+                      <div className="flex justify-between items-start">
+                        <h3 
+                          onClick={() => openCustomizer(pizza)}
+                          className="font-extrabold text-stone-900 text-base group-hover:text-amber-600 transition-colors cursor-pointer"
+                        >
+                          {pizza.name}
+                        </h3>
+                        {countInCart > 0 && (
+                          <span className="bg-amber-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-full">
+                            {countInCart}
+                          </span>
+                        )}
+                      </div>
 
-                    <span className="absolute top-0 right-0 bg-green-500/90 text-white text-[10px] font-extrabold px-2 py-1 rounded-full shadow-lg backdrop-blur">
-                      +2 Boissons
-                    </span>
-
-                    {countInCart > 0 && (
-                      <span className="absolute bottom-0 right-2 bg-amber-500 text-stone-950 font-black text-xs px-2.5 py-0.5 rounded-full shadow-lg">
-                        {countInCart} en panier
-                      </span>
-                    )}
+                      <p className="text-stone-500 text-xs line-clamp-2 leading-relaxed">{pizza.description}</p>
+                      
+                      <div className="flex items-baseline gap-2 pt-1">
+                        <span className="text-lg font-black text-amber-600">10.90€</span>
+                        <span className="text-xs text-stone-400 line-through font-bold">18.00€</span>
+                        <span className="text-[10px] text-green-700 font-extrabold bg-green-100 px-1.5 py-0.5 rounded">+2 Boissons</span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Content */}
-                  <div className="text-center space-y-2 pt-2 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-black text-white text-lg group-hover:text-amber-400 transition-colors">
-                        {pizza.name}
-                      </h3>
-                      <p className="text-stone-400 text-xs line-clamp-2 leading-relaxed mt-1">{pizza.description}</p>
-                    </div>
+                  {/* Bottom Action Row: Personnaliser (left) & + Ajouter (right) */}
+                  <div className="flex justify-between items-center pt-3 mt-3 border-t border-stone-100">
+                    <button
+                      type="button"
+                      onClick={() => openCustomizer(pizza)}
+                      className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1.5 transition-colors"
+                    >
+                      <span>📝</span> Personnaliser
+                    </button>
 
-                    {/* Price and Action Buttons */}
-                    <div className="pt-3 border-t border-stone-800 space-y-2">
-                      <div className="flex justify-center items-baseline gap-2">
-                        <span className="text-2xl font-black text-amber-400">10,90 €</span>
-                        <span className="text-xs text-stone-500 line-through font-bold">18,00 €</span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => openCustomizer(pizza)}
-                          className="border-stone-800 hover:border-amber-500 text-stone-300 hover:text-white rounded-xl text-xs py-2.5 font-bold flex items-center justify-center gap-1"
-                        >
-                          <SlidersHorizontal className="w-3.5 h-3.5" /> Modifier
-                        </Button>
-
-                        <Button
-                          type="button"
-                          onClick={(e) => handleAddPizzaDirect(e, pizza)}
-                          className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black rounded-xl text-xs py-2.5 flex items-center justify-center gap-1 shadow-md"
-                        >
-                          <Plus className="w-4 h-4" /> Ajouter
-                        </Button>
-                      </div>
-                    </div>
+                    <Button
+                      type="button"
+                      onClick={(e) => handleAddPizzaDirect(e, pizza)}
+                      className="bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs px-5 py-2 flex items-center gap-1 shadow-md"
+                    >
+                      + Ajouter
+                    </Button>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Sticky Bottom Cart Bar */}
+          {/* Sticky Bottom Cart Bar for Mobile & Desktop */}
           {selectedPizzas.length > 0 && (
-            <div className="fixed bottom-0 left-0 right-0 z-40 bg-stone-900/95 backdrop-blur border-t border-amber-500/40 p-4 shadow-2xl">
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-stone-900 text-white border-t border-amber-500/40 p-4 shadow-2xl">
               <div className="max-w-4xl mx-auto space-y-3">
                 <div className="flex justify-between items-center">
                   <div>
@@ -671,10 +660,10 @@ export default function PromoWeekend() {
                   {selectedPizzas.map((item, idx) => (
                     <div key={idx} className="bg-stone-950 border border-stone-800 rounded-xl px-3 py-1.5 text-xs flex items-center gap-2 flex-shrink-0">
                       <span className="font-bold text-white">{idx + 1}. {item.pizza.name}</span>
-                      {item.addedExtras.length > 0 && <span className="text-[10px] text-amber-400">(+{item.addedExtras.reduce((a, b) => a + b.price, 0).toFixed(2)}€)</span>}
+                      {item.addedExtras.length > 0 && <span className="text-[10px] text-amber-400">(+{item.addedExtras.reduce((a, b) => a + (b.price || 0), 0).toFixed(2)}€)</span>}
                       <button 
                         onClick={() => handleRemovePizza(idx)}
-                        className="text-stone-500 hover:text-red-400 ml-1"
+                        className="text-stone-400 hover:text-red-400 ml-1"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -688,123 +677,19 @@ export default function PromoWeekend() {
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
-          PIZZA CUSTOMIZATION MODAL (COMME D'HABITUDE BRO)
+          PIZZA CUSTOMIZATION MODAL (EXACT PIZZA INGREDIENT CUSTOMIZER)
          ═══════════════════════════════════════════════════════════════ */}
       {customizingPizza && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-stone-900 border border-stone-800 w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-200">
-            {/* Modal Header */}
-            <div className="p-4 border-b border-stone-800 flex justify-between items-center bg-stone-950">
-              <div className="flex items-center gap-3">
-                <img 
-                  src={getPizzaImage(customizingPizza.name, customizingPizza.imageUrl)} 
-                  alt={customizingPizza.name}
-                  className="w-14 h-14 rounded-full object-cover border-2 border-amber-500 animate-spin-slow"
-                />
-                <div>
-                  <h3 className="font-extrabold text-white text-base">{customizingPizza.name}</h3>
-                  <p className="text-xs text-amber-400 font-bold">Pizza Senior • 10,90 €</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setCustomizingPizza(null)}
-                className="p-2 rounded-xl bg-stone-900 text-stone-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-5 overflow-y-auto space-y-5 flex-1 text-xs">
-              {/* Sauce Base Selection */}
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-stone-300">Sauce de Base</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCustomBase('tomate')}
-                    className={`py-2.5 px-3 rounded-xl font-bold border transition-all text-xs ${
-                      customBase === 'tomate'
-                        ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-md'
-                        : 'bg-stone-950 border-stone-800 text-stone-400'
-                    }`}
-                  >
-                    🍅 Base Sauce Tomate
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCustomBase('creme')}
-                    className={`py-2.5 px-3 rounded-xl font-bold border transition-all text-xs ${
-                      customBase === 'creme'
-                        ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-md'
-                        : 'bg-stone-950 border-stone-800 text-stone-400'
-                    }`}
-                  >
-                    🥛 Base Crème Fraîche
-                  </button>
-                </div>
-              </div>
-
-              {/* Extras & Suppléments */}
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-stone-300">Ajouter des Suppléments / Extras</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {EXTRA_OPTIONS.map((extra) => {
-                    const isAdded = customExtras.some(e => e.id === extra.id);
-
-                    return (
-                      <button
-                        key={extra.id}
-                        type="button"
-                        onClick={() => {
-                          if (isAdded) {
-                            setCustomExtras(prev => prev.filter(e => e.id !== extra.id));
-                          } else {
-                            setCustomExtras(prev => [...prev, extra]);
-                          }
-                        }}
-                        className={`p-2.5 rounded-xl border text-left flex justify-between items-center transition-all ${
-                          isAdded
-                            ? 'bg-amber-500/20 border-amber-500 text-white font-bold'
-                            : 'bg-stone-950 border-stone-800 text-stone-400'
-                        }`}
-                      >
-                        <span>{extra.name}</span>
-                        <span className="text-amber-400 font-bold">+{extra.price.toFixed(2)}€</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Specific Pizza Note */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-stone-300">Instructions Particulières pour le Chef</Label>
-                <Input 
-                  type="text"
-                  placeholder="Ex: Bien cuite, sans oignons, découper en 8..."
-                  value={customNote}
-                  onChange={(e) => setCustomNote(e.target.value)}
-                  className="bg-stone-950 border-stone-800 text-white text-xs rounded-xl"
-                />
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-stone-800 bg-stone-950 flex justify-between items-center">
-              <div>
-                <div className="text-[10px] text-stone-400">Prix total pizza</div>
-                <div className="text-lg font-black text-amber-400">
-                  {(10.90 + customExtras.reduce((a, b) => a + b.price, 0)).toFixed(2)} €
-                </div>
-              </div>
-              <Button
-                onClick={handleConfirmCustomization}
-                className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black px-6 py-3 rounded-xl text-sm"
-              >
-                Ajouter au Panier (10,90 €)
-              </Button>
-            </div>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl shadow-2xl">
+            <PizzaIngredientCustomizer 
+              pizza={customizingPizza}
+              basePrice={10.90}
+              formatLabel="Senior 31cm"
+              initialBase={customizingPizza.base || activeBase}
+              onConfirm={handleConfirmIngredientCustomizer}
+              onBack={() => setCustomizingPizza(null)}
+            />
           </div>
         </div>
       )}
@@ -816,34 +701,34 @@ export default function PromoWeekend() {
         <main className="max-w-3xl mx-auto px-4 pt-6 space-y-6">
           <button 
             onClick={() => setStep('pizza')}
-            className="flex items-center gap-2 text-xs font-bold text-stone-400 hover:text-white mb-2"
+            className="flex items-center gap-2 text-xs font-bold text-stone-600 hover:text-stone-900 mb-2"
           >
             <ArrowLeft className="w-4 h-4" /> Modifier ma sélection de pizzas
           </button>
 
-          <div className="bg-stone-900 border border-amber-500/40 rounded-2xl p-4">
+          <div className="bg-stone-900 text-white border border-amber-500/40 rounded-2xl p-4 shadow-md">
             <h2 className="text-lg font-black text-white flex items-center gap-2">
               <Wine className="w-5 h-5 text-amber-400" /> Choisissez vos 2 Boissons OFFERTES par Pizza
             </h2>
-            <p className="text-xs text-stone-400 mt-1">
+            <p className="text-xs text-stone-300 mt-1">
               Pour chaque Pizza Senior à 10,90€, sélectionnez 2 boissons gratuites.
             </p>
           </div>
 
           <div className="space-y-6">
             {selectedPizzas.map((item, pizzaIdx) => (
-              <div key={pizzaIdx} className="bg-stone-900 border border-stone-800 rounded-2xl p-5 space-y-4 shadow-xl">
-                <div className="flex justify-between items-center border-b border-stone-800 pb-3">
+              <div key={pizzaIdx} className="bg-white border border-stone-200 rounded-2xl p-5 space-y-4 shadow-md">
+                <div className="flex justify-between items-center border-b border-stone-100 pb-3">
                   <div>
-                    <h3 className="font-black text-amber-400 text-base">
+                    <h3 className="font-black text-amber-600 text-base">
                       Pizza N°{pizzaIdx + 1} : {item.pizza.name} (Senior 10,90€)
                     </h3>
-                    <p className="text-xs text-stone-400">
-                      Boissons sélectionnées : <strong className="text-white">{item.drinks.length} / 2</strong>
+                    <p className="text-xs text-stone-500">
+                      Boissons sélectionnées : <strong className="text-stone-900">{item.drinks.length} / 2</strong>
                     </p>
                   </div>
                   {item.drinks.length === 2 && (
-                    <span className="bg-green-500/20 text-green-400 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1 border border-green-500/30">
+                    <span className="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
                       <Check className="w-3.5 h-3.5" /> Boissons Choisies
                     </span>
                   )}
@@ -861,15 +746,15 @@ export default function PromoWeekend() {
                         onClick={() => toggleDrinkForPizza(pizzaIdx, drink.name)}
                         className={`p-3 rounded-xl text-left border transition-all flex items-center justify-between ${
                           isSelected
-                            ? 'bg-amber-500/20 border-amber-500 text-white font-bold shadow-md'
-                            : 'bg-stone-950 border-stone-800 text-stone-300 hover:border-stone-700'
+                            ? 'bg-amber-500/20 border-amber-500 text-amber-900 font-bold shadow-sm'
+                            : 'bg-stone-50 border-stone-200 text-stone-700 hover:border-stone-400'
                         }`}
                       >
                         <span className="text-xs flex items-center gap-2">
                           <span>{drink.icon}</span>
                           <span>{drink.name}</span>
                         </span>
-                        {isSelected && <Check className="w-4 h-4 text-amber-400" />}
+                        {isSelected && <Check className="w-4 h-4 text-amber-600" />}
                       </button>
                     );
                   })}
@@ -882,14 +767,14 @@ export default function PromoWeekend() {
             <Button 
               variant="outline"
               onClick={() => setStep('pizza')}
-              className="border-stone-800 text-stone-400 hover:text-white"
+              className="border-stone-300 text-stone-700 hover:bg-stone-100"
             >
               Retour aux pizzas
             </Button>
 
             <Button 
               onClick={handleProceedToCheckout}
-              className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black px-8 py-3 rounded-xl text-sm flex items-center gap-2 shadow-lg"
+              className="bg-amber-600 hover:bg-amber-700 text-white font-black px-8 py-3 rounded-xl text-sm flex items-center gap-2 shadow-lg"
             >
               Valider et Passer la Commande <ChevronRight className="w-4 h-4" />
             </Button>
@@ -904,22 +789,22 @@ export default function PromoWeekend() {
         <main className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
           <button 
             onClick={() => setStep('drinks')}
-            className="flex items-center gap-2 text-xs font-bold text-stone-400 hover:text-white mb-2"
+            className="flex items-center gap-2 text-xs font-bold text-stone-600 hover:text-stone-900 mb-2"
           >
             <ArrowLeft className="w-4 h-4" /> Modifier les boissons
           </button>
 
-          <form onSubmit={handleSubmitOrder} className="bg-stone-900 border border-stone-800 rounded-3xl p-6 space-y-6 shadow-2xl">
-            <div className="border-b border-stone-800 pb-4">
-              <h2 className="text-xl font-black text-white">Coordonnées de Commande</h2>
-              <p className="text-xs text-stone-400 mt-1">
+          <form onSubmit={handleSubmitOrder} className="bg-white border border-stone-200 rounded-3xl p-6 space-y-6 shadow-xl">
+            <div className="border-b border-stone-100 pb-4">
+              <h2 className="text-xl font-black text-stone-900">Coordonnées de Commande</h2>
+              <p className="text-xs text-stone-500 mt-1">
                 Finalisez votre commande de {selectedPizzas.length} pizza(s) Senior pour <strong>{totalPrice.toFixed(2)} €</strong>.
               </p>
             </div>
 
             {/* Mode de Retrait */}
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-stone-300">Mode de Retrait</Label>
+              <Label className="text-xs font-bold text-stone-700">Mode de Retrait</Label>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { id: 'emporter', label: '🛍️ À Emporter' },
@@ -932,8 +817,8 @@ export default function PromoWeekend() {
                     onClick={() => setOrderType(type.id as any)}
                     className={`py-3 px-3 rounded-xl text-xs font-bold border transition-all ${
                       orderType === type.id
-                        ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-md'
-                        : 'bg-stone-950 border-stone-800 text-stone-400 hover:text-white'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-md'
+                        : 'bg-stone-50 border-stone-200 text-stone-600 hover:text-stone-900'
                     }`}
                   >
                     {type.label}
@@ -945,13 +830,13 @@ export default function PromoWeekend() {
             {/* Address if delivery */}
             {orderType === 'livraison' && (
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-stone-300">Adresse de livraison complète</Label>
+                <Label className="text-xs font-bold text-stone-700">Adresse de livraison complète</Label>
                 <Input 
                   type="text"
                   placeholder="N° rue, nom de rue, étage, digicode..."
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="bg-stone-950 border-stone-800 text-white text-xs rounded-xl"
+                  className="bg-stone-50 border-stone-200 text-stone-900 text-xs rounded-xl"
                   required
                 />
               </div>
@@ -960,25 +845,25 @@ export default function PromoWeekend() {
             {/* Customer Name & Phone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-stone-300">Votre Nom *</Label>
+                <Label className="text-xs font-bold text-stone-700">Votre Nom *</Label>
                 <Input 
                   type="text"
                   placeholder="Ex: Alexandre Dupuis"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="bg-stone-950 border-stone-800 text-white text-xs rounded-xl"
+                  className="bg-stone-50 border-stone-200 text-stone-900 text-xs rounded-xl"
                   required
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-stone-300">Numéro de Téléphone *</Label>
+                <Label className="text-xs font-bold text-stone-700">Numéro de Téléphone *</Label>
                 <Input 
                   type="tel"
                   placeholder="Ex: 06 12 34 56 78"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="bg-stone-950 border-stone-800 text-white text-xs rounded-xl"
+                  className="bg-stone-50 border-stone-200 text-stone-900 text-xs rounded-xl"
                   required
                 />
               </div>
@@ -986,19 +871,19 @@ export default function PromoWeekend() {
 
             {/* Payment Method */}
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-stone-300">Mode de Règlement</Label>
+              <Label className="text-xs font-bold text-stone-700">Mode de Règlement</Label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('cb')}
                   className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold transition-all ${
                     paymentMethod === 'cb'
-                      ? 'bg-amber-500/20 border-amber-500 text-white'
-                      : 'bg-stone-950 border-stone-800 text-stone-400'
+                      ? 'bg-amber-100 border-amber-600 text-amber-900'
+                      : 'bg-stone-50 border-stone-200 text-stone-600'
                   }`}
                 >
-                  <span className="flex items-center gap-2"><CreditCard className="w-4 h-4 text-amber-400" /> Carte Bancaire</span>
-                  {paymentMethod === 'cb' && <Check className="w-4 h-4 text-amber-400" />}
+                  <span className="flex items-center gap-2"><CreditCard className="w-4 h-4 text-amber-600" /> Carte Bancaire</span>
+                  {paymentMethod === 'cb' && <Check className="w-4 h-4 text-amber-600" />}
                 </button>
 
                 <button
@@ -1006,39 +891,39 @@ export default function PromoWeekend() {
                   onClick={() => setPaymentMethod('especes')}
                   className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold transition-all ${
                     paymentMethod === 'especes'
-                      ? 'bg-amber-500/20 border-amber-500 text-white'
-                      : 'bg-stone-950 border-stone-800 text-stone-400'
+                      ? 'bg-amber-100 border-amber-600 text-amber-900'
+                      : 'bg-stone-50 border-stone-200 text-stone-600'
                   }`}
                 >
-                  <span className="flex items-center gap-2"><Banknote className="w-4 h-4 text-amber-400" /> Espèces</span>
-                  {paymentMethod === 'especes' && <Check className="w-4 h-4 text-amber-400" />}
+                  <span className="flex items-center gap-2"><Banknote className="w-4 h-4 text-amber-600" /> Espèces</span>
+                  {paymentMethod === 'especes' && <Check className="w-4 h-4 text-amber-600" />}
                 </button>
               </div>
             </div>
 
             {/* Order Summary Box */}
-            <div className="bg-stone-950 p-4 rounded-2xl border border-stone-800 space-y-2 text-xs">
-              <h4 className="font-extrabold text-amber-400 border-b border-stone-800 pb-2">Récapitulatif de votre commande</h4>
+            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-2 text-xs">
+              <h4 className="font-extrabold text-stone-900 border-b border-stone-200 pb-2">Récapitulatif de votre commande</h4>
               {selectedPizzas.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-start text-stone-300 py-1">
+                <div key={idx} className="flex justify-between items-start text-stone-700 py-1 border-b border-stone-100 last:border-none">
                   <div>
-                    <span className="font-bold text-white">{item.pizza.name} (Senior)</span>
-                    <div className="text-[11px] text-stone-400">Boissons : {item.drinks.join(', ')}</div>
-                    {item.addedExtras.length > 0 && <div className="text-[11px] text-amber-400">Extras: {item.addedExtras.map(e => e.name).join(', ')}</div>}
+                    <span className="font-bold text-stone-900">{item.pizza.name} (Senior)</span>
+                    <div className="text-[11px] text-stone-500">Boissons : {item.drinks.join(', ')}</div>
+                    {item.addedExtras.length > 0 && <div className="text-[11px] text-amber-700 font-bold">Extras: {item.addedExtras.map(e => e.name).join(', ')}</div>}
                   </div>
-                  <span className="font-bold text-amber-400">{(10.90 + item.addedExtras.reduce((a, b) => a + b.price, 0)).toFixed(2)} €</span>
+                  <span className="font-bold text-amber-700">{(10.90 + item.addedExtras.reduce((a, b) => a + (b.price || 0), 0)).toFixed(2)} €</span>
                 </div>
               ))}
-              <div className="flex justify-between items-center pt-2 border-t border-stone-800 text-sm font-extrabold text-white">
+              <div className="flex justify-between items-center pt-2 border-t border-stone-200 text-sm font-extrabold text-stone-900">
                 <span>Total à régler</span>
-                <span className="text-amber-400 text-base">{totalPrice.toFixed(2)} €</span>
+                <span className="text-amber-600 text-base">{totalPrice.toFixed(2)} €</span>
               </div>
             </div>
 
             <Button
               type="submit"
               disabled={isProcessing}
-              className="w-full bg-amber-500 hover:bg-amber-600 text-stone-950 font-black py-4 text-base rounded-2xl shadow-xl flex items-center justify-center gap-2"
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-4 text-base rounded-2xl shadow-xl flex items-center justify-center gap-2"
             >
               {isProcessing ? (
                 <>
