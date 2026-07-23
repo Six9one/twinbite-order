@@ -23,8 +23,23 @@ export default defineConfig({
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
               return 'vendor-react';
             }
-            if (id.includes('@radix-ui') || id.includes('@radix-ui/react-dialog') || id.includes('@radix-ui/react-dropdown-menu') || id.includes('@radix-ui/react-tabs') || id.includes('@radix-ui/react-toast')) {
+            if (id.includes('recharts')) {
+              return 'vendor-recharts';
+            }
+            if (id.includes('xlsx')) {
+              return 'vendor-xlsx';
+            }
+            if (id.includes('tesseract.js')) {
+              return 'vendor-tesseract';
+            }
+            if (id.includes('mapbox-gl')) {
+              return 'vendor-mapbox';
+            }
+            if (id.includes('@radix-ui')) {
               return 'vendor-ui';
+            }
+            if (id.includes('lucide-react')) {
+              return 'vendor-lucide';
             }
             if (id.includes('@supabase')) {
               return 'vendor-supabase';

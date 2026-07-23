@@ -1,24 +1,27 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
 import { HeroOrderSelector } from '@/components/HeroOrderSelector';
 import { DealsCarousel } from '@/components/DealsCarousel';
-import { CategoryMenu } from '@/components/CategoryMenu';
-import { NewCart } from '@/components/NewCart';
-import { NewCheckout } from '@/components/NewCheckout';
 import { Footer } from '@/components/Footer';
-import { DeliveryMapSection } from '@/components/DeliveryMapSection';
 import { Header } from '@/components/Header';
 import { AnnouncementBanner } from '@/components/AnnouncementBanner';
 import { ScrollingBanner } from '@/components/ScrollingBanner';
 import { ClosedBanner } from '@/components/ClosedBanner';
-import { ReviewSection } from '@/components/ReviewSection';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ShoppingBag, Phone, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import heroPizza from '@/assets/hero-pizza.jpg';
+
+// Lazy load non-critical & heavy components
+const DeliveryMapSection = lazy(() => import('@/components/DeliveryMapSection').then(m => ({ default: m.DeliveryMapSection })));
+const ReviewSection = lazy(() => import('@/components/ReviewSection').then(m => ({ default: m.ReviewSection })));
+const ContestModal = lazy(() => import('@/components/ContestModal').then(m => ({ default: m.ContestModal })));
+const CategoryMenu = lazy(() => import('@/components/CategoryMenu').then(m => ({ default: m.CategoryMenu })));
+const NewCart = lazy(() => import('@/components/NewCart').then(m => ({ default: m.NewCart })));
+const NewCheckout = lazy(() => import('@/components/NewCheckout').then(m => ({ default: m.NewCheckout })));
 
 function MainApp() {
   const { orderType, setOrderType } = useOrder();
@@ -93,27 +96,41 @@ function MainApp() {
 
   // Menu view
   if (view === 'menu') {
-    return <>
-      <CategoryMenu
-        onBack={handleBackToHome}
-        onOpenCart={() => setIsCartOpen(true)}
-        lockedPizzaSize={selectedPizzaSize}
-        onClearLockedSize={() => setSelectedPizzaSize(null)}
-      />
-      <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
-    </>;
+    return (
+      <Suspense fallback={
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+          <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm font-medium text-gray-500 animate-pulse">Chargement du menu...</span>
+        </div>
+      }>
+        <CategoryMenu
+          onBack={handleBackToHome}
+          onOpenCart={() => setIsCartOpen(true)}
+          lockedPizzaSize={selectedPizzaSize}
+          onClearLockedSize={() => setSelectedPizzaSize(null)}
+        />
+        <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
+      </Suspense>
+    );
   }
 
   // Checkout view
   if (view === 'checkout') {
     return (
-      <NewCheckout
-        onBack={(size) => {
-          if (size) setSelectedPizzaSize(size);
-          setView('menu');
-        }}
-        onComplete={handleOrderComplete}
-      />
+      <Suspense fallback={
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+          <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm font-medium text-gray-500 animate-pulse">Chargement de la commande...</span>
+        </div>
+      }>
+        <NewCheckout
+          onBack={(size) => {
+            if (size) setSelectedPizzaSize(size);
+            setView('menu');
+          }}
+          onComplete={handleOrderComplete}
+        />
+      </Suspense>
     );
   }
 
@@ -137,6 +154,9 @@ function MainApp() {
       )}
       <ScrollingBanner />
       <AnnouncementBanner />
+      <Suspense fallback={null}>
+        <ContestModal />
+      </Suspense>
       <Header
         onCartClick={() => setIsCartOpen(true)}
         onOrderTypeSelect={handleNavOrderTypeSelect}
@@ -144,7 +164,10 @@ function MainApp() {
         onScheduleClick={scrollToOrderSelector}
       />
       <ClosedBanner onScheduleConfirmed={handleOrderTypeSelect} />
-      <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
+      
+      <Suspense fallback={null}>
+        <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
+      </Suspense>
 
       {/* Hero Section - optimized height */}
       <section className="relative min-h-[55vh] sm:min-h-[70vh] flex items-center justify-center overflow-hidden">
@@ -235,9 +258,13 @@ function MainApp() {
         </div>
       </section>
 
-      <DeliveryMapSection />
+      <Suspense fallback={null}>
+        <DeliveryMapSection />
+      </Suspense>
 
-      <ReviewSection />
+      <Suspense fallback={null}>
+        <ReviewSection />
+      </Suspense>
 
       {/* Contact Section */}
       <section className="py-16 bg-gradient-to-b from-background to-muted/30 pizza-pattern-fade">

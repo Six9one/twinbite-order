@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { runAutoReleve } from "@/lib/kitchenAutoReleve";
 
 import { LanguageProvider } from "@/context/LanguageContext";
@@ -15,29 +15,38 @@ import { VirtualKeyboard } from "@/components/VirtualKeyboard";
 import { PWAInstallPrompt, OfflineIndicator } from "@/components/PWAComponents";
 import { UpdateChecker } from "@/components/UpdateChecker";
 
-// Pages
+// Main Landing Page (loaded directly for instant FCP)
 import Index from "./pages/Index";
-import AdminLogin from "./pages/AdminLogin";
-import AdminDashboard from "./pages/AdminDashboard";
-import TVDashboard from "./pages/TVDashboard";
-import PaymentSuccess from "./pages/PaymentSuccess";
-import PaymentCancel from "./pages/PaymentCancel";
-import TicketPortal from "./pages/TicketPortal";
-import CrewDashboard from "./pages/CrewDashboard";
-import KitchenDashboard from "./pages/KitchenDashboard";
-import NotFound from "./pages/NotFound";
-import MentionsLegales from "./pages/MentionsLegales";
-import Confidentialite from "./pages/Confidentialite";
-import CGV from "./pages/CGV";
-import SpinWheel from "./pages/SpinWheel";
-import SpinPage from "./pages/SpinPage";
-import KioskPage from "./pages/KioskPage";
-import POSPage from "./pages/POSPage";
-import PromoWeekend from "./pages/PromoWeekend";
+
+// Lazy Loaded Pages (Code Splitting for PageSpeed optimization)
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const TVDashboard = lazy(() => import("./pages/TVDashboard"));
+const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
+const PaymentCancel = lazy(() => import("./pages/PaymentCancel"));
+const TicketPortal = lazy(() => import("./pages/TicketPortal"));
+const CrewDashboard = lazy(() => import("./pages/CrewDashboard"));
+const KitchenDashboard = lazy(() => import("./pages/KitchenDashboard"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const MentionsLegales = lazy(() => import("./pages/MentionsLegales"));
+const Confidentialite = lazy(() => import("./pages/Confidentialite"));
+const CGV = lazy(() => import("./pages/CGV"));
+const SpinWheel = lazy(() => import("./pages/SpinWheel"));
+const SpinPage = lazy(() => import("./pages/SpinPage"));
+const KioskPage = lazy(() => import("./pages/KioskPage"));
+const POSPage = lazy(() => import("./pages/POSPage"));
+const PromoWeekend = lazy(() => import("./pages/PromoWeekend"));
 
 // Components
 import ErrorBoundary from "./components/ErrorBoundary";
 import { UmamiTracker } from "./components/UmamiTracker";
+
+const PageLoader = () => (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+        <span className="text-sm font-medium text-gray-500 animate-pulse">Chargement...</span>
+    </div>
+);
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -68,32 +77,34 @@ const App = () => {
                             <OfflineIndicator />
                             <UpdateChecker />
                             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                                <Routes>
-                                    <Route path="/" element={<Index />} />
-                                    <Route path="/admin" element={<AdminLogin />} />
-                                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                                    <Route path="/tv" element={<TVDashboard />} />
-                                    <Route path="/crew" element={<CrewDashboard />} />
-                                    <Route path="/payment-success" element={<PaymentSuccess />} />
-                                    <Route path="/payment-cancel" element={<PaymentCancel />} />
-                                    <Route path="/tickets" element={<TicketPortal />} />
-                                    <Route path="/ticket" element={<TicketPortal />} />
-                                    <Route path="/kitchen" element={<KitchenDashboard />} />
-                                    {/* Legal pages */}
-                                    <Route path="/mentions-legales" element={<MentionsLegales />} />
-                                    <Route path="/confidentialite" element={<Confidentialite />} />
-                                    <Route path="/cgv" element={<CGV />} />
-                                    <Route path="/avis" element={<SpinWheel />} />
-                                    <Route path="/spin" element={<SpinPage />} />
-                                    <Route path="/kiosk" element={<KioskPage />} />
-                                    <Route path="/pos" element={<POSPage />} />
-                                    <Route path="/promo-weekend" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
-                                    <Route path="/promo" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
-                                    <Route path="/offre" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
-                                    <Route path="/offre-du-soir" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
-                                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                                    <Route path="*" element={<NotFound />} />
-                                </Routes>
+                                <Suspense fallback={<PageLoader />}>
+                                    <Routes>
+                                        <Route path="/" element={<Index />} />
+                                        <Route path="/admin" element={<AdminLogin />} />
+                                        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                                        <Route path="/tv" element={<TVDashboard />} />
+                                        <Route path="/crew" element={<CrewDashboard />} />
+                                        <Route path="/payment-success" element={<PaymentSuccess />} />
+                                        <Route path="/payment-cancel" element={<PaymentCancel />} />
+                                        <Route path="/tickets" element={<TicketPortal />} />
+                                        <Route path="/ticket" element={<TicketPortal />} />
+                                        <Route path="/kitchen" element={<KitchenDashboard />} />
+                                        {/* Legal pages */}
+                                        <Route path="/mentions-legales" element={<MentionsLegales />} />
+                                        <Route path="/confidentialite" element={<Confidentialite />} />
+                                        <Route path="/cgv" element={<CGV />} />
+                                        <Route path="/avis" element={<SpinWheel />} />
+                                        <Route path="/spin" element={<SpinPage />} />
+                                        <Route path="/kiosk" element={<KioskPage />} />
+                                        <Route path="/pos" element={<POSPage />} />
+                                        <Route path="/promo-weekend" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
+                                        <Route path="/promo" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
+                                        <Route path="/offre" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
+                                        <Route path="/offre-du-soir" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
+                                        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                                        <Route path="*" element={<NotFound />} />
+                                    </Routes>
+                                </Suspense>
                                 <PWAInstallPrompt />
                                 <VirtualKeyboard />
                             </BrowserRouter>

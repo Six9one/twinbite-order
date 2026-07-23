@@ -163,6 +163,7 @@ export function Header({
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Fermer le menu" : "Ouvrir le menu principal"}
               className="lg:hidden w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-muted flex items-center justify-center transition-colors hover:bg-muted/80 active:scale-95"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6 text-foreground" />}

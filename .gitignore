@@ -43,3 +43,4 @@ code_summary.json
 
 # Runtime data files — change locally, must not block git pull
 print-server/printed_orders.json
+scratch/

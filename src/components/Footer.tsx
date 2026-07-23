@@ -109,6 +109,7 @@ export function Footer() {
                 href="https://facebook.com/twinpizza"
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="Facebook de Twin Pizza"
                 className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-background/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all active:scale-95"
               >
                 <Facebook className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -117,6 +118,7 @@ export function Footer() {
                 href="https://instagram.com/twinpizza"
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="Instagram de Twin Pizza"
                 className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-background/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all active:scale-95"
               >
                 <Instagram className="w-5 h-5 sm:w-6 sm:h-6" />
