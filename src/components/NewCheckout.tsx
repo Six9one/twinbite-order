@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe, Loader2, CalendarClock } from 'lucide-react';
+import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe, Loader2, CalendarClock, ShieldCheck, Lock, ChevronRight, QrCode, Smartphone, Sparkles, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { format, addMonths, isSunday } from 'date-fns';
@@ -644,128 +644,229 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         )}
 
         {step === 'payment' && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Mode de paiement</h2>
-            <div className="grid grid-cols-1 gap-3">
-              {/* Online Payment (myPOS) */}
+          <div className="space-y-6 max-w-md mx-auto">
+            {/* Header: Order Ref, Title, and Big Price Display */}
+            <div className="text-center space-y-1">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">
+                Commande #{orderNumberRef.current || 'TW-8492'}
+              </span>
+              <h2 className="text-2xl font-black tracking-tight text-foreground">
+                {cart.length > 0 ? `${cart.reduce((s, i) => s + i.quantity, 0)} Article(s) • TwinBite` : 'Votre Commande'}
+              </h2>
+              <div className="pt-1">
+                <span className="text-4xl font-extrabold tracking-tight text-foreground">
+                  {ttc.toFixed(2)} €
+                </span>
+              </div>
+            </div>
+
+            {/* Main Mollie-style Card Container */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 shadow-xl border border-border/50 space-y-4">
+              
+              {/* Express Payment Button ( Pay / G Pay) at top */}
               {(paymentSettings?.online_payments_enabled ?? true) && (
                 <button
                   type="button"
-                  role="radio"
-                  aria-checked={paymentMethod === 'en_ligne' || paymentMethod === 'mypos'}
-                  className={`w-full flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${paymentMethod === 'en_ligne' || paymentMethod === 'mypos' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/40 hover:bg-muted/40'}`}
-                  onClick={() => setPaymentMethod('en_ligne')}
+                  onClick={() => {
+                    setPaymentMethod('en_ligne');
+                  }}
+                  className={`w-full py-3.5 px-4 rounded-2xl bg-black text-white hover:bg-zinc-800 transition-all shadow-md hover:shadow-lg flex items-center justify-between group active:scale-[0.99] border border-zinc-800 ${
+                    paymentMethod === 'en_ligne' ? 'ring-2 ring-black dark:ring-white ring-offset-2' : ''
+                  }`}
                 >
-                  <div className="flex items-center gap-3 flex-1">
-                    <Globe className="w-8 h-8 text-purple-600 flex-shrink-0" />
-                    <div>
-                      <h3 className="font-semibold text-base">Payer en ligne (myPOS)</h3>
-                      <p className="text-xs text-muted-foreground">Redirection sécurisée vers la page myPOS</p>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold font-sans tracking-tight"> Pay</span>
+                    <span className="text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full border border-zinc-700">ou Google Pay</span>
                   </div>
-
-                  {/* Payment logos: Apple Pay, Visa, Mastercard, Google Pay */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {/* Apple Pay */}
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-black text-white text-[10px] font-bold">
-                       Pay
-                    </span>
-                    {/* Visa */}
-                    <span className="inline-flex items-center px-2 py-1 rounded bg-blue-900 text-white text-[10px] font-extrabold tracking-wider">
-                      VISA
-                    </span>
-                    {/* Mastercard */}
-                    <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded bg-slate-900 text-white text-[10px] font-bold">
-                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 -ml-1.5 inline-block opacity-90"></span>
-                    </span>
-                    {/* Google Pay */}
-                    <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded bg-white text-gray-800 border border-gray-300 text-[10px] font-bold">
-                      <span className="text-blue-500">G</span>Pay
-                    </span>
+                  <div className="flex items-center gap-1 text-xs font-medium text-zinc-300 group-hover:text-white transition-colors">
+                    <span>Paiement Express</span>
+                    <ChevronRight className="w-4 h-4 ml-0.5 group-hover:translate-x-0.5 transition-transform" />
                   </div>
-
-                  {(paymentMethod === 'en_ligne' || paymentMethod === 'mypos') && (
-                    <Check className="w-5 h-5 text-primary flex-shrink-0 hidden sm:block" />
-                  )}
                 </button>
               )}
-              {/* Pay at Restaurant (CB) */}
-              <button
-                type="button"
-                role="radio"
-                aria-checked={paymentMethod === 'cb'}
-                className={`w-full flex items-center gap-4 p-4 min-h-[72px] rounded-xl border-2 transition-all text-left ${paymentMethod === 'cb' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/40 hover:bg-muted/40'}`}
-                onClick={() => setPaymentMethod('cb')}
-              >
-                <CreditCard className="w-8 h-8 text-primary flex-shrink-0" />
-                <div className="flex-1">
-                  <h3 className="font-semibold">Payer au restaurant / Carte</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {orderType === 'livraison' ? 'À la livraison par TPE' : 'Sur place ou à l\'emporter'}
+
+              {/* Subtle Section Divider */}
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-border/40"></div>
+                <span className="flex-shrink mx-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Ou choisir un mode de paiement
+                </span>
+                <div className="flex-grow border-t border-border/40"></div>
+              </div>
+
+              {/* Grouped Payment Methods List */}
+              <div className="divide-y divide-border/30 rounded-2xl border border-border/40 overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
+
+                {/* Option 1: Carte Bancaire / Apple Pay / Google Pay (En ligne) */}
+                {(paymentSettings?.online_payments_enabled ?? true) && (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={paymentMethod === 'en_ligne' || paymentMethod === 'mypos'}
+                    onClick={() => setPaymentMethod('en_ligne')}
+                    className={`w-full p-4 flex items-center gap-3.5 text-left transition-all hover:bg-accent/40 ${
+                      paymentMethod === 'en_ligne' || paymentMethod === 'mypos'
+                        ? 'bg-primary/5 dark:bg-primary/10 border-l-4 border-l-primary'
+                        : ''
+                    }`}
+                  >
+                    {/* Icon Tile */}
+                    <div className="w-11 h-11 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-sm flex-shrink-0 relative overflow-hidden">
+                      <CreditCard className="w-5 h-5 text-blue-400" />
+                    </div>
+                    {/* Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm sm:text-base text-foreground">Carte bancaire / Apple Pay</span>
+                        <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold px-1.5 py-0.5 rounded">
+                          Secured 🔒
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        Visa, Mastercard, Apple Pay, Google Pay
+                      </p>
+                    </div>
+                    {/* Chevron or Check */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {paymentMethod === 'en_ligne' || paymentMethod === 'mypos' ? (
+                        <Check className="w-5 h-5 text-primary" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-muted-foreground/60" />
+                      )}
+                    </div>
+                  </button>
+                )}
+
+                {/* Option 2: Lien SMS / QR Code */}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === 'en_ligne' && customerInfo.notes?.includes('QR')}
+                  onClick={() => setPaymentMethod('en_ligne')}
+                  className={`w-full p-4 flex items-center gap-3.5 text-left transition-all hover:bg-accent/40 ${
+                    paymentMethod === 'en_ligne' && customerInfo.notes?.includes('QR')
+                      ? 'bg-primary/5 border-l-4 border-l-purple-600'
+                      : ''
+                  }`}
+                >
+                  {/* Icon Tile */}
+                  <div className="w-11 h-11 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-sm flex-shrink-0">
+                    <QrCode className="w-5 h-5" />
+                  </div>
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm sm:text-base text-foreground">Lien SMS / QR Code Mobile</span>
+                      <span className="text-[10px] bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-bold px-1.5 py-0.5 rounded">
+                        Mobile
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                      Payer directement sur smartphone via SMS ou scanner
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground/60 flex-shrink-0" />
+                </button>
+
+                {/* Option 3: Payer au restaurant / Carte TPE */}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === 'cb'}
+                  onClick={() => setPaymentMethod('cb')}
+                  className={`w-full p-4 flex items-center gap-3.5 text-left transition-all hover:bg-accent/40 ${
+                    paymentMethod === 'cb' ? 'bg-primary/5 border-l-4 border-l-primary' : ''
+                  }`}
+                >
+                  <div className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm flex-shrink-0">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold text-sm sm:text-base text-foreground block">Payer au restaurant / TPE</span>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {orderType === 'livraison' ? 'À la livraison par TPE sans contact' : 'Sur place ou lors du retrait'}
+                    </p>
+                  </div>
+                  {paymentMethod === 'cb' ? (
+                    <Check className="w-5 h-5 text-primary flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-muted-foreground/60 flex-shrink-0" />
+                  )}
+                </button>
+
+                {/* Option 4: Espèces (Cash) */}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === 'especes'}
+                  onClick={() => setPaymentMethod('especes')}
+                  className={`w-full p-4 flex items-center gap-3.5 text-left transition-all hover:bg-accent/40 ${
+                    paymentMethod === 'especes' ? 'bg-emerald-500/10 border-l-4 border-l-emerald-600' : ''
+                  }`}
+                >
+                  <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm flex-shrink-0">
+                    <Banknote className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold text-sm sm:text-base text-foreground block">Espèces (Comptant)</span>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {orderType === 'livraison' ? 'À la livraison au livreur' : 'Règlement en caisse sur place'}
+                    </p>
+                  </div>
+                  {paymentMethod === 'especes' ? (
+                    <Check className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-muted-foreground/60 flex-shrink-0" />
+                  )}
+                </button>
+
+              </div>
+
+              {/* Certified 100% Security Footer Badge */}
+              <div className="pt-2">
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl p-3.5 text-center space-y-1">
+                  <div className="flex items-center justify-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold text-xs sm:text-sm">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                    <span>Paiement 100% Sécurisé & Certifié SSL 256-bit</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 font-medium">
+                    Cryptage de bout en bout • Conforme aux normes bancaires PCI-DSS
                   </p>
                 </div>
-                {paymentMethod === 'cb' && <Check className="w-5 h-5 text-primary flex-shrink-0" />}
-              </button>
-              {/* Cash on Delivery / Espèces */}
-              <button
-                type="button"
-                role="radio"
-                aria-checked={paymentMethod === 'especes'}
-                className={`w-full flex items-center gap-4 p-4 min-h-[72px] rounded-xl border-2 transition-all text-left ${paymentMethod === 'especes' ? 'border-green-500 bg-green-500/5 shadow-sm' : 'border-border hover:border-green-400/40 hover:bg-muted/40'}`}
-                onClick={() => setPaymentMethod('especes')}
-              >
-                <Banknote className="w-8 h-8 text-green-600 flex-shrink-0" />
-                <div className="flex-1">
-                  <h3 className="font-semibold">Espèces (Cash on Delivery)</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {orderType === 'livraison' ? 'À la livraison' : 'Sur place ou retrait'}
-                  </p>
-                </div>
-                {paymentMethod === 'especes' && <Check className="w-5 h-5 text-green-600 flex-shrink-0" />}
-              </button>
+              </div>
+
             </div>
 
-            {/* Delivery info for non-delivery orders WITHOUT pizza - CLICKABLE */}
+            {/* Delivery info banner for non-delivery orders */}
             {orderType !== 'livraison' && !hasPizza && (
               <Card
-                className="p-4 bg-blue-50 border-blue-200 cursor-pointer hover:bg-blue-100 hover:border-blue-300 transition-all"
-                onClick={() => {
-                  setOrderType('livraison');
-                  setStep('info'); // Go back to info step to enter address
-                }}
-              >
-                <h3 className="font-semibold text-blue-700 flex items-center gap-2 mb-2">
-                  🚗 Livraison aussi disponible!
-                </h3>
-                <div className="text-sm text-blue-600 space-y-1">
-                  <p>• <span className="font-semibold">Gratuite</span> pour les commandes ≥ 25€</p>
-                  <p>• +5€ de frais pour les commandes &lt; 25€</p>
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full mt-3 bg-blue-600 text-white hover:bg-blue-700 border-0"
-                >
-                  Passer en livraison →
-                </Button>
-              </Card>
-            )}
-
-            {/* For orders with pizza - just show simple livraison message */}
-            {orderType !== 'livraison' && hasPizza && (
-              <Card
-                className="p-4 bg-green-50 border-green-200 cursor-pointer hover:bg-green-100 transition-all"
+                className="p-4 bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all"
                 onClick={() => {
                   setOrderType('livraison');
                   setStep('info');
                 }}
               >
-                <h3 className="font-semibold text-green-700 flex items-center gap-2">
+                <h3 className="font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 mb-2 text-sm">
+                  🚗 Livraison aussi disponible!
+                </h3>
+                <div className="text-xs text-blue-600 dark:text-blue-300 space-y-1">
+                  <p>• <span className="font-semibold">Gratuite</span> pour les commandes ≥ 25€</p>
+                  <p>• +5€ de frais pour les commandes &lt; 25€</p>
+                </div>
+              </Card>
+            )}
+
+            {orderType !== 'livraison' && hasPizza && (
+              <Card
+                className="p-4 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 cursor-pointer hover:bg-green-100 transition-all"
+                onClick={() => {
+                  setOrderType('livraison');
+                  setStep('info');
+                }}
+              >
+                <h3 className="font-semibold text-green-700 dark:text-green-400 flex items-center gap-2 text-sm">
                   🚗 Livraison gratuite avec vos pizzas!
                 </h3>
-                <p className="text-sm text-green-600 mt-1">
-                  Cliquez pour passer en mode livraison
-                </p>
               </Card>
             )}
           </div>
