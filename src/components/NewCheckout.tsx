@@ -648,10 +648,10 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             {/* Header: Order Ref, Title, and Big Price Display */}
             <div className="text-center space-y-1">
               <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">
-                Commande #{orderNumberRef.current || 'TW-8492'}
+                Commande #{orderNumberRef.current || 'TP-8492'}
               </span>
               <h2 className="text-2xl font-black tracking-tight text-foreground">
-                {cart.length > 0 ? `${cart.reduce((s, i) => s + i.quantity, 0)} Article(s) • TwinBite` : 'Votre Commande'}
+                {cart.length > 0 ? `${cart.reduce((s, i) => s + i.quantity, 0)} Article(s) • Twin Pizza` : 'Votre Commande'}
               </h2>
               <div className="pt-1">
                 <span className="text-4xl font-extrabold tracking-tight text-foreground">
@@ -667,8 +667,19 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               {(paymentSettings?.online_payments_enabled ?? true) && (
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setPaymentMethod('en_ligne');
+                    if (!customerInfo.name?.trim() || !customerInfo.phone?.trim()) {
+                      toast({ title: 'Informations requises', description: 'Veuillez d\'abord renseigner votre nom et numéro de téléphone.', variant: 'destructive' });
+                      setStep('info');
+                      return;
+                    }
+                    if (orderType === 'livraison' && !customerInfo.address?.trim()) {
+                      toast({ title: 'Adresse requise', description: 'Veuillez indiquer votre adresse de livraison.', variant: 'destructive' });
+                      setStep('info');
+                      return;
+                    }
+                    await handleMyPosPayment();
                   }}
                   className={`w-full py-3.5 px-4 rounded-2xl bg-black text-white hover:bg-zinc-800 transition-all shadow-md hover:shadow-lg flex items-center justify-between group active:scale-[0.99] border border-zinc-800 ${
                     paymentMethod === 'en_ligne' ? 'ring-2 ring-black dark:ring-white ring-offset-2' : ''
@@ -1098,18 +1109,30 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           )}
           {step === 'payment' && (
             <Button
-              className="w-full h-16 text-xl font-bold rounded-2xl shadow-lg active:scale-[0.98]"
-              onClick={() => {
-                // If not already scheduled, go to schedule-confirm step first
-                if (!scheduledInfo.isScheduled && !scheduleAsked) {
-                  setStep('schedule-confirm');
+              className="w-full h-16 text-xl font-bold rounded-2xl shadow-lg active:scale-[0.98] bg-primary hover:bg-primary/90 text-primary-foreground"
+              onClick={async () => {
+                if (!validateInfo()) {
+                  setStep('info');
+                  return;
+                }
+                if (paymentMethod === 'en_ligne' || paymentMethod === 'mypos') {
+                  await handleMyPosPayment();
                 } else {
-                  setStep('confirm');
+                  await handleConfirmOrder();
                 }
               }}
-              disabled={!isCartValid}
+              disabled={isProcessing || orderSubmitted || !isCartValid}
             >
-              Continuer - {ttc.toFixed(2)}€
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-6 h-6 mr-2 animate-spin" />
+                  {paymentMethod === 'en_ligne' ? 'Redirection vers myPOS...' : 'Envoi en cours...'}
+                </>
+              ) : (
+                paymentMethod === 'en_ligne'
+                  ? `Payer en ligne (myPOS) • ${ttc.toFixed(2)}€`
+                  : `Confirmer la commande • ${ttc.toFixed(2)}€`
+              )}
             </Button>
           )}
           {step === 'schedule-confirm' && (

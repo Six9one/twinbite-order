@@ -118,7 +118,7 @@ serve(async (req) => {
 
     // 4. Determine checkout endpoint URL
     const checkoutUrl = env === "production"
-      ? (Deno.env.get("MYPOS_PROD_URL") || "https://ipc.mypos.com/ipc/en/substore")
+      ? (Deno.env.get("MYPOS_PROD_URL") || "https://www.mypos.com/vmp/checkout")
       : (Deno.env.get("MYPOS_SANDBOX_URL") || "https://sandbox.mypos.com/vmp/checkout");
 
     console.log("[CREATE-MYPOS-CHECKOUT] Session created successfully", {
