@@ -648,7 +648,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             <h2 className="text-lg font-semibold">Mode de paiement</h2>
             <div className="grid grid-cols-1 gap-3">
               {/* Online Payment (myPOS) */}
-              {paymentSettings?.online_payments_enabled && (
+              {(paymentSettings?.online_payments_enabled ?? true) && (
                 <button
                   type="button"
                   role="radio"

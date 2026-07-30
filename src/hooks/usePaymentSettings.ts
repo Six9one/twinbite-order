@@ -26,10 +26,10 @@ export function usePaymentSettings() {
         return { online_payments_enabled: true, stripe_configured: true };
       }
 
-      const value = data.setting_value as unknown as PaymentSettings;
+      const value = data?.setting_value as unknown as PaymentSettings;
       return {
-        online_payments_enabled: value?.online_payments_enabled ?? true,
-        stripe_configured: value?.stripe_configured ?? true,
+        online_payments_enabled: value?.online_payments_enabled !== false,
+        stripe_configured: true,
       };
     },
     staleTime: 1000 * 60, // Cache for 1 minute
