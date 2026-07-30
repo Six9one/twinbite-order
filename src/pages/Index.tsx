@@ -15,6 +15,10 @@ import { ShoppingBag, Phone, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import heroPizza from '@/assets/hero-pizza.jpg';
 
+import { CategoryMenu } from '@/components/CategoryMenu';
+import { NewCart } from '@/components/NewCart';
+import { NewCheckout } from '@/components/NewCheckout';
+
 // Helper for resilient lazy loading with auto-reload on build chunk hash mismatch
 const safeLazy = <T extends Record<string, any>>(
   importFn: () => Promise<T>,
@@ -30,12 +34,9 @@ const safeLazy = <T extends Record<string, any>>(
       })
   );
 
-// Lazy load non-critical & heavy components
+// Lazy load heavy marketing sections
 const DeliveryMapSection = safeLazy(() => import('@/components/DeliveryMapSection'), 'DeliveryMapSection');
 const ReviewSection = safeLazy(() => import('@/components/ReviewSection'), 'ReviewSection');
-const CategoryMenu = safeLazy(() => import('@/components/CategoryMenu'), 'CategoryMenu');
-const NewCart = safeLazy(() => import('@/components/NewCart'), 'NewCart');
-const NewCheckout = safeLazy(() => import('@/components/NewCheckout'), 'NewCheckout');
 
 function MainApp() {
   const { orderType, setOrderType } = useOrder();
