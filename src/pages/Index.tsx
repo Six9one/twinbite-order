@@ -15,12 +15,27 @@ import { ShoppingBag, Phone, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import heroPizza from '@/assets/hero-pizza.jpg';
 
+// Helper for resilient lazy loading with auto-reload on build chunk hash mismatch
+const safeLazy = <T extends Record<string, any>>(
+  importFn: () => Promise<T>,
+  exportName?: keyof T
+) =>
+  lazy(() =>
+    importFn()
+      .then((m) => ({ default: exportName ? m[exportName] : m.default || m }))
+      .catch((error) => {
+        console.warn("Chunk load error (deployment update), auto-refreshing...", error);
+        window.location.reload();
+        return new Promise<{ default: any }>(() => {});
+      })
+  );
+
 // Lazy load non-critical & heavy components
-const DeliveryMapSection = lazy(() => import('@/components/DeliveryMapSection').then(m => ({ default: m.DeliveryMapSection })));
-const ReviewSection = lazy(() => import('@/components/ReviewSection').then(m => ({ default: m.ReviewSection })));
-const CategoryMenu = lazy(() => import('@/components/CategoryMenu').then(m => ({ default: m.CategoryMenu })));
-const NewCart = lazy(() => import('@/components/NewCart').then(m => ({ default: m.NewCart })));
-const NewCheckout = lazy(() => import('@/components/NewCheckout').then(m => ({ default: m.NewCheckout })));
+const DeliveryMapSection = safeLazy(() => import('@/components/DeliveryMapSection'), 'DeliveryMapSection');
+const ReviewSection = safeLazy(() => import('@/components/ReviewSection'), 'ReviewSection');
+const CategoryMenu = safeLazy(() => import('@/components/CategoryMenu'), 'CategoryMenu');
+const NewCart = safeLazy(() => import('@/components/NewCart'), 'NewCart');
+const NewCheckout = safeLazy(() => import('@/components/NewCheckout'), 'NewCheckout');
 
 function MainApp() {
   const { orderType, setOrderType } = useOrder();

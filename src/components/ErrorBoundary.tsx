@@ -23,6 +23,17 @@ class ErrorBoundary extends Component<Props, State> {
 
     public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         console.error("Uncaught error:", error, errorInfo);
+        if (
+            error?.message?.includes("dynamically imported module") || 
+            error?.message?.includes("Failed to fetch dynamically imported module")
+        ) {
+            const lastReload = sessionStorage.getItem("chunk_reload_time");
+            const now = Date.now();
+            if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+                sessionStorage.setItem("chunk_reload_time", String(now));
+                window.location.reload();
+            }
+        }
     }
 
     private handleReset = () => {
