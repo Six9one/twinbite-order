@@ -15,13 +15,24 @@ const corsHeaders = {
  * 3. Sign using RSA-SHA256 with Private Key
  * 4. Base64 encode resulting signature
  */
+function cleanPem(pemStr: string): string {
+  if (!pemStr) return "";
+  let formatted = pemStr.replace(/\\n/g, "\n").replace(/\r/g, "").trim();
+  if (!formatted.includes("-----BEGIN")) {
+    const lines = formatted.replace(/\s+/g, "").match(/.{1,64}/g) || [formatted];
+    formatted = `-----BEGIN RSA PRIVATE KEY-----\n${lines.join("\n")}\n-----END RSA PRIVATE KEY-----`;
+  }
+  return formatted;
+}
+
 function generateSignature(params: Record<string, string>, privateKeyPem: string): string {
   const concatenated = Object.values(params).join("-");
   const base64Data = Buffer.from(concatenated, "utf-8").toString("base64");
   
+  const formattedPrivateKey = cleanPem(privateKeyPem);
   const signer = crypto.createSign("RSA-SHA256");
   signer.update(base64Data);
-  const signatureBuffer = signer.sign(privateKeyPem);
+  const signatureBuffer = signer.sign(formattedPrivateKey);
   
   return signatureBuffer.toString("base64");
 }
