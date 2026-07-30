@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, X } from 'lucide-react';
 
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '2.2.0';
 const VERSION_CHECK_INTERVAL = 60000; // Check every 60 seconds
 
 interface VersionInfo {
@@ -27,9 +27,13 @@ export function UpdateChecker() {
             if (data.version !== APP_VERSION) {
                 setUpdateAvailable(true);
 
-                // If force refresh is enabled, reload immediately
+                // If force refresh is enabled, reload ONCE (guard with sessionStorage)
                 if (data.forceRefresh) {
-                    setForceRefresh(true);
+                    const alreadyReloaded = sessionStorage.getItem('force_refresh_done');
+                    if (!alreadyReloaded) {
+                        sessionStorage.setItem('force_refresh_done', '1');
+                        setForceRefresh(true);
+                    }
                 }
             }
         } catch (error) {
@@ -48,10 +52,9 @@ export function UpdateChecker() {
         return () => clearInterval(interval);
     }, [checkForUpdates]);
 
-    // Handle force refresh
+    // Handle force refresh - only once
     useEffect(() => {
         if (forceRefresh) {
-            // Small delay to show the message
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
