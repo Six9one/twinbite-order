@@ -41,11 +41,20 @@ const ReviewSection = safeLazy(() => import('@/components/ReviewSection'), 'Revi
 
 function MainApp() {
   const { orderType, setOrderType } = useOrder();
-  const [view, setView] = useState<'home' | 'menu' | 'checkout'>('home');
+  const [searchParams] = useSearchParams();
+  const [view, setView] = useState<'home' | 'menu' | 'checkout'>(
+    searchParams.get('checkout') === '1' || searchParams.get('retry') === '1' || searchParams.get('cancel') === '1' ? 'checkout' : 'home'
+  );
   const [selectedPizzaSize, setSelectedPizzaSize] = useState<'senior' | 'mega' | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const orderSelectorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (searchParams.get('checkout') === '1' || searchParams.get('retry') === '1' || searchParams.get('cancel') === '1') {
+      setView('checkout');
+    }
+  }, [searchParams]);
 
   // Check if user is admin
   useEffect(() => {

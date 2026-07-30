@@ -27,13 +27,13 @@ export default function PaymentCancel() {
           </p>
         )}
         <div className="space-y-3">
-          <Button onClick={() => navigate('/')} className="w-full gap-2 h-12 text-base rounded-xl bg-primary">
+          <Button onClick={() => navigate('/?checkout=1')} className="w-full gap-2 h-12 text-base rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold">
             <RefreshCw className="w-5 h-5" />
             Réessayer le paiement (Retry Payment)
           </Button>
-          <Button onClick={() => navigate('/')} variant="outline" className="w-full gap-2 h-12 text-base rounded-xl">
+          <Button onClick={() => navigate('/?checkout=1')} variant="outline" className="w-full gap-2 h-12 text-base rounded-xl font-semibold">
             <ArrowLeft className="w-5 h-5" />
-            Retour au panier (Back to Cart)
+            Retour à la commande
           </Button>
         </div>
       </Card>
