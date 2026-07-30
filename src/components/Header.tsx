@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Badge } from '@/components/ui/badge';
 const logoImage = '/favicon.png';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { useTenantSettings } from '@/hooks/useTenantSettings';
 
 interface HeaderProps {
   onCartClick: () => void;
@@ -37,6 +38,7 @@ export function Header({
   onMenuClick,
   onScheduleClick
 }: HeaderProps) {
+  const { name, logoUrl } = useTenantSettings();
   const {
     getItemCount,
     orderType,
@@ -69,16 +71,15 @@ export function Header({
         <div className="container mx-auto px-4 py-2 sm:py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
             <img
-              src={logoImage}
-              alt="Twin Pizza"
+              src={logoUrl || logoImage}
+              alt={name}
               loading="eager"
               decoding="async"
               fetchPriority="high"
               className="w-11 h-11 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-primary/20"
             />
             <div>
-              <h1 className="text-lg sm:text-xl font-display font-bold text-foreground leading-tight">Twin Pizza</h1>
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium hidden xs:block">Grand-Couronne</p>
+              <h1 className="text-lg sm:text-xl font-display font-bold text-foreground leading-tight">{name}</h1>
             </div>
           </div>
 

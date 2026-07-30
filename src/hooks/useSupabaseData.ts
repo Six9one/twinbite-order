@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/context/TenantContext';
 
 // Types based on database schema
 export interface DeliveryZone {
@@ -64,29 +65,34 @@ export interface Dessert {
 export interface Order {
   id: string;
   order_number: string;
-  order_type: 'emporter' | 'livraison' | 'surplace';
-  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   customer_name: string;
   customer_phone: string;
-  customer_address?: string;
-  customer_notes?: string;
-  delivery_zone_id?: string;
-  items: any;
-  subtotal: number;
-  tva: number;
-  delivery_fee: number;
+  customer_email?: string;
+  delivery_type?: string;
+  order_type?: string;
+  delivery_address?: string;
+  payment_method: string;
+  payment_status?: string;
+  payment_provider?: string;
+  transaction_id?: string;
+  payment_reference?: string;
+  paid_at?: string;
+  payment_amount?: number;
+  payment_currency?: string;
+  subtotal?: number;
+  tva?: number;
   total: number;
-  payment_method: 'cb' | 'especes' | 'en_ligne';
-  is_scheduled: boolean;
-  scheduled_for?: string | null;
+  items: any[];
+  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 // Delivery Zones
 export function useDeliveryZones() {
+  const { tenant } = useTenant();
   return useQuery({
-    queryKey: ['delivery-zones'],
+    queryKey: ['delivery-zones', tenant.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('delivery_zones')
@@ -101,8 +107,9 @@ export function useDeliveryZones() {
 
 // Meat Options
 export function useMeatOptions() {
+  const { tenant } = useTenant();
   return useQuery({
-    queryKey: ['meat-options'],
+    queryKey: ['meat-options', tenant.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('meat_options')
@@ -117,8 +124,9 @@ export function useMeatOptions() {
 
 // Sauce Options
 export function useSauceOptions() {
+  const { tenant } = useTenant();
   return useQuery({
-    queryKey: ['sauce-options'],
+    queryKey: ['sauce-options', tenant.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sauce_options')
@@ -133,8 +141,9 @@ export function useSauceOptions() {
 
 // Garniture Options
 export function useGarnitureOptions() {
+  const { tenant } = useTenant();
   return useQuery({
-    queryKey: ['garniture-options'],
+    queryKey: ['garniture-options', tenant.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('garniture_options')
@@ -149,8 +158,9 @@ export function useGarnitureOptions() {
 
 // Supplement Options
 export function useSupplementOptions() {
+  const { tenant } = useTenant();
   return useQuery({
-    queryKey: ['supplement-options'],
+    queryKey: ['supplement-options', tenant.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('supplement_options')
@@ -165,8 +175,9 @@ export function useSupplementOptions() {
 
 // Drinks
 export function useDrinks() {
+  const { tenant } = useTenant();
   return useQuery({
-    queryKey: ['drinks'],
+    queryKey: ['drinks', tenant.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('drinks')
@@ -181,8 +192,9 @@ export function useDrinks() {
 
 // Desserts
 export function useDesserts() {
+  const { tenant } = useTenant();
   return useQuery({
-    queryKey: ['desserts'],
+    queryKey: ['desserts', tenant.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('desserts')
@@ -197,8 +209,9 @@ export function useDesserts() {
 
 // Orders
 export function useOrders(dateFilter?: string) {
+  const { tenant } = useTenant();
   return useQuery({
-    queryKey: ['orders', dateFilter],
+    queryKey: ['orders', tenant.id, dateFilter],
     queryFn: async () => {
       let query = supabase
         .from('orders')

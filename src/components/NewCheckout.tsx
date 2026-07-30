@@ -21,6 +21,8 @@ import { z } from 'zod';
 import { format, addMonths, isSunday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+import { initiateMyPosCheckout } from '@/services/mypos';
+
 // Customer info validation schema
 const customerInfoSchema = z.object({
   name: z.string()
@@ -168,7 +170,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     return true;
   };
 
-  const handleStripePayment = async () => {
+  const handleMyPosPayment = async () => {
     // Validate cart before proceeding
     if (!isCartValid) {
       toast({
@@ -185,7 +187,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     }
 
     // Prevent duplicate submissions
-    if (orderSubmitted) {
+    if (orderSubmitted || isProcessing) {
       toast({ title: 'Commande en cours', description: 'Veuillez patienter...', variant: 'default' });
       return;
     }
@@ -200,44 +202,33 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     const orderNumber = orderNumberRef.current;
 
     try {
-      // Recalculate totals server-side friendly format
-      const finalTotal = Math.max(ttc, 0.01); // Ensure minimum price for Stripe
+      const finalTotal = Math.max(ttc, 0.01);
 
-      // Create Stripe checkout session with ALL order data
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: {
-          amount: finalTotal,
-          customerName: customerInfo.name.trim(),
-          customerPhone: customerInfo.phone.trim(),
-          customerEmail: null,
-          orderNumber,
-          items: cart.map(item => ({
-            name: item.item.name,
-            quantity: item.quantity,
-            price: item.calculatedPrice || item.item.price,
-            customization: item.customization,
-          })),
-          orderType,
-          customerAddress: customerInfo.address?.trim() || null,
-          customerNotes: customerInfo.notes?.trim() || null,
-          subtotal: ht,
-          tva,
-        },
+      await initiateMyPosCheckout({
+        amount: finalTotal,
+        customerName: customerInfo.name.trim(),
+        customerPhone: customerInfo.phone.trim(),
+        customerEmail: null,
+        orderNumber,
+        items: cart.map(item => ({
+          name: item.item.name,
+          quantity: item.quantity,
+          price: item.calculatedPrice || item.item.price,
+          customization: item.customization,
+        })),
+        orderType,
+        customerAddress: customerInfo.address?.trim() || null,
+        customerNotes: customerInfo.notes?.trim() || null,
+        subtotal: ht,
+        tva,
       });
-
-      if (error) throw error;
-      if (!data?.url) throw new Error('No checkout URL returned');
-
-      // Clear cart and redirect to Stripe
-      clearCart();
-      window.location.href = data.url;
     } catch (error) {
-      console.error('Stripe checkout error:', error);
+      console.error('myPOS checkout error:', error);
       setOrderSubmitted(false);
       orderNumberRef.current = null;
       toast({
-        title: 'Erreur de paiement',
-        description: 'Impossible de créer la session de paiement. Veuillez réessayer.',
+        title: 'Paiement en ligne indisponible',
+        description: 'Le paiement en ligne est temporairement indisponible. Veuillez choisir un autre mode de paiement.',
         variant: 'destructive'
       });
     } finally {
@@ -278,9 +269,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       return;
     }
 
-    // If payment is online, redirect to Stripe
-    if (paymentMethod === 'en_ligne') {
-      await handleStripePayment();
+    // If payment is online, redirect to myPOS Checkout
+    if (paymentMethod === 'en_ligne' || paymentMethod === 'mypos') {
+      await handleMyPosPayment();
       return;
     }
 
@@ -656,23 +647,50 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Mode de paiement</h2>
             <div className="grid grid-cols-1 gap-3">
-              {/* Online Payment - Only show if enabled */}
+              {/* Online Payment (myPOS) */}
               {paymentSettings?.online_payments_enabled && (
                 <button
                   type="button"
                   role="radio"
-                  aria-checked={paymentMethod === 'en_ligne'}
-                  className={`w-full flex items-center gap-4 p-4 min-h-[72px] rounded-xl border-2 transition-all text-left ${paymentMethod === 'en_ligne' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/40 hover:bg-muted/40'}`}
+                  aria-checked={paymentMethod === 'en_ligne' || paymentMethod === 'mypos'}
+                  className={`w-full flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${paymentMethod === 'en_ligne' || paymentMethod === 'mypos' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/40 hover:bg-muted/40'}`}
                   onClick={() => setPaymentMethod('en_ligne')}
                 >
-                  <Globe className="w-8 h-8 text-purple-600 flex-shrink-0" />
-                  <div className="flex-1">
-                    <h3 className="font-semibold">Payer maintenant (Stripe)</h3>
-                    <p className="text-xs text-muted-foreground">Paiement sécurisé par carte</p>
+                  <div className="flex items-center gap-3 flex-1">
+                    <Globe className="w-8 h-8 text-purple-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="font-semibold text-base">Payer en ligne (myPOS)</h3>
+                      <p className="text-xs text-muted-foreground">Redirection sécurisée vers la page myPOS</p>
+                    </div>
                   </div>
-                  {paymentMethod === 'en_ligne' && <Check className="w-5 h-5 text-primary flex-shrink-0" />}
+
+                  {/* Payment logos: Apple Pay, Visa, Mastercard, Google Pay */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Apple Pay */}
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-black text-white text-[10px] font-bold">
+                       Pay
+                    </span>
+                    {/* Visa */}
+                    <span className="inline-flex items-center px-2 py-1 rounded bg-blue-900 text-white text-[10px] font-extrabold tracking-wider">
+                      VISA
+                    </span>
+                    {/* Mastercard */}
+                    <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded bg-slate-900 text-white text-[10px] font-bold">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 -ml-1.5 inline-block opacity-90"></span>
+                    </span>
+                    {/* Google Pay */}
+                    <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded bg-white text-gray-800 border border-gray-300 text-[10px] font-bold">
+                      <span className="text-blue-500">G</span>Pay
+                    </span>
+                  </div>
+
+                  {(paymentMethod === 'en_ligne' || paymentMethod === 'mypos') && (
+                    <Check className="w-5 h-5 text-primary flex-shrink-0 hidden sm:block" />
+                  )}
                 </button>
               )}
+              {/* Pay at Restaurant (CB) */}
               <button
                 type="button"
                 role="radio"
@@ -682,13 +700,14 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               >
                 <CreditCard className="w-8 h-8 text-primary flex-shrink-0" />
                 <div className="flex-1">
-                  <h3 className="font-semibold">Carte Bancaire</h3>
+                  <h3 className="font-semibold">Payer au restaurant / Carte</h3>
                   <p className="text-xs text-muted-foreground">
-                    {orderType === 'livraison' ? 'À la livraison' : 'Sur place'}
+                    {orderType === 'livraison' ? 'À la livraison par TPE' : 'Sur place ou à l\'emporter'}
                   </p>
                 </div>
                 {paymentMethod === 'cb' && <Check className="w-5 h-5 text-primary flex-shrink-0" />}
               </button>
+              {/* Cash on Delivery / Espèces */}
               <button
                 type="button"
                 role="radio"
@@ -698,9 +717,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               >
                 <Banknote className="w-8 h-8 text-green-600 flex-shrink-0" />
                 <div className="flex-1">
-                  <h3 className="font-semibold">Espèces</h3>
+                  <h3 className="font-semibold">Espèces (Cash on Delivery)</h3>
                   <p className="text-xs text-muted-foreground">
-                    {orderType === 'livraison' ? 'À la livraison' : 'Sur place'}
+                    {orderType === 'livraison' ? 'À la livraison' : 'Sur place ou retrait'}
                   </p>
                 </div>
                 {paymentMethod === 'especes' && <Check className="w-5 h-5 text-green-600 flex-shrink-0" />}

@@ -4030,6 +4030,130 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
   );
 }
 
+function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | null; onClose: () => void }) {
+  const [sendingReviews, setSendingReviews] = useState(false);
+
+  const handleSendPastReviews = async () => {
+    setSendingReviews(true);
+    try {
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('*')
+        .gte('created_at', '2026-07-22T00:00:00Z')
+        .order('created_at', { ascending: false });
+
+      if (!orders || orders.length === 0) {
+        toast.info('Aucune commande récente trouvée.');
+        setSendingReviews(false);
+        return;
+      }
+
+      const clientsMap = new Map();
+      orders.forEach((o: any) => {
+        if (!o.customer_phone) return;
+        const clean = o.customer_phone.replace(/[^0-9]/g, '');
+        if (clean.length < 9) return;
+        if (!clientsMap.has(clean)) {
+          clientsMap.set(clean, { phone: o.customer_phone, name: o.customer_name, order: o });
+        }
+      });
+
+      const targets = Array.from(clientsMap.values());
+      let sentCount = 0;
+
+      const reviewLink = 'https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr';
+
+      for (const target of targets) {
+        const rawName = (target.name || '').trim();
+        const firstName = (!rawName || rawName.startsWith('[POS]')) ? '' : rawName.split(/\s+/)[0];
+        const hello = firstName ? ` ${firstName}` : '';
+
+        let msg = `Bonjour${hello} ! 😊\n\n`;
+        msg += `Merci d'être venu(e) chez *Twin Pizza* récemment ! 🍕\n\n`;
+        msg += `Votre avis compte énormément pour notre équipe. Si vous avez apprécié votre repas, pourriez-vous nous laisser une note ou un petit mot ⭐ ?\n\n`;
+        msg += `👉 *Donner mon avis* : ${reviewLink}\n\n`;
+        msg += `Un grand merci pour votre soutien ! 🙏 *Twin Pizza*`;
+
+        if (typeof window !== 'undefined' && (window as any).twinHub) {
+          try {
+            await (window as any).twinHub.sendWhatsApp(target.phone, msg);
+            sentCount++;
+          } catch (e) {
+            console.error('WhatsApp send error for', target.phone, e);
+          }
+        }
+      }
+
+      toast.success(`✅ Message d'avis envoyé à ${sentCount} client(s) !`);
+    } catch (e: any) {
+      toast.error('Erreur lors de l\'envoi des avis: ' + e.message);
+    } finally {
+      setSendingReviews(false);
+    }
+  };
+
+  const isConnected = status === 'connected';
+  const isQr = status === 'qr' || !!qr;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: '#0f172a', borderRadius: 16, border: '1px solid #334155', width: '90vw', maxWidth: 520, padding: 24, display: 'flex', flexDirection: 'column', gap: 16, color: '#f8fafc', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 18, fontWeight: 900, color: '#25D366', display: 'flex', alignItems: 'center', gap: 8 }}>
+            💬 Connexion WhatsApp Web
+          </span>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 20, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        <div style={{ padding: '12px 16px', borderRadius: 10, background: isConnected ? 'rgba(34,197,94,0.1)' : (isQr ? 'rgba(249,115,22,0.1)' : 'rgba(239,68,68,0.1)'), border: `1px solid ${isConnected ? '#22c55e44' : (isQr ? '#f9731644' : '#ef444444')}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 12, height: 12, borderRadius: '50%', background: isConnected ? '#22c55e' : (isQr ? '#f97316' : '#ef4444') }} />
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: isConnected ? '#22c55e' : (isQr ? '#f97316' : '#f87171') }}>
+              {isConnected ? '🟢 WhatsApp Connecté' : (isQr ? '📱 Scannez le QR Code' : '🔴 Déconnecté')}
+            </div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+              {isConnected ? 'Les confirmations et avis sont envoyés en direct aux clients.' : 'Scannez le QR code ci-dessous avec WhatsApp pour connecter le bot.'}
+            </div>
+          </div>
+        </div>
+
+        {isQr && qr && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 16, background: '#fff', borderRadius: 12 }}>
+            <img src={qr} alt="WhatsApp QR Code" style={{ width: 220, height: 220 }} />
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#1e293b', textAlign: 'center' }}>
+              Ouvrez WhatsApp sur téléphone ➔ Réglages / Appareils connectés ➔ Connecter un appareil
+            </span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+          <button
+            onClick={handleSendPastReviews}
+            disabled={sendingReviews || !isConnected}
+            style={{
+              padding: '12px 16px',
+              borderRadius: 10,
+              background: isConnected ? 'linear-gradient(135deg, #25D366, #128C7E)' : '#334155',
+              color: '#fff',
+              fontWeight: 800,
+              fontSize: 13,
+              border: 'none',
+              cursor: isConnected ? 'pointer' : 'not-allowed',
+              opacity: (sendingReviews || !isConnected) ? 0.6 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8
+            }}
+          >
+            {sendingReviews ? '⏳ Envoi des avis en cours...' : '⭐ Envoyer l\'Avis Google aux 11 Clients du 22 au 25 Juillet'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main POS content ──────────────────────────────────────────────────────────
 function POSContent() {
   useThemeBump();
@@ -4063,8 +4187,33 @@ function POSContent() {
   const [showFacture,  setShowFacture]  = useState(false);
   const [showQuickEdit, setShowQuickEdit] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [waStatus, setWaStatus] = useState<string>('disconnected');
+  const [waQr, setWaQr] = useState<string | null>(null);
+  const [showWaModal, setShowWaModal] = useState<boolean>(false);
   const { toggleKeyboard } = useVirtualKeyboard();
   const [printingIngredientsPOS, setPrintingIngredientsPOS] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).twinHub) {
+      const hub = (window as any).twinHub;
+      hub.getWhatsAppStatus?.().then((res: any) => {
+        if (typeof res === 'string') setWaStatus(res);
+        else if (res?.status) setWaStatus(res.status);
+        if (res?.qr) setWaQr(res.qr);
+      }).catch(() => {});
+
+      hub.onWhatsAppStatus?.((data: any) => {
+        const statusStr = typeof data === 'string' ? data : data?.status;
+        if (statusStr) setWaStatus(statusStr);
+        if (data?.qr) setWaQr(data.qr);
+      });
+
+      hub.onWhatsAppQR?.((qr: string) => {
+        setWaQr(qr);
+        setWaStatus('qr');
+      });
+    }
+  }, []);
 
   const handlePrintIngredientLabelsPOS = async () => {
     setPrintingIngredientsPOS(true);
@@ -4480,7 +4629,7 @@ function POSContent() {
       fetch(`${PRINT_SERVER}/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderNumber }),
+        body: JSON.stringify({ orderNumber, order: payload }),
         signal: AbortSignal.timeout(3000),
       }).catch(() => { /* print server offline — silent, order already saved */ });
 
@@ -4545,6 +4694,25 @@ function POSContent() {
 
           <button title="Éditer le menu en direct" onClick={() => setShowQuickEdit(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:'#38bdf8', borderColor:'#38bdf833', background:'#38bdf811', display:'flex', alignItems:'center', gap:3 }}>
             ✏️ Éditer Menu
+          </button>
+          <button
+            title={waStatus === 'connected' ? 'WhatsApp Connecté (cliquez pour détails)' : 'WhatsApp Déconnecté / QR Code (cliquez pour scanner)'}
+            onClick={() => setShowWaModal(true)}
+            className="pos-btn-interactive"
+            style={{
+              ...S.btn,
+              padding: '4px 8px',
+              fontSize: 11,
+              fontWeight: 800,
+              color: waStatus === 'connected' ? '#22c55e' : (waStatus === 'qr' ? '#f97316' : '#ef4444'),
+              borderColor: waStatus === 'connected' ? '#22c55e44' : (waStatus === 'qr' ? '#f9731644' : '#ef444444'),
+              background: waStatus === 'connected' ? '#22c55e11' : (waStatus === 'qr' ? '#f9731611' : '#ef444411'),
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3
+            }}
+          >
+            {waStatus === 'connected' ? '🟢 WhatsApp' : (waStatus === 'qr' ? '📱 Scan QR WA' : '💬 WhatsApp Off')}
           </button>
           <button title="Imprimer directement les 12 étiquettes d'ingrédients" onClick={handlePrintIngredientLabelsPOS} disabled={printingIngredientsPOS} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:'#22c55e', borderColor:'#22c55e33', background:'#22c55e11', display:'flex', alignItems:'center', gap:3 }}>
             🏷️ 12 Étiquettes
@@ -4627,7 +4795,19 @@ function POSContent() {
                   border: `1px solid ${active ? S.accent + '44' : S.border}`,
                 }}>
                   {imgData.type === 'image'
-                    ? <img src={imgData.value} alt={cat.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} loading="eager" />
+                    ? <img
+                        src={imgData.value}
+                        alt={cat.name}
+                        style={{ width:'100%', height:'100%', objectFit:'cover' }}
+                        loading="eager"
+                        onError={(e) => {
+                          const parent = (e.target as HTMLElement).parentElement;
+                          if (parent) {
+                            const fallbackEmoji = (cat as any).emoji_fallback || '📦';
+                            parent.innerHTML = `<span style="font-size:18px">${fallbackEmoji}</span>`;
+                          }
+                        }}
+                      />
                     : <span style={{ fontSize: 18 }}>{imgData.value}</span>
                   }
                 </div>
@@ -4690,6 +4870,7 @@ function POSContent() {
       {showHistory && <HistoryPanel onClose={()=>setShowHistory(false)} />}
       {showFacture && <FactureHubModal onClose={()=>setShowFacture(false)} />}
       {showUpdateModal && <UpdatePanel onClose={()=>setShowUpdateModal(false)} />}
+      {showWaModal && <WhatsAppModal status={waStatus} qr={waQr} onClose={() => setShowWaModal(false)} />}
       {customizingPizza && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}

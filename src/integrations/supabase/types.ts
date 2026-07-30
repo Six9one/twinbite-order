@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      tenants: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          domain: string | null
+          is_active: boolean
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          domain?: string | null
+          is_active?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          domain?: string | null
+          is_active?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       admin_settings: {
         Row: {
           id: string

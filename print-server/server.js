@@ -1681,19 +1681,27 @@ const processingOrders = new Set();
 
 // Handle new order with zero-race deduplication. `force` = bypass the printed cache (manual recovery).
 async function handleNewOrder(order, force = false) {
-    if (!order || !order.id) return false;
+    if (!order) return false;
+    const numKey = order.order_number ? `num_${order.order_number}` : null;
+    const idKey = order.id || null;
 
-    // Skip if already printed locally or currently processing
-    if (!force && (printedOrders.has(order.id) || processingOrders.has(order.id))) {
+    if (!idKey && !numKey) return false;
+
+    // Skip if already printed locally or currently processing (check both ID and Order Number)
+    const isAlreadyPrinted = !force && (
+        (idKey && printedOrders.has(idKey)) ||
+        (numKey && printedOrders.has(numKey)) ||
+        (idKey && processingOrders.has(idKey)) ||
+        (numKey && processingOrders.has(numKey))
+    );
+
+    if (isAlreadyPrinted) {
         console.log(`⏩ Order #${order.order_number} already printed/processing (skipped duplicate)`);
         return true;
     }
 
-    // Mark IMMEDIATELY on entry to close race conditions between HTTP POST and Supabase Realtime
-    if (!force) {
-        printedOrders.set(order.id, Date.now());
-        savePrintedOrders();
-    }
+    if (idKey) processingOrders.add(idKey);
+    if (numKey) processingOrders.add(numKey);
 
     console.log(`\n${'='.repeat(50)}`);
     console.log(`📦 NOUVELLE COMMANDE: ${order.order_number}`);
@@ -1709,14 +1717,29 @@ async function handleNewOrder(order, force = false) {
         }, `Order #${order.order_number}`);
 
         if (success) {
-            await markOrderPrinted(order.id);
-            console.log(`✅ Commande ${order.order_number} — 2 tickets imprimés`);
+            if (idKey) printedOrders.set(idKey, Date.now());
+            if (numKey) printedOrders.set(numKey, Date.now());
+            savePrintedOrders();
+            if (idKey) await markOrderPrinted(idKey);
+            console.log(`✅ Commande ${order.order_number} — ticket(s) imprimé(s) avec succès`);
+            return true;
         } else {
-            await markPrintAttempt(order.id, 'Impression échouée (les 2 imprimantes)');
-            console.log(`⚠️  Commande ${order.order_number} — ÉCHEC impression. Utiliser "Récupérer les manqués"`);
+            if (idKey) printedOrders.delete(idKey);
+            if (numKey) printedOrders.delete(numKey);
+            savePrintedOrders();
+            if (idKey) await markPrintAttempt(idKey, 'Impression échouée (imprimantes indisponibles)');
+            console.log(`⚠️  Commande ${order.order_number} — ÉCHEC impression (conservée pour retry/polling)`);
+            return false;
         }
+    } catch (err) {
+        if (idKey) printedOrders.delete(idKey);
+        if (numKey) printedOrders.delete(numKey);
+        savePrintedOrders();
+        console.error(`❌ Exception lors de l'impression de #${order.order_number}:`, err.message);
+        return false;
     } finally {
-        processingOrders.delete(order.id);
+        if (idKey) processingOrders.delete(idKey);
+        if (numKey) processingOrders.delete(numKey);
     }
 }
 
@@ -2774,7 +2797,20 @@ function setupHttpServer() {
 
         try {
             let targetOrder = order;
-            if (!targetOrder && orderNumber) {
+            // Enrich with database record if missing ID or full fields
+            if (targetOrder && !targetOrder.id && (orderNumber || targetOrder.order_number)) {
+                const searchNum = String(orderNumber || targetOrder.order_number);
+                const { data: orders } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('order_number', searchNum)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (orders && orders[0]) {
+                    targetOrder = orders[0];
+                }
+            } else if (!targetOrder && orderNumber) {
                 const { data: orders } = await supabase
                     .from('orders')
                     .select('*')

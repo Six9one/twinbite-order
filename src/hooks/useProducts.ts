@@ -51,10 +51,13 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: '13', name: 'Boissons', slug: 'boissons', display_order: 13, is_active: true },
 ];
 
+import { useTenant } from '@/context/TenantContext';
+
 // Fetch all categories
 export function useCategories() {
+  const { tenant } = useTenant();
   return useQuery({
-    queryKey: ['categories'],
+    queryKey: ['categories', tenant.id],
     queryFn: async () => {
       try {
         const { data, error } = await supabase
@@ -62,10 +65,10 @@ export function useCategories() {
           .select('*')
           .eq('is_active', true)
           .order('display_order', { ascending: true });
-        if (error || !data || data.length === 0) return DEFAULT_CATEGORIES;
+        if (error || !data) return [];
         return data as Category[];
       } catch (e) {
-        return DEFAULT_CATEGORIES;
+        return [];
       }
     },
     ...MENU_CACHE,
@@ -74,29 +77,18 @@ export function useCategories() {
 
 // Fetch products by category slug
 export function useProductsByCategory(categorySlug: string) {
+  const { tenant } = useTenant();
   return useQuery({
-    queryKey: ['products', categorySlug],
+    queryKey: ['products', tenant.id, categorySlug],
     queryFn: async () => {
-      const fallback = menuItems.filter((i: any) => i.category === categorySlug).map((i: any) => ({
-        id: i.id,
-        name: i.name,
-        description: i.description || null,
-        base_price: i.price,
-        pizza_base: i.base || null,
-        category_id: i.category,
-        image_url: i.imageUrl || i.image_url || null,
-        display_order: 1,
-        is_active: true,
-      }));
-
       try {
         const { data: category } = await supabase
           .from('categories')
           .select('id')
           .eq('slug', categorySlug)
-          .single();
+          .maybeSingle();
 
-        if (!category) return fallback as Product[];
+        if (!category) return [] as Product[];
 
         const { data, error } = await supabase
           .from('products')
@@ -105,13 +97,13 @@ export function useProductsByCategory(categorySlug: string) {
           .eq('is_active', true)
           .order('display_order', { ascending: true });
 
-        if (error || !data || data.length === 0) return fallback as Product[];
+        if (error || !data) return [] as Product[];
         return (data as Product[]).map(p => ({
           ...p,
           image_url: resolveImg(p.image_url) || null
         }));
       } catch (e) {
-        return fallback as Product[];
+        return [] as Product[];
       }
     },
     enabled: !!categorySlug,
@@ -121,30 +113,18 @@ export function useProductsByCategory(categorySlug: string) {
 
 // Fetch pizzas by base (tomate or creme)
 export function usePizzasByBase(base: 'tomate' | 'creme') {
-  const fallbackList = base === 'tomate' ? pizzasTomate : pizzasCreme;
-  const fallbackProducts: Product[] = fallbackList.map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    description: p.description || null,
-    base_price: p.price || 18,
-    pizza_base: base,
-    category_id: 'pizzas',
-    image_url: p.imageUrl || p.image_url || null,
-    display_order: 1,
-    is_active: true,
-  }));
-
+  const { tenant } = useTenant();
   return useQuery({
-    queryKey: ['pizzas', base],
+    queryKey: ['pizzas', tenant.id, base],
     queryFn: async () => {
       try {
         const { data: category } = await supabase
           .from('categories')
           .select('id')
           .eq('slug', 'pizzas')
-          .single();
+          .maybeSingle();
 
-        if (!category) return fallbackProducts;
+        if (!category) return [] as Product[];
 
         const { data, error } = await supabase
           .from('products')
@@ -154,13 +134,13 @@ export function usePizzasByBase(base: 'tomate' | 'creme') {
           .eq('is_active', true)
           .order('display_order', { ascending: true });
 
-        if (error || !data || data.length === 0) return fallbackProducts;
+        if (error || !data) return [] as Product[];
         return (data as Product[]).map(p => ({
           ...p,
           image_url: resolveImg(p.image_url) || null
         }));
       } catch (e) {
-        return fallbackProducts;
+        return [] as Product[];
       }
     },
     ...MENU_CACHE,
@@ -169,8 +149,9 @@ export function usePizzasByBase(base: 'tomate' | 'creme') {
 
 // Fetch all products for admin
 export function useAllProducts() {
+  const { tenant } = useTenant();
   return useQuery({
-    queryKey: ['all-products'],
+    queryKey: ['all-products', tenant.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')

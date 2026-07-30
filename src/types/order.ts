@@ -138,7 +138,8 @@ export interface CartItem {
 }
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
-export type PaymentMethod = 'cb' | 'especes' | 'en_ligne';
+export type PaymentStatus = 'Pending' | 'Paid' | 'Failed' | 'Refunded';
+export type PaymentMethod = 'cb' | 'especes' | 'en_ligne' | 'mypos';
 
 export interface CustomerInfo {
   name: string;
@@ -157,6 +158,13 @@ export interface Order {
   customer: CustomerInfo;
   paymentMethod: PaymentMethod;
   status: OrderStatus;
+  payment_status?: PaymentStatus;
+  payment_provider?: string;
+  transaction_id?: string;
+  payment_reference?: string;
+  paid_at?: Date | string;
+  payment_amount?: number;
+  payment_currency?: string;
   createdAt: Date;
   updatedAt: Date;
 }

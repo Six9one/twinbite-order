@@ -1,0 +1,152 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import crypto from "node:crypto";
+import { Buffer } from "node:buffer";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+/**
+ * Generate myPOS IPC Digital Signature (RSA-SHA256)
+ * Protocol:
+ * 1. Concatenate values of all parameters with '-' delimiter
+ * 2. Base64 encode concatenated string
+ * 3. Sign using RSA-SHA256 with Private Key
+ * 4. Base64 encode resulting signature
+ */
+function generateSignature(params: Record<string, string>, privateKeyPem: string): string {
+  const concatenated = Object.values(params).join("-");
+  const base64Data = Buffer.from(concatenated, "utf-8").toString("base64");
+  
+  const signer = crypto.createSign("RSA-SHA256");
+  signer.update(base64Data);
+  const signatureBuffer = signer.sign(privateKeyPem);
+  
+  return signatureBuffer.toString("base64");
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const body = await req.json();
+    const {
+      amount,
+      customerName,
+      customerPhone,
+      customerEmail,
+      orderNumber,
+      items,
+      orderType,
+      customerAddress,
+      customerNotes,
+      subtotal,
+      tva
+    } = body;
+
+    console.log("[CREATE-MYPOS-CHECKOUT] Creating session for order:", orderNumber, "amount:", amount);
+
+    // Retrieve environment variables
+    const clientId = Deno.env.get("MYPOS_CLIENT_ID") || "";
+    const clientSecret = Deno.env.get("MYPOS_CLIENT_SECRET") || "";
+    const storeId = Deno.env.get("MYPOS_STORE_ID") || Deno.env.get("MYPOS_SID") || clientId;
+    const walletNumber = Deno.env.get("MYPOS_WALLET_NUMBER") || "0000000000";
+    const keyIndex = Deno.env.get("MYPOS_KEY_INDEX") || "1";
+    const privateKeyPem = Deno.env.get("MYPOS_PRIVATE_KEY") || clientSecret;
+    const env = (Deno.env.get("MYPOS_ENV") || "sandbox").toLowerCase();
+
+    // Check configuration availability
+    if ((!storeId && !clientId) || (!privateKeyPem && !clientSecret)) {
+      console.warn("[CREATE-MYPOS-CHECKOUT] myPOS configuration missing in environment variables");
+      return new Response(
+        JSON.stringify({ 
+          error: "Paiement en ligne temporairement indisponible. Veuillez choisir un autre mode de paiement.",
+          code: "MYPOS_CONFIG_MISSING"
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 }
+      );
+    }
+
+    const origin = req.headers.get("origin") || "https://twinpizza.fr";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+
+    // Parse customer names
+    const nameParts = (customerName || "Client").trim().split(" ");
+    const firstName = nameParts[0] || "Client";
+    const lastName = nameParts.slice(1).join(" ") || "TwinPizza";
+
+    // Formatted amount (strictly 2 decimals)
+    const formattedAmount = Number(amount).toFixed(2);
+
+    // 1. Build parameters in exact myPOS IPC purchase protocol order
+    const params: Record<string, string> = {
+      IPCmethod: "IPCPurchase",
+      IPCVersion: "1.4",
+      IPCLanguage: "FR",
+      SID: storeId,
+      WalletNumber: walletNumber,
+      KeyIndex: keyIndex,
+      Amount: formattedAmount,
+      Currency: "EUR",
+      OrderID: String(orderNumber),
+      URL_OK: `${origin}/payment/success?order=${encodeURIComponent(orderNumber)}`,
+      URL_Cancel: `${origin}/payment/cancel?order=${encodeURIComponent(orderNumber)}`,
+      URL_Notify: `${supabaseUrl}/functions/v1/mypos-webhook`,
+      CardTokenRequest: "0",
+      PaymentParametersRequired: "1",
+      CustomerEmail: customerEmail || "client@twinpizza.fr",
+      CustomerFirstNames: firstName,
+      CustomerFamilyName: lastName,
+      CustomerPhone: customerPhone || "",
+    };
+
+    // 2. Generate RSA-SHA256 signature
+    const formattedPrivateKey = privateKeyPem.includes("-----BEGIN")
+      ? privateKeyPem
+      : `-----BEGIN PRIVATE KEY-----\n${privateKeyPem}\n-----END PRIVATE KEY-----`;
+
+    const signature = generateSignature(params, formattedPrivateKey);
+
+    // 3. Attach Signature to parameters
+    const postData = {
+      ...params,
+      Signature: signature
+    };
+
+    // 4. Determine checkout endpoint URL
+    const checkoutUrl = env === "production"
+      ? (Deno.env.get("MYPOS_PROD_URL") || "https://ipc.mypos.com/ipc/en/substore")
+      : (Deno.env.get("MYPOS_SANDBOX_URL") || "https://sandbox.mypos.com/vmp/checkout");
+
+    console.log("[CREATE-MYPOS-CHECKOUT] Session created successfully", {
+      orderNumber,
+      checkoutUrl,
+      env
+    });
+
+    return new Response(
+      JSON.stringify({
+        checkout_url: checkoutUrl,
+        params: postData,
+        orderNumber
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[CREATE-MYPOS-CHECKOUT] Error:", errorMessage);
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      }
+    );
+  }
+});

@@ -8,7 +8,7 @@ echo ========================================
 echo.
 echo Starting print server...
 echo.
-set PATH=%PATH%;C:\Users\Slicydicy\AppData\Local\nvm\v22.22.0;%USERPROFILE%\AppData\Local\nvm\v22.22.0
+set PATH=%PATH%;%USERPROFILE%\AppData\Local\nvm\v22.22.0;C:\Program Files\nodejs
 node server.js
 pause
 

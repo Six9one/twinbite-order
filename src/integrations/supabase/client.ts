@@ -15,3 +15,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+export const setSupabaseTenantHeader = (tenantId: string) => {
+  if (tenantId) {
+    // Set dynamic tenant header for Postgrest RLS policy evaluation
+    (supabase as any).rest.headers['x-tenant-id'] = tenantId;
+  }
+};

@@ -13,7 +13,8 @@ echo  ║  4. Web App        → http://localhost:8080        ║
 echo  ╚══════════════════════════════════════════════════╝
 echo.
 
-set PROJECT_DIR=C:\Users\Slicydicy\Documents\GitHub\twinbite-order
+set PROJECT_DIR=%~dp0
+if "%PROJECT_DIR:~-1%"=="\" set PROJECT_DIR=%PROJECT_DIR:~0,-1%
 set PB_EXE=%PROJECT_DIR%\pocketbase\pocketbase.exe
 set PB_DATA=%PROJECT_DIR%\pocketbase
 

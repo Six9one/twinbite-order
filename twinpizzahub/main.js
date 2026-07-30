@@ -105,6 +105,42 @@ const appStartTime   = Date.now(); // don't WhatsApp orders from before this ses
 let ordersChannel    = null;
 let ordersPollTimer  = null;
 
+// Helper: check if customer phone is a real number
+function isRealPhone(phone) {
+  if (!phone) return false;
+  const clean = phone.replace(/[^0-9]/g, '');
+  return clean.length >= 9;
+}
+
+// Mark order as whatsapp_sent in Supabase DB
+async function markOrderWhatsAppSent(orderId) {
+  if (!supabase || !orderId) return;
+  try {
+    await supabase.from('order_processing_status').upsert({
+      order_id: orderId,
+      whatsapp_sent: true,
+      whatsapp_attempts: 1,
+      last_whatsapp_attempt: new Date().toISOString()
+    }, { onConflict: 'order_id' });
+  } catch(e) {
+    console.warn('Could not update whatsapp_sent in DB:', e.message);
+  }
+}
+
+// ── Gentle Google review message for past orders (no order confirmation) ──────
+function generateGentleReviewMessage(order) {
+  const name  = getFirstName(order);
+  const hello = name ? ` ${name}` : '';
+  const reviewLink = 'https://g.page/r/CXpZZnzoTBFREBM/review?utm_source=gbp&utm_medium=reviews&utm_campaign=qr';
+
+  let msg = `Bonjour${hello} ! 😊\n\n`;
+  msg += `Merci d'être venu(e) chez *Twin Pizza* récemment ! 🍕\n\n`;
+  msg += `Votre avis compte énormément pour notre équipe. Si vous avez apprécié votre repas, pourriez-vous nous laisser une note ou un petit mot ⭐ ?\n\n`;
+  msg += `👉 *Donner mon avis* : ${reviewLink}\n\n`;
+  msg += `Un grand merci pour votre soutien ! 🙏 *Twin Pizza*`;
+  return msg;
+}
+
 // Handle one order: UI + notification (once) and WhatsApp (once, when connected)
 function handleIncomingOrder(order) {
   if (!order || !order.id) return;
@@ -128,25 +164,34 @@ function handleIncomingOrder(order) {
     } catch(_) {}
   }
 
-  // ── WhatsApp confirmation — only once, and only if WhatsApp is connected ──
+  // ── WhatsApp confirmation / gentle review ──
   if (messagedOrders.has(order.id)) return;
-  // Don't re-message orders from before this app session started (avoids
-  // re-spamming customers if the Hub is restarted).
-  const createdAt = order.created_at ? new Date(order.created_at).getTime() : Date.now();
-  if (createdAt < appStartTime - 60000) { messagedOrders.add(order.id); return; }
-  const realPhone = order.customer_phone && !['borne','pos','POS'].includes(order.customer_phone);
+  const realPhone = isRealPhone(order.customer_phone);
   if (!realPhone) { messagedOrders.add(order.id); return; } // nothing to send, mark done
   if (whatsappStatus !== 'connected') return; // not connected yet — polling will retry
 
   messagedOrders.add(order.id); // mark before send to avoid double-send race
 
-  // Always schedule review — 40 min after order, regardless of WA connection state
+  const createdAt = order.created_at ? new Date(order.created_at).getTime() : Date.now();
+  const ageMs = Date.now() - createdAt;
+
+  // FOR OLDER ORDERS (>30 min): Skip order confirmation, send ONLY gentle Google Review request!
+  if (ageMs >= 30 * 60 * 1000) {
+    console.log(`⭐ Order #${order.order_number} is >30m old — sending ONLY gentle Google review request (skipping confirmation)`);
+    const reviewMsg = generateGentleReviewMessage(order);
+    attemptReviewSend(order, order.customer_phone, reviewMsg, 0);
+    markOrderWhatsAppSent(order.id);
+    return;
+  }
+
+  // FOR FRESH ORDERS (<30 min): Send confirmation now, and schedule review for 40 min later
   scheduleReviewMessage(order);
 
   const msg = generateOrderMessage(order);
   sendWhatsAppMessage(order.customer_phone, msg)
     .then(() => {
       console.log('✅ WhatsApp confirmation sent for', order.order_number);
+      markOrderWhatsAppSent(order.id);
       notifyMessageSent({ type:'confirmation', order, phone:order.customer_phone, message:msg, success:true });
     })
     .catch(e => {
@@ -183,17 +228,25 @@ function listenForOrders() {
   console.log('👂 Listening for new orders via Supabase Realtime');
 }
 
-// Poll the last 15 minutes of orders and process any not yet handled
+// Poll the last 48 hours of orders and process any unmessaged orders
 async function pollRecentOrders() {
   if (!supabase) return;
   try {
-    const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase
-      .from('orders').select('*')
+      .from('orders').select('*, order_processing_status(whatsapp_sent)')
       .gte('created_at', since)
       .order('created_at', { ascending: true });
-    if (error) return;
-    (data || []).forEach(handleIncomingOrder);
+    if (error || !data) return;
+
+    data.forEach(order => {
+      if (!isRealPhone(order.customer_phone)) return;
+      const status = Array.isArray(order.order_processing_status) ? order.order_processing_status[0] : order.order_processing_status;
+      const isSent = status?.whatsapp_sent === true;
+      if (!isSent && !messagedOrders.has(order.id)) {
+        handleIncomingOrder(order);
+      }
+    });
   } catch(_) {}
 }
 
@@ -408,19 +461,32 @@ function attemptReviewSend(order, phone, msg, attempt) {
     });
 }
 
-// ── Schedule the review message 40 min after the confirmation ─────────────────
+// ── Schedule the review message (or send immediately if order is >30 min old) ─
 function scheduleReviewMessage(order) {
   const phone = order.customer_phone;
-  if (!phone) return;
+  if (!phone || !isRealPhone(phone)) return;
   // Avoid duplicate timers for the same order
   if (reviewTimers.has(order.id)) return;
 
-  console.log(`⭐ Review scheduled for #${order.order_number} in 40 min`);
+  const createdAt = order.created_at ? new Date(order.created_at).getTime() : Date.now();
+  const ageMs = Date.now() - createdAt;
   const msg = generateReviewMessage(order);
+
+  // If order was placed more than 30 minutes ago, attempt to send review IMMEDIATELY
+  if (ageMs >= 30 * 60 * 1000) {
+    console.log(`⭐ Order #${order.order_number} is >30m old — sending Google review request immediately`);
+    reviewTimers.set(order.id, 'done');
+    attemptReviewSend(order, phone, msg, 0);
+    return;
+  }
+
+  // Otherwise schedule for the remainder of the 40 min window
+  const remainingDelay = Math.max(1000, REVIEW_DELAY_MS - ageMs);
+  console.log(`⭐ Review scheduled for #${order.order_number} in ${Math.round(remainingDelay / 60000)} min`);
   const handle = setTimeout(() => {
     reviewTimers.delete(order.id);
     attemptReviewSend(order, phone, msg, 0);
-  }, REVIEW_DELAY_MS);
+  }, remainingDelay);
 
   reviewTimers.set(order.id, handle);
 }
@@ -574,6 +640,11 @@ function spawnPrintServer() {
   });
   printServerProcess.stdout.on('data', d => process.stdout.write('[PRINT] ' + d));
   printServerProcess.stderr.on('data', d => process.stderr.write('[PRINT ERR] ' + d));
+  printServerProcess.on('error', (err) => {
+    console.error('🖨️ Print server spawn error:', err.message);
+    printServerProcess = null;
+    setTimeout(startPrintServer, 5000);
+  });
   printServerProcess.on('exit', (code) => {
     if (code !== 0) {
       console.log(`🖨️ Print server exited (${code}) — restarting in 5s...`);
@@ -992,6 +1063,9 @@ function createTray() {
 
 // ─── App lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
+  try {
+    session.defaultSession.clearCache();
+  } catch(_) {}
   try {
     if (isDev) {
       await startVite();

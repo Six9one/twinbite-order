@@ -38,10 +38,14 @@ import {
   Ticket,
   FileText,
   History,
-  Phone
+  Phone,
+  Building2,
+  Store,
+  Bot
 } from 'lucide-react';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useTenant } from '@/context/TenantContext';
 const logoImage = '/favicon.png';
 
 interface NavItem {
@@ -143,6 +147,8 @@ const navItems: NavItem[] = [
     label: 'Réglages Système',
     icon: Settings,
     children: [
+      { label: '🏢 Multi-Tenant SaaS', icon: Building2, value: 'tenants' },
+      { label: '🤖 Telegram & WhatsApp', icon: Bot, value: 'integrations' },
       { label: 'Réceptionniste AI', icon: Phone, value: 'ai-receptionist' },
       { label: 'Paiements', icon: CreditCard, value: 'payments' },
       { label: 'Configuration Imprimante', icon: Printer, value: 'printer' },
@@ -161,6 +167,7 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ activeTab, onTabChange, isOpen = true, onClose }: AdminSidebarProps) {
+  const { tenant } = useTenant();
   // All sections closed by default - open only when clicked
   const [openGroups, setOpenGroups] = useState<string[]>([]);
 
@@ -261,12 +268,25 @@ export function AdminSidebar({ activeTab, onTabChange, isOpen = true, onClose }:
         !isOpen && "md:w-0 md:overflow-hidden"
       )}>
         <div className="p-4 border-b border-border flex items-center justify-between">
-          <button onClick={() => handleNavClick('orders')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <img src={logoImage} alt="Twin Pizza" className="w-10 h-10 rounded-full" />
-            <div>
-              <h1 className="text-lg font-bold">
-                <span className="text-amber-500">TWIN</span> Admin
+          <button onClick={() => handleNavClick('orders')} className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left">
+            <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+              <Store className="w-5 h-5 text-amber-500" />
+            </div>
+            <div className="overflow-hidden">
+              <h1 className="text-base font-bold truncate text-foreground">
+                <span className="text-amber-500">{tenant.name}</span> Admin
               </h1>
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNavClick('tenants');
+                }}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-semibold border border-amber-500/30 transition-colors"
+                title="Gérer les restaurants RestoOS"
+              >
+                <Building2 className="w-2.5 h-2.5" />
+                <span className="truncate max-w-[110px]">RestoOS SaaS</span>
+              </div>
             </div>
           </button>
           {/* Close button for mobile */}

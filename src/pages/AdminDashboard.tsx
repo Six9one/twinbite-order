@@ -35,6 +35,8 @@ import { OrdersHistoryManager } from '@/components/admin/OrdersHistoryManager';
 import { AvailabilityManager } from '@/components/admin/AvailabilityManager';
 import { AIReceptionistManager } from '@/components/admin/AIReceptionistManager';
 import { FactureManager } from '@/components/admin/FactureManager';
+import { TenantManager } from '@/components/admin/TenantManager';
+import TelegramWhatsAppManager from '@/components/admin/TelegramWhatsAppManager';
 import {
   LogOut, Home, Search, RefreshCw, Download, Printer,
   Clock, CheckCircle, XCircle, ChefHat, Package,
@@ -44,7 +46,7 @@ import {
 } from 'lucide-react';
 const logoImage = '/favicon.png';
 
-type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture' | 'analytics-web';
+type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture' | 'analytics-web' | 'tenants' | 'integrations';
 
 
 
@@ -898,6 +900,12 @@ export default function AdminDashboard() {
           {/* Settings */}
           {activeTab === 'settings' && <SettingsManager />}
 
+          {/* Multi-Tenant B2B SaaS Manager */}
+          {activeTab === 'tenants' && <TenantManager />}
+
+          {/* Telegram, WhatsApp & Printer Integrations */}
+          {activeTab === 'integrations' && <TelegramWhatsAppManager />}
+
           {/* AI Phone Receptionist */}
           {activeTab === 'ai-receptionist' && <AIReceptionistManager />}
 
@@ -941,13 +949,19 @@ function OrderCard({
           <Badge variant="secondary" className="bg-white/20">
             {order.order_type.toUpperCase()}
           </Badge>
-          {/* Payment method badge */}
-          {order.payment_method === 'en_ligne' ? (
-            <Badge className="bg-green-600 text-white">PAYÉ STRIPE ✓</Badge>
+          {/* Payment method & status badge */}
+          {order.payment_method === 'en_ligne' || order.payment_method === 'mypos' ? (
+            <Badge className={
+              (order.payment_status || 'Paid') === 'Paid' ? "bg-green-600 text-white" :
+              order.payment_status === 'Failed' ? "bg-red-600 text-white" :
+              order.payment_status === 'Refunded' ? "bg-purple-600 text-white" : "bg-yellow-600 text-white"
+            }>
+              {order.payment_provider || 'myPOS'} - {(order.payment_status || 'Paid').toUpperCase()}
+            </Badge>
           ) : order.payment_method === 'cb' ? (
-            <Badge className="bg-blue-600 text-white">CB</Badge>
+            <Badge className="bg-blue-600 text-white">CB - {order.payment_status || 'Pending'}</Badge>
           ) : (
-            <Badge className="bg-amber-600 text-white">ESPÈCES</Badge>
+            <Badge className="bg-amber-600 text-white">ESPÈCES - {order.payment_status || 'Pending'}</Badge>
           )}
         </div>
         <div className="flex items-center gap-2 text-sm">
@@ -970,6 +984,36 @@ function OrderCard({
             <div className="col-span-2 flex items-center gap-2">
               <MapPin className="w-4 h-4 text-muted-foreground" />
               <span>{order.customer_address}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Detailed Payment Info (myPOS / Cash / Card) */}
+        <div className="bg-slate-100 dark:bg-slate-800 p-2.5 rounded-lg text-xs space-y-1 border">
+          <div className="flex justify-between items-center font-medium">
+            <span className="text-muted-foreground">Fournisseur :</span>
+            <span className="font-semibold text-primary">{order.payment_provider || (order.payment_method === 'en_ligne' ? 'myPOS' : order.payment_method.toUpperCase())}</span>
+          </div>
+          <div className="flex justify-between items-center font-medium">
+            <span className="text-muted-foreground">Statut paiement :</span>
+            <span className={`font-bold ${
+              (order.payment_status || 'Pending') === 'Paid' ? 'text-green-600' :
+              order.payment_status === 'Failed' ? 'text-red-600' :
+              order.payment_status === 'Refunded' ? 'text-purple-600' : 'text-amber-600'
+            }`}>
+              {order.payment_status || (order.payment_method === 'en_ligne' ? 'Paid' : 'Pending')}
+            </span>
+          </div>
+          {order.transaction_id && (
+            <div className="flex justify-between items-center font-mono text-[11px]">
+              <span className="text-muted-foreground font-sans">ID Transaction :</span>
+              <span>{order.transaction_id}</span>
+            </div>
+          )}
+          {order.paid_at && (
+            <div className="flex justify-between items-center text-[11px]">
+              <span className="text-muted-foreground">Date de paiement :</span>
+              <span>{new Date(order.paid_at).toLocaleString('fr-FR')}</span>
             </div>
           )}
         </div>

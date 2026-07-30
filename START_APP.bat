@@ -31,7 +31,7 @@ echo.
 REM ========== 4. Start Electron App ==========
 echo   [3/3] Starting Twin Pizza Hub...
 echo.
-cd /d %~dp0electron-app
+cd /d %~dp0twinpizzahub
 call npm start -- --dev
 
 REM ========== 5. Cleanup when Electron closes ==========

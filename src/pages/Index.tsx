@@ -18,7 +18,6 @@ import heroPizza from '@/assets/hero-pizza.jpg';
 // Lazy load non-critical & heavy components
 const DeliveryMapSection = lazy(() => import('@/components/DeliveryMapSection').then(m => ({ default: m.DeliveryMapSection })));
 const ReviewSection = lazy(() => import('@/components/ReviewSection').then(m => ({ default: m.ReviewSection })));
-const ContestModal = lazy(() => import('@/components/ContestModal').then(m => ({ default: m.ContestModal })));
 const CategoryMenu = lazy(() => import('@/components/CategoryMenu').then(m => ({ default: m.CategoryMenu })));
 const NewCart = lazy(() => import('@/components/NewCart').then(m => ({ default: m.NewCart })));
 const NewCheckout = lazy(() => import('@/components/NewCheckout').then(m => ({ default: m.NewCheckout })));
@@ -154,9 +153,6 @@ function MainApp() {
       )}
       <ScrollingBanner />
       <AnnouncementBanner />
-      <Suspense fallback={null}>
-        <ContestModal />
-      </Suspense>
       <Header
         onCartClick={() => setIsCartOpen(true)}
         onOrderTypeSelect={handleNavOrderTypeSelect}

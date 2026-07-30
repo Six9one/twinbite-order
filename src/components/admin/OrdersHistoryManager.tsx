@@ -422,20 +422,24 @@ export function OrdersHistoryManager() {
 
                                             {/* Payment */}
                                             <td className="p-3">
-                                                {order.payment_method === 'en_ligne' ? (
-                                                    <Badge className="bg-green-500 text-white text-[10px]">
-                                                        PAYÉ ✓
+                                                <div className="flex flex-col gap-1">
+                                                    <Badge className={
+                                                        (order.payment_status || (order.payment_method === 'en_ligne' ? 'Paid' : 'Pending')) === 'Paid'
+                                                            ? 'bg-green-600 text-white text-[10px]'
+                                                            : order.payment_status === 'Failed'
+                                                            ? 'bg-red-600 text-white text-[10px]'
+                                                            : order.payment_status === 'Refunded'
+                                                            ? 'bg-purple-600 text-white text-[10px]'
+                                                            : 'bg-amber-600 text-white text-[10px]'
+                                                    }>
+                                                        {order.payment_provider || (order.payment_method === 'en_ligne' ? 'myPOS' : order.payment_method === 'cb' ? 'CB' : 'ESPÈCES')} - {order.payment_status || (order.payment_method === 'en_ligne' ? 'Paid' : 'Pending')}
                                                     </Badge>
-                                                ) : (
-                                                    <Badge
-                                                        variant="destructive"
-                                                        className="text-[10px]"
-                                                    >
-                                                        {order.payment_method === 'cb'
-                                                            ? 'CB'
-                                                            : 'ESPÈCES'}
-                                                    </Badge>
-                                                )}
+                                                    {order.transaction_id && (
+                                                        <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[120px]" title={order.transaction_id}>
+                                                            ID: {order.transaction_id}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
 
                                             {/* Status */}

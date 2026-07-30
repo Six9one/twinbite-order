@@ -15,22 +15,25 @@ export default function PaymentCancel() {
           <XCircle className="w-10 h-10 text-red-600" />
         </div>
         <h1 className="text-2xl font-display font-bold mb-2">Paiement Annulé</h1>
-        <p className="text-muted-foreground mb-6">
-          Votre paiement a été annulé. Aucun montant n'a été débité.
+        <p className="text-muted-foreground font-medium mb-1">
+          Payment cancelled.
+        </p>
+        <p className="text-sm text-destructive font-semibold mb-6">
+          Your order has not been confirmed. (Votre commande n'a pas été confirmée.)
         </p>
         {orderNumber && (
-          <p className="text-sm text-muted-foreground mb-6">
-            Commande {orderNumber}
+          <p className="text-xs text-muted-foreground mb-6 font-mono">
+            Commande #{orderNumber}
           </p>
         )}
         <div className="space-y-3">
-          <Button onClick={() => navigate('/')} variant="outline" className="w-full gap-2">
-            <ArrowLeft className="w-5 h-5" />
-            Retour à l'accueil
-          </Button>
-          <Button onClick={() => navigate('/')} className="w-full gap-2">
+          <Button onClick={() => navigate('/')} className="w-full gap-2 h-12 text-base rounded-xl bg-primary">
             <RefreshCw className="w-5 h-5" />
-            Réessayer
+            Réessayer le paiement (Retry Payment)
+          </Button>
+          <Button onClick={() => navigate('/')} variant="outline" className="w-full gap-2 h-12 text-base rounded-xl">
+            <ArrowLeft className="w-5 h-5" />
+            Retour au panier (Back to Cart)
           </Button>
         </div>
       </Card>

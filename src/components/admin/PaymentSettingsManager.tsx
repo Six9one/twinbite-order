@@ -139,109 +139,67 @@ export function PaymentSettingsManager() {
         </CardContent>
       </Card>
 
-      {/* Stripe Configuration */}
+      {/* myPOS Configuration Guide */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Shield className="w-5 h-5" />
-            Configuration Stripe
+            <Shield className="w-5 h-5 text-purple-600" />
+            Configuration myPOS Checkout
           </CardTitle>
           <CardDescription>
-            Gérer votre compte Stripe et les clés API
+            Toutes les clés de sécurité myPOS doivent rester dans les variables d'environnement Supabase Edge Functions.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Status */}
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Statut:</span>
-            {stripeVerified ? (
-              <Badge variant="default" className="bg-green-600">
-                <CheckCircle2 className="w-3 h-3 mr-1" />
-                Configuré
-              </Badge>
-            ) : (
-              <Badge variant="secondary">
-                Non vérifié
-              </Badge>
-            )}
+            <span className="text-sm font-medium">Statut d'intégration :</span>
+            <Badge variant="default" className="bg-purple-600">
+              <CheckCircle2 className="w-3 h-3 mr-1" />
+              myPOS Checkout Actif
+            </Badge>
           </div>
 
           <Separator />
 
-          {/* API Key Input */}
-          <div className="space-y-3">
-            <Label htmlFor="stripe-key">Clé Secrète Stripe (sk_...)</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Input
-                  id="stripe-key"
-                  type={showSecretKey ? 'text' : 'password'}
-                  value={stripeSecretKey}
-                  onChange={(e) => setStripeSecretKey(e.target.value)}
-                  placeholder="sk_live_... ou sk_test_..."
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full"
-                  onClick={() => setShowSecretKey(!showSecretKey)}
-                >
-                  {showSecretKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </Button>
+          <div className="space-y-3 text-sm">
+            <h4 className="font-semibold text-foreground">Variables d'environnement requises (Supabase Secrets) :</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono">
+              <div className="bg-muted p-2 rounded border">
+                <span className="text-muted-foreground block text-[10px]">STORE ID (SID)</span>
+                MYPOS_STORE_ID
               </div>
-              <Button 
-                onClick={handleVerifyStripe} 
-                disabled={isVerifying || !stripeSecretKey.trim()}
-                className="gap-2"
-              >
-                {isVerifying ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="w-4 h-4" />
-                )}
-                Vérifier
-              </Button>
+              <div className="bg-muted p-2 rounded border">
+                <span className="text-muted-foreground block text-[10px]">WALLET NUMBER</span>
+                MYPOS_WALLET_NUMBER
+              </div>
+              <div className="bg-muted p-2 rounded border">
+                <span className="text-muted-foreground block text-[10px]">KEY INDEX</span>
+                MYPOS_KEY_INDEX (ex: 1)
+              </div>
+              <div className="bg-muted p-2 rounded border">
+                <span className="text-muted-foreground block text-[10px]">ENVIRONNEMENT</span>
+                MYPOS_ENV (sandbox / production)
+              </div>
+              <div className="bg-muted p-2 rounded border col-span-1 md:col-span-2">
+                <span className="text-muted-foreground block text-[10px]">CLE PRIVEE ENSEIGNE (RSA)</span>
+                MYPOS_PRIVATE_KEY
+              </div>
+              <div className="bg-muted p-2 rounded border col-span-1 md:col-span-2">
+                <span className="text-muted-foreground block text-[10px]">CLE PUBLIQUE MYPOS (RSA)</span>
+                MYPOS_PUBLIC_KEY
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              ⚠️ Pour des raisons de sécurité, la clé n'est pas stockée ici. 
-              Après vérification, mettez à jour le secret <code className="bg-muted px-1 rounded">STRIPE_SECRET_KEY</code> dans 
-              les paramètres de votre projet.
-            </p>
           </div>
 
           <Separator />
 
-          {/* Instructions */}
-          <div className="space-y-2">
-            <h4 className="font-medium text-sm">Comment changer de compte Stripe:</h4>
-            <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-              <li>Obtenez votre clé secrète depuis le Dashboard Stripe</li>
-              <li>Vérifiez le format ci-dessus</li>
-              <li>Mettez à jour <code className="bg-muted px-1 rounded">STRIPE_SECRET_KEY</code> dans les secrets</li>
-              <li>Mettez à jour <code className="bg-muted px-1 rounded">STRIPE_WEBHOOK_SECRET</code> si vous utilisez les webhooks</li>
-            </ol>
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <h4 className="font-medium text-foreground text-sm">URL de Webhook à enregistrer dans le portail myPOS :</h4>
+            <code className="block bg-slate-900 text-green-400 p-2.5 rounded font-mono select-all overflow-x-auto">
+              https://&lt;votre-projet-supabase&gt;.supabase.co/functions/v1/mypos-webhook
+            </code>
+            <p>Consultez la documentation complète dans <code className="bg-muted px-1 rounded">docs/MYPOS_DOCUMENTATION.md</code> pour les détails d'installation.</p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Future Payment Providers */}
-      <Card className="opacity-60">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5" />
-            Autres Fournisseurs de Paiement
-            <Badge variant="outline">Bientôt</Badge>
-          </CardTitle>
-          <CardDescription>
-            Support pour PayPal, Apple Pay, Google Pay et d'autres fournisseurs à venir
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Cette fonctionnalité sera disponible dans une prochaine mise à jour.
-          </p>
         </CardContent>
       </Card>
     </div>

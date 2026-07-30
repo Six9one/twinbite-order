@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, MapPin, Phone, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useTenantSettings } from '@/hooks/useTenantSettings';
 const logoImage = '/favicon.png';
 
 interface OpeningHour {
@@ -16,6 +17,7 @@ interface OpeningHour {
 const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
 export function Footer() {
+  const { name, logoUrl, phone, address } = useTenantSettings();
   const [hours, setHours] = useState<OpeningHour[]>([]);
 
   useEffect(() => {
@@ -57,20 +59,20 @@ export function Footer() {
           <div className="text-center md:text-left">
             <Link to="/" className="hover:opacity-80 transition-opacity inline-flex items-center gap-3 mb-3 sm:mb-4">
               <img
-                src={logoImage}
-                alt="Twin Pizza"
+                src={logoUrl || logoImage}
+                alt={name}
                 className="w-12 h-12 sm:w-14 sm:h-14 rounded-full"
               />
-              <h3 className="font-display text-xl sm:text-2xl font-bold">Twin Pizza</h3>
+              <h3 className="font-display text-xl sm:text-2xl font-bold">{name}</h3>
             </Link>
             <div className="space-y-2 text-sm text-background/70">
               <div className="flex items-center gap-2 justify-center md:justify-start">
                 <MapPin className="w-4 h-4 flex-shrink-0" />
-                <span>60 Rue Georges Clemenceau, 76530 Grand-Couronne</span>
+                <span>{address}</span>
               </div>
               <div className="flex items-center gap-2 justify-center md:justify-start">
                 <Phone className="w-4 h-4 flex-shrink-0" />
-                <a href="tel:0232112613" className="hover:text-primary">02 32 11 26 13</a>
+                <a href={`tel:${phone.replace(/\s/g, '')}`} className="hover:text-primary">{phone}</a>
               </div>
             </div>
           </div>
