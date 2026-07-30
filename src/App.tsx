@@ -43,7 +43,6 @@ const SuperAdminDashboard = lazy(() => import("./pages/SuperAdminDashboard"));
 // Components
 import ErrorBoundary from "./components/ErrorBoundary";
 import { UmamiTracker } from "./components/UmamiTracker";
-import TestSandboxModal from "./components/TestSandboxModal";
 
 const PageLoader = () => (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
@@ -116,7 +115,6 @@ const App = () => {
                                     </Suspense>
                                     <PWAInstallPrompt />
                                     <VirtualKeyboard />
-                                    <TestSandboxModal />
                                 </BrowserRouter>
                             </VirtualKeyboardProvider>
                         </TooltipProvider>

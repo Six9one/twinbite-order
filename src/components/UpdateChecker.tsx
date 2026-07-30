@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, X } from 'lucide-react';
 
-const APP_VERSION = '2.2.0';
+const APP_VERSION = '2.2.1';
 const VERSION_CHECK_INTERVAL = 60000; // Check every 60 seconds
 
 interface VersionInfo {
