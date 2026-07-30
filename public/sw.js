@@ -2,7 +2,7 @@
 // This version automatically checks for updates and refreshes cached content
 
 // VERSION: Change this when deploying updates - triggers cache refresh
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `twin-pizza-${CACHE_VERSION}`;
 
 // Files to cache for offline support (minimal - only essentials)
@@ -17,7 +17,8 @@ const NEVER_CACHE = [
     'supabase',
     'stripe',
     '.hot-update.',
-    'sockjs-node'
+    'sockjs-node',
+    '/assets/'
 ];
 
 // Install event - cache essential files and skip waiting
