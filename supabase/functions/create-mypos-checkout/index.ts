@@ -92,6 +92,30 @@ serve(async (req) => {
     // Formatted amount (strictly 2 decimals)
     const formattedAmount = Number(amount).toFixed(2);
 
+    // Build cart items parameters (Required by myPOS IPC Purchase Protocol)
+    const cartParams: Record<string, string> = {};
+    if (items && Array.isArray(items) && items.length > 0) {
+      cartParams["CartItems"] = String(items.length);
+      items.forEach((item: any, index: number) => {
+        const i = index + 1;
+        const qty = item.quantity || 1;
+        const price = Number(item.price || 0).toFixed(2);
+        const itemAmount = (qty * Number(item.price || 0)).toFixed(2);
+        cartParams[`Article_${i}`] = String(item.name || "Article").substring(0, 100);
+        cartParams[`Quantity_${i}`] = String(qty);
+        cartParams[`Price_${i}`] = price;
+        cartParams[`Amount_${i}`] = itemAmount;
+        cartParams[`Currency_${i}`] = "EUR";
+      });
+    } else {
+      cartParams["CartItems"] = "1";
+      cartParams["Article_1"] = "Commande Twin Pizza";
+      cartParams["Quantity_1"] = "1";
+      cartParams["Price_1"] = formattedAmount;
+      cartParams["Amount_1"] = formattedAmount;
+      cartParams["Currency_1"] = "EUR";
+    }
+
     // 1. Build parameters in exact myPOS IPC purchase protocol order
     const params: Record<string, string> = {
       IPCmethod: "IPCPurchase",
@@ -106,6 +130,7 @@ serve(async (req) => {
       URL_OK: `${origin}/payment/success?order=${encodeURIComponent(orderNumber)}`,
       URL_Cancel: `${origin}/payment/cancel?order=${encodeURIComponent(orderNumber)}`,
       URL_Notify: `${supabaseUrl}/functions/v1/mypos-webhook`,
+      ...cartParams,
       CardTokenRequest: "0",
       PaymentParametersRequired: "1",
       CustomerEmail: customerEmail || "client@twinpizza.fr",
