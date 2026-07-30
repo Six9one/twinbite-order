@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, lazy, Suspense } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
 import { HeroOrderSelector } from '@/components/HeroOrderSelector';
