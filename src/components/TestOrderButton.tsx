@@ -44,7 +44,7 @@ export function TestOrderButton({ onStartTestCheckout }: TestOrderButtonProps) {
 
   if (!enabled) return null;
 
-  const handleFastTestOrder = () => {
+  const handleFastTestOrder = (price: number = 0.01) => {
     clearCart();
     setOrderType('emporter');
 
@@ -52,9 +52,9 @@ export function TestOrderButton({ onStartTestCheckout }: TestOrderButtonProps) {
     addToCart(
       {
         id: 'test-item-1',
-        name: 'Pizza Test Fast',
-        description: 'Commande de test rapide myPOS',
-        price: 1.00,
+        name: 'Test Fast myPOS',
+        description: 'Commande de test rapide 0.01€',
+        price: price,
         category: 'pizzas',
         image: '/favicon.png',
       },
@@ -66,7 +66,7 @@ export function TestOrderButton({ onStartTestCheckout }: TestOrderButtonProps) {
         toppings: [],
         supplements: [],
       } as any,
-      1.00
+      price
     );
 
     // Save test customer info into localStorage for auto-filling
@@ -75,7 +75,7 @@ export function TestOrderButton({ onStartTestCheckout }: TestOrderButtonProps) {
     localStorage.setItem('tp_customer_address', '104 BD MAURICE BERTEAUX');
 
     toast({
-      title: '⚡ Test Order Prêt (1.00€)',
+      title: `⚡ Test Order (${price.toFixed(2)}€)`,
       description: 'Redirection directe vers le paiement myPOS...',
     });
 
@@ -83,13 +83,19 @@ export function TestOrderButton({ onStartTestCheckout }: TestOrderButtonProps) {
   };
 
   return (
-    <div className="fixed bottom-20 right-4 z-[99999]">
+    <div className="fixed bottom-20 right-4 z-[99999] flex gap-2">
       <Button
-        onClick={handleFastTestOrder}
-        className="bg-amber-500 hover:bg-amber-600 text-black font-extrabold rounded-full px-4 py-3 shadow-2xl border-2 border-black flex items-center gap-2 animate-bounce active:scale-95"
+        onClick={() => handleFastTestOrder(0.01)}
+        className="bg-amber-500 hover:bg-amber-600 text-black font-extrabold rounded-full px-4 py-3 shadow-2xl border-2 border-black flex items-center gap-2 active:scale-95 text-xs sm:text-sm"
       >
-        <Zap className="w-5 h-5 text-black fill-black" />
-        <span>TEST MYPOS (1€)</span>
+        <Zap className="w-4 h-4 text-black fill-black" />
+        <span>TEST 0.01€</span>
+      </Button>
+      <Button
+        onClick={() => handleFastTestOrder(1.00)}
+        className="bg-zinc-800 hover:bg-zinc-900 text-white font-extrabold rounded-full px-3 py-3 shadow-2xl border-2 border-zinc-700 flex items-center gap-1 active:scale-95 text-xs"
+      >
+        <span>1.00€</span>
       </Button>
     </div>
   );
