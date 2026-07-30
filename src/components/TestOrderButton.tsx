@@ -48,24 +48,18 @@ export function TestOrderButton({ onStartTestCheckout }: TestOrderButtonProps) {
     clearCart();
     setOrderType('emporter');
 
-    // Add sample test item
+    // Add sample test item (non-pizza so promo engine doesn't recalculate as 18€ pizza)
     addToCart(
       {
         id: 'test-item-1',
-        name: 'Test Fast myPOS',
-        description: 'Commande de test rapide 0.01€',
+        name: `Article Test (${price.toFixed(2)}€)`,
+        description: 'Commande de test rapide myPOS',
         price: price,
-        category: 'pizzas',
+        category: 'boissons',
         image: '/favicon.png',
       },
       1,
-      {
-        base: 'tomate',
-        size: 'senior',
-        sauces: [],
-        toppings: [],
-        supplements: [],
-      } as any,
+      undefined,
       price
     );
 
