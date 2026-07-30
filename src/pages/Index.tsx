@@ -18,6 +18,7 @@ import heroPizza from '@/assets/hero-pizza.jpg';
 import { CategoryMenu } from '@/components/CategoryMenu';
 import { NewCart } from '@/components/NewCart';
 import { NewCheckout } from '@/components/NewCheckout';
+import { TestOrderButton } from '@/components/TestOrderButton';
 
 // Helper for resilient lazy loading with auto-reload on build chunk hash mismatch
 const safeLazy = <T extends Record<string, any>>(
@@ -313,6 +314,7 @@ function MainApp() {
         </div>
       </section>
 
+      <TestOrderButton onStartTestCheckout={() => setView('checkout')} />
       <Footer />
     </div>
   );

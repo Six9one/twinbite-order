@@ -55,11 +55,13 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const { cart, orderType, setOrderType, clearCart, scheduledInfo, setScheduledInfo } = useOrder();
   const createOrder = useCreateOrder();
   const { data: paymentSettings, isLoading: isLoadingPaymentSettings } = usePaymentSettings();
-  const [step, setStep] = useState<'info' | 'payment' | 'schedule-confirm' | 'confirm' | 'success'>('info');
+  const [step, setStep] = useState<'info' | 'payment' | 'schedule-confirm' | 'confirm' | 'success'>(
+    localStorage.getItem('tp_customer_name') && localStorage.getItem('tp_customer_phone') ? 'payment' : 'info'
+  );
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
-    name: '',
-    phone: '',
-    address: '',
+    name: localStorage.getItem('tp_customer_name') || '',
+    phone: localStorage.getItem('tp_customer_phone') || '',
+    address: localStorage.getItem('tp_customer_address') || '',
     notes: '',
   });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cb');
