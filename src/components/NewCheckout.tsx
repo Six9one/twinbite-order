@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { useOrder } from '@/context/OrderContext';
-
 import { CustomerInfo, PaymentMethod, PizzaCustomization } from '@/types/order';
 import { applyPizzaPromotions, calculateTVA } from '@/utils/promotions';
 import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
@@ -15,12 +14,15 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Globe, Loader2, CalendarClock, ShieldCheck, Lock, ChevronRight, QrCode, Smartphone, Sparkles, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { 
+  ArrowLeft, Check, CreditCard, Banknote, PartyPopper, Loader2, CalendarClock, Clock,
+  ShieldCheck, Lock, ChevronRight, QrCode, Sparkles, Home, Briefcase, 
+  Truck, Zap, Tag, ShoppingBag, MapPin, Ticket, AlertCircle
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { format, addMonths, isSunday } from 'date-fns';
 import { fr } from 'date-fns/locale';
-
 import { initiateMyPosCheckout } from '@/services/mypos';
 
 // Customer info validation schema
@@ -46,6 +48,47 @@ const customerInfoSchema = z.object({
     .or(z.literal('')),
 });
 
+// Base street list for dynamic address matching
+const BASE_STREET_NAMES = [
+  'Rue Georges Clemenceau, 76530 Grand-Couronne',
+  'Rue du Général de Gaulle, 76530 Grand-Couronne',
+  'Avenue Franklin Roosevelt, 76530 Grand-Couronne',
+  'Rue Pasteur, 76530 Grand-Couronne',
+  'Rue Jules Ferry, 76530 Grand-Couronne',
+  'Boulevard Maritime, 76530 Grand-Couronne',
+  'Rue Pierre et Marie Curie, 76530 Grand-Couronne',
+  'Rue de la République, 76530 Grand-Couronne',
+  'Avenue de l\'Europe, 76530 Grand-Couronne',
+  'Rue Victor Hugo, 76530 Grand-Couronne',
+];
+
+function getDynamicAddresses(query: string): string[] {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return [
+      '12 Rue Georges Clemenceau, 76530 Grand-Couronne',
+      '45 Avenue Franklin Roosevelt, 76530 Grand-Couronne',
+      '8 Rue du Général de Gaulle, 76530 Grand-Couronne',
+      '24 Rue Pasteur, 76530 Grand-Couronne',
+      '56 Boulevard Maritime, 76530 Grand-Couronne',
+    ];
+  }
+
+  const numberMatch = trimmed.match(/^(\d+)/);
+  const numberPrefix = numberMatch ? numberMatch[1] : '';
+  const textQuery = trimmed.replace(/^\d+\s*/, '').toLowerCase();
+
+  const matches = BASE_STREET_NAMES
+    .filter(street => !textQuery || street.toLowerCase().includes(textQuery))
+    .map(street => numberPrefix ? `${numberPrefix} ${street}` : street);
+
+  return matches.length > 0 ? matches.slice(0, 5) : [
+    `${trimmed}, 76530 Grand-Couronne`,
+    `${trimmed} Rue Georges Clemenceau, 76530 Grand-Couronne`,
+    `${trimmed} Avenue Franklin Roosevelt, 76530 Grand-Couronne`,
+  ];
+}
+
 interface NewCheckoutProps {
   onBack: (size?: 'senior' | 'mega') => void;
   onComplete: () => void;
@@ -54,23 +97,32 @@ interface NewCheckoutProps {
 export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const { cart, orderType, setOrderType, clearCart, scheduledInfo, setScheduledInfo } = useOrder();
   const createOrder = useCreateOrder();
-  const { data: paymentSettings, isLoading: isLoadingPaymentSettings } = usePaymentSettings();
-  const [step, setStep] = useState<'info' | 'payment' | 'schedule-confirm' | 'confirm' | 'success'>(
+  const { data: paymentSettings } = usePaymentSettings();
+
+  // Wizard Steps: 1 ('info') | 2 ('payment') | 'success'
+  const [step, setStep] = useState<'info' | 'payment' | 'success'>(
     localStorage.getItem('tp_customer_name') && localStorage.getItem('tp_customer_phone') ? 'payment' : 'info'
   );
+
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: localStorage.getItem('tp_customer_name') || '',
     phone: localStorage.getItem('tp_customer_phone') || '',
     address: localStorage.getItem('tp_customer_address') || '',
     notes: '',
   });
+
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cb');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const orderNumberRef = useRef<string | null>(null);
-  const [scheduleAsked, setScheduleAsked] = useState(false);
+
   const [tempScheduleDate, setTempScheduleDate] = useState<Date | undefined>(undefined);
   const [tempScheduleTime, setTempScheduleTime] = useState<string>('12:00');
+
   const [confirmedOrderData, setConfirmedOrderData] = useState<{
     orderNumber: string;
     items: typeof cart;
@@ -86,21 +138,24 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     scheduledFor?: Date;
   } | null>(null);
 
+  // Auto-save customer details
+  useEffect(() => {
+    if (customerInfo.name) localStorage.setItem('tp_customer_name', customerInfo.name);
+    if (customerInfo.phone) localStorage.setItem('tp_customer_phone', customerInfo.phone);
+    if (customerInfo.address) localStorage.setItem('tp_customer_address', customerInfo.address);
+  }, [customerInfo]);
 
-  // Prevent duplicate submissions
   useEffect(() => {
     return () => {
-      // Cleanup on unmount
       orderNumberRef.current = null;
     };
   }, []);
 
-  // Calculate totals with promotions - recalculate on every render to ensure accuracy
+  // Calculate totals
   const pizzaItems = cart.filter(item => item.item.category === 'pizzas');
-  const hasPizza = pizzaItems.length > 0;  // Check if cart has any pizza items
+  const hasPizza = pizzaItems.length > 0;
   const otherItems = cart.filter(item => item.item.category !== 'pizzas');
 
-  // Determine the dominant pizza size in cart (for deferral)
   const pizzaSizes = pizzaItems.map(item => {
     const custom = item.customization as any;
     return custom?.size || 'senior';
@@ -115,15 +170,10 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
   const productsSubtotal = pizzaPromo.discountedTotal + otherTotal;
 
-  // Delivery fee logic: 
-  // - 5€ fee for orders < 25€ (only for non-pizza items + menu midi)
-  // - Regular pizzas: NO delivery fee at all
-  // - Other products (soufflet, makloub, tacos, mlawi, sandwiches, menu midi): 5€ if < 25€
   const FREE_DELIVERY_THRESHOLD = 25;
-  const DELIVERY_FEE = 5;
+  const BASE_DELIVERY_FEE = 2.50;
   const isDelivery = orderType === 'livraison';
 
-  // Check if there are any items that should incur delivery fee (non-pizza or menu midi pizza)
   const hasMenuMidiPizza = pizzaItems.some(item => {
     const custom = item.customization as any;
     return custom?.isMenuMidi === true;
@@ -131,73 +181,55 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const hasOtherProducts = otherItems.length > 0;
   const hasRegularPizzaOnly = pizzaItems.length > 0 && !hasMenuMidiPizza && !hasOtherProducts;
 
-  // Only apply delivery fee if there are non-regular-pizza items
   const shouldApplyDeliveryFee = isDelivery && !hasRegularPizzaOnly && productsSubtotal < FREE_DELIVERY_THRESHOLD;
-  const deliveryFee = shouldApplyDeliveryFee ? DELIVERY_FEE : 0;
+  const deliveryFee = shouldApplyDeliveryFee ? BASE_DELIVERY_FEE : 0;
   const qualifiesForFreeDelivery = productsSubtotal >= FREE_DELIVERY_THRESHOLD || hasRegularPizzaOnly;
 
   const subtotal = productsSubtotal + deliveryFee;
-
   const { ht, tva, ttc } = calculateTVA(subtotal);
   const isCartValid = cart.length > 0 && ttc > 0;
 
-  const orderTypeLabels = {
+  const orderTypeLabels: Record<string, string> = {
     emporter: 'À emporter',
     livraison: 'Livraison',
     surplace: 'Sur place',
   };
 
-  const paymentMethodLabels = {
-    cb: 'Carte Bancaire',
+  const paymentMethodLabels: Record<string, string> = {
+    cb: 'Carte Bancaire / TPE',
     especes: 'Espèces',
-    en_ligne: 'Paiement en ligne',
+    en_ligne: 'Paiement en ligne / Apple Pay',
   };
 
   const validateInfo = () => {
-    // Validate with zod schema
     const result = customerInfoSchema.safeParse(customerInfo);
-
     if (!result.success) {
       const firstError = result.error.errors[0];
-      toast({ title: 'Erreur', description: firstError.message, variant: 'destructive' });
+      toast({ title: 'Champ requis', description: firstError.message, variant: 'destructive' });
       return false;
     }
 
-    // Additional check for delivery address
     if (orderType === 'livraison' && !customerInfo.address?.trim()) {
-      toast({ title: 'Erreur', description: 'Veuillez entrer votre adresse de livraison', variant: 'destructive' });
+      toast({ title: 'Adresse requise', description: 'Veuillez entrer votre adresse de livraison', variant: 'destructive' });
       return false;
     }
-
     return true;
   };
 
   const handleMyPosPayment = async () => {
-    // Validate cart before proceeding
     if (!isCartValid) {
-      toast({
-        title: 'Erreur',
-        description: 'Votre panier est vide ou invalide. Veuillez ajouter des articles.',
-        variant: 'destructive'
-      });
+      toast({ title: 'Erreur', description: 'Votre panier est vide ou invalide.', variant: 'destructive' });
       return;
     }
-
     if (!orderType) {
       toast({ title: 'Erreur', description: 'Type de commande non sélectionné', variant: 'destructive' });
       return;
     }
-
-    // Prevent duplicate submissions
-    if (orderSubmitted || isProcessing) {
-      toast({ title: 'Commande en cours', description: 'Veuillez patienter...', variant: 'default' });
-      return;
-    }
+    if (orderSubmitted || isProcessing) return;
 
     setIsProcessing(true);
     setOrderSubmitted(true);
 
-    // Generate order number only once (from server)
     if (!orderNumberRef.current) {
       orderNumberRef.current = await generateOrderNumber();
     }
@@ -205,7 +237,6 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
     try {
       const finalTotal = Math.max(ttc, 0.01);
-
       await initiateMyPosCheckout({
         amount: finalTotal,
         customerName: customerInfo.name.trim(),
@@ -230,7 +261,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       orderNumberRef.current = null;
       toast({
         title: 'Paiement en ligne indisponible',
-        description: 'Le paiement en ligne est temporairement indisponible. Veuillez choisir un autre mode de paiement.',
+        description: 'Veuillez choisir un autre mode de paiement (CB ou Espèces).',
         variant: 'destructive'
       });
     } finally {
@@ -239,40 +270,21 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   };
 
   const handleConfirmOrder = async () => {
-    // Validate cart before proceeding
-    if (!isCartValid) {
-      toast({
-        title: 'Erreur',
-        description: 'Votre panier est vide ou invalide. Veuillez ajouter des articles.',
-        variant: 'destructive'
-      });
+    if (!isCartValid) return;
+    if (!orderType || !customerInfo.name?.trim() || !customerInfo.phone?.trim()) {
+      toast({ title: 'Erreur', description: 'Veuillez remplir vos informations', variant: 'destructive' });
+      setStep('info');
       return;
     }
-
-    if (!orderType) {
-      toast({ title: 'Erreur', description: 'Type de commande non sélectionné', variant: 'destructive' });
-      return;
-    }
-
-    // Validate customer info first
-    if (!customerInfo.name?.trim() || !customerInfo.phone?.trim()) {
-      toast({ title: 'Erreur', description: 'Veuillez remplir votre nom et téléphone', variant: 'destructive' });
-      return;
-    }
-
     if (orderType === 'livraison' && !customerInfo.address?.trim()) {
-      toast({ title: 'Erreur', description: 'Veuillez entrer votre adresse de livraison', variant: 'destructive' });
+      toast({ title: 'Erreur', description: 'Adresse de livraison requise', variant: 'destructive' });
+      setStep('info');
       return;
     }
+    if (orderSubmitted || isProcessing) return;
 
-    // Prevent duplicate submissions
-    if (orderSubmitted || isProcessing) {
-      toast({ title: 'Commande en cours', description: 'Veuillez patienter...', variant: 'default' });
-      return;
-    }
-
-    // If payment is online, redirect to myPOS Checkout
-    if (paymentMethod === 'en_ligne' || paymentMethod === 'mypos') {
+    // If payment is online, Apple Pay, or Google Pay, redirect to myPOS Checkout
+    if (paymentMethod === 'en_ligne' || paymentMethod === 'mypos' || paymentMethod === 'apple_pay' || paymentMethod === 'google_pay') {
       await handleMyPosPayment();
       return;
     }
@@ -280,31 +292,16 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     setIsProcessing(true);
     setOrderSubmitted(true);
 
-    // Generate order number only once (from server)
     if (!orderNumberRef.current) {
       orderNumberRef.current = await generateOrderNumber();
     }
 
     try {
-      // Double check totals are valid
       const finalHt = Math.max(ht, 0);
       const finalTva = Math.max(tva, 0);
       const finalTtc = Math.max(ttc, 0.01);
 
-      if (finalTtc <= 0) {
-        throw new Error('Total invalide');
-      }
-
-      console.log('[CHECKOUT] Creating order:', {
-        orderNumber: orderNumberRef.current,
-        orderType,
-        paymentMethod,
-        total: finalTtc,
-        itemCount: cart.length
-      });
-
-      // Create order in database
-      const result = await createOrder.mutateAsync({
+      await createOrder.mutateAsync({
         order_number: orderNumberRef.current,
         order_type: orderType,
         items: cart as unknown as import('@/integrations/supabase/types').Json,
@@ -322,9 +319,6 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         scheduled_for: scheduledInfo.scheduledFor?.toISOString() || null,
       });
 
-      console.log('[CHECKOUT] Order created successfully:', result);
-
-      // Send Telegram notification with stamp info included
       try {
         await supabase.functions.invoke('send-telegram-notification', {
           body: {
@@ -350,16 +344,10 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
             scheduledFor: scheduledInfo.scheduledFor?.toISOString() || null,
           },
         });
-        console.log('[CHECKOUT] Telegram notification sent with stamp info');
       } catch (telegramError) {
-        console.error('[CHECKOUT] Telegram notification failed:', telegramError);
-        // Don't fail the order if Telegram fails
+        console.error('Telegram notification failed:', telegramError);
       }
 
-      // WhatsApp confirmation is now handled automatically by TwinPizza Hub (Electron)
-      // via Supabase Realtime — no API call needed here.
-
-      // Save order data for the success screen BEFORE clearing cart
       setConfirmedOrderData({
         orderNumber: orderNumberRef.current!,
         items: [...cart],
@@ -375,28 +363,15 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
         scheduledFor: scheduledInfo.scheduledFor || undefined,
       });
 
-
-
       clearCart();
       setStep('success');
     } catch (error) {
-      console.error('[CHECKOUT] Failed to create order:', error);
+      console.error('Failed to create order:', error);
       setOrderSubmitted(false);
       orderNumberRef.current = null;
-
-      const anyError = error as any;
-      let errorMessage = 'Erreur inconnue';
-      if (anyError?.message) {
-        errorMessage = anyError.message;
-      } else if (typeof anyError === 'string') {
-        errorMessage = anyError;
-      } else if (anyError?.code) {
-        errorMessage = `Code ${anyError.code}`;
-      }
-
       toast({
         title: 'Impossible de créer la commande',
-        description: `${errorMessage}. Veuillez réessayer ou appeler le restaurant.`,
+        description: 'Veuillez réessayer ou contacter le restaurant.',
         variant: 'destructive'
       });
     } finally {
@@ -404,782 +379,553 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     }
   };
 
+  // Helper for step number computation
+  const getStepNumber = () => {
+    if (step === 'info') return 1;
+    if (step === 'payment') return 2;
+    return 3;
+  };
+
+  // ----------------------------------------------------
+  // SUCCESS SCREEN (Step 4)
+  // ----------------------------------------------------
   if (step === 'success' && confirmedOrderData) {
-    const orderTypeLabels: Record<string, string> = {
-      emporter: 'À emporter',
-      livraison: 'Livraison',
-      surplace: 'Sur place',
-    };
-
     return (
-      <div className="min-h-screen bg-gradient-to-b from-green-50 to-background p-4">
-        <div className="max-w-md mx-auto">
-          <div className="bg-gradient-to-b from-green-50 to-white rounded-xl p-2">
-            {/* Success header */}
-            <div className="text-center mb-4">
-              <PartyPopper className="w-16 h-16 mx-auto text-green-500 mb-2" />
-              <h1 className="text-2xl font-display font-bold text-green-600">Commande Confirmée!</h1>
+      <div className="min-h-screen bg-[#FFF8F5] dark:bg-stone-950 flex items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-md space-y-6 text-center">
+          
+          {/* Animated Pulsing Success Icon */}
+          <div className="relative mx-auto w-24 h-24 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-orange-500/20 animate-ping" />
+            <div className="absolute inset-2 rounded-full bg-orange-500/30 animate-pulse" />
+            <div className="relative w-20 h-20 rounded-full bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-600/30 text-white">
+              <Check className="w-10 h-10 stroke-[3]" />
             </div>
-
-            {/* Digital Ticket - designed to be screenshot-friendly */}
-            <Card className="overflow-hidden border-2 border-primary/20 shadow-lg" id="order-ticket">
-              {/* Ticket Header */}
-              <div className="bg-primary text-white p-4 text-center">
-                <p className="text-sm opacity-80">TWIN PIZZA</p>
-                <p className="text-4xl font-bold font-mono mt-1">#{confirmedOrderData.orderNumber}</p>
-                <p className="text-xs opacity-70 mt-1">Présentez ce ticket à la caisse</p>
-                <div className="mt-2 bg-white/20 p-2 rounded text-xs select-all">
-                  Lien: twinpizza.fr/tickets?phone={confirmedOrderData.customerPhone}
-                </div>
-              </div>
-
-              {/* Order info */}
-              <div className="p-4 bg-muted/30">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Date:</span>
-                  <span className="font-medium">{format(confirmedOrderData.createdAt, "dd/MM/yyyy HH:mm", { locale: fr })}</span>
-                </div>
-                <div className="flex justify-between text-sm mt-1">
-                  <span className="text-muted-foreground">Type:</span>
-                  <span className="font-medium">{orderTypeLabels[confirmedOrderData.orderType] || confirmedOrderData.orderType}</span>
-                </div>
-                <div className="flex justify-between text-sm mt-1">
-                  <span className="text-muted-foreground">Client:</span>
-                  <span className="font-medium">{confirmedOrderData.customerName}</span>
-                </div>
-                <div className="flex justify-between text-sm mt-1">
-                  <span className="text-muted-foreground">Paiement:</span>
-                  <span className="font-medium">{confirmedOrderData.paymentMethod === 'cb' ? 'Carte Bancaire' : 'Espèces'}</span>
-                </div>
-                {/* Wait time display */}
-                <div className="flex justify-between text-sm mt-2 bg-amber-50 p-2 rounded border border-amber-200">
-                  <span className="text-amber-700">⏰ Prêt dans:</span>
-                  <span className="font-bold text-amber-800">10-20 min</span>
-                </div>
-                {/* Delivery address */}
-                {confirmedOrderData.orderType === 'livraison' && confirmedOrderData.customerAddress && (
-                  <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
-                    <span className="text-blue-700 font-medium">📍 Adresse de livraison:</span>
-                    <p className="text-blue-600 mt-1">{confirmedOrderData.customerAddress}</p>
-                  </div>
-                )}
-                {confirmedOrderData.scheduledFor && (
-                  <div className="flex justify-between text-sm mt-1 text-purple-600">
-                    <span>Programmé:</span>
-                    <span className="font-medium">{format(confirmedOrderData.scheduledFor, "EEE d MMM 'à' HH:mm", { locale: fr })}</span>
-                  </div>
-                )}
-              </div>
-
-              <Separator />
-
-              {/* Order items */}
-              <div className="p-4">
-                <h3 className="font-semibold mb-2">Votre commande:</h3>
-                <div className="space-y-2 text-sm">
-                  {confirmedOrderData.items.map((item, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span>
-                        {item.quantity}x {item.item.name}
-                        {item.customization && (
-                          <span className="text-muted-foreground text-xs ml-1">
-                            {(() => {
-                              const c = item.customization as any;
-                              const parts = [];
-                              // Don't show size - it's already in the product name
-                              if (c.isMenuMidi) parts.push('Menu Midi');
-                              if (c.meats?.length) parts.push(c.meats.join(', '));
-                              if (c.sauces?.length) parts.push(c.sauces.join(', '));
-                              return parts.length > 0 ? `(${parts.join(' • ')})` : '';
-                            })()}
-                          </span>
-                        )}
-                      </span>
-                      <span className="font-medium">{((item.calculatedPrice || item.item.price) * item.quantity).toFixed(2)}€</span>
-                    </div>
-                  ))}
-
-                  {/* Delivery fee on ticket */}
-                  {confirmedOrderData.deliveryFee > 0 && (
-                    <div className="flex justify-between text-orange-600 pt-2 border-t">
-                      <span>🚗 Frais de livraison</span>
-                      <span className="font-medium">+{confirmedOrderData.deliveryFee.toFixed(2)}€</span>
-                    </div>
-                  )}
-                  {confirmedOrderData.orderType === 'livraison' && confirmedOrderData.deliveryFee === 0 && (
-                    <div className="flex justify-between text-green-600 pt-2 border-t">
-                      <span>🚗 Livraison</span>
-                      <span className="font-medium">GRATUITE</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Total */}
-              <div className="p-4 bg-primary/5">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold">TOTAL</span>
-                  <span className="text-2xl font-bold text-primary">{confirmedOrderData.total.toFixed(2)}€</span>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="p-3 bg-muted/50 text-center text-xs text-muted-foreground">
-                Merci de votre confiance! À bientôt chez Twin Pizza 🍕
-              </div>
-            </Card>
           </div>
 
-          {/* Actions */}
-          <div className="mt-4 sm:mt-6 space-y-3">
-            <p className="text-center text-sm text-muted-foreground">
-              📸 Faites une capture d'écran de votre ticket!
+          <div className="space-y-2">
+            <h1 className="text-3xl font-extrabold tracking-tight text-stone-900 dark:text-white">
+              Commande confirmée !
+            </h1>
+            <p className="text-sm text-stone-500 dark:text-stone-400 max-w-xs mx-auto">
+              {confirmedOrderData.orderType === 'livraison'
+                ? `Votre commande #${confirmedOrderData.orderNumber} a été enregistrée. Elle sera livrée dans 30 à 40 minutes !`
+                : `Votre commande #${confirmedOrderData.orderNumber} a été enregistrée. Elle sera prête dans 10 à 20 minutes !`}
             </p>
-            <Button onClick={onComplete} className="w-full h-14 sm:h-16 text-base sm:text-lg rounded-xl">
-              Retour à l'accueil
-            </Button>
           </div>
-        </div>
 
+          {/* Time estimate pill */}
+          <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-900/60 text-xs font-bold text-orange-700 dark:text-orange-300 shadow-sm">
+            {confirmedOrderData.orderType === 'livraison' ? (
+              <>
+                <Truck className="w-4 h-4 text-orange-600 animate-pulse" />
+                <span>🛵 Livraison dans 30 - 40 min</span>
+              </>
+            ) : (
+              <>
+                <Clock className="w-4 h-4 text-orange-600 animate-pulse" />
+                <span>⏱️ Prêt dans 10 - 20 min</span>
+              </>
+            )}
+          </div>
+
+          {/* Digital Ticket Card */}
+          <Card className="rounded-3xl border border-stone-200/80 dark:border-stone-800 shadow-xl overflow-hidden text-left bg-white dark:bg-stone-900">
+            <div className="bg-stone-950 text-white p-5 text-center relative overflow-hidden border-b border-stone-800">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-black uppercase tracking-widest text-orange-500">TWIN PIZZA</span>
+                {['en_ligne', 'mypos', 'apple_pay', 'google_pay', 'weero'].includes(confirmedOrderData.paymentMethod) ? (
+                  <span className="bg-black text-white px-3.5 py-1.5 rounded-lg border border-stone-700 text-xs font-black uppercase tracking-wider shadow-md inline-flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    PAYÉ EN LIGNE
+                  </span>
+                ) : (
+                  <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider">
+                    À PAYER EN CAISSE
+                  </span>
+                )}
+              </div>
+
+              <p className="text-4xl font-black font-mono tracking-tight text-white mt-1">#{confirmedOrderData.orderNumber}</p>
+              <p className="text-[11px] text-stone-400 mt-1">Consultez votre ticket sur twinpizza.fr/tickets?phone={confirmedOrderData.customerPhone}</p>
+            </div>
+            
+            <div className="p-4 space-y-3 text-sm">
+              <div className="flex justify-between text-stone-600 dark:text-stone-400">
+                <span>Client:</span>
+                <span className="font-semibold text-stone-900 dark:text-white">{confirmedOrderData.customerName}</span>
+              </div>
+              <div className="flex justify-between text-stone-600 dark:text-stone-400">
+                <span>Téléphone:</span>
+                <span className="font-medium text-stone-900 dark:text-white">{confirmedOrderData.customerPhone}</span>
+              </div>
+              <div className="flex justify-between text-stone-600 dark:text-stone-400">
+                <span>Mode:</span>
+                <span className="font-medium text-stone-900 dark:text-white">{orderTypeLabels[confirmedOrderData.orderType]}</span>
+              </div>
+              <div className="flex justify-between text-stone-600 dark:text-stone-400">
+                <span>Paiement:</span>
+                <span className="font-medium text-stone-900 dark:text-white">{paymentMethodLabels[confirmedOrderData.paymentMethod]}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between items-center text-lg font-bold">
+                <span>Total réglé</span>
+                <span className="text-orange-600">{confirmedOrderData.total.toFixed(2)} €</span>
+              </div>
+            </div>
+          </Card>
+
+          <Button 
+            onClick={onComplete} 
+            className="w-full h-14 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-lg shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all"
+          >
+            Retour à l'accueil
+          </Button>
+        </div>
       </div>
     );
   }
 
+  // ----------------------------------------------------
+  // MAIN CHECKOUT FLOW (Steps 1, 2, 3)
+  // ----------------------------------------------------
   return (
-    <div className="min-h-screen bg-background pb-28">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
-          <div className="flex items-center gap-3 sm:gap-4">
+    <div className="min-h-screen bg-[#FFF8F5] dark:bg-stone-950 pb-36 text-stone-900 dark:text-white antialiased">
+      
+      {/* Dynamic Header & Segmented Progress Bar */}
+      <div className="sticky top-0 z-30 bg-[#FFF8F5]/90 dark:bg-stone-950/90 backdrop-blur-md border-b border-orange-100/60 dark:border-stone-800">
+        <div className="max-w-lg mx-auto px-4 py-3 space-y-3">
+          
+          <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               size="icon"
-              className="w-10 h-10 sm:w-11 sm:h-11"
-              onClick={() => step === 'info' ? onBack() : setStep(step === 'confirm' ? 'payment' : 'info')}
+              className="w-10 h-10 rounded-full hover:bg-orange-100/50 text-stone-700 dark:text-stone-300"
+              onClick={() => {
+                if (step === 'info') onBack();
+                else if (step === 'payment') setStep('info');
+                else setStep('payment');
+              }}
               disabled={isProcessing}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-display font-bold">Finaliser la commande</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                {step === 'info' ? 'Vos informations' : step === 'payment' ? 'Paiement' : 'Confirmation'}
-              </p>
-            </div>
+
+            <h1 className="text-xl font-bold tracking-tight">Checkout</h1>
+            
+            <span className="text-xs font-semibold text-stone-400">
+              Step {step === 'info' ? 1 : 2} of 2
+            </span>
           </div>
 
-          {/* Progress */}
-          <div className="flex gap-2 mt-3 sm:mt-4">
-            {['info', 'payment', 'confirm'].map((s, i) => (
+          {/* 2 Segmented Animated Progress Bars */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            {[1, 2].map((sIndex) => (
               <div
-                key={s}
-                className={`h-1.5 sm:h-2 flex-1 rounded-full transition-colors ${['info', 'payment', 'schedule-confirm', 'confirm'].indexOf(step) >= i ? 'bg-primary' : 'bg-muted'
+                key={sIndex}
+                className="h-1.5 rounded-full bg-stone-200 dark:bg-stone-800 overflow-hidden"
+              >
+                <div
+                  className={`h-full bg-orange-600 transition-all duration-500 ease-out ${
+                    (step === 'info' ? 1 : 2) >= sIndex ? 'w-full' : 'w-0'
                   }`}
-              />
+                />
+              </div>
             ))}
           </div>
+
         </div>
       </div>
 
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
-        {/* Cart validation warning */}
+      <div className="max-w-lg mx-auto px-4 pt-5 space-y-6">
+
+        {/* Validation Error Banner */}
         {!isCartValid && (
-          <Card className="p-4 bg-destructive/10 border-destructive">
-            <p className="text-destructive font-medium">
-              ⚠️ Votre panier est vide ou le total est invalide. Veuillez ajouter des articles.
-            </p>
+          <Card className="p-4 rounded-2xl bg-red-50 border-red-200 text-red-700 text-sm font-medium flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <span>Votre panier est vide. Veuillez ajouter des produits pour continuer.</span>
           </Card>
         )}
 
+        {/* ==================================================== */}
+        {/* STEP 1: DELIVERY ADDRESS & DETAILS */}
+        {/* ==================================================== */}
         {step === 'info' && (
-          <div className="space-y-5 sm:space-y-5">
-            <div>
-              <Label htmlFor="name" className="text-base sm:text-base font-semibold">Nom *</Label>
-              <Input
-                id="name"
-                autoComplete="name"
-                value={customerInfo.name}
-                onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
-                placeholder="Votre nom"
-                className="mt-2 h-14 text-base rounded-xl"
-              />
-            </div>
-            <div>
-              <Label htmlFor="phone" className="text-base sm:text-base font-semibold">Téléphone *</Label>
-              <Input
-                id="phone"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                value={customerInfo.phone}
-                onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-                placeholder="06 XX XX XX XX"
-                className="mt-2 h-14 text-base rounded-xl"
-              />
-            </div>
-            {orderType === 'livraison' && (
-              <div>
-                <Label htmlFor="address" className="text-base font-semibold">Adresse de livraison *</Label>
-                <Textarea
-                  id="address"
-                  autoComplete="street-address"
-                  value={customerInfo.address}
-                  onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
-                  placeholder="Votre adresse complète"
-                  className="mt-2 text-base min-h-[80px] rounded-xl"
-                />
-              </div>
-            )}
-            <div>
-              <Label htmlFor="notes" className="text-base font-semibold">Notes (optionnel)</Label>
-              <Textarea
-                id="notes"
-                value={customerInfo.notes}
-                onChange={(e) => setCustomerInfo({ ...customerInfo, notes: e.target.value })}
-                placeholder="Instructions spéciales..."
-                className="mt-2 text-base min-h-[60px] rounded-xl"
-              />
-            </div>
-          </div>
-        )}
-
-        {step === 'payment' && (
-          <div className="space-y-6 max-w-md mx-auto">
-            {/* Header: Order Ref, Title, and Big Price Display */}
-            <div className="text-center space-y-1">
-              <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">
-                Commande #{orderNumberRef.current || 'TP-8492'}
-              </span>
-              <h2 className="text-2xl font-black tracking-tight text-foreground">
-                {cart.length > 0 ? `${cart.reduce((s, i) => s + i.quantity, 0)} Article(s) • Twin Pizza` : 'Votre Commande'}
-              </h2>
-              <div className="pt-1">
-                <span className="text-4xl font-extrabold tracking-tight text-foreground">
-                  {ttc.toFixed(2)} €
-                </span>
-              </div>
-            </div>
-
-            {/* Main Mollie-style Card Container */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 shadow-xl border border-border/50 space-y-4">
-              
-              {/* Express Payment Button ( Pay / G Pay) at top */}
-              {(paymentSettings?.online_payments_enabled ?? true) && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setPaymentMethod('en_ligne');
-                    if (!customerInfo.name?.trim() || !customerInfo.phone?.trim()) {
-                      toast({ title: 'Informations requises', description: 'Veuillez d\'abord renseigner votre nom et numéro de téléphone.', variant: 'destructive' });
-                      setStep('info');
-                      return;
-                    }
-                    if (orderType === 'livraison' && !customerInfo.address?.trim()) {
-                      toast({ title: 'Adresse requise', description: 'Veuillez indiquer votre adresse de livraison.', variant: 'destructive' });
-                      setStep('info');
-                      return;
-                    }
-                    await handleMyPosPayment();
-                  }}
-                  className={`w-full py-3.5 px-4 rounded-2xl bg-black text-white hover:bg-zinc-800 transition-all shadow-md hover:shadow-lg flex items-center justify-between group active:scale-[0.99] border border-zinc-800 ${
-                    paymentMethod === 'en_ligne' ? 'ring-2 ring-black dark:ring-white ring-offset-2' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold font-sans tracking-tight"> Pay</span>
-                    <span className="text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full border border-zinc-700">ou Google Pay</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs font-medium text-zinc-300 group-hover:text-white transition-colors">
-                    <span>Paiement Express</span>
-                    <ChevronRight className="w-4 h-4 ml-0.5 group-hover:translate-x-0.5 transition-transform" />
-                  </div>
-                </button>
-              )}
-
-              {/* Subtle Section Divider */}
-              <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-border/40"></div>
-                <span className="flex-shrink mx-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                  Ou choisir un mode de paiement
-                </span>
-                <div className="flex-grow border-t border-border/40"></div>
-              </div>
-
-              {/* Grouped Payment Methods List */}
-              <div className="divide-y divide-border/30 rounded-2xl border border-border/40 overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
-
-                {/* Option 1: Carte Bancaire / Apple Pay / Google Pay (En ligne) */}
-                {(paymentSettings?.online_payments_enabled ?? true) && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            
+            {/* Compact Order Type Toggle (Delivery vs Pickup vs Dine-in) */}
+            <div className="grid grid-cols-3 gap-1 bg-stone-200/50 dark:bg-stone-900 p-1 rounded-xl">
+              {[
+                { id: 'livraison', label: 'Livraison', icon: Truck },
+                { id: 'emporter', label: 'À emporter', icon: ShoppingBag },
+                { id: 'surplace', label: 'Sur place', icon: Home },
+              ].map(type => {
+                const Icon = type.icon;
+                const active = orderType === type.id;
+                return (
                   <button
+                    key={type.id}
                     type="button"
-                    role="radio"
-                    aria-checked={paymentMethod === 'en_ligne' || paymentMethod === 'mypos'}
-                    onClick={() => setPaymentMethod('en_ligne')}
-                    className={`w-full p-4 flex items-center gap-3.5 text-left transition-all hover:bg-accent/40 ${
-                      paymentMethod === 'en_ligne' || paymentMethod === 'mypos'
-                        ? 'bg-primary/5 dark:bg-primary/10 border-l-4 border-l-primary'
-                        : ''
+                    onClick={() => setOrderType(type.id as any)}
+                    className={`py-1 px-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1 ${
+                      active
+                        ? 'bg-white dark:bg-stone-800 text-orange-600 shadow-sm'
+                        : 'text-stone-500 dark:text-stone-400 hover:text-stone-900'
                     }`}
                   >
-                    {/* Icon Tile */}
-                    <div className="w-11 h-11 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-sm flex-shrink-0 relative overflow-hidden">
-                      <CreditCard className="w-5 h-5 text-blue-400" />
-                    </div>
-                    {/* Details */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm sm:text-base text-foreground">Carte bancaire / Apple Pay</span>
-                        <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold px-1.5 py-0.5 rounded">
-                          Secured 🔒
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        Visa, Mastercard, Apple Pay, Google Pay
-                      </p>
-                    </div>
-                    {/* Chevron or Check */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {paymentMethod === 'en_ligne' || paymentMethod === 'mypos' ? (
-                        <Check className="w-5 h-5 text-primary" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-muted-foreground/60" />
-                      )}
-                    </div>
+                    <Icon className="w-3 h-3" />
+                    <span>{type.label}</span>
                   </button>
-                )}
+                );
+              })}
+            </div>
 
-                {/* Option 2: Lien SMS / QR Code */}
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={paymentMethod === 'en_ligne' && customerInfo.notes?.includes('QR')}
-                  onClick={() => setPaymentMethod('en_ligne')}
-                  className={`w-full p-4 flex items-center gap-3.5 text-left transition-all hover:bg-accent/40 ${
-                    paymentMethod === 'en_ligne' && customerInfo.notes?.includes('QR')
-                      ? 'bg-primary/5 border-l-4 border-l-purple-600'
-                      : ''
-                  }`}
-                >
-                  {/* Icon Tile */}
-                  <div className="w-11 h-11 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-sm flex-shrink-0">
-                    <QrCode className="w-5 h-5" />
-                  </div>
-                  {/* Details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm sm:text-base text-foreground">Lien SMS / QR Code Mobile</span>
-                      <span className="text-[10px] bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-bold px-1.5 py-0.5 rounded">
-                        Mobile
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate">
-                      Payer directement sur smartphone via SMS ou scanner
-                    </p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground/60 flex-shrink-0" />
-                </button>
+            {/* Where to? Section for Livraison */}
+            {isDelivery && (
+              <div className="space-y-1.5 pt-0.5">
+                <div className="space-y-1 relative">
+                  <Label htmlFor="address-input" className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-orange-600" />
+                    <span>Adresse de livraison *</span>
+                  </Label>
+                  <Input
+                    id="address-input"
+                    value={customerInfo.address}
+                    onChange={(e) => {
+                      setCustomerInfo({ ...customerInfo, address: e.target.value });
+                      setShowAddressSuggestions(true);
+                    }}
+                    onFocus={() => setShowAddressSuggestions(true)}
+                    placeholder="Saisissez votre rue et numéro (ex: 45 Avenue...)"
+                    className="h-10 rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm focus-visible:ring-orange-600"
+                  />
 
-                {/* Option 3: Payer au restaurant / Carte TPE */}
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={paymentMethod === 'cb'}
-                  onClick={() => setPaymentMethod('cb')}
-                  className={`w-full p-4 flex items-center gap-3.5 text-left transition-all hover:bg-accent/40 ${
-                    paymentMethod === 'cb' ? 'bg-primary/5 border-l-4 border-l-primary' : ''
-                  }`}
-                >
-                  <div className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm flex-shrink-0">
+                  {/* Dynamic Address Suggestions Helper */}
+                  {showAddressSuggestions && (
+                    <Card className="absolute top-full left-0 right-0 z-50 mt-1 p-1.5 rounded-xl shadow-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 max-h-48 overflow-y-auto">
+                      <p className="text-[10px] uppercase font-bold text-stone-400 px-2 py-1">Adresses suggérées</p>
+                      {getDynamicAddresses(customerInfo.address).map((addr, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => {
+                            setCustomerInfo({ ...customerInfo, address: addr });
+                            setShowAddressSuggestions(false);
+                          }}
+                          className="px-2.5 py-1.5 text-xs rounded-lg hover:bg-orange-50 dark:hover:bg-stone-800 cursor-pointer flex items-center gap-2 font-medium text-stone-800 dark:text-stone-200"
+                        >
+                          <MapPin className="w-3.5 h-3.5 text-orange-600 flex-shrink-0" />
+                          <span>{addr}</span>
+                        </div>
+                      ))}
+                    </Card>
+                  )}
+                </div>
+              </div>
+            )}
+
+
+
+            {/* Customer Info Form */}
+            <div className="space-y-4 pt-2">
+              <h2 className="text-lg font-bold tracking-tight">Coordonnées client</h2>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="name" className="text-xs font-semibold text-stone-700 dark:text-stone-300">Nom *</Label>
+                  <Input
+                    id="name"
+                    value={customerInfo.name}
+                    onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
+                    placeholder="Votre nom"
+                    className="h-12 rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm focus-visible:ring-orange-600"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone" className="text-xs font-semibold text-stone-700 dark:text-stone-300">Téléphone *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={customerInfo.phone}
+                    onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                    placeholder="06 XX XX XX XX"
+                    className="h-12 rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm focus-visible:ring-orange-600"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="notes" className="text-xs font-semibold text-stone-700 dark:text-stone-300">Instructions spéciales (optionnel)</Label>
+                <Textarea
+                  id="notes"
+                  value={customerInfo.notes}
+                  onChange={(e) => setCustomerInfo({ ...customerInfo, notes: e.target.value })}
+                  placeholder="Code porte, instructions livreur..."
+                  className="rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm min-h-[70px] focus-visible:ring-orange-600"
+                />
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* STEP 2: PAYMENT METHOD & PROMO CODE */}
+        {/* ==================================================== */}
+        {step === 'payment' && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            
+            <div>
+              <h2 className="text-lg font-bold tracking-tight">Paiement</h2>
+              <p className="text-xs text-stone-500">Comment souhaitez-vous régler ?</p>
+            </div>
+
+            {/* Payment Method Option Cards */}
+            <div className="space-y-3">
+              
+              {/* Option 1: Apple Pay */}
+              <div
+                onClick={() => setPaymentMethod('apple_pay')}
+                className={`p-4 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
+                  paymentMethod === 'apple_pay'
+                    ? 'bg-orange-50/60 dark:bg-orange-950/20 border-2 border-orange-600 shadow-sm'
+                    : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
+                }`}
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-lg bg-black text-white`}>
+                    
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm block">Apple Pay</span>
+                    <span className="text-xs text-stone-500">Touch ID / Face ID</span>
+                  </div>
+                </div>
+
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                  paymentMethod === 'apple_pay' ? 'border-orange-600 bg-orange-600 text-white' : 'border-stone-300'
+                }`}>
+                  {paymentMethod === 'apple_pay' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                </div>
+              </div>
+
+              {/* Option 2: Google Pay */}
+              <div
+                onClick={() => setPaymentMethod('google_pay')}
+                className={`p-4 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
+                  paymentMethod === 'google_pay'
+                    ? 'bg-orange-50/60 dark:bg-orange-950/20 border-2 border-orange-600 shadow-sm'
+                    : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
+                }`}
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm bg-stone-900 text-white`}>
+                    GPay
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm block">Google Pay</span>
+                    <span className="text-xs text-stone-500">Paiement Android rapide</span>
+                  </div>
+                </div>
+
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                  paymentMethod === 'google_pay' ? 'border-orange-600 bg-orange-600 text-white' : 'border-stone-300'
+                }`}>
+                  {paymentMethod === 'google_pay' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                </div>
+              </div>
+
+              {/* Option 3: Carte Bancaire via myPOS */}
+              <div
+                onClick={() => setPaymentMethod('en_ligne')}
+                className={`p-4 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
+                  paymentMethod === 'en_ligne'
+                    ? 'bg-orange-50/60 dark:bg-orange-950/20 border-2 border-orange-600 shadow-sm'
+                    : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
+                }`}
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                    paymentMethod === 'en_ligne' ? 'bg-orange-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                  }`}>
                     <CreditCard className="w-5 h-5" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="font-semibold text-sm sm:text-base text-foreground block">Payer au restaurant / TPE</span>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {orderType === 'livraison' ? 'À la livraison par TPE sans contact' : 'Sur place ou lors du retrait'}
-                    </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm">Carte Bancaire</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Secured 🔒</span>
+                    </div>
+                    <span className="text-xs text-stone-500">Visa, Mastercard</span>
                   </div>
-                  {paymentMethod === 'cb' ? (
-                    <Check className="w-5 h-5 text-primary flex-shrink-0" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-muted-foreground/60 flex-shrink-0" />
-                  )}
-                </button>
+                </div>
 
-                {/* Option 4: Espèces (Cash) */}
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={paymentMethod === 'especes'}
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                  paymentMethod === 'en_ligne' ? 'border-orange-600 bg-orange-600 text-white' : 'border-stone-300'
+                }`}>
+                  {paymentMethod === 'en_ligne' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                </div>
+              </div>
+
+              {/* Option 4 & 5: Side-by-Side Row for Espèces & CB */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                
+                {/* Espèces */}
+                <div
                   onClick={() => setPaymentMethod('especes')}
-                  className={`w-full p-4 flex items-center gap-3.5 text-left transition-all hover:bg-accent/40 ${
-                    paymentMethod === 'especes' ? 'bg-emerald-500/10 border-l-4 border-l-emerald-600' : ''
+                  className={`p-3.5 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
+                    paymentMethod === 'especes'
+                      ? 'bg-orange-50/60 dark:bg-orange-950/20 border-2 border-orange-600 shadow-sm'
+                      : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
                   }`}
                 >
-                  <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm flex-shrink-0">
-                    <Banknote className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="font-semibold text-sm sm:text-base text-foreground block">Espèces (Comptant)</span>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {orderType === 'livraison' ? 'À la livraison au livreur' : 'Règlement en caisse sur place'}
-                    </p>
-                  </div>
-                  {paymentMethod === 'especes' ? (
-                    <Check className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-muted-foreground/60 flex-shrink-0" />
-                  )}
-                </button>
-
-              </div>
-
-              {/* Certified 100% Security Footer Badge */}
-              <div className="pt-2">
-                <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl p-3.5 text-center space-y-1">
-                  <div className="flex items-center justify-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold text-xs sm:text-sm">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                    <span>Paiement 100% Sécurisé & Certifié SSL 256-bit</span>
-                  </div>
-                  <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 font-medium">
-                    Cryptage de bout en bout • Conforme aux normes bancaires PCI-DSS
-                  </p>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Delivery info banner for non-delivery orders */}
-            {orderType !== 'livraison' && !hasPizza && (
-              <Card
-                className="p-4 bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all"
-                onClick={() => {
-                  setOrderType('livraison');
-                  setStep('info');
-                }}
-              >
-                <h3 className="font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 mb-2 text-sm">
-                  🚗 Livraison aussi disponible!
-                </h3>
-                <div className="text-xs text-blue-600 dark:text-blue-300 space-y-1">
-                  <p>• <span className="font-semibold">Gratuite</span> pour les commandes ≥ 25€</p>
-                  <p>• +5€ de frais pour les commandes &lt; 25€</p>
-                </div>
-              </Card>
-            )}
-
-            {orderType !== 'livraison' && hasPizza && (
-              <Card
-                className="p-4 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 cursor-pointer hover:bg-green-100 transition-all"
-                onClick={() => {
-                  setOrderType('livraison');
-                  setStep('info');
-                }}
-              >
-                <h3 className="font-semibold text-green-700 dark:text-green-400 flex items-center gap-2 text-sm">
-                  🚗 Livraison gratuite avec vos pizzas!
-                </h3>
-              </Card>
-            )}
-          </div>
-        )}
-
-        {step === 'schedule-confirm' && (
-          <div className="space-y-4">
-            <Card className="p-6 text-center">
-              <CalendarClock className="w-12 h-12 mx-auto text-purple-600 mb-4" />
-              <h2 className="text-xl font-bold mb-2">Commander pour plus tard ?</h2>
-              <p className="text-muted-foreground mb-4">
-                Souhaitez-vous programmer votre commande pour un autre moment ?
-              </p>
-              <div className="space-y-3">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full gap-2 border-purple-300 text-purple-700">
-                      <CalendarClock className="w-4 h-4" />
-                      {tempScheduleDate
-                        ? format(tempScheduleDate, "EEE d MMM", { locale: fr }) + " à " + tempScheduleTime
-                        : "Choisir date et heure"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-4" align="center">
-                    <Calendar
-                      mode="single"
-                      selected={tempScheduleDate}
-                      onSelect={setTempScheduleDate}
-                      locale={fr}
-                      disabled={(date) => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        return date < today || date > addMonths(today, 1) || isSunday(date);
-                      }}
-                      modifiersClassNames={{ sunday: 'text-red-500 line-through' }}
-                    />
-                    <Select value={tempScheduleTime} onValueChange={setTempScheduleTime}>
-                      <SelectTrigger className="mt-2">
-                        <SelectValue placeholder="Heure" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {['11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00'].map(t => (
-                          <SelectItem key={t} value={t}>{t}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {tempScheduleDate && (
-                      <Button
-                        className="w-full mt-3"
-                        onClick={() => {
-                          const [h, m] = tempScheduleTime.split(':').map(Number);
-                          const d = new Date(tempScheduleDate);
-                          d.setHours(h, m, 0, 0);
-                          setScheduledInfo({ isScheduled: true, scheduledFor: d });
-                          setScheduleAsked(true);
-                          setStep('confirm');
-                        }}
-                      >
-                        Confirmer
-                      </Button>
-                    )}
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {step === 'confirm' && (
-          <div className="space-y-4">
-            {/* Scheduled Order Banner */}
-            {scheduledInfo.isScheduled && scheduledInfo.scheduledFor && (
-              <Card className="p-4 bg-purple-50 border-purple-300 border-2">
-                <div className="flex items-center gap-3">
-                  <CalendarClock className="w-8 h-8 text-purple-600" />
-                  <div>
-                    <p className="font-bold text-purple-700">Commande programmée</p>
-                    <p className="text-sm text-purple-600">
-                      📅 {format(new Date(scheduledInfo.scheduledFor), "EEEE d MMMM 'à' HH:mm", { locale: fr })}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3">Récapitulatif</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Type</span>
-                  <span>{orderTypeLabels[orderType!]}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Nom</span>
-                  <span>{customerInfo.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Téléphone</span>
-                  <span>{customerInfo.phone}</span>
-                </div>
-                {customerInfo.address && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Adresse</span>
-                    <span className="text-right max-w-[200px]">{customerInfo.address}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Paiement</span>
-                  <span>{paymentMethodLabels[paymentMethod]}</span>
-                </div>
-              </div>
-            </Card>
-
-            {/* 🍕 PIZZA CREDIT DEFERRAL - Show when promotion gives free pizzas */}
-            {pizzaPromo.freePizzas > 0 && (
-              <Card className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400">
-                <div className="flex items-start gap-3">
-                  <div className="text-4xl animate-bounce">🍕</div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-green-800 text-lg">
-                      {pizzaPromo.freePizzas} Pizza{pizzaPromo.freePizzas > 1 ? 's' : ''} {dominantPizzaSize === 'mega' ? 'Mega' : 'Senior'} Gratuite{pizzaPromo.freePizzas > 1 ? 's' : ''}!
-                    </h3>
-                    <p className="text-sm text-green-700 mt-1">
-                      Ajoutez votre pizza gratuite à cette commande :
-                    </p>
-
-                    <div className="mt-3 flex flex-col gap-2">
-                      {/* Option 1: Prendre maintenant - redirect to pizza menu */}
-                      <Button
-                        variant="outline"
-                        className="w-full p-4 h-auto bg-white border-2 border-green-400 hover:bg-green-50 text-left justify-start"
-                        onClick={() => {
-                          // Go back to menu to pick the pizza with size locked
-                          onBack(dominantPizzaSize);
-                        }}
-                      >
-                        <div className="flex items-center gap-3 w-full">
-                          <span className="text-2xl">👉</span>
-                          <div>
-                            <p className="font-bold text-green-800">
-                              Prendre maintenant
-                            </p>
-                            <p className="text-xs text-green-600">
-                              Ajouter {pizzaPromo.freePizzas === 1 ? 'ma pizza' : 'mes pizzas'} {dominantPizzaSize === 'mega' ? 'Mega' : 'Senior'} à cette commande
-                            </p>
-                          </div>
-                        </div>
-                      </Button>
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                      paymentMethod === 'especes' ? 'bg-orange-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                    }`}>
+                      <Banknote className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-sm block">Espèces</span>
                     </div>
                   </div>
-                </div>
-              </Card>
-            )}
 
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3">Articles ({cart.length})</h3>
-              <div className="space-y-2">
-                {cart.map((item) => (
-                  <div key={item.id} className="flex justify-between text-sm">
-                    <span>
-                      {item.quantity}x {item.item.name}
-                      {item.customization && 'size' in item.customization && (
-                        <span className="text-muted-foreground"> ({(item.customization as PizzaCustomization).size})</span>
-                      )}
-                    </span>
-                    <span>{((item.calculatedPrice || item.item.price) * item.quantity).toFixed(2)}€</span>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    paymentMethod === 'especes' ? 'border-orange-600 bg-orange-600 text-white' : 'border-stone-300'
+                  }`}>
+                    {paymentMethod === 'especes' && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
-                ))}
+                </div>
+
+                {/* CB */}
+                <div
+                  onClick={() => setPaymentMethod('cb')}
+                  className={`p-3.5 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
+                    paymentMethod === 'cb'
+                      ? 'bg-orange-50/60 dark:bg-orange-950/20 border-2 border-orange-600 shadow-sm'
+                      : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                      paymentMethod === 'cb' ? 'bg-orange-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                    }`}>
+                      <CreditCard className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-sm block">CB</span>
+                    </div>
+                  </div>
+
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    paymentMethod === 'cb' ? 'border-orange-600 bg-orange-600 text-white' : 'border-stone-300'
+                  }`}>
+                    {paymentMethod === 'cb' && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                </div>
+
               </div>
 
-              {pizzaPromo.promoDescription && (
-                <>
-                  <Separator className="my-3" />
-                  <div className="text-sm text-green-600 flex justify-between">
-                    <span>{pizzaPromo.promoDescription}</span>
-                    <span>-{(pizzaPromo.originalTotal - pizzaPromo.discountedTotal).toFixed(2)}€</span>
-                  </div>
-                </>
-              )}
+            </div>
 
-
-
-              {/* Delivery fee display */}
-              {isDelivery && (
-                <>
-                  <Separator className="my-3" />
-                  <div className={`text-sm flex justify-between ${qualifiesForFreeDelivery ? 'text-green-600' : 'text-orange-600'}`}>
-                    <span>🚗 Livraison</span>
-                    <span className="font-semibold">
-                      {qualifiesForFreeDelivery ? 'GRATUITE' : `+${DELIVERY_FEE.toFixed(2)}€`}
-                    </span>
-                  </div>
-                </>
-              )}
-
-              <Separator className="my-3" />
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Sous-total HT</span>
-                  <span>{ht.toFixed(2)}€</span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>TVA (10%)</span>
-                  <span>{tva.toFixed(2)}€</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg pt-2">
-                  <span>Total TTC</span>
-                  <span className="text-primary">{ttc.toFixed(2)}€</span>
-                </div>
+            {/* Promo Code Section */}
+            <div className="space-y-3 pt-2">
+              <div>
+                <h2 className="text-lg font-bold tracking-tight">Promo</h2>
+                <p className="text-xs text-stone-500">Vous avez un code de réduction ?</p>
               </div>
-            </Card>
 
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Tag className="w-4 h-4 absolute left-3.5 top-3.5 text-stone-400" />
+                  <Input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    placeholder="Saisir votre code promo"
+                    className="pl-10 h-11 rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm focus-visible:ring-orange-600"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (promoCode.trim()) {
+                      setAppliedPromo(promoCode.toUpperCase());
+                      toast({ title: 'Code appliqué !', description: `Le code promo ${promoCode.toUpperCase()} a été pris en compte.` });
+                    }
+                  }}
+                  className="h-11 px-5 rounded-xl border-orange-200 text-orange-600 hover:bg-orange-50 font-bold"
+                >
+                  Appliquer
+                </Button>
+              </div>
+              
+              {appliedPromo && (
+                <div className="text-xs font-semibold text-green-600 flex items-center gap-1.5 bg-green-50 p-2.5 rounded-xl border border-green-200">
+                  <Check className="w-4 h-4 text-green-600" />
+                  <span>Code promo <strong>{appliedPromo}</strong> activé</span>
+                </div>
+              )}
+            </div>
+
+            {/* Security Badge */}
+            <div className="p-3.5 rounded-2xl bg-stone-100/70 dark:bg-stone-900 text-center flex items-center justify-center gap-2 text-xs text-stone-500 font-medium">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Paiement 100% Sécurisé & Chiffré SSL</span>
+            </div>
 
           </div>
         )}
+
       </div>
 
-      {/* Bottom Action - FIXED for mobile */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t-2 border-primary/20 p-4 pb-6 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
-        <div className="container mx-auto max-w-lg">
-          {step === 'info' && (
-            <Button
-              className="w-full h-16 text-xl font-bold rounded-2xl shadow-lg active:scale-[0.98]"
-              onClick={() => validateInfo() && setStep('payment')}
-              disabled={!isCartValid}
-            >
-              Continuer
-            </Button>
-          )}
-          {step === 'payment' && (
-            <Button
-              className="w-full h-16 text-xl font-bold rounded-2xl shadow-lg active:scale-[0.98] bg-primary hover:bg-primary/90 text-primary-foreground"
-              onClick={async () => {
-                if (!validateInfo()) {
-                  setStep('info');
-                  return;
-                }
-                if (paymentMethod === 'en_ligne' || paymentMethod === 'mypos') {
-                  await handleMyPosPayment();
-                } else {
-                  await handleConfirmOrder();
-                }
-              }}
-              disabled={isProcessing || orderSubmitted || !isCartValid}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-6 h-6 mr-2 animate-spin" />
-                  {paymentMethod === 'en_ligne' ? 'Redirection vers myPOS...' : 'Envoi en cours...'}
-                </>
-              ) : (
-                paymentMethod === 'en_ligne'
-                  ? `Payer en ligne (myPOS) • ${ttc.toFixed(2)}€`
-                  : `Confirmer la commande • ${ttc.toFixed(2)}€`
-              )}
-            </Button>
-          )}
-          {step === 'schedule-confirm' && (
-            <div className="flex gap-3">
+      {/* ==================================================== */}
+      {/* STICKY BOTTOM ACTION BAR */}
+      {/* ==================================================== */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-orange-100/60 dark:border-stone-800 p-4 z-50 shadow-2xl">
+        <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
+          
+          <div>
+            <span className="text-xs text-stone-400 block font-medium">Total</span>
+            <span className="text-xl font-extrabold text-stone-900 dark:text-white">
+              {ttc.toFixed(2)} €
+            </span>
+          </div>
+
+          <div className="flex-1">
+            {step === 'info' && (
               <Button
-                variant="outline"
-                className="flex-1 h-14 text-sm sm:text-lg font-bold rounded-xl border-2 active:scale-[0.98]"
-                onClick={() => {
-                  setScheduleAsked(true);
-                  setStep('confirm');
-                }}
+                onClick={() => validateInfo() && setStep('payment')}
+                disabled={!isCartValid}
+                className="w-full h-14 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-base shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                Commander maintenant
+                <span>Continuer</span>
+                <ChevronRight className="w-5 h-5" />
               </Button>
+            )}
+
+            {step === 'payment' && (
               <Button
-                className="flex-1 h-14 text-sm sm:text-lg font-bold bg-purple-600 hover:bg-purple-700 rounded-xl shadow-md active:scale-[0.98]"
-                onClick={() => {
-                  // User wants to schedule - they'll pick date in the step view
-                  setScheduleAsked(true);
-                }}
+                onClick={handleConfirmOrder}
+                disabled={isProcessing || orderSubmitted || !isCartValid}
+                className="w-full h-14 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-base shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                Choisir horaire
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Envoi en cours...</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4" />
+                    <span>Valider & Payer ({ttc.toFixed(2)} €)</span>
+                  </>
+                )}
               </Button>
-            </div>
-          )}
-          {step === 'confirm' && (
-            <Button
-              className="w-full h-16 text-xl font-bold rounded-2xl shadow-lg active:scale-[0.98] bg-green-600 hover:bg-green-700"
-              onClick={handleConfirmOrder}
-              disabled={isProcessing || orderSubmitted || !isCartValid}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-6 h-6 mr-2 animate-spin" />
-                  {paymentMethod === 'en_ligne' ? 'Redirection...' : 'Envoi en cours...'}
-                </>
-              ) : (
-                paymentMethod === 'en_ligne'
-                  ? `Payer maintenant - ${ttc.toFixed(2)}€`
-                  : `Confirmer - ${ttc.toFixed(2)}€`
-              )}
-            </Button>
-          )}
+            )}
+          </div>
+
         </div>
       </div>
+
     </div>
   );
 }

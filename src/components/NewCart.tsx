@@ -9,9 +9,26 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Minus, Trash2, ShoppingBag, CalendarClock, ChevronDown, ChevronUp } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { Plus, Minus, Trash2, ShoppingBag, CalendarClock, ChevronDown, ChevronUp, Pencil, Tag, ChevronRight } from 'lucide-react';
 import { format, addMonths, isSunday } from 'date-fns';
 import { fr } from 'date-fns/locale';
+
+const categoryEmojiMap: Record<string, string> = {
+  pizzas: '🍕',
+  tacos: '🌮',
+  soufflets: '🥐',
+  makloub: '🥙',
+  mlawi: '🫓',
+  sandwiches: '🥪',
+  panini: '🥖',
+  croques: '🍞',
+  frites: '🍟',
+  milkshakes: '🥤',
+  crepes: '🥞',
+  gaufres: '🧇',
+  boissons: '🥤',
+};
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
@@ -27,13 +44,15 @@ interface NewCartProps {
   isOpen: boolean;
   onClose: () => void;
   onCheckout: () => void;
+  onEditItem?: (category: string) => void;
 }
 
-export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
-  const { cart, orderType, scheduledInfo, setScheduledInfo, updateQuantity, removeFromCart, getTotal } = useOrder();
+export function NewCart({ isOpen, onClose, onCheckout, onEditItem }: NewCartProps) {
+  const { cart, orderType, scheduledInfo, setScheduledInfo, updateQuantity, updateCartItem, removeFromCart, getTotal } = useOrder();
   const [showSchedulePicker, setShowSchedulePicker] = useState(false);
   const [tempDate, setTempDate] = useState<Date | undefined>(undefined);
   const [tempTime, setTempTime] = useState<string>('12:00');
+  const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
   const isMobile = useIsMobile();
   const prevCountRef = useRef(cart.length);
   const [badgePulse, setBadgePulse] = useState(false);
@@ -247,232 +266,139 @@ export function NewCart({ isOpen, onClose, onCheckout }: NewCartProps) {
             <div className="w-10 h-1.5 rounded-full bg-muted-foreground/30" />
           </div>
         )}
-        <SheetHeader className="px-4 sm:px-6 pt-3 sm:pt-6 pb-2">
-          <SheetTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
-            Votre Panier
+        <SheetHeader className="px-4 sm:px-6 pt-3 sm:pt-4 pb-2 border-b border-stone-100 dark:border-stone-800">
+          <SheetTitle className="flex items-center justify-between text-lg sm:text-xl font-extrabold text-stone-900 dark:text-white">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-orange-100 dark:bg-stone-800 text-orange-600 flex items-center justify-center font-bold">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              <span>Mon Panier ({cart.length})</span>
+            </div>
           </SheetTitle>
         </SheetHeader>
 
         {cart.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-muted-foreground p-6">
-              <ShoppingBag className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 opacity-40" />
-              <p className="text-base sm:text-lg">Votre panier est vide</p>
-              <p className="text-sm text-muted-foreground/70 mt-1">Ajoutez des articles pour commencer</p>
+          <div className="flex-1 flex items-center justify-center p-6">
+            <div className="text-center space-y-3">
+              <div className="w-28 h-28 mx-auto flex items-center justify-center">
+                <DotLottieReact
+                  src="https://lottie.host/80a95770-b2ba-4007-857d-5258ad6242f8/DYZ5mGoQPV.lottie"
+                  loop
+                  autoplay
+                  className="w-full h-full"
+                />
+              </div>
+              <p className="text-base font-bold text-stone-800 dark:text-stone-200">Votre panier est vide</p>
+              <p className="text-xs text-stone-500">Ajoutez des produits pour démarrer votre commande</p>
             </div>
           </div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto py-3 sm:py-4 px-4 sm:px-6 space-y-3">
+            <div className="flex-1 overflow-y-auto py-3 px-3 sm:px-4 space-y-3">
               {cart.map((item) => (
-                <Card key={item.id} className="p-3 sm:p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-semibold">{item.item.name}</h4>
-                      {getCustomizationText(item) && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {getCustomizationText(item)}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => removeFromCart(item.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                <div key={item.id} className="p-3.5 rounded-[24px] border border-stone-200/80 dark:border-stone-800 shadow-xs bg-white dark:bg-stone-900 flex items-center justify-between gap-3">
+                  
+                  {/* Left Category Emoji Badge / Icon */}
+                  <div className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-stone-800 flex items-center justify-center font-bold text-2xl flex-shrink-0">
+                    {categoryEmojiMap[item.item.category] || '🍽️'}
                   </div>
 
-                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-muted/50">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      >
-                        <Minus className="w-4 h-4" />
-                      </Button>
-                      <span className="w-8 text-center font-bold text-base">{item.quantity}</span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
+                  {/* Middle Product Details */}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="font-extrabold text-sm text-stone-900 dark:text-stone-100 truncate">{item.item.name}</h4>
+                      
+                      {/* Small Edit Button */}
+                      {onEditItem && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onEditItem(item.item.category);
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-stone-800 hover:bg-orange-100 px-1.5 py-0.5 rounded-md transition-colors"
+                        >
+                          <Pencil className="w-2.5 h-2.5" />
+                          <span>Éditer</span>
+                        </button>
+                      )}
                     </div>
-                    <span className="font-bold text-base sm:text-lg text-primary">
-                      {(getItemPrice(item) * item.quantity).toFixed(2)}€
+
+                    <span className="font-extrabold text-xs text-orange-600 dark:text-orange-400 block">
+                      {(getItemPrice(item) * item.quantity).toFixed(2)} €
                     </span>
+
+                    {getCustomizationText(item) && (
+                      <p className="text-[10px] text-stone-500 font-medium truncate">
+                        {getCustomizationText(item)}
+                      </p>
+                    )}
                   </div>
-                </Card>
+
+                  {/* Right Capsule Pill Quantity Controller (Matching Mockup "- 3 +") */}
+                  <div className="bg-stone-100 dark:bg-stone-800 rounded-full px-2.5 py-1 flex items-center gap-2.5 flex-shrink-0 shadow-2xs">
+                    <button
+                      type="button"
+                      className="w-5 h-5 rounded-full flex items-center justify-center font-black text-stone-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-700 text-xs active:scale-95 transition-all"
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+
+                    <span className="w-4 text-center font-black text-xs text-stone-900 dark:text-white">
+                      {item.quantity}
+                    </span>
+
+                    <button
+                      type="button"
+                      className="w-5 h-5 rounded-full flex items-center justify-center font-black text-stone-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-700 text-xs active:scale-95 transition-all"
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                </div>
               ))}
             </div>
 
-            <div className="border-t pt-3 sm:pt-4 px-4 sm:px-6 space-y-3 bg-muted/20">
-              {/* Scheduled order indicator or button */}
-              {scheduledInfo.isScheduled && scheduledInfo.scheduledFor ? (
-                <Card className="p-3 bg-purple-50 border-purple-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-purple-700">
-                      <CalendarClock className="w-4 h-4" />
-                      <span className="text-sm font-medium">
-                        {format(scheduledInfo.scheduledFor, "EEE d MMM 'à' HH:mm", { locale: fr })}
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-purple-600 h-7 px-2"
-                      onClick={handleCancelSchedule}
-                    >
-                      Annuler
-                    </Button>
-                  </div>
-                </Card>
-              ) : (
-                <div className="border border-purple-200 rounded-xl overflow-hidden">
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-between gap-2 px-4 py-3 text-purple-600 hover:bg-purple-50/60 transition-colors"
-                    onClick={() => setShowSchedulePicker(!showSchedulePicker)}
-                  >
-                    <span className="flex items-center gap-2 font-medium text-sm">
-                      <CalendarClock className="w-4 h-4" />
-                      Commander pour plus tard
-                    </span>
-                    {showSchedulePicker
-                      ? <ChevronUp className="w-4 h-4" />
-                      : <ChevronDown className="w-4 h-4" />}
-                  </button>
-
-                  {showSchedulePicker && (
-                    <div className="px-4 pb-4 space-y-3 border-t border-purple-100 bg-purple-50/20">
-                      <h4 className="font-semibold text-sm text-center pt-3 text-purple-800">Choisir date et heure</h4>
-                      <div className="flex justify-center">
-                        <Calendar
-                          mode="single"
-                          selected={tempDate}
-                          onSelect={setTempDate}
-                          locale={fr}
-                          disabled={(date) => {
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-                            const maxDate = addMonths(today, 1);
-                            return date < today || date > maxDate || isSunday(date);
-                          }}
-                          modifiers={{ sunday: (date) => isSunday(date) }}
-                          modifiersClassNames={{ sunday: 'text-red-500 line-through' }}
-                          className="rounded-md border bg-white"
-                        />
-                      </div>
-                      <Select value={tempTime} onValueChange={setTempTime}>
-                        <SelectTrigger className="bg-white">
-                          <SelectValue placeholder="Choisir l'heure" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {timeSlots.map(slot => (
-                            <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => setShowSchedulePicker(false)}
-                        >
-                          Annuler
-                        </Button>
-                        <Button
-                          className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
-                          onClick={handleConfirmSchedule}
-                          disabled={!tempDate}
-                        >
-                          Confirmer
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+            {/* Bottom Summary Container (Matching Mockup 100%) */}
+            <div className="p-4 sm:p-5 bg-stone-50 dark:bg-stone-900 border-t border-stone-200/60 dark:border-stone-800 space-y-3.5 rounded-t-[32px] shadow-xl">
+              
+              {/* Promo Code Row (Matching Mockup) */}
+              <div className="bg-white dark:bg-stone-800 rounded-2xl p-3.5 flex items-center justify-between text-xs text-stone-500 font-medium shadow-2xs border border-stone-100 dark:border-stone-700 cursor-pointer hover:border-orange-300 transition-all">
+                <div className="flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-orange-600" />
+                  <span>Vous avez un code promo ?</span>
                 </div>
-              )}
-
-              {pizzaPromo.supplementsTotal > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span>Suppléments pizza</span>
-                  <span>+{pizzaPromo.supplementsTotal.toFixed(2)}€</span>
-                </div>
-              )}
-
-              {pizzaPromo.promoDescription && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>{pizzaPromo.promoDescription}</span>
-                  <span>-{(pizzaPromo.originalTotal - pizzaPromo.discountedTotal).toFixed(2)}€</span>
-                </div>
-              )}
-
-              {/* Subtotal for delivery orders */}
-              {isDelivery && (
-                <div className="flex justify-between text-sm">
-                  <span>Sous-total</span>
-                  <span>{subtotal.toFixed(2)}€</span>
-                </div>
-              )}
-
-              {/* Delivery fee section */}
-              {isDelivery && (
-                <>
-                  {qualifiesForFreeDelivery ? (
-                    <div className="flex justify-between text-sm text-green-600">
-                      <span>🚗 Livraison</span>
-                      <span className="font-semibold">GRATUITE</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex justify-between text-sm text-orange-600">
-                        <span>🚗 Frais de livraison</span>
-                        <span>+{DELIVERY_FEE.toFixed(2)}€</span>
-                      </div>
-
-                      {/* Suggestion to reach free delivery */}
-                      {amountToFreeDelivery > 0 && amountToFreeDelivery <= 10 && (
-                        <Card className="p-3 bg-blue-50 border-blue-200">
-                          <p className="text-xs text-blue-700 font-semibold mb-2">
-                            💡 Plus que {amountToFreeDelivery.toFixed(2)}€ pour la livraison gratuite!
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {suggestions.filter(s => s.price >= amountToFreeDelivery).slice(0, 3).map((s, i) => (
-                              <span key={i} className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
-                                {s.emoji} {s.name} +{s.price}€
-                              </span>
-                            ))}
-                          </div>
-                        </Card>
-                      )}
-                    </>
-                  )}
-                </>
-              )}
-
-              <Separator />
-
-              <div className="flex justify-between text-lg sm:text-xl font-bold">
-                <span>Total</span>
-                <span className="text-primary">{total.toFixed(2)}€</span>
+                <ChevronRight className="w-4 h-4 text-stone-400" />
               </div>
 
+              {/* Subtotal & Total Rows */}
+              <div className="space-y-1.5 px-1 pt-1 text-xs">
+                <div className="flex justify-between text-stone-500 font-medium">
+                  <span>Sous-total</span>
+                  <span className="font-bold text-stone-900 dark:text-white">{subtotal.toFixed(2)} €</span>
+                </div>
+                {isDelivery && deliveryFee > 0 && (
+                  <div className="flex justify-between text-stone-500 font-medium">
+                    <span>Frais de livraison</span>
+                    <span className="font-bold text-orange-600">+{deliveryFee.toFixed(2)} €</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-sm font-black text-stone-900 dark:text-white pt-1.5 border-t border-stone-200/60 dark:border-stone-800">
+                  <span>Total</span>
+                  <span className="text-base text-orange-600 font-black">{total.toFixed(2)} €</span>
+                </div>
+              </div>
 
+              {/* Pill Checkout Action Button */}
               <Button
-                className="w-full h-14 sm:h-16 text-base sm:text-lg rounded-xl"
+                className="w-full h-14 rounded-full bg-orange-600 hover:bg-orange-700 text-white font-black text-base shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all flex items-center justify-center"
                 onClick={onCheckout}
                 disabled={cart.length === 0}
               >
-                Commander - {total.toFixed(2)}€
+                Commander ({total.toFixed(2)} €)
               </Button>
             </div>
           </>

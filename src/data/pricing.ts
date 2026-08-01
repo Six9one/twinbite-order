@@ -102,10 +102,10 @@ export const supplementPrices = {
     // Autres suppléments
     fromage: 1,
     viande: 1.5,
-    sauce: 0.5,
+    sauce: 0.30,
 
     // Extra sauce pricing (beyond free allowance)
-    extraSauce: 0.50,
+    extraSauce: 0.30,
     freeSaucesCount: 2,
 };
 

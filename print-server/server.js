@@ -812,9 +812,24 @@ async function formatDynamicTicket(order, template) {
                 break;
             }
             case 'payment': {
-                const payLabels = { 'en_ligne': 'CB', 'cb': 'CB', 'especes': 'Cash' };
-                const payText = (payLabels[order.payment_method] || order.payment_method || '').toUpperCase();
-                visualItems.push({ text: 'Reglement: ' + payText + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
+                const payMethod = (order.payment_method || '').toLowerCase();
+                const isPaidOnline = order.is_paid || ['en_ligne', 'mypos', 'apple_pay', 'google_pay', 'weero'].includes(payMethod);
+                
+                if (isPaidOnline) {
+                    visualItems.push({ text: '\n==========================================\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: '[ PAID - PAYÉ EN LIGNE ]\n', align: 'center', bold: true, fontSize: 'double_size', fontType: 'A' });
+                    visualItems.push({ text: 'PAIEMENT VALIDÉ (MYPOS / APPLE PAY)\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: 'NE PAS RE-FAIRE PAYER LE CLIENT\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: '==========================================\n\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
+                } else {
+                    const payLabels = { 'cb': 'CB / TPE', 'especes': 'ESPÈCES' };
+                    const payText = (payLabels[payMethod] || payMethod || 'EN CAISSE').toUpperCase();
+                    visualItems.push({ text: '\n------------------------------------------\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: '[ ! ] À PAYER EN CAISSE [ ! ]\n', align: 'center', bold: true, fontSize: 'double_size', fontType: 'A' });
+                    visualItems.push({ text: `SOLDE À ENCAISSER : ${(order.total || 0).toFixed(2)} €\n`, align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: `MODE DE RÈGLEMENT : ${payText}\n`, align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: '------------------------------------------\n\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
+                }
 
                 const creditsSaved     = order.pizza_credits_saved || 0;
                 const creditsRemaining = order.pizza_credits_remaining || 0;

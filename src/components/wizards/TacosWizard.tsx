@@ -105,18 +105,18 @@ function OptionCard({
       } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
       onClick={isDisabled ? undefined : onClick}
     >
-      {/* Image or emoji */}
-      <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
+      {/* Image or emoji - compact container so items fit on screen without scrolling */}
+      <div className="relative h-20 sm:h-24 bg-muted/40 flex items-center justify-center overflow-hidden p-1.5">
         {imageUrl ? (
-          <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+          <img src={imageUrl} alt={name} className="max-h-full max-w-full object-contain transition-transform hover:scale-105" />
         ) : (
-          <span className="text-4xl">{emoji}</span>
+          <span className="text-3xl">{emoji}</span>
         )}
         {isSelected && (
-          <div className={`absolute top-1 right-1 rounded-full w-6 h-6 flex items-center justify-center ${
+          <div className={`absolute top-1 right-1 rounded-full w-5 h-5 flex items-center justify-center shadow-sm ${
             isDefault ? 'bg-red-500' : 'bg-primary'
           }`}>
-            {isDefault ? <X className="w-3 h-3 text-white" /> : <Check className="w-3 h-3 text-white" />}
+            {isDefault ? <X className="w-3 h-3 text-white stroke-[3]" /> : <Check className="w-3 h-3 text-white stroke-[3]" />}
           </div>
         )}
       </div>
@@ -287,13 +287,6 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
     const calculatedPrice = calculatePrice();
     addToCart(cartItem, 1, customization, calculatedPrice);
     trackAddToCart(tacosItem.id, `Tacos ${size}`, 'tacos');
-
-    if (!window.location.pathname.includes('/kiosk')) {
-      toast({
-        title: 'Ajouté au panier',
-        description: `Tacos ${size} - ${meatNames.join(', ')}`,
-      });
-    }
 
     onClose(true);
   };
@@ -534,7 +527,6 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
               <h1 className="text-2xl font-display font-bold">Tacos</h1>
               <p className="text-sm text-muted-foreground">Étape {step}/4</p>
             </div>
-            <span className="text-xl font-bold text-primary">{calculatePrice().toFixed(2)}€</span>
           </div>
 
           <div className="flex gap-2 mt-4">
@@ -552,24 +544,34 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
         {renderStep()}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
-        <div className="container mx-auto">
-          {step < 4 ? (
-            <Button
-              className="w-full h-14 text-lg"
-              onClick={() => setStep(step + 1)}
-              disabled={!canContinue()}
-            >
-              Continuer
-            </Button>
-          ) : (
-            <Button
-              className="w-full h-14 text-lg"
-              onClick={handleAddToCart}
-            >
-              Ajouter au panier - {calculatePrice().toFixed(2)}€
-            </Button>
-          )}
+      {/* Fixed Sticky Bottom Action Bar with Cart Price & Continuer Button */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border p-4 z-50 shadow-2xl">
+        <div className="container mx-auto flex items-center justify-between gap-4 max-w-lg">
+          <div>
+            <span className="text-xs text-muted-foreground block font-medium">Panier</span>
+            <span className="text-xl font-extrabold text-orange-600 dark:text-orange-400">
+              {calculatePrice().toFixed(2)} €
+            </span>
+          </div>
+
+          <div className="flex-1">
+            {step < 4 ? (
+              <Button
+                className="w-full h-14 text-base font-bold bg-orange-600 hover:bg-orange-700 text-white rounded-2xl shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all"
+                onClick={() => setStep(step + 1)}
+                disabled={!canContinue()}
+              >
+                Continuer
+              </Button>
+            ) : (
+              <Button
+                className="w-full h-14 text-base font-bold bg-orange-600 hover:bg-orange-700 text-white rounded-2xl shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all"
+                onClick={handleAddToCart}
+              >
+                Ajouter au panier ({calculatePrice().toFixed(2)} €)
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

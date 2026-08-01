@@ -208,23 +208,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
 
     const calculatedPrice = calculatePrice();
     addToCart(menuItem, 1, customization, calculatedPrice);
-
     trackAddToCart(selectedSandwich.id, selectedSandwich.name, 'sandwiches');
-
-    if (!window.location.pathname.includes('/kiosk')) {
-      toast({
-        title: 'Ajouté au panier',
-        description: `${selectedSandwich.name}${
-          selectedOptions.length === 0 ? ' (Sans Frites)' :
-          ` (${selectedOptions.map(opt => {
-            if (opt === 'frites') return 'Avec Frites';
-            if (opt === 'boisson') return '+ Boisson';
-            if (opt === 'supp_frites') return '+ Supplément Frites';
-            return opt;
-          }).join(', ')})`
-        }`,
-      });
-    }
 
     setSelectedSandwich(null);
     setSelectedSauces([]);
@@ -571,7 +555,6 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
                 <p className="text-sm text-muted-foreground">Étape {step}/{totalSteps}</p>
               </div>
             </div>
-            <span className="text-xl font-bold text-primary">{calculatePrice().toFixed(2)}€</span>
           </div>
 
           {/* Progress */}
@@ -591,21 +574,32 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
         {renderStep()}
       </div>
 
-      {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4">
-        <Button
-          className="w-full h-12 text-lg"
-          disabled={!canContinue()}
-          onClick={() => {
-            if (step < totalSteps) {
-              setStep(step + 1);
-            } else {
-              handleAddToCart();
-            }
-          }}
-        >
-          {step < totalSteps ? 'Continuer' : 'Ajouter au panier'}
-        </Button>
+      {/* Fixed Sticky Bottom Action Bar with Cart Price & Continuer Button */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border p-4 z-50 shadow-2xl">
+        <div className="container mx-auto flex items-center justify-between gap-4 max-w-lg">
+          <div>
+            <span className="text-xs text-muted-foreground block font-medium">Panier</span>
+            <span className="text-xl font-extrabold text-orange-600 dark:text-orange-400">
+              {calculatePrice().toFixed(2)} €
+            </span>
+          </div>
+
+          <div className="flex-1">
+            <Button
+              className="w-full h-14 text-base font-bold bg-orange-600 hover:bg-orange-700 text-white rounded-2xl shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all"
+              disabled={!canContinue()}
+              onClick={() => {
+                if (step < totalSteps) {
+                  setStep(step + 1);
+                } else {
+                  handleAddToCart();
+                }
+              }}
+            >
+              {step < totalSteps ? 'Continuer' : `Ajouter au panier (${calculatePrice().toFixed(2)} €)`}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

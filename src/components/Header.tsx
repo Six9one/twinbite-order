@@ -1,4 +1,5 @@
 import { ShoppingCart, Menu, X, ShoppingBag, Truck, UtensilsCrossed, ChevronDown, Pizza, CalendarClock } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,17 @@ export function Header({
   } = useOrder();
   const itemCount = getItemCount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const prevItemCount = useRef(itemCount);
+  const [animationKey, setAnimationKey] = useState(0);
+
+  // Trigger 1 animation cycle on item addition, then freeze until next product added
+  useEffect(() => {
+    if (itemCount > prevItemCount.current) {
+      setAnimationKey(prev => prev + 1);
+    }
+    prevItemCount.current = itemCount;
+  }, [itemCount]);
+
   const handleOrderTypeChange = (type: OrderType) => {
     setOrderType(type);
     if (onOrderTypeSelect) {
@@ -151,12 +163,20 @@ export function Header({
 
             <Button
               onClick={onCartClick}
-              className="relative flex items-center gap-2 px-4 sm:px-6 h-11 sm:h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-lg hover:shadow-primary/20 transition-all active:scale-95"
+              className="relative flex items-center gap-2 px-3 sm:px-5 h-11 sm:h-12 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-lg hover:shadow-orange-600/25 transition-all active:scale-95"
             >
-              <ShoppingCart className="w-5 h-5" />
-              <span className="font-bold text-sm sm:text-base">Panier</span>
+              <div className="w-8 h-8 overflow-hidden flex items-center justify-center -ml-1">
+                <DotLottieReact
+                  key={animationKey}
+                  src="https://lottie.host/80a95770-b2ba-4007-857d-5258ad6242f8/DYZ5mGoQPV.lottie"
+                  loop={false}
+                  autoplay
+                  className="w-9 h-9"
+                />
+              </div>
+              <span className="font-extrabold text-sm sm:text-base">Panier ({itemCount})</span>
               {itemCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-6 h-6 sm:w-7 sm:h-7 bg-accent text-accent-foreground text-xs font-black rounded-full flex items-center justify-center border-2 border-background animate-in zoom-in">
+                <span className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-stone-900 text-white text-xs font-black rounded-full flex items-center justify-center border-2 border-background animate-in zoom-in">
                   {itemCount}
                 </span>
               )}

@@ -81,7 +81,10 @@ serve(async (req) => {
       );
     }
 
-    const origin = req.headers.get("origin") || "https://twinpizza.fr";
+    const rawOrigin = req.headers.get("origin") || "https://twinpizza.fr";
+    const origin = (rawOrigin.includes("localhost") || rawOrigin.includes("127.0.0.1") || rawOrigin.includes("192.168.1.84"))
+      ? "https://twinpizza.fr"
+      : rawOrigin;
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 
     // Parse customer names
@@ -155,7 +158,7 @@ serve(async (req) => {
     // 4. Determine checkout endpoint URL
     const checkoutUrl = env === "production"
       ? (Deno.env.get("MYPOS_PROD_URL") || "https://www.mypos.com/vmp/checkout")
-      : (Deno.env.get("MYPOS_SANDBOX_URL") || "https://sandbox.mypos.com/vmp/checkout");
+      : (Deno.env.get("MYPOS_SANDBOX_URL") || "https://dev-ipc.mypos-pas.com/v1/sub/ipc");
 
     console.log("[CREATE-MYPOS-CHECKOUT] Session created successfully", {
       orderNumber,

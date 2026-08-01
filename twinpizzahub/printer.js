@@ -71,9 +71,28 @@ function buildTicket(order) {
   t += CMD.CENTER + CMD.BIG;
   t += 'TOTAL: ' + (order.total || 0).toFixed(2) + ' EUR';
   t += CMD.NORMAL + CMD.NL;
-  t += CMD.CENTER + CMD.BOLD_ON;
-  t += (pays[order.payment_method] || order.payment_method || '').toUpperCase();
-  t += CMD.BOLD_OFF + CMD.NL;
+
+  const payMethod = (order.payment_method || '').toLowerCase();
+  const isPaidOnline = order.is_paid || ['en_ligne', 'mypos', 'apple_pay', 'google_pay', 'weero'].includes(payMethod);
+
+  if (isPaidOnline) {
+    t += CMD.CENTER + CMD.BIG + CMD.BOLD_ON;
+    t += '================================\n';
+    t += '   [ P A I D  -  P A Y É ]      \n';
+    t += '   PAIEMENT EN LIGNE VALIDÉ     \n';
+    t += '   ( MYPOS / APPLE PAY / GPAY ) \n';
+    t += '================================\n';
+    t += CMD.NORMAL + CMD.BOLD_OFF;
+    t += '*** NE PAS RE-FAIRE PAYER ***\n';
+  } else {
+    t += CMD.CENTER + CMD.BIG + CMD.BOLD_ON;
+    t += '--------------------------------\n';
+    t += ' [ ! ]  À PAYER EN CAISSE [ ! ] \n';
+    t += ' SOLDE : ' + (order.total || 0).toFixed(2) + ' EUR\n';
+    t += '--------------------------------\n';
+    t += CMD.NORMAL + CMD.BOLD_OFF;
+  }
+
   if ((order.delivery_fee || 0) > 0) {
     t += CMD.LEFT + 'Livraison : ' + Number(order.delivery_fee).toFixed(2) + 'E' + CMD.NL;
   }

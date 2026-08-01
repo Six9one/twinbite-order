@@ -1,43 +1,30 @@
-import { useState, useRef, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
-import { HeroOrderSelector } from '@/components/HeroOrderSelector';
-import { DealsCarousel } from '@/components/DealsCarousel';
-import { Footer } from '@/components/Footer';
-import { Header } from '@/components/Header';
-import { AnnouncementBanner } from '@/components/AnnouncementBanner';
-import { ScrollingBanner } from '@/components/ScrollingBanner';
-import { ClosedBanner } from '@/components/ClosedBanner';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { ShoppingBag, Phone, Settings } from 'lucide-react';
+import { Settings, MapPin, Clock, Phone, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import heroPizza from '@/assets/hero-pizza.jpg';
 
 import { CategoryMenu } from '@/components/CategoryMenu';
 import { NewCart } from '@/components/NewCart';
 import { NewCheckout } from '@/components/NewCheckout';
-import { TestOrderButton } from '@/components/TestOrderButton';
+import { CategoryCardGrid } from '@/components/CategoryCardGrid';
 
-// Helper for resilient lazy loading with auto-reload on build chunk hash mismatch
-const safeLazy = <T extends Record<string, any>>(
-  importFn: () => Promise<T>,
-  exportName?: keyof T
-) =>
-  lazy(() =>
-    importFn()
-      .then((m) => ({ default: exportName ? m[exportName] : m.default || m }))
-      .catch((error) => {
-        console.warn("Chunk load error (deployment update), auto-refreshing...", error);
-        window.location.reload();
-        return new Promise<{ default: any }>(() => {});
-      })
+const FEATURED = [
+  { id: 'soufflets', name: 'Soufflet Poulet', price: '7.50', image: '/cat_soufflet_3d.png' },
+  { id: 'makloub', name: 'Makloub Thon', price: '6.50', image: '/cat_makloub_3d.png', extraClass: 'translate-x-1' },
+];
+
+function FadeIn({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  return (
+    <div
+      className={`animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards ${className}`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
   );
-
-// Lazy load heavy marketing sections
-const DeliveryMapSection = safeLazy(() => import('@/components/DeliveryMapSection'), 'DeliveryMapSection');
-const ReviewSection = safeLazy(() => import('@/components/ReviewSection'), 'ReviewSection');
+}
 
 function MainApp() {
   const { orderType, setOrderType } = useOrder();
@@ -48,7 +35,8 @@ function MainApp() {
   const [selectedPizzaSize, setSelectedPizzaSize] = useState<'senior' | 'mega' | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const orderSelectorRef = useRef<HTMLDivElement>(null);
+  const [showOrderTypePopup, setShowOrderTypePopup] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   useEffect(() => {
     if (searchParams.get('checkout') === '1' || searchParams.get('retry') === '1' || searchParams.get('cancel') === '1') {
@@ -56,48 +44,49 @@ function MainApp() {
     }
   }, [searchParams]);
 
-  // Check if user is admin
   useEffect(() => {
     const checkAdmin = async () => {
       try {
         const { data, error: sessionError } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          console.error("Session error:", sessionError);
-          return;
-        }
-
+        if (sessionError) return;
         if (data?.session) {
-          const { data: roleData, error: roleError } = await supabase
+          const { data: roleData } = await supabase
             .from('user_roles')
             .select('role')
             .eq('user_id', data.session.user.id)
             .eq('role', 'admin')
             .maybeSingle();
 
-          if (roleError) {
-            console.error("Role fetch error:", roleError);
-            return;
-          }
-
           if (roleData) {
             setIsAdmin(true);
           }
         }
-      } catch (e) {
-        console.error("Admin check failed:", e);
-      }
+      } catch (e) {}
     };
     checkAdmin();
   }, []);
 
-  const handleOrderTypeSelect = () => {
+  const handleSelectCategory = (categoryId?: string) => {
+    if (categoryId) {
+      setActiveCategory(categoryId);
+    }
+    if (!orderType) {
+      setShowOrderTypePopup(true);
+    } else {
+      setView('menu');
+    }
+  };
+
+  const handleOrderTypePick = (type: OrderType) => {
+    setOrderType(type);
+    setShowOrderTypePopup(false);
     setView('menu');
   };
 
   const handleBackToHome = () => {
     setView('home');
     setOrderType(null);
+    setActiveCategory(null);
   };
 
   const handleCheckout = () => {
@@ -109,23 +98,15 @@ function MainApp() {
     setView('home');
     setOrderType(null);
     setSelectedPizzaSize(null);
+    setActiveCategory(null);
   };
 
-  const handleNavOrderTypeSelect = (type: OrderType) => {
-    setView('menu');
-  };
-
-  const scrollToOrderSelector = () => {
-    orderSelectorRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  // Menu view
   if (view === 'menu') {
     return (
       <Suspense fallback={
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-          <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-medium text-gray-500 animate-pulse">Chargement du menu...</span>
+          <div className="w-10 h-10 border-4 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm font-medium text-stone-500 animate-pulse">Chargement du menu...</span>
         </div>
       }>
         <CategoryMenu
@@ -133,19 +114,24 @@ function MainApp() {
           onOpenCart={() => setIsCartOpen(true)}
           lockedPizzaSize={selectedPizzaSize}
           onClearLockedSize={() => setSelectedPizzaSize(null)}
+          initialCategory={activeCategory}
         />
-        <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
+        <NewCart 
+          isOpen={isCartOpen} 
+          onClose={() => setIsCartOpen(false)} 
+          onCheckout={handleCheckout} 
+          onEditItem={(cat) => setActiveCategory(cat)}
+        />
       </Suspense>
     );
   }
 
-  // Checkout view
   if (view === 'checkout') {
     return (
       <Suspense fallback={
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-          <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-medium text-gray-500 animate-pulse">Chargement de la commande...</span>
+          <div className="w-10 h-10 border-4 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm font-medium text-stone-500 animate-pulse">Chargement de la commande...</span>
         </div>
       }>
         <NewCheckout
@@ -159,172 +145,146 @@ function MainApp() {
     );
   }
 
-  // Home view
   return (
-    <div className="min-h-screen bg-background">
-      {/* Floating Admin Button */}
+    <div className="min-h-screen bg-[#C8AD7E] antialiased">
       {isAdmin && (
-        <Link
-          to="/admin/dashboard"
-          className="fixed bottom-4 left-4 z-50"
-        >
-          <Button
-            size="sm"
-            className="gap-2 bg-purple-600 hover:bg-purple-700 text-white shadow-lg rounded-full px-4"
-          >
-            <Settings className="w-4 h-4" />
-            Admin
-          </Button>
+        <Link to="/admin/dashboard" className="fixed top-3 right-3 z-50">
+          <button className="flex items-center gap-1.5 bg-stone-800/80 backdrop-blur text-white shadow-lg rounded-full px-3 py-1.5 text-xs font-semibold">
+            <Settings className="w-3.5 h-3.5" /> Admin
+          </button>
         </Link>
       )}
-      <ScrollingBanner />
-      <AnnouncementBanner />
-      <Header
-        onCartClick={() => setIsCartOpen(true)}
-        onOrderTypeSelect={handleNavOrderTypeSelect}
-        onMenuClick={scrollToOrderSelector}
-        onScheduleClick={scrollToOrderSelector}
-      />
-      <ClosedBanner onScheduleConfirmed={handleOrderTypeSelect} />
-      
+
       <Suspense fallback={null}>
         <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
       </Suspense>
 
-      {/* Hero Section - optimized height */}
-      <section className="relative min-h-[55vh] sm:min-h-[70vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroPizza})` }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-background" />
-
-        <div className="relative z-10 container mx-auto px-3 sm:px-4 py-6">
-          <div className="text-center mb-6 sm:mb-8 animate-fade-in">
-            <div className="mb-4">
-              <a href="/" className="hover:opacity-80 transition-opacity">
-                <h1 className="text-2xl sm:text-5xl md:text-7xl font-medium tracking-wide whitespace-nowrap">
-                  <span className="text-amber-400">Twin</span>
-                  <span className="text-white ml-2 sm:ml-3">Pizza</span>
-                </h1>
-              </a>
-            </div>
-            <p className="text-sm sm:text-lg mb-1 sm:mb-2 font-sans font-extrabold md:text-xl text-secondary">
-              Grand-Couronne
-            </p>
-            <p className="text-xs sm:text-base md:text-lg max-w-lg mx-auto text-orange-400 px-4 sm:px-0">
-              Pizzas • Soufflés • Makloub • Mlawi • Tacos • Sandwiches et plus encore...
-            </p>
-          </div>
-
-          <div ref={orderSelectorRef}>
-            <HeroOrderSelector onSelect={handleOrderTypeSelect} />
-          </div>
-        </div>
-
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
-      </section>
-
-      {/* Call Now Section */}
-      <section className="py-4 sm:py-6 bg-primary/10 pizza-pattern-subtle">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
-            <div className="flex items-center gap-2 text-lg font-semibold">
-              <Phone className="w-6 h-6 text-primary" />
-              <span>📞 Appelez-nous maintenant</span>
-            </div>
-            <div className="flex flex-wrap justify-center gap-4">
-              <a href="tel:0232112613" className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-all hover:scale-105 shadow-lg">
-                <Phone className="w-5 h-5" />
-                02 32 11 26 13
-              </a>
-              <a href="tel:0685852788" className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-all hover:scale-105 shadow-lg">
-                <Phone className="w-5 h-5" />
-                06 85 85 27 88
-              </a>
+      {showOrderTypePopup && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowOrderTypePopup(false)} />
+          <div className="relative z-10 w-full max-w-md mx-4 mb-5 bg-white rounded-[1.75rem] shadow-2xl p-6 animate-in slide-in-from-bottom-8 duration-300">
+            <button onClick={() => setShowOrderTypePopup(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors">
+              <X className="w-4 h-4 text-stone-400" />
+            </button>
+            <p className="text-lg font-black text-stone-800 text-center mb-1 tracking-tight">Mode de commande</p>
+            <p className="text-xs text-stone-400 text-center mb-5">Choisissez comment récupérer votre commande</p>
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                { type: 'emporter' as OrderType, label: 'Emporter', emoji: '🛍️' },
+                { type: 'livraison' as OrderType, label: 'Livraison', emoji: '🚗' },
+                { type: 'surplace' as OrderType, label: 'Sur Place', emoji: '🍽️' },
+              ] as const).map((opt) => (
+                <button key={opt.type} onClick={() => handleOrderTypePick(opt.type)} className="flex flex-col items-center gap-2.5 p-5 rounded-2xl bg-stone-50 hover:bg-amber-50 active:scale-95 transition-all duration-200 group">
+                  <span className="text-3xl group-hover:scale-110 transition-transform duration-200">{opt.emoji}</span>
+                  <span className="text-xs font-bold text-stone-700 group-hover:text-amber-700">{opt.label}</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
-      </section>
+      )}
 
-      {/* Deals Carousel */}
-      <section className="py-6 sm:py-10 bg-gradient-to-b from-muted/30 to-background">
-        <div className="container mx-auto px-4">
-          <DealsCarousel />
-          <div className="flex justify-center mt-8">
-            <Button onClick={scrollToOrderSelector} size="lg" className="btn-primary gap-2 px-8 py-6 text-lg rounded-full shadow-lg hover:scale-105 transition-transform">
-              <ShoppingBag className="w-5 h-5" />
-              Commander Maintenant
-            </Button>
+      {/* LAYER 1 — HERO BACKGROUND (dark mocha rounded container) */}
+      <div className="relative mx-3 mt-3 rounded-[2rem] overflow-hidden shadow-[0_10px_32px_rgba(50,30,10,0.3)]" style={{ height: '260px' }}>
+        <img
+          src="/store-front.jpg"
+          alt="Twin Pizza storefront"
+          className="absolute inset-0 w-full h-full object-cover blur-[1px] scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#4A3428]/80 via-[#4A3428]/65 to-[#4A3428]/85" />
+
+        <div className="relative z-10 flex flex-col items-center pt-7 pb-4">
+          <div className="w-[60px] h-[60px] rounded-2xl bg-white/15 backdrop-blur-xl flex items-center justify-center mb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.15)]">
+            <img src="/favicon.png" alt="Twin Pizza" className="w-10 h-10 object-contain" />
           </div>
+          <h1 className="text-[1.7rem] font-black tracking-tight text-white drop-shadow-sm leading-none">
+            <span className="text-[#F5B041]">Twin</span> Pizza
+          </h1>
+          <p className="text-[12px] text-white/60 font-medium mt-1 tracking-wider uppercase">Grand-Couronne</p>
         </div>
-      </section>
+      </div>
 
-      {/* Features Section */}
-      <section className="py-8 sm:py-12 bg-background pizza-pattern-subtle pizza-pattern-light">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 text-center">
-            <div className="group p-6 rounded-2xl bg-card hover:bg-primary/5 transition-all duration-300 hover:-translate-y-2">
-              <span className="text-5xl block mb-4 group-hover:scale-110 transition-transform">🍕</span>
-              <h3 className="text-xl font-display font-semibold mb-2">Pizzas Artisanales</h3>
-              <p className="text-muted-foreground">30 recettes uniques, base tomate ou crème fraîche</p>
-            </div>
-            <div className="group p-6 rounded-2xl bg-card hover:bg-primary/5 transition-all duration-300 hover:-translate-y-2">
-              <span className="text-5xl block mb-4 group-hover:scale-110 transition-transform">🚗</span>
-              <h3 className="text-xl font-display font-semibold mb-2">Livraison Rapide</h3>
-              <p className="text-muted-foreground">Grand-Couronne et environs en 30-45 min</p>
-            </div>
-            <div className="group p-6 rounded-2xl bg-card hover:bg-primary/5 transition-all duration-300 hover:-translate-y-2">
-              <span className="text-5xl block mb-4 group-hover:scale-110 transition-transform">🎉</span>
-              <h3 className="text-xl font-display font-semibold mb-2">Promos Exclusives</h3>
-              <p className="text-muted-foreground">1 achetée = 1 offerte sur place & à emporter</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <Suspense fallback={null}>
-        <DeliveryMapSection />
-      </Suspense>
-
-      <Suspense fallback={null}>
-        <ReviewSection />
-      </Suspense>
-
-      {/* Contact Section */}
-      <section className="py-16 bg-gradient-to-b from-background to-muted/30 pizza-pattern-fade">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-display font-bold mb-8">
-            <span className="text-amber-500">Contact</span> & Horaires
+      {/* LAYER 2 — MAIN CONTENT CARD (warm cream surface) */}
+      <div
+        className="relative z-10 mx-3 -mt-14 bg-[#FFF8F0] rounded-[2rem] shadow-[0_-4px_24px_rgba(60,40,20,0.08)] pb-10"
+      >
+        {/* Nos Spécialités */}
+        <FadeIn className="px-5 pt-6">
+          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3">
+            Nos Spécialités
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-3xl mx-auto">
-            <Card className="p-6">
-              <span className="text-3xl mb-3 block">📍</span>
-              <h3 className="font-semibold mb-2 text-lg">Adresse</h3>
-              <p className="text-muted-foreground">
-                60 Rue Georges Clemenceau<br />
-                76530 Grand-Couronne
-              </p>
-            </Card>
-            <Card className="p-6">
-              <span className="text-3xl mb-3 block">📞</span>
-              <h3 className="font-semibold mb-2 text-lg">Téléphone</h3>
-              <p className="text-muted-foreground space-y-1">
-                <a href="tel:0232112613" className="block hover:text-primary transition-colors">02 32 11 26 13</a>
-                <a href="tel:0685852788" className="block hover:text-primary transition-colors">06 85 85 27 88</a>
-              </p>
-            </Card>
-            <Card className="p-6">
-              <span className="text-3xl mb-3 block">🕐</span>
-              <h3 className="font-semibold mb-2 text-lg">Horaires</h3>
-              <p className="text-muted-foreground">
-                Lun - Sam: 11h00 - 15h00 / 17h30 - 00h00<br />
-                Dimanche: Fermé
-              </p>
-            </Card>
-          </div>
-        </div>
-      </section>
+          <CategoryCardGrid onSelectCategory={handleSelectCategory} />
+        </FadeIn>
 
-      <TestOrderButton onStartTestCheckout={() => setView('checkout')} />
-      <Footer />
+        <div className="mx-5 my-5 h-px bg-[#3B2216]/8" />
+
+        {/* Populaires */}
+        <FadeIn className="px-5" delay={80}>
+          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-4">
+            Populaires
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            {FEATURED.map((item) => (
+              <button
+                key={item.name}
+                onClick={() => handleSelectCategory(item.id)}
+                className="text-left flex flex-col items-center group active:scale-95 transition-all duration-300 focus:outline-none"
+              >
+                <div className={`relative w-full aspect-square flex items-center justify-center -mb-3 z-10 ${item.extraClass || ''}`}>
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-[94%] h-[94%] object-contain group-hover:scale-110 transition-transform duration-300 food-ground-shadow"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="w-full bg-white rounded-2xl pt-4 pb-3 px-3 shadow-[0_2px_10px_rgba(60,30,10,0.06)] text-center group-hover:shadow-[0_4px_16px_rgba(60,30,10,0.1)] transition-all duration-300">
+                  <p className="font-bold text-[#3B2216] text-[13px] leading-tight">{item.name}</p>
+                  <p className="font-bold text-[#C67B2E] text-sm mt-1">{item.price} €</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </FadeIn>
+
+        <div className="mx-5 my-5 h-px bg-[#3B2216]/8" />
+
+        {/* Restaurant Info */}
+        <FadeIn className="px-5" delay={140}>
+          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-4">
+            Notre Restaurant
+          </h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-[#F5E6D3] flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-4.5 h-4.5 text-[#C67B2E]" />
+              </div>
+              <div>
+                <p className="font-semibold text-[13px] text-[#3B2216]">60 Rue Georges Clemenceau</p>
+                <p className="text-xs text-[#8C7A6B] mt-0.5">76530 Grand-Couronne</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-[#F5E6D3] flex items-center justify-center flex-shrink-0">
+                <Clock className="w-4.5 h-4.5 text-[#C67B2E]" />
+              </div>
+              <div>
+                <p className="font-semibold text-[13px] text-[#3B2216]">Lun – Sam</p>
+                <p className="text-xs text-[#8C7A6B] mt-0.5">11h00 – 15h00 · 17h30 – 00h00</p>
+              </div>
+            </div>
+            <a href="tel:0232112613" className="flex items-center gap-3.5 group">
+              <div className="w-10 h-10 rounded-xl bg-[#F5E6D3] group-hover:bg-[#F0D9C0] flex items-center justify-center flex-shrink-0 transition-colors">
+                <Phone className="w-4.5 h-4.5 text-[#C67B2E]" />
+              </div>
+              <div>
+                <p className="font-semibold text-[13px] text-[#3B2216] group-hover:text-[#C67B2E] transition-colors">02 32 11 26 13</p>
+                <p className="text-xs text-[#8C7A6B] mt-0.5">Appeler pour commander</p>
+              </div>
+            </a>
+          </div>
+        </FadeIn>
+      </div>
     </div>
   );
 }

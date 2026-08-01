@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ShoppingCart } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { isMenuMidiTime } from '@/utils/promotions';
 import { OptimizedImage } from '@/components/ui/OptimizedImage';
 import { MenuItem, MenuCategory } from '@/types/order';
@@ -54,6 +55,7 @@ interface CategoryMenuProps {
   onOpenCart: () => void;
   lockedPizzaSize?: 'senior' | 'mega' | null;
   onClearLockedSize?: () => void;
+  initialCategory?: string | null;
 }
 
 // Product category labels (ordered as requested)
@@ -125,22 +127,24 @@ function mapProductsToMenuItems(
   }));
 }
 
-export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLockedSize }: CategoryMenuProps) {
+export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLockedSize, initialCategory }: CategoryMenuProps) {
   const { orderType, getItemCount, getTotal } = useOrder();
   const { data: pizzaOrderingModeSetting } = useAdminSetting('pizza_ordering_mode');
   const pizzaOrderingMode = (pizzaOrderingModeSetting?.setting_value as { mode?: 'classic' | 'streamlined' })?.mode ?? 'classic';
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory ?? null);
   const [searchQuery, setSearchQuery] = useState('');
   const itemCount = getItemCount();
   const { getImageOrEmoji, getDisplayName } = useCategoryImages();
   const { isCategoryDisabled } = useDisabledCategories();
   const prevItemCount = useRef(itemCount);
   const [badgePulse, setBadgePulse] = useState(false);
+  const [animationKey, setAnimationKey] = useState(0);
 
-  // Pulse badge animation on new item added to cart
+  // Trigger 1 Lottie animation cycle on new item added, then freeze on final frame
   useEffect(() => {
     if (itemCount > prevItemCount.current) {
       setBadgePulse(true);
+      setAnimationKey(prev => prev + 1);
       const t = setTimeout(() => setBadgePulse(false), 700);
       prevItemCount.current = itemCount;
       return () => clearTimeout(t);
@@ -318,14 +322,21 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
               </div>
             </div>
             <Button
-              variant="default"
-              className="relative h-10 sm:h-11 px-3 sm:px-4"
               onClick={onOpenCart}
+              className="relative h-11 px-3 sm:px-4 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
             >
-              <ShoppingCart className="w-5 h-5 mr-1.5 sm:mr-2" />
-              <span className="text-sm sm:text-base">{getTotal().toFixed(2)}€</span>
+              <div className="w-8 h-8 overflow-hidden flex items-center justify-center -ml-1">
+                <DotLottieReact
+                  key={animationKey}
+                  src="https://lottie.host/80a95770-b2ba-4007-857d-5258ad6242f8/DYZ5mGoQPV.lottie"
+                  loop={false}
+                  autoplay
+                  className="w-9 h-9"
+                />
+              </div>
+              <span className="font-extrabold text-sm sm:text-base">{getTotal().toFixed(2)} €</span>
               {itemCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-accent text-accent-foreground w-5 h-5 sm:w-6 sm:h-6 rounded-full text-xs flex items-center justify-center font-bold">
+                <span className="absolute -top-1.5 -right-1.5 bg-stone-900 text-white w-5 h-5 sm:w-6 sm:h-6 rounded-full text-xs flex items-center justify-center font-black border-2 border-background animate-in zoom-in">
                   {itemCount}
                 </span>
               )}
@@ -504,26 +515,7 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
         })()}
       </div>
 
-      {/* Floating Cart Button (Mobile) — always visible */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-background/95 backdrop-blur border-t border-border md:hidden safe-bottom">
-        {itemCount > 0 ? (
-          <Button
-            className="w-full h-14 text-base sm:text-lg shadow-lg rounded-xl relative"
-            onClick={onOpenCart}
-          >
-            <ShoppingCart className="w-5 h-5 mr-2" />
-            Voir le panier ({itemCount}) - {getTotal().toFixed(2)}€
-            {badgePulse && (
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-accent rounded-full animate-ping" />
-            )}
-          </Button>
-        ) : (
-          <div className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-muted/60 text-muted-foreground text-sm">
-            <ShoppingCart className="w-4 h-4" />
-            Choisissez un produit pour commencer
-          </div>
-        )}
-      </div>
+      {/* CategoryMenu bottom unblocked */}
     </div>
   );
 }
