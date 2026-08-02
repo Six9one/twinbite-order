@@ -236,7 +236,60 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     const orderNumber = orderNumberRef.current;
 
     try {
+      const finalHt = Math.max(ht, 0);
+      const finalTva = Math.max(tva, 0);
       const finalTotal = Math.max(ttc, 0.01);
+
+      // 1. Create order record in Supabase FIRST so it exists when myPOS webhook fires
+      await createOrder.mutateAsync({
+        order_number: orderNumber,
+        order_type: orderType,
+        items: cart as unknown as import('@/integrations/supabase/types').Json,
+        customer_name: customerInfo.name.trim(),
+        customer_phone: customerInfo.phone.trim(),
+        customer_address: customerInfo.address?.trim() || null,
+        customer_notes: customerInfo.notes?.trim() || null,
+        payment_method: 'en_ligne',
+        subtotal: finalHt,
+        tva: finalTva,
+        total: finalTotal,
+        delivery_fee: deliveryFee,
+        status: 'pending',
+        is_scheduled: scheduledInfo.isScheduled,
+        scheduled_for: scheduledInfo.scheduledFor?.toISOString() || null,
+      });
+
+      // 2. Send initial Telegram notification (or let webhook update it upon payment)
+      try {
+        await supabase.functions.invoke('send-telegram-notification', {
+          body: {
+            orderNumber,
+            customerName: customerInfo.name.trim(),
+            customerPhone: customerInfo.phone.trim(),
+            customerAddress: customerInfo.address?.trim() || null,
+            customerNotes: customerInfo.notes?.trim() || null,
+            orderType,
+            paymentMethod: 'en_ligne (En attente de règlement)',
+            total: finalTotal,
+            subtotal: finalHt,
+            tva: finalTva,
+            deliveryFee: deliveryFee,
+            items: cart.map(item => ({
+              name: item.item.name,
+              quantity: item.quantity,
+              price: item.calculatedPrice || item.item.price,
+              category: item.item.category,
+              customization: item.customization,
+            })),
+            isScheduled: scheduledInfo.isScheduled,
+            scheduledFor: scheduledInfo.scheduledFor?.toISOString() || null,
+          },
+        });
+      } catch (tgErr) {
+        console.error('Initial Telegram notification error:', tgErr);
+      }
+
+      // 3. Initiate myPOS Checkout
       await initiateMyPosCheckout({
         amount: finalTotal,
         customerName: customerInfo.name.trim(),
