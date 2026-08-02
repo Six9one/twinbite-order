@@ -27,6 +27,28 @@ function FadeIn({ children, className = '', delay = 0 }: { children: React.React
   );
 }
 
+/**
+ * One layer of the Apple-Wallet-style card stack. Pure CSS: each card sticks at an
+ * increasingly larger `top` offset with an increasing `z-index`, so as the user scrolls,
+ * the next card slides up and covers the previous one except for a peeking strip equal to
+ * `STACK_OFFSET` — no scroll listeners, fully GPU-composited by the browser's native sticky path.
+ */
+const STACK_OFFSET = 34; // px of peek/overlap revealed between stacked cards
+const STACK_Z_BASE = 10; // keeps cards well below fixed overlays (cart/modals use z-50+)
+
+function StackCard({ index, className = '', fadeDelay = 0, children }: { index: number; className?: string; fadeDelay?: number; children: React.ReactNode }) {
+  return (
+    <div
+      className="sticky [transform:translateZ(0)] will-change-transform"
+      style={{ top: index * STACK_OFFSET, zIndex: STACK_Z_BASE + index }}
+    >
+      <FadeIn delay={fadeDelay} className={className}>
+        {children}
+      </FadeIn>
+    </div>
+  );
+}
+
 function MainApp() {
   const { orderType, setOrderType } = useOrder();
   const [searchParams] = useSearchParams();
@@ -231,93 +253,102 @@ function MainApp() {
         </div>
       )}
 
-      {/* LAYER 1 — HERO BACKGROUND (dark mocha container, full-bleed) */}
-      <div className="relative rounded-t-[2rem] overflow-hidden shadow-[0_10px_32px_rgba(50,30,10,0.3)]" style={{ height: '260px' }}>
-        <img
-          src="/store-front.jpg"
-          alt="Twin Pizza storefront"
-          className="absolute inset-0 w-full h-full object-cover blur-[1px] scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#4A3428]/80 via-[#4A3428]/65 to-[#4A3428]/85" />
+      {/*
+        STACKED CARD DECK — Apple-Wallet-style layered scroll.
+        Each card is `position: sticky` with an increasing `top` offset and `z-index` (see
+        StackCard above), so it pins at the top of the viewport, gets partially covered by
+        the next card sliding up from below (revealing a STACK_OFFSET-tall peek strip), then
+        fully detaches once scrolled past. Pure CSS — no scroll listeners.
+      */}
 
-        <div className="relative z-10 flex flex-col items-center pt-7 pb-4">
-          <div className="w-[60px] h-[60px] rounded-2xl bg-white/15 backdrop-blur-xl flex items-center justify-center mb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.15)]">
-            <img src="/favicon.png" alt="Twin Pizza" className="w-10 h-10 object-contain" />
-          </div>
-          <h1 className="text-[1.7rem] font-black tracking-tight text-white drop-shadow-sm leading-none">
-            <span className="text-[#F5B041]">Twin</span> Pizza
-          </h1>
-          <p className="text-[12px] text-white/60 font-medium mt-1 tracking-wider uppercase">Grand-Couronne</p>
-        </div>
-      </div>
+      {/* Card 0 — Hero */}
+      <StackCard index={0}>
+        <div className="relative rounded-[2rem] overflow-hidden shadow-[0_10px_32px_rgba(50,30,10,0.3)]" style={{ height: '260px' }}>
+          <img
+            src="/store-front.jpg"
+            alt="Twin Pizza storefront"
+            className="absolute inset-0 w-full h-full object-cover blur-[1px] scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#4A3428]/80 via-[#4A3428]/65 to-[#4A3428]/85" />
 
-      {/* LAYER 2 — MAIN CONTENT AREA (each section gets its own tinted panel) */}
-      <div className="relative z-10 -mt-14 bg-[#FFF8F0] rounded-t-[2rem] shadow-[0_-4px_24px_rgba(60,40,20,0.08)] pt-6 pb-6 space-y-4">
-        {/* Top Ventes — best-seller slider, right under the Hero */}
-        <FadeIn>
-          <BestSellerSlider onSelect={handleBestSellerSelect} />
-        </FadeIn>
-
-        {/* Nos Spécialités — soft peach panel */}
-        <FadeIn className="mx-3">
-          <section className="rounded-[1.75rem] bg-[#FDEEDD] shadow-[0_2px_14px_rgba(60,30,10,0.05)] p-5">
-            <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3">
-              Nos Spécialités
-            </h2>
-            <CategoryCardGrid onSelectCategory={handleSelectCategory} />
-          </section>
-        </FadeIn>
-
-        {/* Avis Clients — soft golden panel, auto-sliding real reviews */}
-        <FadeIn className="mx-3" delay={80}>
-          <section className="rounded-[1.75rem] bg-[#FCF3E1] shadow-[0_2px_14px_rgba(60,30,10,0.05)] py-5">
-            <ReviewsSlider />
-          </section>
-        </FadeIn>
-
-        {/* Notre Galerie — sliding photo gallery (pizzas, soufflés, équipe...), self-hides if admin hasn't added photos yet */}
-        <FadeIn className="mx-3" delay={110}>
-          <GallerySlider />
-        </FadeIn>
-
-        {/* Notre Restaurant — soft terracotta panel */}
-        <FadeIn className="mx-3" delay={140}>
-          <section className="rounded-[1.75rem] bg-[#F8E6D6] shadow-[0_2px_14px_rgba(60,30,10,0.05)] p-5">
-            <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-4">
-              Notre Restaurant
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-4.5 h-4.5 text-[#DB7F1E]" />
-                </div>
-                <div>
-                  <p className="font-semibold text-[13px] text-[#3B2216]">60 Rue Georges Clemenceau</p>
-                  <p className="text-xs text-[#8C7A6B] mt-0.5">76530 Grand-Couronne</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
-                  <Clock className="w-4.5 h-4.5 text-[#DB7F1E]" />
-                </div>
-                <div>
-                  <p className="font-semibold text-[13px] text-[#3B2216]">Lun – Sam</p>
-                  <p className="text-xs text-[#8C7A6B] mt-0.5">11h00 – 15h00 · 17h30 – 00h00</p>
-                </div>
-              </div>
-              <a href="tel:0232112613" className="flex items-center gap-3.5 group">
-                <div className="w-10 h-10 rounded-xl bg-white/60 group-hover:bg-white/85 flex items-center justify-center flex-shrink-0 transition-colors">
-                  <Phone className="w-4.5 h-4.5 text-[#DB7F1E]" />
-                </div>
-                <div>
-                  <p className="font-semibold text-[13px] text-[#3B2216] group-hover:text-[#DB7F1E] transition-colors">02 32 11 26 13</p>
-                  <p className="text-xs text-[#8C7A6B] mt-0.5">Appeler pour commander</p>
-                </div>
-              </a>
+          <div className="relative z-10 flex flex-col items-center pt-7 pb-4">
+            <div className="w-[60px] h-[60px] rounded-2xl bg-white/15 backdrop-blur-xl flex items-center justify-center mb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.15)]">
+              <img src="/favicon.png" alt="Twin Pizza" className="w-10 h-10 object-contain" />
             </div>
-          </section>
-        </FadeIn>
-      </div>
+            <h1 className="text-[1.7rem] font-black tracking-tight text-white drop-shadow-sm leading-none">
+              <span className="text-[#F5B041]">Twin</span> Pizza
+            </h1>
+            <p className="text-[12px] text-white/60 font-medium mt-1 tracking-wider uppercase">Grand-Couronne</p>
+          </div>
+        </div>
+      </StackCard>
+
+      {/* Card 1 — Top Ventes */}
+      <StackCard index={1} className="mx-3" fadeDelay={40}>
+        <section className="rounded-[2rem] bg-[#FFF8F0] shadow-[0_-10px_28px_-8px_rgba(60,30,10,0.18)] pt-5 pb-4">
+          <BestSellerSlider onSelect={handleBestSellerSelect} />
+        </section>
+      </StackCard>
+
+      {/* Card 2 — Nos Spécialités */}
+      <StackCard index={2} className="mx-3" fadeDelay={80}>
+        <section className="rounded-[2rem] bg-[#FDEEDD] shadow-[0_-10px_28px_-8px_rgba(60,30,10,0.18)] p-5">
+          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3">
+            Nos Spécialités
+          </h2>
+          <CategoryCardGrid onSelectCategory={handleSelectCategory} />
+        </section>
+      </StackCard>
+
+      {/* Card 3 — Avis Clients */}
+      <StackCard index={3} className="mx-3" fadeDelay={120}>
+        <section className="rounded-[2rem] bg-[#FCF3E1] shadow-[0_-10px_28px_-8px_rgba(60,30,10,0.18)] py-5">
+          <ReviewsSlider />
+        </section>
+      </StackCard>
+
+      {/* Card 4 — Notre Galerie (self-hides if admin hasn't added photos yet; owns its own card chrome) */}
+      <StackCard index={4} className="mx-3" fadeDelay={160}>
+        <GallerySlider />
+      </StackCard>
+
+      {/* Card 5 — Notre Restaurant (last layer, acts as the page footer) */}
+      <StackCard index={5} className="mx-3 pb-6" fadeDelay={200}>
+        <section className="rounded-[2rem] bg-[#F8E6D6] shadow-[0_-10px_28px_-8px_rgba(60,30,10,0.18)] p-5">
+          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-4">
+            Notre Restaurant
+          </h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-4.5 h-4.5 text-[#DB7F1E]" />
+              </div>
+              <div>
+                <p className="font-semibold text-[13px] text-[#3B2216]">60 Rue Georges Clemenceau</p>
+                <p className="text-xs text-[#8C7A6B] mt-0.5">76530 Grand-Couronne</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
+                <Clock className="w-4.5 h-4.5 text-[#DB7F1E]" />
+              </div>
+              <div>
+                <p className="font-semibold text-[13px] text-[#3B2216]">Lun – Sam</p>
+                <p className="text-xs text-[#8C7A6B] mt-0.5">11h00 – 15h00 · 17h30 – 00h00</p>
+              </div>
+            </div>
+            <a href="tel:0232112613" className="flex items-center gap-3.5 group">
+              <div className="w-10 h-10 rounded-xl bg-white/60 group-hover:bg-white/85 flex items-center justify-center flex-shrink-0 transition-colors">
+                <Phone className="w-4.5 h-4.5 text-[#DB7F1E]" />
+              </div>
+              <div>
+                <p className="font-semibold text-[13px] text-[#3B2216] group-hover:text-[#DB7F1E] transition-colors">02 32 11 26 13</p>
+                <p className="text-xs text-[#8C7A6B] mt-0.5">Appeler pour commander</p>
+              </div>
+            </a>
+          </div>
+        </section>
+      </StackCard>
     </div>
   );
 }
