@@ -177,6 +177,11 @@ const playFallbackSound = () => {
   }
 };
 
+// Payment-test orders created from /test-paiement. Real rows so the myPOS webhook has something
+// to update, but they are not food and must never reach the printer.
+const isTestOrder = (order: Order) =>
+  (order?.customer_name || '').trim().toUpperCase().startsWith('[TEST]');
+
 // Auto-print ticket function - PLAIN TEXT format for thermal printers
 const printOrderTicket = (order: Order) => {
   console.log('🖨️ Starting print process for order:', order.order_number);
@@ -522,7 +527,8 @@ export default function TVDashboard() {
         }
 
         // Auto print trigger (skip if in Electron, as the print-server automatically handles auto-printing)
-        if (autoPrintRef.current) {
+        // Payment-test orders from /test-paiement are real rows but not real food — never print them.
+        if (autoPrintRef.current && !isTestOrder(newestOrder)) {
           if (typeof window !== 'undefined' && 'twinHub' in window) {
             console.log('🖨️ Skipping TV auto-print because print-server is active in Electron');
           } else {

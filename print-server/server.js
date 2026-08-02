@@ -141,6 +141,12 @@ function getQrUrlFromSettings(ticketSettings) {
     return (qrSec?.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
 }
 
+// Payment-test orders created from /test-paiement. They go through the real order flow so the
+// myPOS webhook has a row to update, but they are not food and must never reach the printer.
+function isTestOrder(order) {
+    return (order?.customer_name || '').trim().toUpperCase().startsWith('[TEST]');
+}
+
 // Detect order source channel (pos, borne, website)
 function detectOrderSource(order) {
     const phone = (order.customer_phone || '').toLowerCase().trim();
@@ -1697,6 +1703,12 @@ const processingOrders = new Set();
 // Handle new order with zero-race deduplication. `force` = bypass the printed cache (manual recovery).
 async function handleNewOrder(order, force = false) {
     if (!order) return false;
+
+    if (isTestOrder(order)) {
+        console.log(`🧪 Commande de test #${order.order_number} — impression ignoree`);
+        return true;
+    }
+
     const numKey = order.order_number ? `num_${order.order_number}` : null;
     const idKey = order.id || null;
 

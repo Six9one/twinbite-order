@@ -10,7 +10,11 @@ import { Separator } from '@/components/ui/separator';
 import { CreditCard, Loader2, RefreshCw, CheckCircle2, Clock, XCircle, FlaskConical } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-const TEST_CUSTOMER_NAME = '🧪 TEST PAIEMENT — NE PAS PRÉPARER';
+// The [TEST] prefix is what the printers key off to skip these orders — see isTestOrder() in
+// print-server/server.js and TVDashboard.tsx. Changing it here means changing it there too.
+const TEST_CUSTOMER_NAME = '[TEST] Paiement - ne pas preparer';
+// Sent to myPOS instead of the marker name, so nothing unusual reaches their checkout.
+const MYPOS_CUSTOMER_NAME = 'Test Paiement';
 const QUICK_AMOUNTS = [0.1, 0.5, 1];
 
 interface TestOrder {
@@ -35,7 +39,7 @@ export default function TestPaiement() {
     const { data, error } = await supabase
       .from('orders')
       .select('order_number, total, payment_status, payment_amount, transaction_id, paid_at, created_at')
-      .eq('customer_name', TEST_CUSTOMER_NAME)
+      .ilike('customer_name', '[TEST]%')
       .order('created_at', { ascending: false })
       .limit(10);
 
@@ -72,7 +76,7 @@ export default function TestPaiement() {
         order_type: 'emporter',
         items: [{ name: 'TEST PAIEMENT', quantity: 1, price: rounded, category: 'test' }] as never,
         customer_name: TEST_CUSTOMER_NAME,
-        customer_phone: '0000000000',
+        customer_phone: '0232112613',
         payment_method: 'en_ligne',
         subtotal: rounded,
         tva: 0,
@@ -82,8 +86,8 @@ export default function TestPaiement() {
 
       await initiateMyPosCheckout({
         amount: rounded,
-        customerName: TEST_CUSTOMER_NAME,
-        customerPhone: '0000000000',
+        customerName: MYPOS_CUSTOMER_NAME,
+        customerPhone: '0232112613',
         customerEmail: null,
         orderNumber,
         items: [{ name: 'TEST PAIEMENT', quantity: 1, price: rounded }],
@@ -177,9 +181,9 @@ export default function TestPaiement() {
 
           <p className="text-xs text-muted-foreground leading-relaxed">
             Ce bouton débite une <strong>vraie carte</strong> et encaisse sur ton compte myPOS.
-            La commande est créée au nom « TEST PAIEMENT — NE PAS PRÉPARER » pour que la cuisine
-            l'ignore. myPOS peut refuser les montants trop faibles : si le paiement échoue,
-            essaie 0,50 € ou 1,00 €.
+            La commande est créée avec le préfixe <strong>[TEST]</strong>, ce qui empêche
+            l'impression du ticket en cuisine. myPOS peut refuser les montants trop faibles :
+            si le paiement échoue, essaie 0,50 € ou 1,00 €.
           </p>
         </Card>
 
