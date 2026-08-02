@@ -48,7 +48,7 @@ export function GallerySlider() {
   }
 
   return (
-    <section className="rounded-[2rem] bg-[#FDEEDD] shadow-[0_-10px_28px_-8px_rgba(60,30,10,0.18)] py-5">
+    <section className="rounded-[1.75rem] bg-[#FDEEDD] shadow-[0_2px_14px_rgba(60,30,10,0.05)] py-5">
       <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3 px-5">
         Notre Galerie
       </h2>
