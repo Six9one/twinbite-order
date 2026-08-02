@@ -22,7 +22,7 @@ import { UnifiedProductWizard } from '@/components/wizards/UnifiedProductWizard'
  * section pins at the top of the viewport until the next section (stuck at a slightly larger
  * offset) slides up and folds over it. Purely additive — no layout/color/spacing changes.
  */
-const STACK_OFFSET = 32; // px of peek revealed above the section folding over it
+const STACK_OFFSET = 64; // px of peek revealed above the section folding over it
 const STACK_Z_BASE = 10; // stays well below fixed overlays (cart/modals use z-50+)
 
 function FadeIn({ children, className = '', delay = 0, stackIndex }: { children: React.ReactNode; className?: string; delay?: number; stackIndex?: number }) {
@@ -31,7 +31,7 @@ function FadeIn({ children, className = '', delay = 0, stackIndex }: { children:
     : undefined;
   return (
     <div
-      className={`animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards ${stackIndex !== undefined ? 'sticky' : ''} ${className}`}
+      className={`animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards ${stackIndex !== undefined ? 'sticky shadow-[0_-14px_30px_-6px_rgba(40,20,5,0.35)]' : ''} ${className}`}
       style={{ animationDelay: `${delay}ms`, ...stackStyle }}
     >
       {children}
