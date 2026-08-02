@@ -1,5 +1,6 @@
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { motion, useScroll, useTransform, MotionValue } from 'motion/react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
 import { Settings, MapPin, Clock, Phone, X } from 'lucide-react';
@@ -17,24 +18,47 @@ import { TacosWizard } from '@/components/wizards/TacosWizard';
 import { UnifiedProductWizard } from '@/components/wizards/UnifiedProductWizard';
 
 /**
- * Stacked-page scroll effect: giving a section `stackIndex` makes it `position: sticky`
- * at an increasing `top` offset with an increasing `z-index`, so as the user scrolls, each
- * section pins at the top of the viewport until the next section (stuck at a slightly larger
- * offset) slides up and folds over it. Purely additive — no layout/color/spacing changes.
+ * Stacked-page scroll effect (same principle as Skiper UI's "skiper16" stacked cards:
+ * `pnpm dlx shadcn add @skiper-ui/skiper16`, adapted to the site's actual sections).
+ * Every section is `position: sticky; top: 0` with an increasing z-index, so each one pins
+ * at the top of the viewport and gets folded over by the next section rising up behind it.
+ * A Framer Motion `scale` tied to scroll progress (via `useScroll`/`useTransform`) adds the
+ * "receding page" depth cue. (Lenis, also installed by the skiper16 add, is intentionally NOT
+ * wrapped around this view — its scroll virtualization conflicts with `position: sticky` here,
+ * which breaks the actual pinning/folding effect. Native scroll stays buttery via CSS alone.)
+ * Purely additive — no layout/color/spacing changes.
  */
-const STACK_OFFSET = 64; // px of peek revealed above the section folding over it
 const STACK_Z_BASE = 10; // stays well below fixed overlays (cart/modals use z-50+)
+const STACK_COUNT = 6; // Hero, Top Ventes, Nos Spécialités, Avis Clients, Notre Galerie, Notre Restaurant
 
-function FadeIn({ children, className = '', delay = 0, stackIndex }: { children: React.ReactNode; className?: string; delay?: number; stackIndex?: number }) {
-  const stackStyle = stackIndex !== undefined
-    ? { top: stackIndex * STACK_OFFSET, zIndex: STACK_Z_BASE + stackIndex }
-    : undefined;
+function StackSection({
+  i,
+  progress,
+  className = '',
+  delay = 0,
+  style,
+  children,
+}: {
+  i: number;
+  progress: MotionValue<number>;
+  className?: string;
+  delay?: number;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}) {
+  const targetScale = Math.max(0.92, 1 - (STACK_COUNT - i - 1) * 0.02);
+  const scale = useTransform(progress, [i / STACK_COUNT, 1], [1, targetScale]);
   return (
-    <div
-      className={`animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards ${stackIndex !== undefined ? 'sticky shadow-[0_-14px_30px_-6px_rgba(40,20,5,0.35)]' : ''} ${className}`}
-      style={{ animationDelay: `${delay}ms`, ...stackStyle }}
-    >
-      {children}
+    // Sticky positioning lives on a plain div — putting it on the same element as the Framer
+    // Motion `scale` transform (motion.div) breaks `position: sticky` here, so the scale
+    // animation is applied one level down instead, matching the skiper16 reference structure.
+    <div className="sticky top-0" style={{ zIndex: STACK_Z_BASE + i }}>
+      <motion.div
+        className={`origin-top animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards shadow-[0_-14px_30px_-6px_rgba(40,20,5,0.35)] ${className}`}
+        style={{ ...style, scale, animationDelay: `${delay}ms` }}
+      >
+        {children}
+      </motion.div>
     </div>
   );
 }
@@ -52,6 +76,9 @@ function MainApp() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [bestSellerModal, setBestSellerModal] = useState<BestSellerPreset | null>(null);
   const [pendingBestSeller, setPendingBestSeller] = useState<BestSellerPreset | null>(null);
+
+  const stackContainerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: stackContainerRef, offset: ['start start', 'end end'] });
 
   useEffect(() => {
     if (searchParams.get('checkout') === '1' || searchParams.get('retry') === '1' || searchParams.get('cancel') === '1') {
@@ -243,92 +270,88 @@ function MainApp() {
         </div>
       )}
 
-      {/* LAYER 1 — HERO BACKGROUND (dark mocha container, full-bleed) */}
-      <div className="sticky rounded-t-[2rem] overflow-hidden shadow-[0_10px_32px_rgba(50,30,10,0.3)]" style={{ height: '260px', top: 0, zIndex: STACK_Z_BASE }}>
-        <img
-          src="/store-front.jpg"
-          alt="Twin Pizza storefront"
-          className="absolute inset-0 w-full h-full object-cover blur-[1px] scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#4A3428]/80 via-[#4A3428]/65 to-[#4A3428]/85" />
+      {/* STACKED CARD DECK — every major section is `position: sticky` with an increasing
+          z-index and a scroll-linked scale (Skiper UI "skiper16" stacked-cards principle),
+          so each one pins at the top and folds under the next as the user scrolls. */}
+      <div ref={stackContainerRef}>
+        {/* Card 0 — Hero */}
+        <StackSection i={0} progress={scrollYProgress} className="rounded-t-[2rem] overflow-hidden" style={{ height: '260px' }}>
+          <img
+            src="/store-front.jpg"
+            alt="Twin Pizza storefront"
+            className="absolute inset-0 w-full h-full object-cover blur-[1px] scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#4A3428]/80 via-[#4A3428]/65 to-[#4A3428]/85" />
 
-        <div className="relative z-10 flex flex-col items-center pt-7 pb-4">
-          <div className="w-[60px] h-[60px] rounded-2xl bg-white/15 backdrop-blur-xl flex items-center justify-center mb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.15)]">
-            <img src="/favicon.png" alt="Twin Pizza" className="w-10 h-10 object-contain" />
-          </div>
-          <h1 className="text-[1.7rem] font-black tracking-tight text-white drop-shadow-sm leading-none">
-            <span className="text-[#F5B041]">Twin</span> Pizza
-          </h1>
-          <p className="text-[12px] text-white/60 font-medium mt-1 tracking-wider uppercase">Grand-Couronne</p>
-        </div>
-      </div>
-
-      {/* LAYER 2 — MAIN CONTENT AREA (each section gets its own tinted panel) */}
-      <div className="relative z-10 -mt-14 bg-[#FFF8F0] rounded-t-[2rem] shadow-[0_-4px_24px_rgba(60,40,20,0.08)] pt-6 pb-6 space-y-4">
-        {/* Top Ventes — best-seller slider, right under the Hero */}
-        <FadeIn stackIndex={1}>
-          <BestSellerSlider onSelect={handleBestSellerSelect} />
-        </FadeIn>
-
-        {/* Nos Spécialités — soft peach panel */}
-        <FadeIn className="mx-3" stackIndex={2}>
-          <section className="rounded-[1.75rem] bg-[#FDEEDD] shadow-[0_2px_14px_rgba(60,30,10,0.05)] p-5">
-            <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3">
-              Nos Spécialités
-            </h2>
-            <CategoryCardGrid onSelectCategory={handleSelectCategory} />
-          </section>
-        </FadeIn>
-
-        {/* Avis Clients — soft golden panel, auto-sliding real reviews */}
-        <FadeIn className="mx-3" delay={80} stackIndex={3}>
-          <section className="rounded-[1.75rem] bg-[#FCF3E1] shadow-[0_2px_14px_rgba(60,30,10,0.05)] py-5">
-            <ReviewsSlider />
-          </section>
-        </FadeIn>
-
-        {/* Notre Galerie — sliding photo gallery (pizzas, soufflés, équipe...), self-hides if admin hasn't added photos yet */}
-        <FadeIn className="mx-3" delay={110} stackIndex={4}>
-          <GallerySlider />
-        </FadeIn>
-
-        {/* Notre Restaurant — soft terracotta panel */}
-        <FadeIn className="mx-3" delay={140} stackIndex={5}>
-          <section className="rounded-[1.75rem] bg-[#F8E6D6] shadow-[0_2px_14px_rgba(60,30,10,0.05)] p-5">
-            <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-4">
-              Notre Restaurant
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-4.5 h-4.5 text-[#DB7F1E]" />
-                </div>
-                <div>
-                  <p className="font-semibold text-[13px] text-[#3B2216]">60 Rue Georges Clemenceau</p>
-                  <p className="text-xs text-[#8C7A6B] mt-0.5">76530 Grand-Couronne</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
-                  <Clock className="w-4.5 h-4.5 text-[#DB7F1E]" />
-                </div>
-                <div>
-                  <p className="font-semibold text-[13px] text-[#3B2216]">Lun – Sam</p>
-                  <p className="text-xs text-[#8C7A6B] mt-0.5">11h00 – 15h00 · 17h30 – 00h00</p>
-                </div>
-              </div>
-              <a href="tel:0232112613" className="flex items-center gap-3.5 group">
-                <div className="w-10 h-10 rounded-xl bg-white/60 group-hover:bg-white/85 flex items-center justify-center flex-shrink-0 transition-colors">
-                  <Phone className="w-4.5 h-4.5 text-[#DB7F1E]" />
-                </div>
-                <div>
-                  <p className="font-semibold text-[13px] text-[#3B2216] group-hover:text-[#DB7F1E] transition-colors">02 32 11 26 13</p>
-                  <p className="text-xs text-[#8C7A6B] mt-0.5">Appeler pour commander</p>
-                </div>
-              </a>
+          <div className="relative z-10 flex flex-col items-center pt-7 pb-4">
+            <div className="w-[60px] h-[60px] rounded-2xl bg-white/15 backdrop-blur-xl flex items-center justify-center mb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.15)]">
+              <img src="/favicon.png" alt="Twin Pizza" className="w-10 h-10 object-contain" />
             </div>
-          </section>
-        </FadeIn>
+            <h1 className="text-[1.7rem] font-black tracking-tight text-white drop-shadow-sm leading-none">
+              <span className="text-[#F5B041]">Twin</span> Pizza
+            </h1>
+            <p className="text-[12px] text-white/60 font-medium mt-1 tracking-wider uppercase">Grand-Couronne</p>
+          </div>
+        </StackSection>
+
+        {/* Card 1 — Top Ventes */}
+        <StackSection i={1} progress={scrollYProgress} className="bg-[#FFF8F0] rounded-t-[2rem] pt-6 pb-4">
+          <BestSellerSlider onSelect={handleBestSellerSelect} />
+        </StackSection>
+
+        {/* Card 2 — Nos Spécialités */}
+        <StackSection i={2} progress={scrollYProgress} className="mx-3 rounded-[1.75rem] bg-[#FDEEDD] p-5">
+          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3">
+            Nos Spécialités
+          </h2>
+          <CategoryCardGrid onSelectCategory={handleSelectCategory} />
+        </StackSection>
+
+        {/* Card 3 — Avis Clients */}
+        <StackSection i={3} progress={scrollYProgress} delay={80} className="mx-3 rounded-[1.75rem] bg-[#FCF3E1] py-5">
+          <ReviewsSlider />
+        </StackSection>
+
+        {/* Card 4 — Notre Galerie (self-hides if admin hasn't added photos yet; owns its own card chrome) */}
+        <StackSection i={4} progress={scrollYProgress} delay={110} className="mx-3">
+          <GallerySlider />
+        </StackSection>
+
+        {/* Card 5 — Notre Restaurant (last layer, acts as the page footer) */}
+        <StackSection i={5} progress={scrollYProgress} delay={140} className="mx-3 rounded-[1.75rem] bg-[#F8E6D6] p-5 pb-8">
+          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-4">
+            Notre Restaurant
+          </h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-4.5 h-4.5 text-[#DB7F1E]" />
+              </div>
+              <div>
+                <p className="font-semibold text-[13px] text-[#3B2216]">60 Rue Georges Clemenceau</p>
+                <p className="text-xs text-[#8C7A6B] mt-0.5">76530 Grand-Couronne</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
+                <Clock className="w-4.5 h-4.5 text-[#DB7F1E]" />
+              </div>
+              <div>
+                <p className="font-semibold text-[13px] text-[#3B2216]">Lun – Sam</p>
+                <p className="text-xs text-[#8C7A6B] mt-0.5">11h00 – 15h00 · 17h30 – 00h00</p>
+              </div>
+            </div>
+            <a href="tel:0232112613" className="flex items-center gap-3.5 group">
+              <div className="w-10 h-10 rounded-xl bg-white/60 group-hover:bg-white/85 flex items-center justify-center flex-shrink-0 transition-colors">
+                <Phone className="w-4.5 h-4.5 text-[#DB7F1E]" />
+              </div>
+              <div>
+                <p className="font-semibold text-[13px] text-[#3B2216] group-hover:text-[#DB7F1E] transition-colors">02 32 11 26 13</p>
+                <p className="text-xs text-[#8C7A6B] mt-0.5">Appeler pour commander</p>
+              </div>
+            </a>
+          </div>
+        </StackSection>
       </div>
     </div>
   );

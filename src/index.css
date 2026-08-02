@@ -138,11 +138,17 @@
     @apply border-border;
   }
 
-  /* Critical mobile overflow fix */
+  /* Critical mobile overflow fix. Scoped to `body` only (not `html`) — having
+     overflow-x:hidden on BOTH html and body simultaneously breaks position:sticky
+     site-wide (nested hidden-overflow scroll containers), while body alone is
+     enough to prevent horizontal scroll/bounce. */
   html,
   body {
-    overflow-x: hidden;
     max-width: 100vw;
+  }
+
+  body {
+    overflow-x: hidden;
   }
 
   html {
