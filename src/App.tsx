@@ -39,6 +39,7 @@ const POSPage = lazy(() => import("./pages/POSPage"));
 const PromoWeekend = lazy(() => import("./pages/PromoWeekend"));
 const RegisterRestaurant = lazy(() => import("./pages/RegisterRestaurant"));
 const SuperAdminDashboard = lazy(() => import("./pages/SuperAdminDashboard"));
+const TestPaiement = lazy(() => import("./pages/TestPaiement"));
 
 // Components
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -105,6 +106,7 @@ const App = () => {
                                             <Route path="/pos" element={<POSPage />} />
                                             <Route path="/register-restaurant" element={<RegisterRestaurant />} />
                                             <Route path="/superadmin" element={<SuperAdminDashboard />} />
+                                            <Route path="/test-paiement" element={<TestPaiement />} />
                                             <Route path="/promo-weekend" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
                                             <Route path="/promo" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
                                             <Route path="/offre" element={<OrderProvider><PromoWeekend /></OrderProvider>} />
