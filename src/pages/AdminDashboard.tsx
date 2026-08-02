@@ -22,6 +22,7 @@ import { StatisticsSection } from '@/components/admin/StatisticsSection';
 import { PaymentSettingsManager } from '@/components/admin/PaymentSettingsManager';
 import { TicketTemplateManager } from '@/components/admin/TicketTemplateManager';
 import { CarouselManager } from '@/components/admin/CarouselManager';
+import { GalleryManager } from '@/components/admin/GalleryManager';
 import { TexMexManager } from '@/components/admin/TexMexManager';
 import { ReviewsManager } from '@/components/admin/ReviewsManager';
 import { SiteContentManager } from '@/components/admin/SiteContentManager';
@@ -875,6 +876,7 @@ export default function AdminDashboard() {
           {/* New Sections */}
           {activeTab === 'promotions' && <PromotionsManager />}
           {activeTab === 'carousel' && <CarouselManager />}
+          {activeTab === 'gallery' && <GalleryManager />}
           {activeTab === 'reviews' && <ReviewsManager />}
           {activeTab === 'hours' && <OpeningHoursManager />}
           {activeTab === 'store-status' && <StoreStatusManager />}

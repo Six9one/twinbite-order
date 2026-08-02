@@ -11,6 +11,7 @@ import { NewCheckout } from '@/components/NewCheckout';
 import { CategoryCardGrid } from '@/components/CategoryCardGrid';
 import { BestSellerSlider, BestSellerPreset } from '@/components/BestSellerSlider';
 import { ReviewsSlider } from '@/components/ReviewsSlider';
+import { GallerySlider } from '@/components/GallerySlider';
 import { PizzaWizard } from '@/components/wizards/PizzaWizard';
 import { TacosWizard } from '@/components/wizards/TacosWizard';
 import { UnifiedProductWizard } from '@/components/wizards/UnifiedProductWizard';
@@ -272,6 +273,11 @@ function MainApp() {
           <section className="rounded-[1.75rem] bg-[#FCF3E1] shadow-[0_2px_14px_rgba(60,30,10,0.05)] py-5">
             <ReviewsSlider />
           </section>
+        </FadeIn>
+
+        {/* Notre Galerie — sliding photo gallery (pizzas, soufflés, équipe...), self-hides if admin hasn't added photos yet */}
+        <FadeIn className="mx-3" delay={110}>
+          <GallerySlider />
         </FadeIn>
 
         {/* Notre Restaurant — soft terracotta panel */}
