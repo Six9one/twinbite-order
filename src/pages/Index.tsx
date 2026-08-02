@@ -16,11 +16,23 @@ import { PizzaWizard } from '@/components/wizards/PizzaWizard';
 import { TacosWizard } from '@/components/wizards/TacosWizard';
 import { UnifiedProductWizard } from '@/components/wizards/UnifiedProductWizard';
 
-function FadeIn({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+/**
+ * Stacked-page scroll effect: giving a section `stackIndex` makes it `position: sticky`
+ * at an increasing `top` offset with an increasing `z-index`, so as the user scrolls, each
+ * section pins at the top of the viewport until the next section (stuck at a slightly larger
+ * offset) slides up and folds over it. Purely additive — no layout/color/spacing changes.
+ */
+const STACK_OFFSET = 32; // px of peek revealed above the section folding over it
+const STACK_Z_BASE = 10; // stays well below fixed overlays (cart/modals use z-50+)
+
+function FadeIn({ children, className = '', delay = 0, stackIndex }: { children: React.ReactNode; className?: string; delay?: number; stackIndex?: number }) {
+  const stackStyle = stackIndex !== undefined
+    ? { top: stackIndex * STACK_OFFSET, zIndex: STACK_Z_BASE + stackIndex }
+    : undefined;
   return (
     <div
-      className={`animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards ${className}`}
-      style={{ animationDelay: `${delay}ms` }}
+      className={`animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards ${stackIndex !== undefined ? 'sticky' : ''} ${className}`}
+      style={{ animationDelay: `${delay}ms`, ...stackStyle }}
     >
       {children}
     </div>
@@ -232,7 +244,7 @@ function MainApp() {
       )}
 
       {/* LAYER 1 — HERO BACKGROUND (dark mocha container, full-bleed) */}
-      <div className="relative rounded-t-[2rem] overflow-hidden shadow-[0_10px_32px_rgba(50,30,10,0.3)]" style={{ height: '260px' }}>
+      <div className="sticky rounded-t-[2rem] overflow-hidden shadow-[0_10px_32px_rgba(50,30,10,0.3)]" style={{ height: '260px', top: 0, zIndex: STACK_Z_BASE }}>
         <img
           src="/store-front.jpg"
           alt="Twin Pizza storefront"
@@ -254,12 +266,12 @@ function MainApp() {
       {/* LAYER 2 — MAIN CONTENT AREA (each section gets its own tinted panel) */}
       <div className="relative z-10 -mt-14 bg-[#FFF8F0] rounded-t-[2rem] shadow-[0_-4px_24px_rgba(60,40,20,0.08)] pt-6 pb-6 space-y-4">
         {/* Top Ventes — best-seller slider, right under the Hero */}
-        <FadeIn>
+        <FadeIn stackIndex={1}>
           <BestSellerSlider onSelect={handleBestSellerSelect} />
         </FadeIn>
 
         {/* Nos Spécialités — soft peach panel */}
-        <FadeIn className="mx-3">
+        <FadeIn className="mx-3" stackIndex={2}>
           <section className="rounded-[1.75rem] bg-[#FDEEDD] shadow-[0_2px_14px_rgba(60,30,10,0.05)] p-5">
             <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3">
               Nos Spécialités
@@ -269,19 +281,19 @@ function MainApp() {
         </FadeIn>
 
         {/* Avis Clients — soft golden panel, auto-sliding real reviews */}
-        <FadeIn className="mx-3" delay={80}>
+        <FadeIn className="mx-3" delay={80} stackIndex={3}>
           <section className="rounded-[1.75rem] bg-[#FCF3E1] shadow-[0_2px_14px_rgba(60,30,10,0.05)] py-5">
             <ReviewsSlider />
           </section>
         </FadeIn>
 
         {/* Notre Galerie — sliding photo gallery (pizzas, soufflés, équipe...), self-hides if admin hasn't added photos yet */}
-        <FadeIn className="mx-3" delay={110}>
+        <FadeIn className="mx-3" delay={110} stackIndex={4}>
           <GallerySlider />
         </FadeIn>
 
         {/* Notre Restaurant — soft terracotta panel */}
-        <FadeIn className="mx-3" delay={140}>
+        <FadeIn className="mx-3" delay={140} stackIndex={5}>
           <section className="rounded-[1.75rem] bg-[#F8E6D6] shadow-[0_2px_14px_rgba(60,30,10,0.05)] p-5">
             <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-4">
               Notre Restaurant
