@@ -46,7 +46,7 @@ import {
 } from 'lucide-react';
 const logoImage = '/favicon.png';
 
-type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture' | 'analytics-web' | 'tenants' | 'integrations';
+type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'salades' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture' | 'analytics-web' | 'tenants' | 'integrations';
 
 
 
@@ -846,6 +846,7 @@ export default function AdminDashboard() {
           {activeTab === 'milkshakes' && <ProductCategoryManager categorySlug="milkshakes" title="Milkshakes" />}
           {activeTab === 'crepes' && <ProductCategoryManager categorySlug="crepes" title="Crêpes" />}
           {activeTab === 'gaufres' && <ProductCategoryManager categorySlug="gaufres" title="Gaufres" />}
+          {activeTab === 'salades' && <ProductCategoryManager categorySlug="salades" title="Salades" />}
           {activeTab === 'drinks' && <ImageUploadTable tableName="drinks" title="Boissons" hasImage />}
           {activeTab === 'desserts' && <ImageUploadTable tableName="desserts" title="Desserts (Autres)" hasImage />}
 

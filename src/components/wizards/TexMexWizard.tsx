@@ -251,7 +251,7 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
         return (
             <Card
                 key={product.id}
-                className={`p-4 transition-all ${qty > 0 ? 'ring-2 ring-orange-500 bg-orange-500/5' : ''}`}
+                className={`p-4 transition-all ${qty > 0 ? 'ring-2 ring-brand-500 bg-brand-500/5' : ''}`}
             >
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -262,7 +262,7 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
                                 className="w-16 h-16 rounded-lg object-cover"
                             />
                         ) : (
-                            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-3xl">
+                            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-brand-400 to-red-500 flex items-center justify-center text-3xl">
                                 {emoji}
                             </div>
                         )}
@@ -272,7 +272,7 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
                                 <p className="text-sm text-muted-foreground">{product.description}</p>
                             )}
                             {(cat === 'frites' || cat === 'croque') && (
-                                <p className="text-sm font-semibold text-orange-600">{product.unit_price.toFixed(2)}€</p>
+                                <p className="text-sm font-semibold text-brand-600">{product.unit_price.toFixed(2)}€</p>
                             )}
                         </div>
                     </div>
@@ -292,7 +292,7 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
                             variant="default"
                             size="icon"
                             onClick={() => updateQuantity(product, 1)}
-                            className="h-10 w-10 bg-orange-500 hover:bg-orange-600"
+                            className="h-10 w-10 bg-brand-500 hover:bg-brand-600"
                         >
                             <Plus className="w-4 h-4" />
                         </Button>
@@ -321,7 +321,7 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
                         </Button>
                         <div>
                             <h1 className="text-2xl font-display font-bold flex items-center gap-2">
-                                <Flame className="w-6 h-6 text-orange-500" />
+                                <Flame className="w-6 h-6 text-brand-500" />
                                 Tex-Mex
                             </h1>
                             <p className="text-sm text-muted-foreground">
@@ -334,17 +334,17 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
 
             {/* Offers Banner */}
             <div className="container mx-auto px-4 py-4">
-                <Card className="p-4 bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/20">
+                <Card className="p-4 bg-gradient-to-r from-brand-500/10 to-red-500/10 border-brand-500/20">
                     <div className="flex items-center gap-2 mb-3">
-                        <Sparkles className="w-5 h-5 text-orange-500" />
-                        <h3 className="font-semibold text-orange-700">Offres Spéciales Snacks</h3>
+                        <Sparkles className="w-5 h-5 text-brand-500" />
+                        <h3 className="font-semibold text-brand-700">Offres Spéciales Snacks</h3>
                     </div>
                     <div className="space-y-3">
                         <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Wings, Tenders, Nuggets</p>
                             <div className="flex gap-2">
-                                <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-none">5 pièces = 7.00€</Badge>
-                                <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-none">10 pièces = 13.00€</Badge>
+                                <Badge variant="secondary" className="bg-brand-100 text-brand-800 border-none">5 pièces = 7.00€</Badge>
+                                <Badge variant="secondary" className="bg-brand-100 text-brand-800 border-none">10 pièces = 13.00€</Badge>
                             </div>
                         </div>
                         <div>
@@ -362,7 +362,7 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
                 {/* Snacks Section */}
                 {snacks.length > 0 && (
                     <div>
-                        <h2 className="text-base font-bold uppercase tracking-widest text-orange-600 mb-3 flex items-center gap-2">
+                        <h2 className="text-base font-bold uppercase tracking-widest text-brand-600 mb-3 flex items-center gap-2">
                             🌶️ Snacks
                         </h2>
                         <div className="grid gap-4">
@@ -414,13 +414,13 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
                                     {(snackRegularPrice + totalPrice - snackDiscountedPrice).toFixed(2)}€
                                 </span>
                             )}
-                            <span className="text-2xl font-bold text-orange-500">
+                            <span className="text-2xl font-bold text-brand-500">
                                 {totalPrice.toFixed(2)}€
                             </span>
                         </div>
                     </div>
                     <Button
-                        className="w-full h-14 text-lg bg-orange-500 hover:bg-orange-600 gap-2"
+                        className="w-full h-14 text-lg bg-brand-500 hover:bg-brand-600 gap-2"
                         onClick={handleAddToCart}
                         disabled={totalQty === 0}
                     >

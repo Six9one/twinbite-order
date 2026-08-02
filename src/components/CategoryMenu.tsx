@@ -323,7 +323,7 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
             </div>
             <Button
               onClick={onOpenCart}
-              className="relative h-11 px-3 sm:px-4 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
+              className="relative h-11 px-3 sm:px-4 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
             >
               <div className="w-8 h-8 overflow-hidden flex items-center justify-center -ml-1">
                 <DotLottieReact
@@ -423,7 +423,7 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
                 )}
 
                 {/* Image or Emoji */}
-                <div className="w-14 h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 mx-auto mb-2 sm:mb-3 rounded-full overflow-hidden border-3 sm:border-4 border-amber-400/30 bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
+                <div className="w-14 h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 mx-auto mb-2 sm:mb-3 rounded-full overflow-hidden border-3 sm:border-4 border-amber-400/30 bg-gradient-to-br from-amber-100 to-brand-100 flex items-center justify-center">
                   {imageData.type === 'image' ? (
                     <OptimizedImage
                       src={imageData.value}
@@ -479,7 +479,7 @@ export function CategoryMenu({ onBack, onOpenCart, lockedPizzaSize, onClearLocke
                 )}
 
                 {/* Image or Emoji */}
-                <div className="w-14 h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 mx-auto mb-2 sm:mb-3 rounded-full overflow-hidden border-3 sm:border-4 border-amber-400/30 bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
+                <div className="w-14 h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 mx-auto mb-2 sm:mb-3 rounded-full overflow-hidden border-3 sm:border-4 border-amber-400/30 bg-gradient-to-br from-amber-100 to-brand-100 flex items-center justify-center">
                   {imageData.type === 'image' ? (
                     <OptimizedImage
                       src={imageData.value}

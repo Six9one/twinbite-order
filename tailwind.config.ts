@@ -58,6 +58,23 @@ export default {
           cream: "hsl(var(--pizza-cream))",
           brown: "hsl(var(--pizza-brown))",
         },
+        // Refined warm accent ramp for the customer-facing ordering flow
+        // (home page, wizards, cart, checkout) — brand-600 is the primary
+        // accent (#DB7F1E). Kept separate from Tailwind's default `orange`
+        // so admin/kitchen/kiosk screens (still using orange-*) are untouched.
+        brand: {
+          50: "#FDF3E7",
+          100: "#FBE8D0",
+          200: "#F6D19E",
+          300: "#F0B96C",
+          400: "#E9A344",
+          500: "#E28F2E",
+          600: "#DB7F1E",
+          700: "#B8650F",
+          800: "#94500D",
+          900: "#78400E",
+          950: "#422007",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -9,11 +9,11 @@ import { CategoryMenu } from '@/components/CategoryMenu';
 import { NewCart } from '@/components/NewCart';
 import { NewCheckout } from '@/components/NewCheckout';
 import { CategoryCardGrid } from '@/components/CategoryCardGrid';
-
-const FEATURED = [
-  { id: 'soufflets', name: 'Soufflet Poulet', price: '7.50', image: '/cat_soufflet_3d.png' },
-  { id: 'makloub', name: 'Makloub Thon', price: '6.50', image: '/cat_makloub_3d.png', extraClass: 'translate-x-1' },
-];
+import { BestSellerSlider, BestSellerPreset } from '@/components/BestSellerSlider';
+import { ReviewsSlider } from '@/components/ReviewsSlider';
+import { PizzaWizard } from '@/components/wizards/PizzaWizard';
+import { TacosWizard } from '@/components/wizards/TacosWizard';
+import { UnifiedProductWizard } from '@/components/wizards/UnifiedProductWizard';
 
 function FadeIn({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   return (
@@ -37,6 +37,8 @@ function MainApp() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showOrderTypePopup, setShowOrderTypePopup] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [bestSellerModal, setBestSellerModal] = useState<BestSellerPreset | null>(null);
+  const [pendingBestSeller, setPendingBestSeller] = useState<BestSellerPreset | null>(null);
 
   useEffect(() => {
     if (searchParams.get('checkout') === '1' || searchParams.get('retry') === '1' || searchParams.get('cancel') === '1') {
@@ -80,7 +82,21 @@ function MainApp() {
   const handleOrderTypePick = (type: OrderType) => {
     setOrderType(type);
     setShowOrderTypePopup(false);
+    if (pendingBestSeller) {
+      setBestSellerModal(pendingBestSeller);
+      setPendingBestSeller(null);
+      return;
+    }
     setView('menu');
+  };
+
+  const handleBestSellerSelect = (preset: BestSellerPreset) => {
+    if (!orderType) {
+      setPendingBestSeller(preset);
+      setShowOrderTypePopup(true);
+    } else {
+      setBestSellerModal(preset);
+    }
   };
 
   const handleBackToHome = () => {
@@ -146,7 +162,7 @@ function MainApp() {
   }
 
   return (
-    <div className="min-h-screen bg-[#C8AD7E] antialiased">
+    <div className="min-h-screen bg-[#DDA463] antialiased">
       {isAdmin && (
         <Link to="/admin/dashboard" className="fixed top-3 right-3 z-50">
           <button className="flex items-center gap-1.5 bg-stone-800/80 backdrop-blur text-white shadow-lg rounded-full px-3 py-1.5 text-xs font-semibold">
@@ -161,9 +177,9 @@ function MainApp() {
 
       {showOrderTypePopup && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowOrderTypePopup(false)} />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setShowOrderTypePopup(false); setPendingBestSeller(null); }} />
           <div className="relative z-10 w-full max-w-md mx-4 mb-5 bg-white rounded-[1.75rem] shadow-2xl p-6 animate-in slide-in-from-bottom-8 duration-300">
-            <button onClick={() => setShowOrderTypePopup(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors">
+            <button onClick={() => { setShowOrderTypePopup(false); setPendingBestSeller(null); }} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors">
               <X className="w-4 h-4 text-stone-400" />
             </button>
             <p className="text-lg font-black text-stone-800 text-center mb-1 tracking-tight">Mode de commande</p>
@@ -184,8 +200,38 @@ function MainApp() {
         </div>
       )}
 
-      {/* LAYER 1 — HERO BACKGROUND (dark mocha rounded container) */}
-      <div className="relative mx-3 mt-3 rounded-[2rem] overflow-hidden shadow-[0_10px_32px_rgba(50,30,10,0.3)]" style={{ height: '260px' }}>
+      {bestSellerModal && (
+        <div className="fixed inset-0 z-[100] bg-background animate-in fade-in slide-in-from-bottom-8 duration-300">
+          <Suspense fallback={null}>
+            {bestSellerModal.type === 'pizza' && (
+              <PizzaWizard
+                initialPizzaId={bestSellerModal.pizzaId}
+                onClose={(added) => { setBestSellerModal(null); if (added) setIsCartOpen(true); }}
+              />
+            )}
+            {bestSellerModal.type === 'tacos' && (
+              <TacosWizard
+                initialSize={bestSellerModal.size as any}
+                initialMeatNames={bestSellerModal.meats}
+                initialSauceNames={bestSellerModal.sauces}
+                onClose={(added) => { setBestSellerModal(null); if (added) setIsCartOpen(true); }}
+              />
+            )}
+            {(bestSellerModal.type === 'soufflet' || bestSellerModal.type === 'makloub') && (
+              <UnifiedProductWizard
+                productType={bestSellerModal.type}
+                initialSize={bestSellerModal.size}
+                initialMeatNames={bestSellerModal.meats}
+                initialSauceNames={bestSellerModal.sauces}
+                onClose={(added) => { setBestSellerModal(null); if (added) setIsCartOpen(true); }}
+              />
+            )}
+          </Suspense>
+        </div>
+      )}
+
+      {/* LAYER 1 — HERO BACKGROUND (dark mocha container, full-bleed) */}
+      <div className="relative rounded-t-[2rem] overflow-hidden shadow-[0_10px_32px_rgba(50,30,10,0.3)]" style={{ height: '260px' }}>
         <img
           src="/store-front.jpg"
           alt="Twin Pizza storefront"
@@ -204,85 +250,66 @@ function MainApp() {
         </div>
       </div>
 
-      {/* LAYER 2 — MAIN CONTENT CARD (warm cream surface) */}
-      <div
-        className="relative z-10 mx-3 -mt-14 bg-[#FFF8F0] rounded-[2rem] shadow-[0_-4px_24px_rgba(60,40,20,0.08)] pb-10"
-      >
-        {/* Nos Spécialités */}
-        <FadeIn className="px-5 pt-6">
-          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3">
-            Nos Spécialités
-          </h2>
-          <CategoryCardGrid onSelectCategory={handleSelectCategory} />
+      {/* LAYER 2 — MAIN CONTENT AREA (each section gets its own tinted panel) */}
+      <div className="relative z-10 -mt-14 bg-[#FFF8F0] rounded-t-[2rem] shadow-[0_-4px_24px_rgba(60,40,20,0.08)] pt-6 pb-6 space-y-4">
+        {/* Top Ventes — best-seller slider, right under the Hero */}
+        <FadeIn>
+          <BestSellerSlider onSelect={handleBestSellerSelect} />
         </FadeIn>
 
-        <div className="mx-5 my-5 h-px bg-[#3B2216]/8" />
-
-        {/* Populaires */}
-        <FadeIn className="px-5" delay={80}>
-          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-4">
-            Populaires
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-            {FEATURED.map((item) => (
-              <button
-                key={item.name}
-                onClick={() => handleSelectCategory(item.id)}
-                className="text-left flex flex-col items-center group active:scale-95 transition-all duration-300 focus:outline-none"
-              >
-                <div className={`relative w-full aspect-square flex items-center justify-center -mb-3 z-10 ${item.extraClass || ''}`}>
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-[94%] h-[94%] object-contain group-hover:scale-110 transition-transform duration-300 food-ground-shadow"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="w-full bg-white rounded-2xl pt-4 pb-3 px-3 shadow-[0_2px_10px_rgba(60,30,10,0.06)] text-center group-hover:shadow-[0_4px_16px_rgba(60,30,10,0.1)] transition-all duration-300">
-                  <p className="font-bold text-[#3B2216] text-[13px] leading-tight">{item.name}</p>
-                  <p className="font-bold text-[#C67B2E] text-sm mt-1">{item.price} €</p>
-                </div>
-              </button>
-            ))}
-          </div>
+        {/* Nos Spécialités — soft peach panel */}
+        <FadeIn className="mx-3">
+          <section className="rounded-[1.75rem] bg-[#FDEEDD] shadow-[0_2px_14px_rgba(60,30,10,0.05)] p-5">
+            <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3">
+              Nos Spécialités
+            </h2>
+            <CategoryCardGrid onSelectCategory={handleSelectCategory} />
+          </section>
         </FadeIn>
 
-        <div className="mx-5 my-5 h-px bg-[#3B2216]/8" />
+        {/* Avis Clients — soft golden panel, auto-sliding real reviews */}
+        <FadeIn className="mx-3" delay={80}>
+          <section className="rounded-[1.75rem] bg-[#FCF3E1] shadow-[0_2px_14px_rgba(60,30,10,0.05)] py-5">
+            <ReviewsSlider />
+          </section>
+        </FadeIn>
 
-        {/* Restaurant Info */}
-        <FadeIn className="px-5" delay={140}>
-          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-4">
-            Notre Restaurant
-          </h2>
-          <div className="space-y-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-[#F5E6D3] flex items-center justify-center flex-shrink-0">
-                <MapPin className="w-4.5 h-4.5 text-[#C67B2E]" />
+        {/* Notre Restaurant — soft terracotta panel */}
+        <FadeIn className="mx-3" delay={140}>
+          <section className="rounded-[1.75rem] bg-[#F8E6D6] shadow-[0_2px_14px_rgba(60,30,10,0.05)] p-5">
+            <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-4">
+              Notre Restaurant
+            </h2>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
+                  <MapPin className="w-4.5 h-4.5 text-[#DB7F1E]" />
+                </div>
+                <div>
+                  <p className="font-semibold text-[13px] text-[#3B2216]">60 Rue Georges Clemenceau</p>
+                  <p className="text-xs text-[#8C7A6B] mt-0.5">76530 Grand-Couronne</p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-[13px] text-[#3B2216]">60 Rue Georges Clemenceau</p>
-                <p className="text-xs text-[#8C7A6B] mt-0.5">76530 Grand-Couronne</p>
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-4.5 h-4.5 text-[#DB7F1E]" />
+                </div>
+                <div>
+                  <p className="font-semibold text-[13px] text-[#3B2216]">Lun – Sam</p>
+                  <p className="text-xs text-[#8C7A6B] mt-0.5">11h00 – 15h00 · 17h30 – 00h00</p>
+                </div>
               </div>
+              <a href="tel:0232112613" className="flex items-center gap-3.5 group">
+                <div className="w-10 h-10 rounded-xl bg-white/60 group-hover:bg-white/85 flex items-center justify-center flex-shrink-0 transition-colors">
+                  <Phone className="w-4.5 h-4.5 text-[#DB7F1E]" />
+                </div>
+                <div>
+                  <p className="font-semibold text-[13px] text-[#3B2216] group-hover:text-[#DB7F1E] transition-colors">02 32 11 26 13</p>
+                  <p className="text-xs text-[#8C7A6B] mt-0.5">Appeler pour commander</p>
+                </div>
+              </a>
             </div>
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-[#F5E6D3] flex items-center justify-center flex-shrink-0">
-                <Clock className="w-4.5 h-4.5 text-[#C67B2E]" />
-              </div>
-              <div>
-                <p className="font-semibold text-[13px] text-[#3B2216]">Lun – Sam</p>
-                <p className="text-xs text-[#8C7A6B] mt-0.5">11h00 – 15h00 · 17h30 – 00h00</p>
-              </div>
-            </div>
-            <a href="tel:0232112613" className="flex items-center gap-3.5 group">
-              <div className="w-10 h-10 rounded-xl bg-[#F5E6D3] group-hover:bg-[#F0D9C0] flex items-center justify-center flex-shrink-0 transition-colors">
-                <Phone className="w-4.5 h-4.5 text-[#C67B2E]" />
-              </div>
-              <div>
-                <p className="font-semibold text-[13px] text-[#3B2216] group-hover:text-[#C67B2E] transition-colors">02 32 11 26 13</p>
-                <p className="text-xs text-[#8C7A6B] mt-0.5">Appeler pour commander</p>
-              </div>
-            </a>
-          </div>
+          </section>
         </FadeIn>
       </div>
     </div>

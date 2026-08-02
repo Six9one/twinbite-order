@@ -396,9 +396,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           
           {/* Animated Pulsing Success Icon */}
           <div className="relative mx-auto w-24 h-24 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-orange-500/20 animate-ping" />
-            <div className="absolute inset-2 rounded-full bg-orange-500/30 animate-pulse" />
-            <div className="relative w-20 h-20 rounded-full bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-600/30 text-white">
+            <div className="absolute inset-0 rounded-full bg-brand-500/20 animate-ping" />
+            <div className="absolute inset-2 rounded-full bg-brand-500/30 animate-pulse" />
+            <div className="relative w-20 h-20 rounded-full bg-brand-600 flex items-center justify-center shadow-lg shadow-brand-600/30 text-white">
               <Check className="w-10 h-10 stroke-[3]" />
             </div>
           </div>
@@ -415,15 +415,15 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           </div>
 
           {/* Time estimate pill */}
-          <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-900/60 text-xs font-bold text-orange-700 dark:text-orange-300 shadow-sm">
+          <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-brand-50 dark:bg-brand-950/50 border border-brand-200 dark:border-brand-900/60 text-xs font-bold text-brand-700 dark:text-brand-300 shadow-sm">
             {confirmedOrderData.orderType === 'livraison' ? (
               <>
-                <Truck className="w-4 h-4 text-orange-600 animate-pulse" />
+                <Truck className="w-4 h-4 text-brand-600 animate-pulse" />
                 <span>🛵 Livraison dans 30 - 40 min</span>
               </>
             ) : (
               <>
-                <Clock className="w-4 h-4 text-orange-600 animate-pulse" />
+                <Clock className="w-4 h-4 text-brand-600 animate-pulse" />
                 <span>⏱️ Prêt dans 10 - 20 min</span>
               </>
             )}
@@ -433,7 +433,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
           <Card className="rounded-3xl border border-stone-200/80 dark:border-stone-800 shadow-xl overflow-hidden text-left bg-white dark:bg-stone-900">
             <div className="bg-stone-950 text-white p-5 text-center relative overflow-hidden border-b border-stone-800">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-black uppercase tracking-widest text-orange-500">TWIN PIZZA</span>
+                <span className="text-xs font-black uppercase tracking-widest text-brand-500">TWIN PIZZA</span>
                 {['en_ligne', 'mypos', 'apple_pay', 'google_pay', 'weero'].includes(confirmedOrderData.paymentMethod) ? (
                   <span className="bg-black text-white px-3.5 py-1.5 rounded-lg border border-stone-700 text-xs font-black uppercase tracking-wider shadow-md inline-flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -470,14 +470,14 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               <Separator />
               <div className="flex justify-between items-center text-lg font-bold">
                 <span>Total réglé</span>
-                <span className="text-orange-600">{confirmedOrderData.total.toFixed(2)} €</span>
+                <span className="text-brand-600">{confirmedOrderData.total.toFixed(2)} €</span>
               </div>
             </div>
           </Card>
 
           <Button 
             onClick={onComplete} 
-            className="w-full h-14 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-lg shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all"
+            className="w-full h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-lg shadow-lg shadow-brand-600/25 active:scale-[0.98] transition-all"
           >
             Retour à l'accueil
           </Button>
@@ -493,14 +493,14 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     <div className="min-h-screen bg-[#FFF8F5] dark:bg-stone-950 pb-36 text-stone-900 dark:text-white antialiased">
       
       {/* Dynamic Header & Segmented Progress Bar */}
-      <div className="sticky top-0 z-30 bg-[#FFF8F5]/90 dark:bg-stone-950/90 backdrop-blur-md border-b border-orange-100/60 dark:border-stone-800">
+      <div className="sticky top-0 z-30 bg-[#FFF8F5]/90 dark:bg-stone-950/90 backdrop-blur-md border-b border-brand-100/60 dark:border-stone-800">
         <div className="max-w-lg mx-auto px-4 py-3 space-y-3">
           
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               size="icon"
-              className="w-10 h-10 rounded-full hover:bg-orange-100/50 text-stone-700 dark:text-stone-300"
+              className="w-10 h-10 rounded-full hover:bg-brand-100/50 text-stone-700 dark:text-stone-300"
               onClick={() => {
                 if (step === 'info') onBack();
                 else if (step === 'payment') setStep('info');
@@ -526,7 +526,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 className="h-1.5 rounded-full bg-stone-200 dark:bg-stone-800 overflow-hidden"
               >
                 <div
-                  className={`h-full bg-orange-600 transition-all duration-500 ease-out ${
+                  className={`h-full bg-brand-600 transition-all duration-500 ease-out ${
                     (step === 'info' ? 1 : 2) >= sIndex ? 'w-full' : 'w-0'
                   }`}
                 />
@@ -569,7 +569,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                     onClick={() => setOrderType(type.id as any)}
                     className={`py-1 px-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1 ${
                       active
-                        ? 'bg-white dark:bg-stone-800 text-orange-600 shadow-sm'
+                        ? 'bg-white dark:bg-stone-800 text-brand-600 shadow-sm'
                         : 'text-stone-500 dark:text-stone-400 hover:text-stone-900'
                     }`}
                   >
@@ -585,7 +585,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               <div className="space-y-1.5 pt-0.5">
                 <div className="space-y-1 relative">
                   <Label htmlFor="address-input" className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-orange-600" />
+                    <MapPin className="w-3.5 h-3.5 text-brand-600" />
                     <span>Adresse de livraison *</span>
                   </Label>
                   <Input
@@ -597,7 +597,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                     }}
                     onFocus={() => setShowAddressSuggestions(true)}
                     placeholder="Saisissez votre rue et numéro (ex: 45 Avenue...)"
-                    className="h-10 rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm focus-visible:ring-orange-600"
+                    className="h-10 rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm focus-visible:ring-brand-600"
                   />
 
                   {/* Dynamic Address Suggestions Helper */}
@@ -611,9 +611,9 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                             setCustomerInfo({ ...customerInfo, address: addr });
                             setShowAddressSuggestions(false);
                           }}
-                          className="px-2.5 py-1.5 text-xs rounded-lg hover:bg-orange-50 dark:hover:bg-stone-800 cursor-pointer flex items-center gap-2 font-medium text-stone-800 dark:text-stone-200"
+                          className="px-2.5 py-1.5 text-xs rounded-lg hover:bg-brand-50 dark:hover:bg-stone-800 cursor-pointer flex items-center gap-2 font-medium text-stone-800 dark:text-stone-200"
                         >
-                          <MapPin className="w-3.5 h-3.5 text-orange-600 flex-shrink-0" />
+                          <MapPin className="w-3.5 h-3.5 text-brand-600 flex-shrink-0" />
                           <span>{addr}</span>
                         </div>
                       ))}
@@ -637,7 +637,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                     value={customerInfo.name}
                     onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
                     placeholder="Votre nom"
-                    className="h-12 rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm focus-visible:ring-orange-600"
+                    className="h-12 rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm focus-visible:ring-brand-600"
                   />
                 </div>
 
@@ -649,7 +649,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                     value={customerInfo.phone}
                     onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
                     placeholder="06 XX XX XX XX"
-                    className="h-12 rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm focus-visible:ring-orange-600"
+                    className="h-12 rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm focus-visible:ring-brand-600"
                   />
                 </div>
               </div>
@@ -661,7 +661,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   value={customerInfo.notes}
                   onChange={(e) => setCustomerInfo({ ...customerInfo, notes: e.target.value })}
                   placeholder="Code porte, instructions livreur..."
-                  className="rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm min-h-[70px] focus-visible:ring-orange-600"
+                  className="rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm min-h-[70px] focus-visible:ring-brand-600"
                 />
               </div>
             </div>
@@ -688,7 +688,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 onClick={() => setPaymentMethod('apple_pay')}
                 className={`p-4 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
                   paymentMethod === 'apple_pay'
-                    ? 'bg-orange-50/60 dark:bg-orange-950/20 border-2 border-orange-600 shadow-sm'
+                    ? 'bg-brand-50/60 dark:bg-brand-950/20 border-2 border-brand-600 shadow-sm'
                     : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
                 }`}
               >
@@ -703,7 +703,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 </div>
 
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                  paymentMethod === 'apple_pay' ? 'border-orange-600 bg-orange-600 text-white' : 'border-stone-300'
+                  paymentMethod === 'apple_pay' ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
                 }`}>
                   {paymentMethod === 'apple_pay' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </div>
@@ -714,7 +714,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 onClick={() => setPaymentMethod('google_pay')}
                 className={`p-4 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
                   paymentMethod === 'google_pay'
-                    ? 'bg-orange-50/60 dark:bg-orange-950/20 border-2 border-orange-600 shadow-sm'
+                    ? 'bg-brand-50/60 dark:bg-brand-950/20 border-2 border-brand-600 shadow-sm'
                     : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
                 }`}
               >
@@ -729,7 +729,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 </div>
 
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                  paymentMethod === 'google_pay' ? 'border-orange-600 bg-orange-600 text-white' : 'border-stone-300'
+                  paymentMethod === 'google_pay' ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
                 }`}>
                   {paymentMethod === 'google_pay' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </div>
@@ -740,13 +740,13 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 onClick={() => setPaymentMethod('en_ligne')}
                 className={`p-4 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
                   paymentMethod === 'en_ligne'
-                    ? 'bg-orange-50/60 dark:bg-orange-950/20 border-2 border-orange-600 shadow-sm'
+                    ? 'bg-brand-50/60 dark:bg-brand-950/20 border-2 border-brand-600 shadow-sm'
                     : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
                 }`}
               >
                 <div className="flex items-center gap-3.5">
                   <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
-                    paymentMethod === 'en_ligne' ? 'bg-orange-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                    paymentMethod === 'en_ligne' ? 'bg-brand-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
                   }`}>
                     <CreditCard className="w-5 h-5" />
                   </div>
@@ -760,7 +760,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 </div>
 
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                  paymentMethod === 'en_ligne' ? 'border-orange-600 bg-orange-600 text-white' : 'border-stone-300'
+                  paymentMethod === 'en_ligne' ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
                 }`}>
                   {paymentMethod === 'en_ligne' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </div>
@@ -774,13 +774,13 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   onClick={() => setPaymentMethod('especes')}
                   className={`p-3.5 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
                     paymentMethod === 'especes'
-                      ? 'bg-orange-50/60 dark:bg-orange-950/20 border-2 border-orange-600 shadow-sm'
+                      ? 'bg-brand-50/60 dark:bg-brand-950/20 border-2 border-brand-600 shadow-sm'
                       : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                      paymentMethod === 'especes' ? 'bg-orange-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                      paymentMethod === 'especes' ? 'bg-brand-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
                     }`}>
                       <Banknote className="w-4 h-4" />
                     </div>
@@ -790,7 +790,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   </div>
 
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    paymentMethod === 'especes' ? 'border-orange-600 bg-orange-600 text-white' : 'border-stone-300'
+                    paymentMethod === 'especes' ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
                   }`}>
                     {paymentMethod === 'especes' && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
@@ -801,13 +801,13 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   onClick={() => setPaymentMethod('cb')}
                   className={`p-3.5 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
                     paymentMethod === 'cb'
-                      ? 'bg-orange-50/60 dark:bg-orange-950/20 border-2 border-orange-600 shadow-sm'
+                      ? 'bg-brand-50/60 dark:bg-brand-950/20 border-2 border-brand-600 shadow-sm'
                       : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                      paymentMethod === 'cb' ? 'bg-orange-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                      paymentMethod === 'cb' ? 'bg-brand-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
                     }`}>
                       <CreditCard className="w-4 h-4" />
                     </div>
@@ -817,7 +817,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   </div>
 
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    paymentMethod === 'cb' ? 'border-orange-600 bg-orange-600 text-white' : 'border-stone-300'
+                    paymentMethod === 'cb' ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
                   }`}>
                     {paymentMethod === 'cb' && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
@@ -841,7 +841,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                     value={promoCode}
                     onChange={(e) => setPromoCode(e.target.value)}
                     placeholder="Saisir votre code promo"
-                    className="pl-10 h-11 rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm focus-visible:ring-orange-600"
+                    className="pl-10 h-11 rounded-xl bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-sm focus-visible:ring-brand-600"
                   />
                 </div>
                 <Button
@@ -852,7 +852,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                       toast({ title: 'Code appliqué !', description: `Le code promo ${promoCode.toUpperCase()} a été pris en compte.` });
                     }
                   }}
-                  className="h-11 px-5 rounded-xl border-orange-200 text-orange-600 hover:bg-orange-50 font-bold"
+                  className="h-11 px-5 rounded-xl border-brand-200 text-brand-600 hover:bg-brand-50 font-bold"
                 >
                   Appliquer
                 </Button>
@@ -880,7 +880,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       {/* ==================================================== */}
       {/* STICKY BOTTOM ACTION BAR */}
       {/* ==================================================== */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-orange-100/60 dark:border-stone-800 p-4 z-50 shadow-2xl">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-brand-100/60 dark:border-stone-800 p-4 z-50 shadow-2xl">
         <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
           
           <div>
@@ -895,7 +895,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               <Button
                 onClick={() => validateInfo() && setStep('payment')}
                 disabled={!isCartValid}
-                className="w-full h-14 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-base shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-base shadow-lg shadow-brand-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <span>Continuer</span>
                 <ChevronRight className="w-5 h-5" />
@@ -906,7 +906,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               <Button
                 onClick={handleConfirmOrder}
                 disabled={isProcessing || orderSubmitted || !isCartValid}
-                className="w-full h-14 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-base shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-base shadow-lg shadow-brand-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 {isProcessing ? (
                   <>

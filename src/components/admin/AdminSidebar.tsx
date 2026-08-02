@@ -105,6 +105,7 @@ const navItems: NavItem[] = [
           { label: 'Crêpes', icon: Cake, value: 'crepes' },
           { label: 'Gaufres', icon: Cake, value: 'gaufres' },
           { label: 'Boissons', icon: GlassWater, value: 'drinks' },
+          { label: 'Salades', icon: Salad, value: 'salades' },
           { label: 'Desserts', icon: Cake, value: 'desserts' },
         ]
       },

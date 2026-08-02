@@ -163,7 +163,7 @@ export function Header({
 
             <Button
               onClick={onCartClick}
-              className="relative flex items-center gap-2 px-3 sm:px-5 h-11 sm:h-12 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-lg hover:shadow-orange-600/25 transition-all active:scale-95"
+              className="relative flex items-center gap-2 px-3 sm:px-5 h-11 sm:h-12 bg-brand-600 hover:bg-brand-700 text-white rounded-full shadow-lg hover:shadow-brand-600/25 transition-all active:scale-95"
             >
               <div className="w-8 h-8 overflow-hidden flex items-center justify-center -ml-1">
                 <DotLottieReact

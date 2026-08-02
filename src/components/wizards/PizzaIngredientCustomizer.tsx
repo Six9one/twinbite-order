@@ -404,7 +404,7 @@ export function PizzaIngredientCustomizer({
         <Button
           type="button"
           onClick={() => onConfirm(removedIngredients, addedExtras, note, selectedBase)}
-          className="flex-1 h-11 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-base rounded-xl shadow-lg hover:shadow-orange-500/20 cursor-pointer"
+          className="flex-1 h-11 bg-gradient-to-r from-amber-500 to-brand-600 hover:from-amber-600 hover:to-brand-700 text-white font-bold text-base rounded-xl shadow-lg hover:shadow-brand-500/20 cursor-pointer"
         >
           ✅ Ajouter au panier — {totalPrice.toFixed(2)}€
         </Button>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MenuItem, TacosCustomization } from '@/types/order';
 import { tacos, meatOptions as staticMeatOptions, sauceOptions as staticSauceOptions, supplementOptions, cheeseSupplementOptions } from '@/data/menu';
 import { tacosPrices, menuOptionPrices, wizardSizePrices, supplementPrices } from '@/data/pricing';
@@ -133,6 +133,10 @@ function OptionCard({
 
 interface TacosWizardProps {
   onClose: (added?: boolean) => void;
+  /** Best-seller preset: pre-select this size + these meats/sauces (matched by name) on open. */
+  initialSize?: TacosSize;
+  initialMeatNames?: string[];
+  initialSauceNames?: string[];
 }
 
 type TacosSize = 'solo' | 'double' | 'triple';
@@ -165,13 +169,16 @@ function getOptionEmoji(name: string, map: Record<string, string>): string {
   return '•';
 }
 
-export function TacosWizard({ onClose }: TacosWizardProps) {
+export function TacosWizard({ onClose, initialSize, initialMeatNames, initialSauceNames }: TacosWizardProps) {
   const { addToCart } = useOrder();
   const { containerRef, onTouchStart, onTouchMove, onTouchEnd } = useSwipeToDismiss(onClose);
   const [step, setStep] = useState(1);
-  const [size, setSize] = useState<TacosSize>('solo');
+  const [size, setSize] = useState<TacosSize>(initialSize || 'solo');
   const [selectedMeats, setSelectedMeats] = useState<string[]>([]);
   const [selectedSauces, setSelectedSauces] = useState<string[]>([]);
+  // Keep auto-matching preset names to live option ids until the user manually touches a selection
+  // (options start out as static fallback data and get swapped for real DB ids once they load).
+  const autoSyncPreset = useRef(!!(initialMeatNames?.length || initialSauceNames?.length));
   const [menuOption, setMenuOption] = useState<'none' | 'frites' | 'boisson' | 'menu'>('none');
   const [supplements, setSupplements] = useState<string[]>([]);
   const [note, setNote] = useState('');
@@ -198,12 +205,36 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
     ? dbSauces.map(s => ({ ...s, image_url: s.image_url }))
     : staticSauceOptions.map(s => ({ ...s, image_url: null }));
 
+  // Re-resolve the preset's meat/sauce names against whichever option list is
+  // currently live (static fallback first, then real DB ids once loaded).
+  useEffect(() => {
+    if (!autoSyncPreset.current) return;
+    const matchByName = (names: string[], options: { id: string; name: string }[]) =>
+      names
+        .map(name => options.find(o =>
+          o.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(o.name.toLowerCase())
+        ))
+        .filter((o): o is { id: string; name: string } => !!o)
+        .map(o => o.id);
+
+    if (initialMeatNames?.length) {
+      const matched = matchByName(initialMeatNames, meatOptions);
+      if (matched.length) setSelectedMeats(matched);
+    }
+    if (initialSauceNames?.length) {
+      const matched = matchByName(initialSauceNames, sauceOptions);
+      if (matched.length) setSelectedSauces(matched);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbMeats, dbSauces]);
+
   const maxMeats = size === 'solo' ? 1 : size === 'double' ? 2 : 3;
   const tacosItem = tacosProducts.find(t => t.id === `tacos-${size}`) || tacos.find(t => t.id === `tacos-${size}`);
 
   const sauceSurcharge = Math.max(0, selectedSauces.length - FREE_SAUCES_COUNT) * EXTRA_SAUCE_PRICE;
 
   const toggleMeat = (meatId: string) => {
+    autoSyncPreset.current = false;
     if (selectedMeats.includes(meatId)) {
       setSelectedMeats(selectedMeats.filter(m => m !== meatId));
     } else if (selectedMeats.length < maxMeats) {
@@ -212,6 +243,7 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
   };
 
   const toggleSauce = (sauceId: string) => {
+    autoSyncPreset.current = false;
     if (selectedSauces.includes(sauceId)) {
       setSelectedSauces(selectedSauces.filter(s => s !== sauceId));
     } else {
@@ -549,7 +581,7 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
         <div className="container mx-auto flex items-center justify-between gap-4 max-w-lg">
           <div>
             <span className="text-xs text-muted-foreground block font-medium">Panier</span>
-            <span className="text-xl font-extrabold text-orange-600 dark:text-orange-400">
+            <span className="text-xl font-extrabold text-brand-600 dark:text-brand-400">
               {calculatePrice().toFixed(2)} €
             </span>
           </div>
@@ -557,7 +589,7 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
           <div className="flex-1">
             {step < 4 ? (
               <Button
-                className="w-full h-14 text-base font-bold bg-orange-600 hover:bg-orange-700 text-white rounded-2xl shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all"
+                className="w-full h-14 text-base font-bold bg-brand-600 hover:bg-brand-700 text-white rounded-2xl shadow-lg shadow-brand-600/25 active:scale-[0.98] transition-all"
                 onClick={() => setStep(step + 1)}
                 disabled={!canContinue()}
               >
@@ -565,7 +597,7 @@ export function TacosWizard({ onClose }: TacosWizardProps) {
               </Button>
             ) : (
               <Button
-                className="w-full h-14 text-base font-bold bg-orange-600 hover:bg-orange-700 text-white rounded-2xl shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all"
+                className="w-full h-14 text-base font-bold bg-brand-600 hover:bg-brand-700 text-white rounded-2xl shadow-lg shadow-brand-600/25 active:scale-[0.98] transition-all"
                 onClick={handleAddToCart}
               >
                 Ajouter au panier ({calculatePrice().toFixed(2)} €)

@@ -579,14 +579,14 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
         <div className="container mx-auto flex items-center justify-between gap-4 max-w-lg">
           <div>
             <span className="text-xs text-muted-foreground block font-medium">Panier</span>
-            <span className="text-xl font-extrabold text-orange-600 dark:text-orange-400">
+            <span className="text-xl font-extrabold text-brand-600 dark:text-brand-400">
               {calculatePrice().toFixed(2)} €
             </span>
           </div>
 
           <div className="flex-1">
             <Button
-              className="w-full h-14 text-base font-bold bg-orange-600 hover:bg-orange-700 text-white rounded-2xl shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all"
+              className="w-full h-14 text-base font-bold bg-brand-600 hover:bg-brand-700 text-white rounded-2xl shadow-lg shadow-brand-600/25 active:scale-[0.98] transition-all"
               disabled={!canContinue()}
               onClick={() => {
                 if (step < totalSteps) {

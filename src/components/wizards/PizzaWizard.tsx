@@ -89,23 +89,32 @@ interface FormatSelection {
 interface PizzaWizardProps {
   onClose: (added?: boolean) => void;
   lockedSize?: 'senior' | 'mega' | null;
+  /** Jump straight to ingredient customization for this pizza (Senior format), skipping format + pizza pickers — used by the best-seller slider. */
+  initialPizzaId?: string;
 }
 
-export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
+export function PizzaWizard({ onClose, lockedSize, initialPizzaId }: PizzaWizardProps) {
   const { addToCart, orderType } = useOrder();
   const { containerRef, onTouchStart, onTouchMove, onTouchEnd } = useSwipeToDismiss(onClose);
 
+  // A best-seller preset skips straight to ingredient customization for its pizza.
+  const presetPizza = initialPizzaId
+    ? [...pizzasTomate, ...pizzasCreme].find(p => p.id === initialPizzaId) || null
+    : null;
+
   // If lockedSize is set (loyalty free pizza), skip format selection
-  const initialStep: WizardStep = lockedSize ? 'SELECT_PIZZA' : 'SELECT_FORMAT';
-  const initialFormat: FormatSelection = lockedSize
-    ? { size: lockedSize, isMenuMidi: false, basePrice: lockedSize === 'mega' ? pizzaPrices.mega : pizzaPrices.senior }
-    : { size: 'senior', isMenuMidi: false, basePrice: pizzaPrices.senior };
+  const initialStep: WizardStep = presetPizza ? 'CUSTOMIZE_PIZZA' : (lockedSize ? 'SELECT_PIZZA' : 'SELECT_FORMAT');
+  const initialFormat: FormatSelection = presetPizza
+    ? { size: 'senior', isMenuMidi: false, basePrice: pizzaPrices.senior }
+    : lockedSize
+      ? { size: lockedSize, isMenuMidi: false, basePrice: lockedSize === 'mega' ? pizzaPrices.mega : pizzaPrices.senior }
+      : { size: 'senior', isMenuMidi: false, basePrice: pizzaPrices.senior };
 
   const [step, setStep] = useState<WizardStep>(initialStep);
   const [format, setFormat] = useState<FormatSelection>(initialFormat);
-  const [selectedPizza, setSelectedPizza] = useState<MenuItem | null>(null);
+  const [selectedPizza, setSelectedPizza] = useState<MenuItem | null>(presetPizza);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [base, setBase] = useState<PizzaBase>('tomate');
+  const [base, setBase] = useState<PizzaBase>(presetPizza?.base || 'tomate');
   const [supplements, setSupplements] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [showAddedOverlay, setShowAddedOverlay] = useState(false);
@@ -265,21 +274,21 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
               className="flex flex-col gap-4 cursor-pointer group"
               onClick={() => handleFormatSelect('senior', false)}
             >
-              <Card className="flex-1 flex flex-col items-center justify-center rounded-[2rem] p-8 min-h-[450px] bg-white border-2 border-orange-200 hover:border-orange-400 transition-all hover:shadow-2xl group-active:scale-[0.98]">
+              <Card className="flex-1 flex flex-col items-center justify-center rounded-[2rem] p-8 min-h-[450px] bg-white border-2 border-brand-200 hover:border-brand-400 transition-all hover:shadow-2xl group-active:scale-[0.98]">
                 {/* Fixed image container — image scales small */}
                 <div className="h-64 w-full flex items-center justify-center mb-6">
                   {formatImages?.senior ? (
                     <img src={formatImages.senior} alt="Pizza Senior" className="w-44 h-44 object-contain drop-shadow-xl" />
                   ) : (
-                    <div className="w-44 h-44 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
-                      <Pizza className="w-20 h-20 text-orange-300" />
+                    <div className="w-44 h-44 rounded-full bg-gradient-to-br from-brand-100 to-amber-100 flex items-center justify-center">
+                      <Pizza className="w-20 h-20 text-brand-300" />
                     </div>
                   )}
                 </div>
 
                 {/* Promo Badge */}
                 {promoText && (
-                  <Badge className="bg-orange-500 hover:bg-orange-500 text-white text-sm px-5 py-2 mb-4 rounded-full font-bold shadow-md">
+                  <Badge className="bg-brand-500 hover:bg-brand-500 text-white text-sm px-5 py-2 mb-4 rounded-full font-bold shadow-md">
                     {promoText.toUpperCase()}
                   </Badge>
                 )}
@@ -312,21 +321,21 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
               className="flex flex-col gap-4 cursor-pointer group"
               onClick={() => handleFormatSelect('mega', false)}
             >
-              <Card className="flex-1 flex flex-col items-center justify-center rounded-[2rem] p-8 min-h-[450px] bg-white border-2 border-orange-200 hover:border-orange-400 transition-all hover:shadow-2xl group-active:scale-[0.98]">
+              <Card className="flex-1 flex flex-col items-center justify-center rounded-[2rem] p-8 min-h-[450px] bg-white border-2 border-brand-200 hover:border-brand-400 transition-all hover:shadow-2xl group-active:scale-[0.98]">
                 {/* Fixed image container — image scales large */}
                 <div className="h-64 w-full flex items-center justify-center mb-6">
                   {formatImages?.mega ? (
                     <img src={formatImages.mega} alt="Pizza Mega" className="w-64 h-64 object-contain drop-shadow-xl" />
                   ) : (
-                    <div className="w-64 h-64 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
-                      <Pizza className="w-28 h-28 text-orange-300" />
+                    <div className="w-64 h-64 rounded-full bg-gradient-to-br from-brand-100 to-amber-100 flex items-center justify-center">
+                      <Pizza className="w-28 h-28 text-brand-300" />
                     </div>
                   )}
                 </div>
 
                 {/* Promo Badge */}
                 {promoText && (
-                  <Badge className="bg-orange-500 hover:bg-orange-500 text-white text-sm px-5 py-2 mb-4 rounded-full font-bold shadow-md">
+                  <Badge className="bg-brand-500 hover:bg-brand-500 text-white text-sm px-5 py-2 mb-4 rounded-full font-bold shadow-md">
                     {promoText.toUpperCase()}
                   </Badge>
                 )}
@@ -384,13 +393,13 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
           onClick={() => handleSelectPizza(pizza)}
         >
           <div className="p-4 bg-gradient-to-b from-slate-50 to-white flex justify-center">
-            <div className="w-32 h-32 rounded-full overflow-hidden bg-white shadow-md border-4 border-orange-100">
+            <div className="w-32 h-32 rounded-full overflow-hidden bg-white shadow-md border-4 border-brand-100">
               {imageUrl ? (
                 <div className="w-full h-full animate-spin-slow">
                   <img src={imageUrl} alt={pizza.name} loading="eager" decoding="async" className="w-full h-full object-contain" style={{ transform: `scale(${imageZoom})` }} />
                 </div>
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50">
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-50 to-amber-50">
                   <Pizza className="w-12 h-12 text-primary/30" />
                 </div>
               )}
@@ -478,7 +487,7 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
         formatLabel={formatLabel}
         isKiosk={isKiosk}
         initialBase={base}
-        onBack={() => setStep('SELECT_PIZZA')}
+        onBack={() => presetPizza ? onClose() : setStep('SELECT_PIZZA')}
         onConfirm={(removed, extras, noteText, chosenBase) => {
           setRemovedIngredients(removed);
           setAddedExtras(extras);
@@ -562,15 +571,15 @@ export function PizzaWizard({ onClose, lockedSize }: PizzaWizardProps) {
         <Separator />
 
         {/* Visual Pizza Builder */}
-        <div className="bg-gradient-to-b from-orange-50/50 to-white rounded-3xl p-6 border border-orange-100/70 flex flex-col items-center shadow-sm">
+        <div className="bg-gradient-to-b from-brand-50/50 to-white rounded-3xl p-6 border border-brand-100/70 flex flex-col items-center shadow-sm">
           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Aperçu visuel de votre Pizza</h3>
-          <div className="relative w-48 h-48 sm:w-60 sm:h-60 rounded-full bg-white shadow-2xl border-8 border-orange-200/60 flex items-center justify-center overflow-hidden">
+          <div className="relative w-48 h-48 sm:w-60 sm:h-60 rounded-full bg-white shadow-2xl border-8 border-brand-200/60 flex items-center justify-center overflow-hidden">
             <div className="w-full h-full relative animate-spin-slow">
               {selectedPizza?.imageUrl ? (
                 <img src={selectedPizza.imageUrl} alt={selectedPizza.name} className="w-full h-full object-contain" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
-                  <Pizza className="w-24 h-24 text-orange-300" />
+                <div className="w-full h-full bg-gradient-to-br from-brand-100 to-amber-100 flex items-center justify-center">
+                  <Pizza className="w-24 h-24 text-brand-300" />
                 </div>
               )}
               

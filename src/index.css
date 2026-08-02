@@ -89,6 +89,27 @@
     filter: drop-shadow(0 10px 10px rgba(60, 35, 15, 0.18));
   }
 
+  /* Slow floating bob for category images + their shadow, in sync so the
+     product reads as one floating object rather than drifting from its shadow. */
+  @media (prefers-reduced-motion: no-preference) {
+    .animate-float {
+      animation: float-bob 3.6s ease-in-out infinite;
+    }
+    .animate-float-shadow {
+      animation: float-bob-shadow 3.6s ease-in-out infinite;
+    }
+  }
+
+  @keyframes float-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  @keyframes float-bob-shadow {
+    0%, 100% { transform: scaleX(1); opacity: 0.25; }
+    50% { transform: scaleX(0.88); opacity: 0.16; }
+  }
+
   .dark {
     --background: 20 20% 10%;
     --foreground: 30 20% 95%;

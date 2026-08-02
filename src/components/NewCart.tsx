@@ -269,7 +269,7 @@ export function NewCart({ isOpen, onClose, onCheckout, onEditItem }: NewCartProp
         <SheetHeader className="px-4 sm:px-6 pt-3 sm:pt-4 pb-2 border-b border-stone-100 dark:border-stone-800">
           <SheetTitle className="flex items-center justify-between text-lg sm:text-xl font-extrabold text-stone-900 dark:text-white">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-orange-100 dark:bg-stone-800 text-orange-600 flex items-center justify-center font-bold">
+              <div className="w-9 h-9 rounded-xl bg-brand-100 dark:bg-stone-800 text-brand-600 flex items-center justify-center font-bold">
                 <ShoppingBag className="w-5 h-5" />
               </div>
               <span>Mon Panier ({cart.length})</span>
@@ -299,7 +299,7 @@ export function NewCart({ isOpen, onClose, onCheckout, onEditItem }: NewCartProp
                 <div key={item.id} className="p-3.5 rounded-[24px] border border-stone-200/80 dark:border-stone-800 shadow-xs bg-white dark:bg-stone-900 flex items-center justify-between gap-3">
                   
                   {/* Left Category Emoji Badge / Icon */}
-                  <div className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-stone-800 flex items-center justify-center font-bold text-2xl flex-shrink-0">
+                  <div className="w-12 h-12 rounded-2xl bg-brand-50 dark:bg-stone-800 flex items-center justify-center font-bold text-2xl flex-shrink-0">
                     {categoryEmojiMap[item.item.category] || '🍽️'}
                   </div>
 
@@ -316,7 +316,7 @@ export function NewCart({ isOpen, onClose, onCheckout, onEditItem }: NewCartProp
                             onClose();
                             onEditItem(item.item.category);
                           }}
-                          className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-stone-800 hover:bg-orange-100 px-1.5 py-0.5 rounded-md transition-colors"
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-stone-800 hover:bg-brand-100 px-1.5 py-0.5 rounded-md transition-colors"
                         >
                           <Pencil className="w-2.5 h-2.5" />
                           <span>Éditer</span>
@@ -324,7 +324,7 @@ export function NewCart({ isOpen, onClose, onCheckout, onEditItem }: NewCartProp
                       )}
                     </div>
 
-                    <span className="font-extrabold text-xs text-orange-600 dark:text-orange-400 block">
+                    <span className="font-extrabold text-xs text-brand-600 dark:text-brand-400 block">
                       {(getItemPrice(item) * item.quantity).toFixed(2)} €
                     </span>
 
@@ -366,9 +366,9 @@ export function NewCart({ isOpen, onClose, onCheckout, onEditItem }: NewCartProp
             <div className="p-4 sm:p-5 bg-stone-50 dark:bg-stone-900 border-t border-stone-200/60 dark:border-stone-800 space-y-3.5 rounded-t-[32px] shadow-xl">
               
               {/* Promo Code Row (Matching Mockup) */}
-              <div className="bg-white dark:bg-stone-800 rounded-2xl p-3.5 flex items-center justify-between text-xs text-stone-500 font-medium shadow-2xs border border-stone-100 dark:border-stone-700 cursor-pointer hover:border-orange-300 transition-all">
+              <div className="bg-white dark:bg-stone-800 rounded-2xl p-3.5 flex items-center justify-between text-xs text-stone-500 font-medium shadow-2xs border border-stone-100 dark:border-stone-700 cursor-pointer hover:border-brand-300 transition-all">
                 <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-orange-600" />
+                  <Tag className="w-4 h-4 text-brand-600" />
                   <span>Vous avez un code promo ?</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-stone-400" />
@@ -383,18 +383,18 @@ export function NewCart({ isOpen, onClose, onCheckout, onEditItem }: NewCartProp
                 {isDelivery && deliveryFee > 0 && (
                   <div className="flex justify-between text-stone-500 font-medium">
                     <span>Frais de livraison</span>
-                    <span className="font-bold text-orange-600">+{deliveryFee.toFixed(2)} €</span>
+                    <span className="font-bold text-brand-600">+{deliveryFee.toFixed(2)} €</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center text-sm font-black text-stone-900 dark:text-white pt-1.5 border-t border-stone-200/60 dark:border-stone-800">
                   <span>Total</span>
-                  <span className="text-base text-orange-600 font-black">{total.toFixed(2)} €</span>
+                  <span className="text-base text-brand-600 font-black">{total.toFixed(2)} €</span>
                 </div>
               </div>
 
               {/* Pill Checkout Action Button */}
               <Button
-                className="w-full h-14 rounded-full bg-orange-600 hover:bg-orange-700 text-white font-black text-base shadow-lg shadow-orange-600/25 active:scale-[0.98] transition-all flex items-center justify-center"
+                className="w-full h-14 rounded-full bg-brand-600 hover:bg-brand-700 text-white font-black text-base shadow-lg shadow-brand-600/25 active:scale-[0.98] transition-all flex items-center justify-center"
                 onClick={onCheckout}
                 disabled={cart.length === 0}
               >
