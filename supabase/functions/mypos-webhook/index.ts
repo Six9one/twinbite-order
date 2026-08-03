@@ -143,16 +143,45 @@ serve(async (req) => {
         }
       }
     } else {
-      // JSON or text fallback
       const bodyText = await req.text();
-      const searchParams = new URLSearchParams(bodyText);
-      for (const [key, value] of searchParams.entries()) {
-        if (key === "Signature") {
-          rawSignature = value;
-        } else {
-          params[key] = value;
+      let parsed = false;
+
+      // myPOS may post JSON rather than form data. Try that first, otherwise the urlencoded
+      // parser silently produces one garbage key and every field reads as undefined.
+      const trimmed = bodyText.trim();
+      if (trimmed.startsWith("{")) {
+        try {
+          const json = JSON.parse(trimmed);
+          for (const [key, value] of Object.entries(json)) {
+            if (key === "Signature") {
+              rawSignature = String(value);
+            } else {
+              params[key] = String(value);
+            }
+          }
+          parsed = true;
+        } catch (_) {
+          // fall through to urlencoded
         }
       }
+
+      if (!parsed) {
+        const searchParams = new URLSearchParams(bodyText);
+        for (const [key, value] of searchParams.entries()) {
+          if (key === "Signature") {
+            rawSignature = value;
+          } else {
+            params[key] = value;
+          }
+        }
+      }
+
+      console.log("[MYPOS-WEBHOOK] Non-form body", {
+        contentType,
+        parsedAsJson: parsed,
+        keys: Object.keys(params).join(","),
+        rawPreview: bodyText.slice(0, 400),
+      });
     }
 
     console.log("[MYPOS-WEBHOOK] Parameters received:", {
@@ -220,6 +249,11 @@ serve(async (req) => {
 
     // 0 = Success in myPOS IPC protocol
     const isSuccess = ipcStatus === "0";
+    // If no status field came through at all we did not understand the payload. Marking the
+    // order Failed on that basis is worse than doing nothing, since the money may have arrived.
+    const statusMissing = ipcStatus === "";
+
+    console.log("[MYPOS-WEBHOOK] All parameter keys:", Object.keys(params).join(",") || "(none)");
 
     // Initialize Supabase Admin Client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -321,7 +355,9 @@ serve(async (req) => {
         console.warn(`[MYPOS-WEBHOOK] Payment FAILED/CANCELLED for order #${orderNumber}, status: ${ipcStatus}`);
 
         // Never downgrade an already-settled payment on the strength of an unverified request.
-        if (order.payment_status === "Paid") {
+        if (statusMissing) {
+          console.error(`[MYPOS-WEBHOOK] No IPCStatus in payload for #${orderNumber} — leaving order untouched`);
+        } else if (order.payment_status === "Paid") {
           console.warn(`[MYPOS-WEBHOOK] Order #${orderNumber} is already Paid — not marking Failed`);
         } else if (!signatureVerified) {
           console.error(`[MYPOS-WEBHOOK] Refusing unverified failure notification for #${orderNumber}`);

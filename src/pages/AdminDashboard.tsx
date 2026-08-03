@@ -32,7 +32,7 @@ import { WizardImagesManager } from '@/components/admin/WizardImagesManager';
 import { PriceManager } from '@/components/admin/PriceManager';
 import { HACCPManager } from '@/components/admin/HACCPManager';
 import { TicketManager } from '@/components/admin/TicketManager';
-import { OrdersHistoryManager } from '@/components/admin/OrdersHistoryManager';
+import { OrdersManager } from '@/components/admin/OrdersManager';
 import { AvailabilityManager } from '@/components/admin/AvailabilityManager';
 import { AIReceptionistManager } from '@/components/admin/AIReceptionistManager';
 import { FactureManager } from '@/components/admin/FactureManager';
@@ -760,69 +760,8 @@ export default function AdminDashboard() {
           )}
 
           {/* Orders */}
-          {activeTab === 'orders' && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-4 items-center">
-                <div className="relative flex-1 min-w-[200px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Rechercher..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Input
-                  type="date"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="w-auto"
-                />
-                <Button variant="outline" onClick={exportOrders}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Exporter CSV
-                </Button>
-              </div>
+          {activeTab === 'orders' && <OrdersManager />}
 
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {Object.entries(statusConfig).map(([key, config]) => {
-                  const count = filteredOrders?.filter(o => o.status === key).length || 0;
-                  const Icon = config.icon;
-                  return (
-                    <div key={key} className={`p-4 rounded-lg ${config.color} text-white`}>
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-5 h-5" />
-                        <span className="font-semibold">{count}</span>
-                      </div>
-                      <p className="text-sm opacity-90">{config.label}</p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="space-y-4">
-                {isLoading ? (
-                  <div className="text-center py-12">Chargement...</div>
-                ) : filteredOrders?.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    Aucune commande pour cette date
-                  </div>
-                ) : (
-                  filteredOrders?.map((order) => (
-                    <OrderCard
-                      key={order.id}
-                      order={order}
-                      onStatusUpdate={handleStatusUpdate}
-                      onPrint={printTicket}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Orders History */}
-          {activeTab === 'order-history' && <OrdersHistoryManager />}
 
           {/* Pizzas */}
           {activeTab === 'pizzas' && <PizzaManager />}

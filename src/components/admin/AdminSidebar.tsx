@@ -62,8 +62,7 @@ const navItems: NavItem[] = [
     label: 'Commandes',
     icon: Package,
     children: [
-      { label: 'Commandes du Jour', icon: Package, value: 'orders' },
-      { label: 'Historique Commandes', icon: History, value: 'order-history' },
+      { label: 'Commandes', icon: Package, value: 'orders' },
       { label: '🧾 Factures', icon: FileText, value: 'facture' },
     ]
   },
