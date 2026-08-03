@@ -25,7 +25,8 @@ export default function MentionsLegales() {
                             🏪 Éditeur du site
                         </h2>
                         <div className="space-y-2 text-muted-foreground">
-                            <p><strong className="text-foreground">Raison sociale :</strong> Twin Pizza</p>
+                            <p><strong className="text-foreground">Exploitant :</strong> BEGUIR Adel</p>
+                            <p><strong className="text-foreground">Nom commercial :</strong> Twin Pizza</p>
                             <p><strong className="text-foreground">Forme juridique :</strong> Entreprise individuelle</p>
                             <p><strong className="text-foreground">Adresse :</strong> 60 Rue Georges Clemenceau, 76530 Grand-Couronne, France</p>
                             <p><strong className="text-foreground">Téléphone :</strong> <a href="tel:0232112613" className="text-primary hover:underline">02 32 11 26 13</a></p>

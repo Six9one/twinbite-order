@@ -109,6 +109,13 @@ export default function CGV() {
                         <p className="text-muted-foreground mt-4">
                             Le paiement s'effectue à la commande (en ligne) ou à la réception (livraison/sur place).
                         </p>
+                        <p className="text-muted-foreground mt-3">
+                            Les paiements par carte bancaire en ligne (Visa, Mastercard, Apple Pay, Google Pay) sont
+                            traités par <strong className="text-foreground">myPOS</strong>, prestataire de services de
+                            paiement agréé. Vous êtes redirigé vers sa page de paiement sécurisée : aucune donnée de
+                            carte bancaire ne transite ni n'est conservée par Twin Pizza. Les transactions sont
+                            protégées par le protocole 3D Secure.
+                        </p>
                     </section>
 
                     {/* Droit de rétractation */}
@@ -118,15 +125,52 @@ export default function CGV() {
                         </h2>
                         <p className="text-muted-foreground">
                             Conformément à l'article L221-28 du Code de la consommation, le droit de rétractation
-                            ne s'applique pas aux denrées alimentaires périssables. Les commandes validées ne
-                            peuvent donc pas être annulées ni remboursées, sauf en cas de problème de qualité.
+                            de 14 jours ne s'applique pas aux denrées alimentaires périssables.
                         </p>
+                        <p className="text-muted-foreground mt-3">
+                            Cette exclusion légale ne prive pas le client de ses droits en matière d'annulation et de
+                            remboursement, qui sont détaillés à l'<strong className="text-foreground">Article 7</strong> ci-dessous.
+                        </p>
+                    </section>
+
+                    {/* Annulation et remboursement */}
+                    <section className="bg-card rounded-xl p-6 shadow-sm border">
+                        <h2 className="text-xl font-semibold mb-4 text-foreground">
+                            Article 7 - Annulation, retour et remboursement
+                        </h2>
+                        <div className="text-muted-foreground space-y-3">
+                            <p>
+                                <strong className="text-foreground">Annulation par le client :</strong> une commande
+                                peut être annulée sans frais tant que sa préparation n'a pas commencé. Contactez-nous
+                                immédiatement au <a href="tel:0232112613" className="text-primary hover:underline">02 32 11 26 13</a>.
+                                Passé ce délai, la préparation étant engagée, l'annulation n'est plus possible.
+                            </p>
+                            <p>
+                                <strong className="text-foreground">Annulation par le restaurant :</strong> si nous ne
+                                pouvons pas honorer votre commande (produit indisponible, incident technique, zone de
+                                livraison non desservie), elle est annulée et intégralement remboursée.
+                            </p>
+                            <p>
+                                <strong className="text-foreground">Retour et remboursement :</strong> s'agissant de
+                                denrées alimentaires périssables, les produits ne peuvent pas être retournés. En cas de
+                                commande non conforme, incomplète, ou de problème de qualité, signalez-le dans les
+                                <strong className="text-foreground"> 2 heures</strong> suivant la réception. Après
+                                vérification, nous procédons au remplacement du produit ou au remboursement.
+                            </p>
+                            <p>
+                                <strong className="text-foreground">Modalités de remboursement :</strong> le
+                                remboursement est effectué sur le moyen de paiement utilisé lors de la commande. Pour un
+                                paiement par carte bancaire en ligne, les fonds sont recrédités sous
+                                <strong className="text-foreground"> 5 à 10 jours ouvrés</strong> selon votre banque.
+                                Aucun frais n'est retenu.
+                            </p>
+                        </div>
                     </section>
 
                     {/* Réclamations */}
                     <section className="bg-card rounded-xl p-6 shadow-sm border">
                         <h2 className="text-xl font-semibold mb-4 text-foreground">
-                            Article 7 - Réclamations et Service Client
+                            Article 8 - Réclamations et Service Client
                         </h2>
                         <p className="text-muted-foreground">
                             Pour toute réclamation concernant votre commande, veuillez nous contacter :
@@ -143,7 +187,7 @@ export default function CGV() {
                     {/* Responsabilité */}
                     <section className="bg-card rounded-xl p-6 shadow-sm border">
                         <h2 className="text-xl font-semibold mb-4 text-foreground">
-                            Article 8 - Responsabilité
+                            Article 9 - Responsabilité
                         </h2>
                         <p className="text-muted-foreground">
                             Twin Pizza s'engage à fournir des produits de qualité conforme aux normes d'hygiène
@@ -170,7 +214,7 @@ export default function CGV() {
                     {/* Litiges */}
                     <section className="bg-card rounded-xl p-6 shadow-sm border">
                         <h2 className="text-xl font-semibold mb-4 text-foreground">
-                            Article 9 - Litiges
+                            Article 10 - Litiges
                         </h2>
                         <p className="text-muted-foreground">
                             Les présentes CGV sont soumises au droit français. En cas de litige, une solution
