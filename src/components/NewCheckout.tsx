@@ -444,7 +444,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   // ----------------------------------------------------
   if (step === 'success' && confirmedOrderData) {
     return (
-      <div className="min-h-screen bg-[#FFF8F5] dark:bg-stone-950 flex items-center justify-center p-4 sm:p-6">
+      <div className="min-h-dvh bg-[#FFF8F5] dark:bg-stone-950 flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-md space-y-6 text-center">
           
           {/* Animated Pulsing Success Icon */}
@@ -543,7 +543,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   // MAIN CHECKOUT FLOW (Steps 1, 2, 3)
   // ----------------------------------------------------
   return (
-    <div className="min-h-screen bg-[#FFF8F5] dark:bg-stone-950 pb-36 text-stone-900 dark:text-white antialiased">
+    <div className="min-h-dvh bg-[#FFF8F5] dark:bg-stone-950 pb-36 text-stone-900 dark:text-white antialiased">
       
       {/* Dynamic Header & Segmented Progress Bar */}
       <div className="sticky top-0 z-30 bg-[#FFF8F5]/90 dark:bg-stone-950/90 backdrop-blur-md border-b border-brand-100/60 dark:border-stone-800">

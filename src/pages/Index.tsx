@@ -6,6 +6,7 @@ import { OrderType } from '@/types/order';
 import { Settings, MapPin, Clock, Phone, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
+import { useStackEffectEnabled } from '@/hooks/useStackEffectEnabled';
 import { CategoryMenu } from '@/components/CategoryMenu';
 import { NewCart } from '@/components/NewCart';
 import { NewCheckout } from '@/components/NewCheckout';
@@ -26,7 +27,11 @@ import { UnifiedProductWizard } from '@/components/wizards/UnifiedProductWizard'
  * "receding page" depth cue. (Lenis, also installed by the skiper16 add, is intentionally NOT
  * wrapped around this view — its scroll virtualization conflicts with `position: sticky` here,
  * which breaks the actual pinning/folding effect. Native scroll stays buttery via CSS alone.)
- * Purely additive — no layout/color/spacing changes.
+ *
+ * The effect is conditional: `useStackEffectEnabled` drops it back to normal document flow
+ * when the user prefers reduced motion, the viewport is too short, or a section grew taller
+ * than the viewport (sticky cannot pin an element bigger than its scrollport). Content stays
+ * fully reachable in every one of those cases — only the decoration is lost.
  */
 const STACK_Z_BASE = 10; // stays well below fixed overlays (cart/modals use z-50+)
 const STACK_COUNT = 6; // Hero, Top Ventes, Nos Spécialités, Avis Clients, Notre Galerie, Notre Restaurant
@@ -34,6 +39,7 @@ const STACK_COUNT = 6; // Hero, Top Ventes, Nos Spécialités, Avis Clients, Not
 function StackSection({
   i,
   progress,
+  enabled,
   className = '',
   delay = 0,
   style,
@@ -41,6 +47,7 @@ function StackSection({
 }: {
   i: number;
   progress: MotionValue<number>;
+  enabled: boolean;
   className?: string;
   delay?: number;
   style?: React.CSSProperties;
@@ -48,17 +55,27 @@ function StackSection({
 }) {
   const targetScale = Math.max(0.92, 1 - (STACK_COUNT - i - 1) * 0.02);
   const scale = useTransform(progress, [i / STACK_COUNT, 1], [1, targetScale]);
+
+  const inner = (
+    <motion.div
+      className={`origin-top animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards shadow-[0_-14px_30px_-6px_rgba(40,20,5,0.35)] ${className}`}
+      style={{ ...style, ...(enabled ? { scale } : null), animationDelay: `${delay}ms` }}
+    >
+      {children}
+    </motion.div>
+  );
+
+  // Fallback path: plain flow, no pinning and no scroll-linked transform.
+  if (!enabled) {
+    return <div className="relative">{inner}</div>;
+  }
+
+  // Sticky positioning lives on a plain div — putting it on the same element as the Framer
+  // Motion `scale` transform (motion.div) breaks `position: sticky` here, so the scale
+  // animation is applied one level down instead, matching the skiper16 reference structure.
   return (
-    // Sticky positioning lives on a plain div — putting it on the same element as the Framer
-    // Motion `scale` transform (motion.div) breaks `position: sticky` here, so the scale
-    // animation is applied one level down instead, matching the skiper16 reference structure.
     <div className="sticky top-0" style={{ zIndex: STACK_Z_BASE + i }}>
-      <motion.div
-        className={`origin-top animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards shadow-[0_-14px_30px_-6px_rgba(40,20,5,0.35)] ${className}`}
-        style={{ ...style, scale, animationDelay: `${delay}ms` }}
-      >
-        {children}
-      </motion.div>
+      {inner}
     </div>
   );
 }
@@ -79,6 +96,7 @@ function MainApp() {
 
   const stackContainerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: stackContainerRef, offset: ['start start', 'end end'] });
+  const stackEnabled = useStackEffectEnabled(stackContainerRef);
 
   useEffect(() => {
     if (searchParams.get('checkout') === '1' || searchParams.get('retry') === '1' || searchParams.get('cancel') === '1') {
@@ -160,7 +178,7 @@ function MainApp() {
   if (view === 'menu') {
     return (
       <Suspense fallback={
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <div className="flex flex-col items-center justify-center min-h-[60dvh] gap-3">
           <div className="w-10 h-10 border-4 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
           <span className="text-sm font-medium text-stone-500 animate-pulse">Chargement du menu...</span>
         </div>
@@ -185,7 +203,7 @@ function MainApp() {
   if (view === 'checkout') {
     return (
       <Suspense fallback={
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <div className="flex flex-col items-center justify-center min-h-[60dvh] gap-3">
           <div className="w-10 h-10 border-4 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
           <span className="text-sm font-medium text-stone-500 animate-pulse">Chargement de la commande...</span>
         </div>
@@ -202,7 +220,7 @@ function MainApp() {
   }
 
   return (
-    <div className="min-h-screen bg-[#DDA463] antialiased">
+    <div className="min-h-dvh bg-[#DDA463] antialiased">
       {isAdmin && (
         <Link to="/admin/dashboard" className="fixed top-3 right-3 z-50">
           <button className="flex items-center gap-1.5 bg-stone-800/80 backdrop-blur text-white shadow-lg rounded-full px-3 py-1.5 text-xs font-semibold">
@@ -273,9 +291,16 @@ function MainApp() {
       {/* STACKED CARD DECK — every major section is `position: sticky` with an increasing
           z-index and a scroll-linked scale (Skiper UI "skiper16" stacked-cards principle),
           so each one pins at the top and folds under the next as the user scrolls. */}
-      <div ref={stackContainerRef}>
+      {/* The whole deck is an app-width column, centred on tablet/desktop instead of
+          stretching a phone layout edge-to-edge across a wide viewport. */}
+      <div ref={stackContainerRef} className="mx-auto w-full max-w-[560px] lg:max-w-[620px]">
         {/* Card 0 — Hero */}
-        <StackSection i={0} progress={scrollYProgress} className="rounded-t-[2rem] overflow-hidden" style={{ height: '260px' }}>
+        <StackSection
+          i={0}
+          progress={scrollYProgress}
+          enabled={stackEnabled}
+          className="relative h-[clamp(220px,30vh,340px)] rounded-t-[2rem] overflow-hidden"
+        >
           <img
             src="/store-front.jpg"
             alt="Twin Pizza storefront"
@@ -283,43 +308,50 @@ function MainApp() {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#4A3428]/80 via-[#4A3428]/65 to-[#4A3428]/85" />
 
-          <div className="relative z-10 flex flex-col items-center pt-7 pb-4">
-            <div className="w-[60px] h-[60px] rounded-2xl bg-white/15 backdrop-blur-xl flex items-center justify-center mb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.15)]">
-              <img src="/favicon.png" alt="Twin Pizza" className="w-10 h-10 object-contain" />
+          <div className="relative z-10 flex flex-col items-center justify-center h-full px-4 pt-[env(safe-area-inset-top)]">
+            <div className="w-[clamp(52px,14vw,72px)] h-[clamp(52px,14vw,72px)] rounded-2xl bg-white/15 backdrop-blur-xl flex items-center justify-center mb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.15)]">
+              <img src="/favicon.png" alt="Twin Pizza" className="w-2/3 h-2/3 object-contain" />
             </div>
-            <h1 className="text-[1.7rem] font-black tracking-tight text-white drop-shadow-sm leading-none">
+            <h1 className="text-[clamp(1.5rem,6vw,2.4rem)] font-black tracking-tight text-white drop-shadow-sm leading-none text-center">
               <span className="text-[#F5B041]">Twin</span> Pizza
             </h1>
-            <p className="text-[12px] text-white/60 font-medium mt-1 tracking-wider uppercase">Grand-Couronne</p>
+            <p className="text-[clamp(11px,2.8vw,14px)] text-white/60 font-medium mt-1 tracking-wider uppercase text-center">Grand-Couronne</p>
           </div>
         </StackSection>
 
         {/* Card 1 — Top Ventes */}
-        <StackSection i={1} progress={scrollYProgress} className="bg-[#FFF8F0] rounded-t-[2rem] pt-6 pb-4">
+        <StackSection i={1} progress={scrollYProgress} enabled={stackEnabled} className="bg-[#FFF8F0] rounded-t-[2rem] pt-6 pb-4">
           <BestSellerSlider onSelect={handleBestSellerSelect} />
         </StackSection>
 
         {/* Card 2 — Nos Spécialités */}
-        <StackSection i={2} progress={scrollYProgress} className="mx-3 rounded-[1.75rem] bg-[#FDEEDD] p-5">
-          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3">
+        <StackSection i={2} progress={scrollYProgress} enabled={stackEnabled} className="mx-3 rounded-[1.75rem] bg-[#FDEEDD] p-5 sm:p-6">
+          <h2 className="text-[clamp(1.05rem,3.6vw,1.4rem)] font-extrabold text-[#3B2216] tracking-tight mb-3">
             Nos Spécialités
           </h2>
           <CategoryCardGrid onSelectCategory={handleSelectCategory} />
         </StackSection>
 
         {/* Card 3 — Avis Clients */}
-        <StackSection i={3} progress={scrollYProgress} delay={80} className="mx-3 rounded-[1.75rem] bg-[#FCF3E1] py-5">
+        <StackSection i={3} progress={scrollYProgress} enabled={stackEnabled} delay={80} className="mx-3 rounded-[1.75rem] bg-[#FCF3E1] py-5 sm:py-6">
           <ReviewsSlider />
         </StackSection>
 
         {/* Card 4 — Notre Galerie (self-hides if admin hasn't added photos yet; owns its own card chrome) */}
-        <StackSection i={4} progress={scrollYProgress} delay={110} className="mx-3">
+        <StackSection i={4} progress={scrollYProgress} enabled={stackEnabled} delay={110} className="mx-3">
           <GallerySlider />
         </StackSection>
 
-        {/* Card 5 — Notre Restaurant (last layer, acts as the page footer) */}
-        <StackSection i={5} progress={scrollYProgress} delay={140} className="mx-3 rounded-[1.75rem] bg-[#F8E6D6] p-5 pb-8">
-          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-4">
+        {/* Card 5 — Notre Restaurant (last layer, acts as the page footer — carries the
+            bottom safe-area inset so the phone number clears the iOS home indicator) */}
+        <StackSection
+          i={5}
+          progress={scrollYProgress}
+          enabled={stackEnabled}
+          delay={140}
+          className="mx-3 rounded-[1.75rem] bg-[#F8E6D6] p-5 sm:p-6 pb-[max(2rem,env(safe-area-inset-bottom))]"
+        >
+          <h2 className="text-[clamp(1.05rem,3.6vw,1.4rem)] font-extrabold text-[#3B2216] tracking-tight mb-4">
             Notre Restaurant
           </h2>
           <div className="space-y-4">
@@ -328,7 +360,7 @@ function MainApp() {
                 <MapPin className="w-4.5 h-4.5 text-[#DB7F1E]" />
               </div>
               <div>
-                <p className="font-semibold text-[13px] text-[#3B2216]">60 Rue Georges Clemenceau</p>
+                <p className="font-semibold text-[clamp(13px,3vw,15px)] text-[#3B2216]">60 Rue Georges Clemenceau</p>
                 <p className="text-xs text-[#8C7A6B] mt-0.5">76530 Grand-Couronne</p>
               </div>
             </div>
@@ -337,7 +369,7 @@ function MainApp() {
                 <Clock className="w-4.5 h-4.5 text-[#DB7F1E]" />
               </div>
               <div>
-                <p className="font-semibold text-[13px] text-[#3B2216]">Lun – Sam</p>
+                <p className="font-semibold text-[clamp(13px,3vw,15px)] text-[#3B2216]">Lun – Sam</p>
                 <p className="text-xs text-[#8C7A6B] mt-0.5">11h00 – 15h00 · 17h30 – 00h00</p>
               </div>
             </div>
@@ -346,7 +378,7 @@ function MainApp() {
                 <Phone className="w-4.5 h-4.5 text-[#DB7F1E]" />
               </div>
               <div>
-                <p className="font-semibold text-[13px] text-[#3B2216] group-hover:text-[#DB7F1E] transition-colors">02 32 11 26 13</p>
+                <p className="font-semibold text-[clamp(13px,3vw,15px)] text-[#3B2216] group-hover:text-[#DB7F1E] transition-colors">02 32 11 26 13</p>
                 <p className="text-xs text-[#8C7A6B] mt-0.5">Appeler pour commander</p>
               </div>
             </a>

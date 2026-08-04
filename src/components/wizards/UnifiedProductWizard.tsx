@@ -4,13 +4,12 @@ import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
 import { useMeatOptions, useSauceOptions, useSupplementOptions, useGarnitureOptions, useCruditesOptions } from '@/hooks/useCustomizationOptions';
 import { useWizardImage, useMenuOptionImages } from '@/hooks/useWizardImages';
-import { useSwipeToDismiss } from '@/hooks/useSwipeToDismiss';
-import { Button } from '@/components/ui/button';
+import { WizardShell, WizardPriceFooter } from '@/components/wizards/WizardShell';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Check, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   meatOptions as staticMeatOptions,
@@ -239,7 +238,6 @@ function OptionCard({
 export function UnifiedProductWizard({ productType, onClose, initialSize, initialMeatNames, initialSauceNames }: UnifiedProductWizardProps) {
   const { addToCart } = useOrder();
   const config = productConfigs[productType];
-  const { containerRef, onTouchStart, onTouchMove, onTouchEnd } = useSwipeToDismiss(onClose);
 
   const [step, setStep] = useState(1);
   const [size, setSize] = useState<ProductSize>(initialSize || 'solo');
@@ -617,7 +615,7 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
                 </Badge>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {/* Option: Sans sauce */}
               <OptionCard
                 key="sans_sauce"
@@ -665,7 +663,7 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
             {defaultGarnitures.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Inclus par défaut</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {defaultGarnitures.map((gar) => {
                     const isRemoved = removedDefaults.includes(gar.id);
                     const emoji = getOptionEmoji(gar.name, garnitureEmojis);
@@ -695,7 +693,7 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
               <div className="space-y-2">
                 <Separator />
                 <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Ajouter</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {extraGarnitures.map((gar) => {
                     const emoji = getOptionEmoji(gar.name, garnitureEmojis);
                     return (
@@ -718,7 +716,7 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
 
             <h3 className="text-lg font-semibold">Suppléments</h3>
             <p className="text-sm text-muted-foreground">Optionnel</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {supplementOptions.map((sup) => {
                 const emoji = getOptionEmoji(sup.name, supplementEmojis);
                 return (
@@ -744,7 +742,7 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
             {!config.showGarniture && (
               <>
                 <h2 className="text-lg font-semibold">Suppléments</h2>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {supplementOptions.map((sup) => {
                     const emoji = getOptionEmoji(sup.name, supplementEmojis);
                     return (
@@ -806,73 +804,26 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
   };
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-background pb-24">
-      <div
-        className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-      >
-        {/* Mobile drag handle */}
-        <div className="flex justify-center pt-2 pb-0 sm:hidden cursor-grab">
-          <div className="w-10 h-1.5 rounded-full bg-muted-foreground/30" />
-        </div>
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => step > 1 ? setStep(step - 1) : onClose()}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-2xl font-display font-bold">{config.title}</h1>
-              <p className="text-sm text-muted-foreground">Étape {step}/{totalSteps}</p>
-            </div>
-          </div>
-
-          <div className="flex gap-2 mt-4">
-            {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
-              <div
-                key={s}
-                className={`h-1 flex-1 rounded-full transition-colors ${s <= step ? 'bg-primary' : 'bg-muted'}`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-6">
-        {renderStep()}
-      </div>
-
-      {/* Fixed Sticky Bottom Action Bar with Cart Price & Continuer Button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border p-4 z-50 shadow-2xl">
-        <div className="container mx-auto flex items-center justify-between gap-4 max-w-lg">
-          <div>
-            <span className="text-xs text-muted-foreground block font-medium">Panier</span>
-            <span className="text-xl font-extrabold text-brand-600 dark:text-brand-400">
-              {calculatePrice().toFixed(2)} €
-            </span>
-          </div>
-
-          <div className="flex-1">
-            {step < totalSteps ? (
-              <Button
-                className="w-full h-14 text-base font-bold bg-brand-600 hover:bg-brand-700 text-white rounded-2xl shadow-lg shadow-brand-600/25 active:scale-[0.98] transition-all"
-                onClick={() => setStep(step + 1)}
-                disabled={!canContinue()}
-              >
-                Continuer
-              </Button>
-            ) : (
-              <Button
-                className="w-full h-14 text-base font-bold bg-brand-600 hover:bg-brand-700 text-white rounded-2xl shadow-lg shadow-brand-600/25 active:scale-[0.98] transition-all"
-                onClick={handleAddToCart}
-              >
-                Ajouter au panier ({calculatePrice().toFixed(2)} €)
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <WizardShell
+      title={config.title}
+      step={step}
+      totalSteps={totalSteps}
+      onBack={() => (step > 1 ? setStep(step - 1) : onClose())}
+      onDismiss={onClose}
+      footer={
+        <WizardPriceFooter
+          price={calculatePrice()}
+          label={
+            step < totalSteps
+              ? 'Continuer'
+              : `Ajouter au panier (${calculatePrice().toFixed(2)} €)`
+          }
+          disabled={step < totalSteps && !canContinue()}
+          onClick={() => (step < totalSteps ? setStep(step + 1) : handleAddToCart())}
+        />
+      }
+    >
+      {renderStep()}
+    </WizardShell>
   );
 }

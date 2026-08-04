@@ -143,7 +143,13 @@ export function StackedCarousel({
   };
 
   return (
-    <div className={cn('relative w-full flex items-center justify-center select-none', className)}>
+    // `overflow-x-clip` keeps the fanned-out side cards from widening the page:
+    // they are absolutely positioned well beyond the container's own width, and
+    // without clipping they push the document's scrollWidth past the viewport,
+    // which shows up as a horizontal scrollbar / sideways drift on narrow phones.
+    // `clip` (rather than `hidden`) contains them without turning this into a
+    // scroll container, so the sticky parents on the home page still pin.
+    <div className={cn('relative w-full flex items-center justify-center select-none overflow-x-clip', className)}>
       {/* Transparent drag surface — onTap only fires for genuine taps (Framer
           Motion suppresses it once the pointer has moved past its drag threshold). */}
       <motion.div

@@ -9,10 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Plus, Minus, Pizza, Sun, SlidersHorizontal, ShoppingCart } from 'lucide-react';
+import { Check, Plus, Minus, Pizza, Sun, SlidersHorizontal, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import { playTossAnimation } from '@/utils/tossAnimation';
 import { PizzaIngredientCustomizer, PizzaExtra } from '@/components/wizards/PizzaIngredientCustomizer';
+import { WizardShell } from '@/components/wizards/WizardShell';
 
 const toppingVisuals: Record<string, { emoji: string; positions: { top: string; left: string }[] }> = {
   chevre: {
@@ -183,30 +184,23 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
   };
 
   return (
-    <div className="min-h-screen bg-background pb-28">
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={onClose} className="w-10 h-10">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-display font-bold">🍕 Pizzas</h1>
-              <p className="text-xs text-muted-foreground">Sélectionnez la taille et ajoutez vos pizzas</p>
-            </div>
-          </div>
-
-          <div className="text-right">
-            <span className="text-sm font-semibold text-muted-foreground mr-2">Panier</span>
-            <Badge variant="secondary" className="px-2.5 py-1 text-sm bg-primary/10 text-primary border-primary/20">
-              {getItemCount()} articles • {getTotal().toFixed(2)}€
-            </Badge>
-          </div>
-        </div>
-
-        {/* Format & Size Selection Pills */}
-        <div className="container mx-auto px-4 pb-3 flex flex-wrap gap-2 items-center">
+    <WizardShell
+      title="🍕 Pizzas"
+      subtitle="Sélectionnez la taille et ajoutez vos pizzas"
+      onBack={() => onClose()}
+      onDismiss={() => onClose()}
+      contentClassName="max-w-5xl"
+      headerRight={
+        <>
+          <span className="hidden sm:inline text-sm font-semibold text-muted-foreground mr-2">Panier</span>
+          <Badge variant="secondary" className="px-2.5 py-1 text-sm bg-primary/10 text-primary border-primary/20">
+            {getItemCount()} articles • {getTotal().toFixed(2)}€
+          </Badge>
+        </>
+      }
+      headerExtra={
+        /* Format & Size Selection Pills */
+        <div className="pt-3 flex flex-wrap gap-2 items-center">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Format :</span>
           
           {/* Normal sizes */}
@@ -274,10 +268,20 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
             </>
           )}
         </div>
-      </div>
-
+      }
+      footerClassName="md:hidden"
+      footer={
+        <Button
+          onClick={onClose}
+          className="w-full h-14 text-base shadow-lg rounded-xl relative bg-stone-900 hover:bg-stone-850 text-white font-bold"
+        >
+          <ShoppingCart className="w-5 h-5 mr-2 text-amber-400" />
+          Retour au menu ({getItemCount()} Pizzas)
+        </Button>
+      }
+    >
       {/* Main Selector Body */}
-      <div className="container mx-auto px-4 py-4">
+      <div>
         <Tabs value={activeBase} onValueChange={(val: any) => setActiveBase(val)} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6 h-12">
             <TabsTrigger value="tomate" className="text-sm font-semibold h-10">🍅 Base Tomate</TabsTrigger>
@@ -333,7 +337,7 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
           onClick={() => setCustomizingPizza(null)}
         >
           <div
-            className="w-full max-w-4xl max-h-[92vh] h-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            className="w-full max-w-4xl max-h-[92dvh] h-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <PizzaIngredientCustomizer
@@ -369,19 +373,7 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
           </div>
         </div>
       )}
-
-
-      {/* Floating View Cart Footer (Mobile Only) */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-background/95 backdrop-blur border-t border-border z-35 md:hidden safe-bottom">
-        <Button
-          onClick={onClose}
-          className="w-full h-14 text-base shadow-lg rounded-xl relative bg-stone-900 hover:bg-stone-850 text-white font-bold"
-        >
-          <ShoppingCart className="w-5 h-5 mr-2 text-amber-400" />
-          Retour au menu ({getItemCount()} Pizzas)
-        </Button>
-      </div>
-    </div>
+    </WizardShell>
   );
 }
 

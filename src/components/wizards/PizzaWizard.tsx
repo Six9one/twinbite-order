@@ -6,17 +6,17 @@ import { useOrder } from '@/context/OrderContext';
 import { usePizzasByBase, Product } from '@/hooks/useProducts';
 import { usePizzaFormatImages } from '@/hooks/useWizardImages';
 import { trackProductView, trackAddToCart } from '@/hooks/useProductAnalytics';
-import { useSwipeToDismiss } from '@/hooks/useSwipeToDismiss';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Check, Pizza, Sun, Clock, Plus, X } from 'lucide-react';
+import { Check, Pizza, Sun, Clock, Plus, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { playTossAnimation } from '@/utils/tossAnimation';
 import { PizzaIngredientCustomizer, PizzaExtra } from '@/components/wizards/PizzaIngredientCustomizer';
+import { WizardShell, WizardPriceFooter } from '@/components/wizards/WizardShell';
 
 const toppingVisuals: Record<string, { emoji: string; positions: { top: string; left: string }[] }> = {
   chevre: {
@@ -95,7 +95,6 @@ interface PizzaWizardProps {
 
 export function PizzaWizard({ onClose, lockedSize, initialPizzaId }: PizzaWizardProps) {
   const { addToCart, orderType } = useOrder();
-  const { containerRef, onTouchStart, onTouchMove, onTouchEnd } = useSwipeToDismiss(onClose);
 
   // A best-seller preset skips straight to ingredient customization for its pizza.
   const presetPizza = initialPizzaId
@@ -244,30 +243,16 @@ export function PizzaWizard({ onClose, lockedSize, initialPizzaId }: PizzaWizard
   // ============================================================
   if (step === 'SELECT_FORMAT') {
     return (
-      <div ref={containerRef} className="min-h-screen bg-background pb-4">
-        <div
-          className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border"
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          {/* Mobile drag handle */}
-          <div className="flex justify-center pt-2 pb-0 sm:hidden cursor-grab">
-            <div className="w-10 h-1.5 rounded-full bg-muted-foreground/30" />
-          </div>
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={onClose} className="w-10 h-10">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <h1 className="text-xl sm:text-2xl font-display font-bold">🍕 Choisissez votre format de Pizza</h1>
-            </div>
-          </div>
-        </div>
-
-        <div className="container mx-auto px-4 py-6 flex-1 flex flex-col">
-          {/* Symmetrical two-column grid — cards stretch to same height */}
-          <div className="grid grid-cols-2 gap-8 items-stretch max-w-5xl mx-auto flex-1">
+      <WizardShell
+        title="🍕 Choisissez votre format de Pizza"
+        onBack={() => onClose()}
+        onDismiss={() => onClose()}
+        contentClassName="max-w-5xl"
+      >
+        <div className="flex-1 flex flex-col">
+          {/* Symmetrical grid — cards stretch to same height. Stacks on phones,
+              where two 450px-tall columns side by side left no room for content. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 items-stretch flex-1">
 
             {/* ── SENIOR Column ── */}
             <div
@@ -366,8 +351,8 @@ export function PizzaWizard({ onClose, lockedSize, initialPizzaId }: PizzaWizard
 
           {/* Menu Midi info banner */}
           {showMenuMidi && countdown && (
-            <div className="mt-6 max-w-5xl mx-auto p-3 bg-yellow-500/10 rounded-lg flex items-center justify-center gap-3">
-              <Sun className="w-5 h-5 text-yellow-600" />
+            <div className="mt-6 p-3 bg-yellow-500/10 rounded-lg flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+              <Sun className="w-5 h-5 text-yellow-600 flex-shrink-0" />
               <span className="font-semibold text-yellow-700">Menu Midi disponible</span>
               <span className="text-yellow-600 font-mono">
                 Fin dans {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
@@ -375,7 +360,7 @@ export function PizzaWizard({ onClose, lockedSize, initialPizzaId }: PizzaWizard
             </div>
           )}
         </div>
-      </div>
+      </WizardShell>
     );
   }
 
@@ -418,34 +403,28 @@ export function PizzaWizard({ onClose, lockedSize, initialPizzaId }: PizzaWizard
     };
 
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <WizardShell
+        title="Nos Pizzas"
+        subtitle={
+          <span className="flex items-center gap-2">
+            <Badge className="bg-primary/10 text-primary border-primary/20">
+              {formatLabel} — {format.basePrice}€
+            </Badge>
+            {!lockedSize && (
+              <button className="text-xs text-primary underline" onClick={() => setStep('SELECT_FORMAT')}>
+                Changer
+              </button>
+            )}
+          </span>
+        }
+        onBack={() => (lockedSize ? onClose() : setStep('SELECT_FORMAT'))}
+        onDismiss={() => onClose()}
+        contentClassName="max-w-5xl"
+      >
         {/* Added overlay */}
         {showAddedOverlay && <AddedOverlay onDrinks={handleUpsellDrinks} onContinue={handleUpsellContinue} onClose={() => { setShowAddedOverlay(false); onClose(true); }} />}
 
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => lockedSize ? onClose() : setStep('SELECT_FORMAT')} className="w-10 h-10">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <div className="flex-1">
-                <h1 className="text-xl sm:text-2xl font-display font-bold">Nos Pizzas</h1>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge className="bg-primary/10 text-primary border-primary/20">
-                    {formatLabel} — {format.basePrice}€
-                  </Badge>
-                  {!lockedSize && (
-                    <button className="text-xs text-primary underline" onClick={() => setStep('SELECT_FORMAT')}>
-                      Changer
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        <div>
           <Tabs defaultValue="tomate" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 h-12 sm:h-14">
               <TabsTrigger value="tomate" className="text-sm sm:text-base h-10 sm:h-12">🍅 Base Tomate</TabsTrigger>
@@ -467,7 +446,7 @@ export function PizzaWizard({ onClose, lockedSize, initialPizzaId }: PizzaWizard
             </TabsContent>
           </Tabs>
         </div>
-      </div>
+      </WizardShell>
     );
   }
 
@@ -536,26 +515,23 @@ export function PizzaWizard({ onClose, lockedSize, initialPizzaId }: PizzaWizard
   // STEP 2: CUSTOMIZE (legacy cheese supplements — kept for back-compat)
   // ============================================================
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <WizardShell
+      title={selectedPizza?.name ?? 'Pizza'}
+      subtitle={selectedPizza?.description}
+      onBack={() => setStep('SELECT_PIZZA')}
+      onDismiss={() => onClose()}
+      footer={
+        <WizardPriceFooter
+          price={getPrice()}
+          label={`Ajouter au panier (${getPrice().toFixed(2)} €)`}
+          onClick={(e) => handleAddToCart(e)}
+        />
+      }
+    >
       {/* Added overlay */}
       {showAddedOverlay && <AddedOverlay onDrinks={handleUpsellDrinks} onContinue={handleUpsellContinue} onClose={() => { setShowAddedOverlay(false); onClose(true); }} />}
 
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setStep('SELECT_PIZZA')}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-2xl font-display font-bold">{selectedPizza?.name}</h1>
-              <p className="text-sm text-muted-foreground">{selectedPizza?.description}</p>
-            </div>
-            <span className="text-xl font-bold text-primary">{getPrice().toFixed(2)}€</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="space-y-6">
         {/* Format badge (non-interactive) */}
         <div className="flex items-center gap-3">
           <Badge className="bg-primary/10 text-primary border-primary/20 text-sm py-1.5 px-4">
@@ -645,16 +621,7 @@ export function PizzaWizard({ onClose, lockedSize, initialPizzaId }: PizzaWizard
           </Card>
         )}
       </div>
-
-      {/* Bottom Action */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 sm:p-4 z-50 safe-bottom">
-        <div className="container mx-auto">
-          <Button className="w-full h-14 sm:h-16 text-base sm:text-lg rounded-xl" onClick={(e) => handleAddToCart(e)}>
-            Ajouter au panier - {getPrice().toFixed(2)}€
-          </Button>
-        </div>
-      </div>
-    </div>
+    </WizardShell>
   );
 }
 

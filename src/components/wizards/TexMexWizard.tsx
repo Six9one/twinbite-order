@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { WizardShell } from '@/components/wizards/WizardShell';
 import { Badge } from '@/components/ui/badge';
 import { useOrder } from '@/context/OrderContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Plus, Minus, ShoppingCart, Flame, Sparkles } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, Flame, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TexMexProduct {
@@ -304,36 +305,58 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+            <div className="min-h-dvh bg-background p-4 flex items-center justify-center">
                 <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background pb-32">
-            {/* Header */}
-            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-                <div className="container mx-auto px-4 py-4">
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" onClick={onClose}>
-                            <ArrowLeft className="w-5 h-5" />
-                        </Button>
-                        <div>
-                            <h1 className="text-2xl font-display font-bold flex items-center gap-2">
-                                <Flame className="w-6 h-6 text-brand-500" />
-                                Tex-Mex
-                            </h1>
-                            <p className="text-sm text-muted-foreground">
-                                Composez votre sélection
-                            </p>
+        <WizardShell
+            title={
+                <span className="flex items-center gap-2">
+                    <Flame className="w-6 h-6 text-brand-500 flex-shrink-0" />
+                    Tex-Mex
+                </span>
+            }
+            subtitle="Composez votre sélection"
+            onBack={() => onClose()}
+            onDismiss={() => onClose()}
+            footer={
+                <div>
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                        <div className="min-w-0">
+                            <span className="text-sm text-muted-foreground">Total: {totalQty} article(s)</span>
+                            {savings > 0 && (
+                                <Badge variant="secondary" className="ml-2 bg-green-500/10 text-green-600">
+                                    Économie: {savings.toFixed(2)}€
+                                </Badge>
+                            )}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                            {savings > 0 && (
+                                <span className="text-xs text-gray-400 line-through mr-2">
+                                    {(snackRegularPrice + totalPrice - snackDiscountedPrice).toFixed(2)}€
+                                </span>
+                            )}
+                            <span className="text-xl sm:text-2xl font-bold text-brand-500">
+                                {totalPrice.toFixed(2)}€
+                            </span>
                         </div>
                     </div>
+                    <Button
+                        className="w-full h-14 text-base sm:text-lg bg-brand-500 hover:bg-brand-600 gap-2"
+                        onClick={handleAddToCart}
+                        disabled={totalQty === 0}
+                    >
+                        <ShoppingCart className="w-5 h-5" />
+                        Ajouter au panier
+                    </Button>
                 </div>
-            </div>
-
+            }
+        >
             {/* Offers Banner */}
-            <div className="container mx-auto px-4 py-4">
+            <div className="py-0">
                 <Card className="p-4 bg-gradient-to-r from-brand-500/10 to-red-500/10 border-brand-500/20">
                     <div className="flex items-center gap-2 mb-3">
                         <Sparkles className="w-5 h-5 text-brand-500" />
@@ -358,7 +381,7 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
                 </Card>
             </div>
 
-            <div className="container mx-auto px-4 space-y-6 py-2">
+            <div className="space-y-6 py-2">
                 {/* Snacks Section */}
                 {snacks.length > 0 && (
                     <div>
@@ -395,40 +418,6 @@ export function TexMexWizard({ onClose }: TexMexWizardProps) {
                     </div>
                 )}
             </div>
-
-            {/* Fixed Bottom Bar */}
-            <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg">
-                <div className="container mx-auto">
-                    <div className="flex items-center justify-between mb-3">
-                        <div>
-                            <span className="text-sm text-muted-foreground">Total: {totalQty} article(s)</span>
-                            {savings > 0 && (
-                                <Badge variant="secondary" className="ml-2 bg-green-500/10 text-green-600">
-                                    Économie: {savings.toFixed(2)}€
-                                </Badge>
-                            )}
-                        </div>
-                        <div className="text-right">
-                            {savings > 0 && (
-                                <span className="text-xs text-gray-400 line-through mr-2">
-                                    {(snackRegularPrice + totalPrice - snackDiscountedPrice).toFixed(2)}€
-                                </span>
-                            )}
-                            <span className="text-2xl font-bold text-brand-500">
-                                {totalPrice.toFixed(2)}€
-                            </span>
-                        </div>
-                    </div>
-                    <Button
-                        className="w-full h-14 text-lg bg-brand-500 hover:bg-brand-600 gap-2"
-                        onClick={handleAddToCart}
-                        disabled={totalQty === 0}
-                    >
-                        <ShoppingCart className="w-5 h-5" />
-                        Ajouter au panier
-                    </Button>
-                </div>
-            </div>
-        </div>
+        </WizardShell>
     );
 }

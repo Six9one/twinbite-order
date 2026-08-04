@@ -3,8 +3,9 @@ import { MenuItem } from '@/types/order';
 import { menuOptionPrices } from '@/data/menu';
 import { useOrder } from '@/context/OrderContext';
 import { Button } from '@/components/ui/button';
+import { WizardShell, WizardPriceFooter } from '@/components/wizards/WizardShell';
 import { Card } from '@/components/ui/card';
-import { ArrowLeft, Check, Plus, Minus, Image } from 'lucide-react';
+import { Check, Plus, Minus, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { playTossAnimation } from '@/utils/tossAnimation';
 
@@ -61,19 +62,8 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
 
   if (!selectedItem) {
     return (
-      <div className="min-h-screen bg-background pb-24">
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={onClose}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <h1 className="text-2xl font-display font-bold">{title}</h1>
-            </div>
-          </div>
-        </div>
-
-        <div className="container mx-auto px-4 py-6">
+      <WizardShell title={title} onBack={() => onClose()} onDismiss={() => onClose()}>
+        <>
           {items.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               Aucun produit disponible dans cette catégorie.
@@ -116,30 +106,27 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
               })}
             </div>
           )}
-        </div>
-      </div>
+        </>
+      </WizardShell>
     );
   }
 
   const selectedImageUrl = selectedItem.imageUrl || selectedItem.image;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setSelectedItem(null)}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-2xl font-display font-bold">{selectedItem.name}</h1>
-              <p className="text-sm text-muted-foreground">{selectedItem.description}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-6 space-y-6">
+    <WizardShell
+      title={selectedItem.name}
+      onBack={() => setSelectedItem(null)}
+      onDismiss={() => onClose()}
+      footer={
+        <WizardPriceFooter
+          price={calculatePrice()}
+          label={`Ajouter au panier (${calculatePrice().toFixed(2)} €)`}
+          onClick={(e) => handleAddToCart(e)}
+        />
+      }
+    >
+      <div className="space-y-6">
         {/* Product Image */}
         {selectedImageUrl && (
           <div className="aspect-video max-w-md mx-auto rounded-lg overflow-hidden">
@@ -180,7 +167,7 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
         {showMenuOption && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Option Menu</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 { id: 'none', label: 'Sans', price: 0 },
                 { id: 'frites', label: 'Frites', price: 1.5 },
@@ -208,18 +195,6 @@ export function SimpleProductWizard({ items, title, showMenuOption = false, onCl
           </div>
         )}
       </div>
-
-      {/* Bottom Action */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4">
-        <div className="container mx-auto">
-          <Button
-            className="w-full h-14 text-lg"
-            onClick={(e) => handleAddToCart(e)}
-          >
-            Ajouter au panier - {calculatePrice().toFixed(2)}€
-          </Button>
-        </div>
-      </div>
-    </div>
+    </WizardShell>
   );
 }

@@ -8,12 +8,12 @@ import { supplementPrices } from '@/data/pricing';
 import { useMenuOptionImages } from '@/hooks/useWizardImages';
 import { SandwichCustomization } from '@/types/order';
 import { trackProductView, trackAddToCart } from '@/hooks/useProductAnalytics';
-import { Button } from '@/components/ui/button';
+import { WizardShell, WizardPriceFooter } from '@/components/wizards/WizardShell';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Check, Sandwich, X } from 'lucide-react';
+import { Check, Sandwich, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const FREE_SAUCES_COUNT = supplementPrices.freeSaucesCount;
@@ -295,7 +295,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
                 </Badge>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {sauceOptionsData?.map((sauce, index) => {
                 const isSelected = selectedSauces.includes(sauce.name);
                 const sauceIndex = selectedSauces.indexOf(sauce.name);
@@ -347,7 +347,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
             {defaultCrudites.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Inclus par défaut</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {defaultCrudites.map((crudite) => {
                     const isRemoved = removedDefaults.includes(crudite.id);
                     const emoji = getOptionEmoji(crudite.name, cruditeEmojis);
@@ -390,7 +390,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
               <div className="space-y-2">
                 <Separator />
                 <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Ajouter</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {extraCrudites.map((crudite) => {
                     const emoji = getOptionEmoji(crudite.name, cruditeEmojis);
                     return (
@@ -428,7 +428,7 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
         return (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Suppléments (optionnel)</h2>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {supplementOptionsData?.map(sup => {
                 const emoji = getOptionEmoji(sup.name, supplementEmojis);
                 return (
@@ -535,72 +535,32 @@ export function SandwichWizard({ onClose }: SandwichWizardProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => step > 1 ? setStep(step - 1) : onClose()}
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-display font-bold">
-                  Sandwiches
-                </h1>
-                <p className="text-sm text-muted-foreground">Étape {step}/{totalSteps}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Progress */}
-          <div className="flex gap-1 mt-3">
-            {Array.from({ length: totalSteps }).map((_, i) => (
-              <div
-                key={i}
-                className={`h-1 flex-1 rounded-full ${i < step ? 'bg-primary' : 'bg-muted'}`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="container mx-auto px-4 py-6">
-        {renderStep()}
-      </div>
-
-      {/* Fixed Sticky Bottom Action Bar with Cart Price & Continuer Button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border p-4 z-50 shadow-2xl">
-        <div className="container mx-auto flex items-center justify-between gap-4 max-w-lg">
-          <div>
-            <span className="text-xs text-muted-foreground block font-medium">Panier</span>
-            <span className="text-xl font-extrabold text-brand-600 dark:text-brand-400">
-              {calculatePrice().toFixed(2)} €
-            </span>
-          </div>
-
-          <div className="flex-1">
-            <Button
-              className="w-full h-14 text-base font-bold bg-brand-600 hover:bg-brand-700 text-white rounded-2xl shadow-lg shadow-brand-600/25 active:scale-[0.98] transition-all"
-              disabled={!canContinue()}
-              onClick={() => {
-                if (step < totalSteps) {
-                  setStep(step + 1);
-                } else {
-                  handleAddToCart();
-                }
-              }}
-            >
-              {step < totalSteps ? 'Continuer' : `Ajouter au panier (${calculatePrice().toFixed(2)} €)`}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <WizardShell
+      title="Sandwiches"
+      step={step}
+      totalSteps={totalSteps}
+      onBack={() => (step > 1 ? setStep(step - 1) : onClose())}
+      onDismiss={onClose}
+      footer={
+        <WizardPriceFooter
+          price={calculatePrice()}
+          label={
+            step < totalSteps
+              ? 'Continuer'
+              : `Ajouter au panier (${calculatePrice().toFixed(2)} €)`
+          }
+          disabled={!canContinue()}
+          onClick={() => {
+            if (step < totalSteps) {
+              setStep(step + 1);
+            } else {
+              handleAddToCart();
+            }
+          }}
+        />
+      }
+    >
+      {renderStep()}
+    </WizardShell>
   );
 }

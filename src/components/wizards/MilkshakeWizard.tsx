@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { MenuItem } from '@/types/order';
 import { useOrder } from '@/context/OrderContext';
 import { trackAddToCart } from '@/hooks/useProductAnalytics';
-import { Button } from '@/components/ui/button';
+import { WizardShell, WizardPriceFooter } from '@/components/wizards/WizardShell';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Check, AlertCircle } from 'lucide-react';
+import { Check, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -123,7 +123,7 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
               </AlertDescription>
             </Alert>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {milkshakeToppings.map((topping) => (
                 <Card
                   key={topping.id}
@@ -145,7 +145,7 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Choisir le coulis</h2>
             <p className="text-sm text-muted-foreground">Optionnel</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <Card
                 className={`p-4 cursor-pointer transition-all ${selectedCoulis === null ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
                 onClick={() => setSelectedCoulis(null)}
@@ -224,55 +224,26 @@ export function MilkshakeWizard({ onClose }: MilkshakeWizardProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => step > 1 ? setStep(step - 1) : onClose()}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-2xl font-display font-bold">Milkshake</h1>
-              <p className="text-sm text-muted-foreground">Étape {step}/{totalSteps}</p>
-            </div>
-            <span className="text-xl font-bold text-primary">{calculatePrice().toFixed(2)}€</span>
-          </div>
-
-          <div className="flex gap-2 mt-4">
-            {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
-              <div
-                key={s}
-                className={`h-1 flex-1 rounded-full transition-colors ${s <= step ? 'bg-primary' : 'bg-muted'}`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-6">
-        {renderStep()}
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50">
-        <div className="container mx-auto">
-          {step < totalSteps ? (
-            <Button
-              className="w-full h-14 text-lg"
-              onClick={() => setStep(step + 1)}
-              disabled={!canContinue()}
-            >
-              Continuer
-            </Button>
-          ) : (
-            <Button
-              className="w-full h-14 text-lg"
-              onClick={handleAddToCart}
-            >
-              Ajouter au panier - {calculatePrice().toFixed(2)}€
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
+    <WizardShell
+      title="Milkshake"
+      step={step}
+      totalSteps={totalSteps}
+      onBack={() => (step > 1 ? setStep(step - 1) : onClose())}
+      onDismiss={onClose}
+      footer={
+        <WizardPriceFooter
+          price={calculatePrice()}
+          label={
+            step < totalSteps
+              ? 'Continuer'
+              : `Ajouter au panier (${calculatePrice().toFixed(2)} €)`
+          }
+          disabled={step < totalSteps && !canContinue()}
+          onClick={() => (step < totalSteps ? setStep(step + 1) : handleAddToCart())}
+        />
+      }
+    >
+      {renderStep()}
+    </WizardShell>
   );
 }
