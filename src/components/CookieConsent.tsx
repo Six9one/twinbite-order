@@ -44,8 +44,9 @@ export function CookieConsent() {
         localStorage.setItem(COOKIE_CONSENT_DATE_KEY, new Date().toISOString());
         setShowBanner(false);
 
-        // Here you would enable analytics, tracking cookies, etc.
-        // Example: initializeGoogleAnalytics();
+        // Actually load GA4 now. index.html no longer fires gtag.js on page load —
+        // it only defines window.enableAnalytics() and waits for this call.
+        (window as any).enableAnalytics?.();
     };
 
     const handleReject = () => {

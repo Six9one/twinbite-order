@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { motion, useScroll, useTransform, MotionValue } from 'motion/react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
-import { Settings, MapPin, Clock, Phone, X } from 'lucide-react';
+import { Settings, MapPin, Clock, Phone, X, ShoppingBag, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 import { CategoryMenu } from '@/components/CategoryMenu';
@@ -13,58 +12,14 @@ import { CategoryCardGrid } from '@/components/CategoryCardGrid';
 import { BestSellerSlider, BestSellerPreset } from '@/components/BestSellerSlider';
 import { ReviewsSlider } from '@/components/ReviewsSlider';
 import { GallerySlider } from '@/components/GallerySlider';
+import { FloatingGlassCart } from '@/components/FloatingGlassCart';
 import { PizzaWizard } from '@/components/wizards/PizzaWizard';
 import { TacosWizard } from '@/components/wizards/TacosWizard';
 import { UnifiedProductWizard } from '@/components/wizards/UnifiedProductWizard';
-
-/**
- * Stacked-page scroll effect (same principle as Skiper UI's "skiper16" stacked cards:
- * `pnpm dlx shadcn add @skiper-ui/skiper16`, adapted to the site's actual sections).
- * Every section is `position: sticky; top: 0` with an increasing z-index, so each one pins
- * at the top of the viewport and gets folded over by the next section rising up behind it.
- * A Framer Motion `scale` tied to scroll progress (via `useScroll`/`useTransform`) adds the
- * "receding page" depth cue. (Lenis, also installed by the skiper16 add, is intentionally NOT
- * wrapped around this view — its scroll virtualization conflicts with `position: sticky` here,
- * which breaks the actual pinning/folding effect. Native scroll stays buttery via CSS alone.)
- * Purely additive — no layout/color/spacing changes.
- */
-const STACK_Z_BASE = 10; // stays well below fixed overlays (cart/modals use z-50+)
-const STACK_COUNT = 6; // Hero, Top Ventes, Nos Spécialités, Avis Clients, Notre Galerie, Notre Restaurant
-
-function StackSection({
-  i,
-  progress,
-  className = '',
-  delay = 0,
-  style,
-  children,
-}: {
-  i: number;
-  progress: MotionValue<number>;
-  className?: string;
-  delay?: number;
-  style?: React.CSSProperties;
-  children: React.ReactNode;
-}) {
-  const targetScale = Math.max(0.92, 1 - (STACK_COUNT - i - 1) * 0.02);
-  const scale = useTransform(progress, [i / STACK_COUNT, 1], [1, targetScale]);
-  return (
-    // Sticky positioning lives on a plain div — putting it on the same element as the Framer
-    // Motion `scale` transform (motion.div) breaks `position: sticky` here, so the scale
-    // animation is applied one level down instead, matching the skiper16 reference structure.
-    <div className="sticky top-0" style={{ zIndex: STACK_Z_BASE + i }}>
-      <motion.div
-        className={`origin-top animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards shadow-[0_-14px_30px_-6px_rgba(40,20,5,0.35)] ${className}`}
-        style={{ ...style, scale, animationDelay: `${delay}ms` }}
-      >
-        {children}
-      </motion.div>
-    </div>
-  );
-}
+import { useStoreOpen } from '@/hooks/useStoreOpen';
 
 function MainApp() {
-  const { orderType, setOrderType } = useOrder();
+  const { orderType, setOrderType, getItemCount } = useOrder();
   const [searchParams] = useSearchParams();
   const [view, setView] = useState<'home' | 'menu' | 'checkout'>(
     searchParams.get('checkout') === '1' || searchParams.get('retry') === '1' || searchParams.get('cancel') === '1' ? 'checkout' : 'home'
@@ -77,8 +32,7 @@ function MainApp() {
   const [bestSellerModal, setBestSellerModal] = useState<BestSellerPreset | null>(null);
   const [pendingBestSeller, setPendingBestSeller] = useState<BestSellerPreset | null>(null);
 
-  const stackContainerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: stackContainerRef, offset: ['start start', 'end end'] });
+  const { isOpen, label: hoursLabel } = useStoreOpen();
 
   useEffect(() => {
     if (searchParams.get('checkout') === '1' || searchParams.get('retry') === '1' || searchParams.get('cancel') === '1') {
@@ -111,6 +65,19 @@ function MainApp() {
   const handleSelectCategory = (categoryId?: string) => {
     if (categoryId) {
       setActiveCategory(categoryId);
+    }
+    if (!orderType) {
+      setShowOrderTypePopup(true);
+    } else {
+      setView('menu');
+    }
+  };
+
+  const handleStartOrder = (type?: OrderType) => {
+    if (type) {
+      setOrderType(type);
+      setView('menu');
+      return;
     }
     if (!orderType) {
       setShowOrderTypePopup(true);
@@ -172,10 +139,10 @@ function MainApp() {
           onClearLockedSize={() => setSelectedPizzaSize(null)}
           initialCategory={activeCategory}
         />
-        <NewCart 
-          isOpen={isCartOpen} 
-          onClose={() => setIsCartOpen(false)} 
-          onCheckout={handleCheckout} 
+        <NewCart
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          onCheckout={handleCheckout}
           onEditItem={(cat) => setActiveCategory(cat)}
         />
       </Suspense>
@@ -202,7 +169,7 @@ function MainApp() {
   }
 
   return (
-    <div className="min-h-screen bg-[#DDA463] antialiased">
+    <div className="min-h-screen bg-[#FFF8F0] antialiased text-[#3B2216]">
       {isAdmin && (
         <Link to="/admin/dashboard" className="fixed top-3 right-3 z-50">
           <button className="flex items-center gap-1.5 bg-stone-800/80 backdrop-blur text-white shadow-lg rounded-full px-3 py-1.5 text-xs font-semibold">
@@ -214,6 +181,8 @@ function MainApp() {
       <Suspense fallback={null}>
         <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
       </Suspense>
+
+      <FloatingGlassCart onOpenCart={() => setIsCartOpen(true)} />
 
       {showOrderTypePopup && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center">
@@ -270,61 +239,107 @@ function MainApp() {
         </div>
       )}
 
-      {/* STACKED CARD DECK — every major section is `position: sticky` with an increasing
-          z-index and a scroll-linked scale (Skiper UI "skiper16" stacked-cards principle),
-          so each one pins at the top and folds under the next as the user scrolls. */}
-      <div ref={stackContainerRef}>
-        {/* Card 0 — Hero */}
-        <StackSection i={0} progress={scrollYProgress} className="rounded-t-[2rem] overflow-hidden" style={{ height: '260px' }}>
+      {/* Main Page Content */}
+      <div className="mx-auto w-full max-w-[480px] px-3 py-3 space-y-5">
+        {/* Hero Banner */}
+        <div className="relative rounded-[2rem] overflow-hidden shadow-lg" style={{ height: '340px' }}>
           <img
             src="/store-front.jpg"
-            alt="Twin Pizza storefront"
+            alt="Devanture du restaurant Twin Pizza à Grand-Couronne"
+            width={1024}
+            height={637}
             className="absolute inset-0 w-full h-full object-cover blur-[1px] scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#4A3428]/80 via-[#4A3428]/65 to-[#4A3428]/85" />
 
-          <div className="relative z-10 flex flex-col items-center pt-7 pb-4">
+          <div className="relative z-10 flex flex-col items-center pt-7 pb-5 px-5">
             <div className="w-[60px] h-[60px] rounded-2xl bg-white/15 backdrop-blur-xl flex items-center justify-center mb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.15)]">
-              <img src="/favicon.png" alt="Twin Pizza" className="w-10 h-10 object-contain" />
+              <img src="/favicon.png" alt="" width={40} height={40} className="w-10 h-10 object-contain" />
             </div>
             <h1 className="text-[1.7rem] font-black tracking-tight text-white drop-shadow-sm leading-none">
               <span className="text-[#F5B041]">Twin</span> Pizza
             </h1>
             <p className="text-[12px] text-white/60 font-medium mt-1 tracking-wider uppercase">Grand-Couronne</p>
+
+            {/* Store Status */}
+            {isOpen !== null && (
+              <div
+                className={`mt-3 flex items-center gap-2 rounded-full pl-2.5 pr-3.5 py-1.5 backdrop-blur-md border ${
+                  isOpen ? 'bg-emerald-500/15 border-emerald-300/30' : 'bg-red-500/15 border-red-300/30'
+                }`}
+              >
+                <span className="relative flex w-2 h-2">
+                  {isOpen && <span className="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-75 animate-ping" />}
+                  <span className={`relative inline-flex w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                </span>
+                <span className="text-[12px] font-bold text-white leading-none">
+                  {isOpen ? 'Ouvert' : 'Fermé'}
+                  {hoursLabel && <span className="font-medium text-white/70"> · {hoursLabel}</span>}
+                </span>
+              </div>
+            )}
+
+            {/* Primary Call to Action */}
+            <button
+              onClick={() => handleStartOrder()}
+              className="mt-4 w-full max-w-[300px] flex items-center justify-center gap-2 h-[52px] rounded-2xl bg-[#F5B041] hover:bg-[#e8a232] active:scale-[0.98] text-[#3B2216] font-black text-[16px] tracking-tight shadow-[0_8px_24px_rgba(0,0,0,0.25)] transition-all"
+            >
+              <ShoppingBag className="w-[18px] h-[18px]" />
+              {getItemCount() > 0 ? 'Continuer ma commande' : 'Commander'}
+              <ArrowRight className="w-[18px] h-[18px]" />
+            </button>
+
+            {/* Order Type Shortcuts */}
+            <div className="mt-2.5 flex items-center gap-2">
+              {([
+                { type: 'emporter' as OrderType, label: 'Emporter', emoji: '🛍️' },
+                { type: 'livraison' as OrderType, label: 'Livraison', emoji: '🚗' },
+                { type: 'surplace' as OrderType, label: 'Sur Place', emoji: '🍽️' },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.type}
+                  onClick={() => handleStartOrder(opt.type)}
+                  className="flex items-center gap-1.5 rounded-full bg-white/12 hover:bg-white/20 active:scale-95 backdrop-blur-md border border-white/15 px-3 py-1.5 text-[11px] font-bold text-white/90 transition-all"
+                >
+                  <span className="text-[13px] leading-none">{opt.emoji}</span>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </StackSection>
+        </div>
 
-        {/* Card 1 — Top Ventes */}
-        <StackSection i={1} progress={scrollYProgress} className="bg-[#FFF8F0] rounded-t-[2rem] pt-6 pb-4">
+        {/* Top Ventes Carousel */}
+        <div className="pt-2 pb-1">
           <BestSellerSlider onSelect={handleBestSellerSelect} />
-        </StackSection>
+        </div>
 
-        {/* Card 2 — Nos Spécialités */}
-        <StackSection i={2} progress={scrollYProgress} className="mx-3 rounded-[1.75rem] bg-[#FDEEDD] p-5">
-          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3">
+        {/* Nos Spécialités Grid */}
+        <div className="pt-2">
+          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3 px-1">
             Nos Spécialités
           </h2>
           <CategoryCardGrid onSelectCategory={handleSelectCategory} />
-        </StackSection>
+        </div>
 
-        {/* Card 3 — Avis Clients */}
-        <StackSection i={3} progress={scrollYProgress} delay={80} className="mx-3 rounded-[1.75rem] bg-[#FCF3E1] py-5">
+        {/* Reviews */}
+        <div className="pt-2">
           <ReviewsSlider />
-        </StackSection>
+        </div>
 
-        {/* Card 4 — Notre Galerie (self-hides if admin hasn't added photos yet; owns its own card chrome) */}
-        <StackSection i={4} progress={scrollYProgress} delay={110} className="mx-3">
+        {/* Photo Gallery */}
+        <div className="pt-2">
           <GallerySlider />
-        </StackSection>
+        </div>
 
-        {/* Card 5 — Notre Restaurant (last layer, acts as the page footer) */}
-        <StackSection i={5} progress={scrollYProgress} delay={140} className="mx-3 rounded-[1.75rem] bg-[#F8E6D6] p-5 pb-8">
-          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-4">
+        {/* Notre Restaurant Info Card */}
+        <div className="rounded-[1.75rem] bg-white/80 backdrop-blur-sm p-5 shadow-sm space-y-4">
+          <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-2">
             Notre Restaurant
           </h2>
           <div className="space-y-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-[#FDF5EB] flex items-center justify-center flex-shrink-0">
                 <MapPin className="w-4.5 h-4.5 text-[#DB7F1E]" />
               </div>
               <div>
@@ -333,7 +348,7 @@ function MainApp() {
               </div>
             </div>
             <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-[#FDF5EB] flex items-center justify-center flex-shrink-0">
                 <Clock className="w-4.5 h-4.5 text-[#DB7F1E]" />
               </div>
               <div>
@@ -342,7 +357,7 @@ function MainApp() {
               </div>
             </div>
             <a href="tel:0232112613" className="flex items-center gap-3.5 group">
-              <div className="w-10 h-10 rounded-xl bg-white/60 group-hover:bg-white/85 flex items-center justify-center flex-shrink-0 transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-[#FDF5EB] group-hover:bg-[#F5E6D3] flex items-center justify-center flex-shrink-0 transition-colors">
                 <Phone className="w-4.5 h-4.5 text-[#DB7F1E]" />
               </div>
               <div>
@@ -351,7 +366,21 @@ function MainApp() {
               </div>
             </a>
           </div>
-        </StackSection>
+        </div>
+
+        {/* Legal Footer */}
+        <div className="pt-4 pb-12 text-center">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[11px] font-semibold text-[#3B2216]/70">
+            <Link to="/mentions-legales" className="hover:text-[#3B2216] transition-colors">Mentions légales</Link>
+            <span className="text-[#3B2216]/25">•</span>
+            <Link to="/confidentialite" className="hover:text-[#3B2216] transition-colors">Confidentialité</Link>
+            <span className="text-[#3B2216]/25">•</span>
+            <Link to="/cgv" className="hover:text-[#3B2216] transition-colors">CGV</Link>
+          </div>
+          <p className="mt-2.5 text-[10px] text-[#3B2216]/45">
+            © {new Date().getFullYear()} Twin Pizza — Grand-Couronne. Tous droits réservés.
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -364,3 +393,4 @@ export default function Index() {
     </OrderProvider>
   );
 }
+

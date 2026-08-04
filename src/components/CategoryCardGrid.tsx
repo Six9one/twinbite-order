@@ -17,17 +17,17 @@ const CATEGORIES: CategoryItem[] = [
   {
     id: 'pizzas',
     name: 'Pizzas',
-    image: '/cat_pizza_3d.png',
+    image: '/cat_pizza_3d.webp',
   },
   {
     id: 'soufflets',
     name: 'Soufflet',
-    image: '/cat_soufflet_3d.png',
+    image: '/cat_soufflet_3d.webp',
   },
   {
     id: 'makloub',
     name: 'Makloub',
-    image: '/cat_makloub_3d.png',
+    image: '/cat_makloub_3d.webp',
     extraClass: 'translate-x-1.5',
   },
   {
@@ -38,17 +38,17 @@ const CATEGORIES: CategoryItem[] = [
   {
     id: 'tacos',
     name: 'Tacos',
-    image: '/cat_tacos_3d.png',
+    image: '/cat_tacos_3d.webp',
   },
   {
     id: 'texmex',
     name: 'Tex-Mex',
-    image: '/cat_texmex_3d.png',
+    image: '/cat_texmex_3d.webp',
   },
   {
     id: 'milkshakes',
     name: 'Milkshakes',
-    image: '/cat_milkshake_3d.png',
+    image: '/cat_milkshake_3d.webp',
     // Source photo has a lot of empty margin + its own shadow baked in — zoom in
     // so the glass reads as large/centered as the other tiles, and skip the
     // drawn shadow since the photo already has one (that was the doubled-shadow bug).

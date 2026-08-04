@@ -89,6 +89,7 @@ export function StackedCarousel({
   const scrollProgress = useMotionValue(0);
   const startProgress = React.useRef(0);
   const isDraggingRef = React.useRef(false);
+  const hasMovedRef = React.useRef(false);
   const resumeAtRef = React.useRef(0);
   const [windowWidth, setWindowWidth] = React.useState(0);
   const total = items.length;
@@ -120,11 +121,15 @@ export function StackedCarousel({
 
   const handleDragStart = () => {
     isDraggingRef.current = true;
+    hasMovedRef.current = false;
     startProgress.current = scrollProgress.get();
   };
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     isDraggingRef.current = false;
+    if (Math.abs(info.offset.x) > 6 || Math.abs(info.offset.y) > 6) {
+      hasMovedRef.current = true;
+    }
     pauseAutoPlay();
     const dragDistance = info.offset.x;
     const velocity = info.velocity.x;
@@ -138,20 +143,27 @@ export function StackedCarousel({
 
   const handleTap = () => {
     pauseAutoPlay();
+    // Ignore tap if the user was actually dragging/swiping (movement > 6px)
+    if (hasMovedRef.current) {
+      hasMovedRef.current = false;
+      return;
+    }
     const nearest = ((Math.round(scrollProgress.get()) % total) + total) % total;
     onSelect?.(items[nearest], nearest);
   };
 
   return (
     <div className={cn('relative w-full flex items-center justify-center select-none', className)}>
-      {/* Transparent drag surface — onTap only fires for genuine taps (Framer
-          Motion suppresses it once the pointer has moved past its drag threshold). */}
+      {/* Transparent drag surface — onTap only fires for genuine taps */}
       <motion.div
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.15}
         onDragStart={handleDragStart}
         onDrag={(_, info) => {
+          if (Math.abs(info.offset.x) > 6 || Math.abs(info.offset.y) > 6) {
+            hasMovedRef.current = true;
+          }
           const delta = -info.delta.x / config.sensitivity;
           scrollProgress.set(scrollProgress.get() + delta);
         }}

@@ -2,13 +2,25 @@
 <html lang="fr">
 
 <head>
-  <!-- Google tag (gtag.js) - Google Analytics 4 -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y69XY19S8J"></script>
+  <!-- Google Analytics 4 — RGPD/CNIL: nothing loads until the visitor has explicitly
+       accepted. CookieConsent.tsx calls window.enableAnalytics() on "Accepter".
+       (Previously gtag.js fired unconditionally on every page load.) -->
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-Y69XY19S8J');
+    window.enableAnalytics = function () {
+      if (window.__gaLoaded) return;
+      window.__gaLoaded = true;
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id=G-Y69XY19S8J';
+      document.head.appendChild(s);
+      gtag('js', new Date());
+      gtag('config', 'G-Y69XY19S8J', { anonymize_ip: true });
+    };
+    try {
+      if (localStorage.getItem('cookie_consent') === 'accepted') window.enableAnalytics();
+    } catch (e) {}
   </script>
 
   <meta charset="UTF-8" />
@@ -27,7 +39,9 @@
 
   <!-- Geo Tags for Local SEO -->
   <meta name="geo.region" content="FR" />
-  <meta name="geo.placename" content="France" />
+  <meta name="geo.placename" content="Grand-Couronne, Normandie, France" />
+  <meta name="geo.position" content="49.3567;1.0089" />
+  <meta name="ICBM" content="49.3567, 1.0089" />
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="restaurant" />
@@ -35,7 +49,10 @@
   <meta property="og:title" content="Twin Pizza - Pizzeria & Fast Food | Commande en ligne" />
   <meta property="og:description"
     content="Votre pizzeria à emporter, livraison et sur place. Pizzas, soufflets, makloub, tacos et sandwiches. Commandez en ligne!" />
-  <meta property="og:image" content="https://twinpizza.fr/favicon.png" />
+  <meta property="og:image" content="https://twinpizza.fr/og-image.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Devanture du restaurant Twin Pizza à Grand-Couronne" />
   <meta property="og:locale" content="fr_FR" />
   <meta property="og:site_name" content="Twin Pizza" />
 
@@ -45,7 +62,7 @@
   <meta property="twitter:title" content="Twin Pizza - Pizzeria & Fast Food" />
   <meta property="twitter:description"
     content="Commandez vos pizzas, soufflets, makloub, tacos et sandwiches. À emporter, livraison ou sur place." />
-  <meta property="twitter:image" content="https://twinpizza.fr/favicon.png" />
+  <meta property="twitter:image" content="https://twinpizza.fr/og-image.jpg" />
 
   <!-- Canonical URL -->
   <link rel="canonical" href="https://twinpizza.fr/" />
@@ -68,6 +85,9 @@
   <noscript>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&display=swap">
   </noscript>
+
+  <!-- Preload the hero photo — it is the LCP element on the home page -->
+  <link rel="preload" as="image" href="/store-front.jpg" fetchpriority="high">
 
   <!-- DNS Prefetch for Supabase -->
   <link rel="dns-prefetch" href="https://hsylnrzxeyqxczdalurj.supabase.co">
@@ -101,9 +121,21 @@
     "openingHoursSpecification": [
       {
         "@type": "OpeningHoursSpecification",
-        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
         "opens": "11:00",
-        "closes": "23:00"
+        "closes": "15:00"
+      },
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        "opens": "17:30",
+        "closes": "23:59"
+      },
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": "Sunday",
+        "opens": "00:00",
+        "closes": "00:00"
       }
     ],
     "sameAs": [],
@@ -124,8 +156,10 @@
     },
     "aggregateRating": {
       "@type": "AggregateRating",
-      "ratingValue": "4.5",
-      "reviewCount": "100"
+      "ratingValue": "4.9",
+      "reviewCount": "131",
+      "bestRating": "5",
+      "worstRating": "1"
     }
   }
   </script>

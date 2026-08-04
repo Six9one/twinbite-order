@@ -100,9 +100,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const { data: paymentSettings } = usePaymentSettings();
 
   // Wizard Steps: 1 ('info') | 2 ('payment') | 'success'
-  const [step, setStep] = useState<'info' | 'payment' | 'success'>(
-    localStorage.getItem('tp_customer_name') && localStorage.getItem('tp_customer_phone') ? 'payment' : 'info'
-  );
+  const [step, setStep] = useState<'info' | 'payment' | 'success'>('info');
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: localStorage.getItem('tp_customer_name') || '',
@@ -564,10 +562,10 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               <ArrowLeft className="w-5 h-5" />
             </Button>
 
-            <h1 className="text-xl font-bold tracking-tight">Checkout</h1>
+            <h1 className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-white">Finaliser ma commande</h1>
             
-            <span className="text-xs font-semibold text-stone-400">
-              Step {step === 'info' ? 1 : 2} of 2
+            <span className="text-xs font-bold text-[#DB7F1E]">
+              Étape {step === 'info' ? 1 : 2} sur 2
             </span>
           </div>
 
@@ -579,7 +577,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 className="h-1.5 rounded-full bg-stone-200 dark:bg-stone-800 overflow-hidden"
               >
                 <div
-                  className={`h-full bg-brand-600 transition-all duration-500 ease-out ${
+                  className={`h-full bg-[#DB7F1E] transition-all duration-500 ease-out ${
                     (step === 'info' ? 1 : 2) >= sIndex ? 'w-full' : 'w-0'
                   }`}
                 />
@@ -620,17 +618,62 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                     key={type.id}
                     type="button"
                     onClick={() => setOrderType(type.id as any)}
-                    className={`py-1 px-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1 ${
+                    className={`py-1.5 px-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
                       active
-                        ? 'bg-white dark:bg-stone-800 text-brand-600 shadow-sm'
+                        ? 'bg-white dark:bg-stone-800 text-[#DB7F1E] shadow-sm'
                         : 'text-stone-500 dark:text-stone-400 hover:text-stone-900'
                     }`}
                   >
-                    <Icon className="w-3 h-3" />
+                    <Icon className="w-3.5 h-3.5" />
                     <span>{type.label}</span>
                   </button>
                 );
               })}
+            </div>
+
+            {/* Order Items Summary Card */}
+            <div className="rounded-2xl bg-white dark:bg-stone-900 p-4 border border-stone-100 dark:border-stone-800 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="w-4 h-4 text-[#DB7F1E]" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-stone-500">Votre commande</span>
+                </div>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                  {cart.reduce((sum, i) => sum + i.quantity, 0)} articles
+                </span>
+              </div>
+
+              <div className="space-y-2 pt-1 max-h-48 overflow-y-auto divide-y divide-stone-100 dark:divide-stone-800">
+                {cart.map((cartItem, idx) => (
+                  <div key={idx} className="pt-2 first:pt-0 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                      <span className="w-5 h-5 rounded-md bg-amber-50 dark:bg-stone-800 text-[#DB7F1E] flex items-center justify-center font-bold text-[11px] flex-shrink-0">
+                        {cartItem.quantity}x
+                      </span>
+                      <span className="font-semibold text-stone-800 dark:text-stone-200 truncate">
+                        {cartItem.item.name}
+                      </span>
+                    </div>
+                    <span className="font-bold text-stone-900 dark:text-white flex-shrink-0">
+                      {((cartItem.calculatedPrice || cartItem.item.price) * cartItem.quantity).toFixed(2)} €
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex justify-between items-center text-xs">
+                <span className="text-stone-500 font-medium">Produits</span>
+                <span className="font-bold text-stone-800 dark:text-stone-200">{productsSubtotal.toFixed(2)} €</span>
+              </div>
+
+              {isDelivery && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-stone-500 font-medium">Frais de livraison</span>
+                  <span className="font-bold text-stone-800 dark:text-stone-200">
+                    {deliveryFee > 0 ? `${deliveryFee.toFixed(2)} €` : <span className="text-emerald-600 font-extrabold">GRATUIT</span>}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Where to? Section for Livraison */}
@@ -680,6 +723,14 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
             {/* Customer Info Form */}
             <div className="space-y-4 pt-2">
+              {/* Pre-filled info notice for returning customers */}
+              {localStorage.getItem('tp_customer_name') && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-2 shadow-xs">
+                  <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <span>⚡ Vos coordonnées ont été pré-remplies pour commander plus vite !</span>
+                </div>
+              )}
+
               <h2 className="text-lg font-bold tracking-tight">Coordonnées client</h2>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -933,22 +984,22 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       {/* ==================================================== */}
       {/* STICKY BOTTOM ACTION BAR */}
       {/* ==================================================== */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-brand-100/60 dark:border-stone-800 p-4 z-50 shadow-2xl">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-amber-100/60 dark:border-stone-800 p-4 z-50 shadow-2xl">
         <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
           
-          <div>
+          <div className="flex-shrink-0 whitespace-nowrap">
             <span className="text-xs text-stone-400 block font-medium">Total</span>
             <span className="text-xl font-extrabold text-stone-900 dark:text-white">
               {ttc.toFixed(2)} €
             </span>
           </div>
 
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {step === 'info' && (
               <Button
                 onClick={() => validateInfo() && setStep('payment')}
                 disabled={!isCartValid}
-                className="w-full h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-base shadow-lg shadow-brand-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full h-14 rounded-2xl bg-[#F5B041] hover:bg-[#e8a232] text-[#3B2216] font-black text-base shadow-lg shadow-amber-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <span>Continuer</span>
                 <ChevronRight className="w-5 h-5" />
@@ -959,16 +1010,16 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               <Button
                 onClick={handleConfirmOrder}
                 disabled={isProcessing || orderSubmitted || !isCartValid}
-                className="w-full h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-base shadow-lg shadow-brand-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full h-14 rounded-2xl bg-[#F5B041] hover:bg-[#e8a232] text-[#3B2216] font-black text-base shadow-lg shadow-amber-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 {isProcessing ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin text-[#3B2216]" />
                     <span>Envoi en cours...</span>
                   </>
                 ) : (
                   <>
-                    <Lock className="w-4 h-4" />
+                    <Lock className="w-4 h-4 text-[#3B2216]" />
                     <span>Valider & Payer ({ttc.toFixed(2)} €)</span>
                   </>
                 )}

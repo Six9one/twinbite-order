@@ -15,6 +15,8 @@ import { VirtualKeyboard } from "@/components/VirtualKeyboard";
 // PWA Components
 import { PWAInstallPrompt, OfflineIndicator } from "@/components/PWAComponents";
 import { UpdateChecker } from "@/components/UpdateChecker";
+// RGPD/CNIL consent gate — GA4 in index.html now waits for this banner before loading.
+import { CookieConsent } from "@/components/CookieConsent";
 
 // Main Landing Page (loaded directly for instant FCP)
 import Index from "./pages/Index";
@@ -116,6 +118,7 @@ const App = () => {
                                         </Routes>
                                     </Suspense>
                                     <PWAInstallPrompt />
+                                    <CookieConsent />
                                     <VirtualKeyboard />
                                 </BrowserRouter>
                             </VirtualKeyboardProvider>

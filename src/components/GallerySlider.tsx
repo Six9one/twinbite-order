@@ -48,76 +48,90 @@ export function GallerySlider() {
   }
 
   return (
-    <section className="rounded-[1.75rem] bg-[#FDEEDD] shadow-[0_2px_14px_rgba(60,30,10,0.05)] py-5">
-      <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-3 px-5">
+    <section className="rounded-[1.75rem] bg-[#FDEEDD] shadow-sm py-4 px-3">
+      <h2 className="text-[1.05rem] font-extrabold text-[#3B2216] tracking-tight mb-2.5 px-2 text-center">
         Notre Galerie
       </h2>
-      <div className="relative w-full max-w-5xl mx-auto px-2">
-      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl aspect-[4/3] sm:aspect-[16/9] md:aspect-[21/9] shadow-xl">
-        {images.map((image, index) => (
-          <div
-            key={image.id}
-            className={`absolute inset-0 transition-all duration-700 ease-out ${
-              index === currentIndex
-                ? 'opacity-100 translate-x-0 scale-100'
-                : index < currentIndex
-                ? 'opacity-0 -translate-x-full scale-95'
-                : 'opacity-0 translate-x-full scale-95'
-            }`}
-          >
-            <OptimizedImage
-              src={image.image_url}
-              alt={image.title || 'Photo Twin Pizza'}
-              eager={index === 0}
-              className="w-full h-full object-cover"
-              containerClassName="w-full h-full"
-              showSkeleton={true}
-            />
-            {image.title && (
-              <>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 text-white">
-                  <p className="text-sm sm:text-base font-semibold">{image.title}</p>
+      
+      <div className="relative w-full max-w-[260px] sm:max-w-[290px] mx-auto">
+        {/* Compact Square Gallery Frame with rounded corners and no borders */}
+        <div className="relative w-full aspect-square overflow-hidden rounded-[1.5rem] bg-stone-900/90 shadow-sm">
+          {images.map((image, index) => (
+            <div
+              key={image.id}
+              className={`absolute inset-0 transition-all duration-500 ease-in-out ${
+                index === currentIndex
+                  ? 'opacity-100 scale-100 z-10 pointer-events-auto'
+                  : 'opacity-0 scale-95 z-0 pointer-events-none'
+              }`}
+            >
+              {/* Ambient Blurred Background */}
+              <img
+                src={image.image_url}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-125 select-none pointer-events-none"
+              />
+
+              {/* Main Crisp Image - rounded & fitted without borders */}
+              <div className="relative z-10 w-full h-full flex items-center justify-center p-1">
+                <OptimizedImage
+                  src={image.image_url}
+                  alt={image.title || 'Photo Twin Pizza'}
+                  eager={index === 0}
+                  className="w-full h-full object-contain rounded-xl"
+                  containerClassName="w-full h-full flex items-center justify-center"
+                  showSkeleton={true}
+                />
+              </div>
+
+              {/* Title overlay */}
+              {image.title && (
+                <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 pt-5 text-white text-center">
+                  <p className="text-[11px] sm:text-xs font-semibold tracking-wide">{image.title}</p>
                 </div>
-              </>
-            )}
-          </div>
-        ))}
-      </div>
+              )}
+            </div>
+          ))}
 
-      {images.length > 1 && (
-        <>
-          <button
-            onClick={goPrev}
-            aria-label="Photo précédente"
-            className="absolute left-0 sm:left-2 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-all hover:scale-110 shadow-lg"
-          >
-            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-          <button
-            onClick={goNext}
-            aria-label="Photo suivante"
-            className="absolute right-0 sm:right-2 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-all hover:scale-110 shadow-lg"
-          >
-            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
+          {/* Navigation Controls - Borderless buttons */}
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={goPrev}
+                aria-label="Photo précédente"
+                className="absolute left-1.5 top-1/2 -translate-y-1/2 z-30 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-sm"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={goNext}
+                aria-label="Photo suivante"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 z-30 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-sm"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </>
+          )}
+        </div>
 
-          <div className="flex justify-center gap-2 mt-4">
+        {/* Slide Indicator Dots */}
+        {images.length > 1 && (
+          <div className="flex justify-center items-center gap-1.5 mt-2.5">
             {images.map((_, index) => (
               <button
                 key={index}
                 onClick={() => goTo(index)}
                 aria-label={`Aller à la photo ${index + 1}`}
-                className={`h-2 sm:h-2.5 rounded-full transition-all duration-300 ${
+                className={`h-1.5 rounded-full transition-all duration-300 ${
                   index === currentIndex
-                    ? 'bg-primary w-6 sm:w-8'
-                    : 'bg-muted w-2 sm:w-2.5 hover:bg-muted-foreground'
+                    ? 'bg-[#DB7F1E] w-4'
+                    : 'bg-[#3B2216]/20 w-1.5 hover:bg-[#3B2216]/40'
                 }`}
               />
             ))}
           </div>
-        </>
-      )}
+        )}
       </div>
     </section>
   );

@@ -241,7 +241,9 @@ serve(async (req) => {
     }
 
     const orderNumber = params.OrderID;
-    const ipcStatus = String(params.IPCStatus ?? "");
+    // IPCPurchaseNotify carries "Status", not "IPCStatus" — reading only the latter made every
+    // successful payment look like a failure. Both are accepted so either shape works.
+    const ipcStatus = String(params.IPCStatus ?? params.Status ?? params.status ?? "");
     const transactionId = params.IPC_Trn_ID || params.TransactionID || params.RequestID || `MYPOS-${Date.now()}`;
     const paymentAmount = params.Amount ? parseFloat(params.Amount) : null;
     const paymentCurrency = params.Currency || "EUR";
