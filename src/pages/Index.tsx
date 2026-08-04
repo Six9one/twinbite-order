@@ -2,7 +2,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { OrderType } from '@/types/order';
-import { Settings, MapPin, Clock, Phone, X, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Settings, MapPin, Clock, Phone, X, ShoppingBag, ArrowRight, Navigation } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 import { CategoryMenu } from '@/components/CategoryMenu';
@@ -337,33 +337,56 @@ function MainApp() {
           <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-2">
             Notre Restaurant
           </h2>
-          <div className="space-y-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-[#FDF5EB] flex items-center justify-center flex-shrink-0">
-                <MapPin className="w-4.5 h-4.5 text-[#DB7F1E]" />
+          <div className="space-y-3">
+            {/* Address with Google Maps Navigation Button */}
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=60+Rue+Georges+Clemenceau+76530+Grand-Couronne"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between gap-3 p-2.5 rounded-2xl hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 transition-all group"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-[#FDF5EB] flex items-center justify-center flex-shrink-0">
+                  <MapPin className="w-4.5 h-4.5 text-[#DB7F1E]" />
+                </div>
+                <div>
+                  <p className="font-semibold text-[13px] text-[#3B2216]">60 Rue Georges Clemenceau</p>
+                  <p className="text-xs text-[#8C7A6B] mt-0.5">76530 Grand-Couronne</p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-[13px] text-[#3B2216]">60 Rue Georges Clemenceau</p>
-                <p className="text-xs text-[#8C7A6B] mt-0.5">76530 Grand-Couronne</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3.5">
+              <span className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-[#F5B041] text-[#3B2216] font-extrabold text-xs flex items-center gap-1 shadow-sm group-hover:scale-105 transition-all">
+                <Navigation className="w-3.5 h-3.5 fill-[#3B2216]" /> Y aller
+              </span>
+            </a>
+
+            {/* Opening Hours (Mardi - Dimanche) */}
+            <div className="flex items-center gap-3.5 p-2.5">
               <div className="w-10 h-10 rounded-xl bg-[#FDF5EB] flex items-center justify-center flex-shrink-0">
                 <Clock className="w-4.5 h-4.5 text-[#DB7F1E]" />
               </div>
               <div>
-                <p className="font-semibold text-[13px] text-[#3B2216]">Lun – Sam</p>
+                <p className="font-semibold text-[13px] text-[#3B2216]">Mardi – Dimanche</p>
                 <p className="text-xs text-[#8C7A6B] mt-0.5">11h00 – 15h00 · 17h30 – 00h00</p>
               </div>
             </div>
-            <a href="tel:0232112613" className="flex items-center gap-3.5 group">
-              <div className="w-10 h-10 rounded-xl bg-[#FDF5EB] group-hover:bg-[#F5E6D3] flex items-center justify-center flex-shrink-0 transition-colors">
-                <Phone className="w-4.5 h-4.5 text-[#DB7F1E]" />
+
+            {/* Green Call Button */}
+            <a
+              href="tel:0232112613"
+              className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white shadow-md shadow-emerald-600/20 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <Phone className="w-5 h-5 text-white animate-bounce-slow" />
+                </div>
+                <div>
+                  <p className="font-black text-sm text-white tracking-wide">02 32 11 26 13</p>
+                  <p className="text-[11px] text-emerald-100 mt-0.5">Appeler pour commander</p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-[13px] text-[#3B2216] group-hover:text-[#DB7F1E] transition-colors">02 32 11 26 13</p>
-                <p className="text-xs text-[#8C7A6B] mt-0.5">Appeler pour commander</p>
-              </div>
+              <span className="px-3.5 py-1.5 rounded-xl bg-white/20 group-hover:bg-white/30 font-black text-xs uppercase tracking-wider text-white backdrop-blur-sm transition-all">
+                Appeler
+              </span>
             </a>
           </div>
         </div>
