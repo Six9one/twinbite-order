@@ -599,6 +599,8 @@ async function formatDynamicTicket(order, template) {
         RIGHT: ESC + 'a' + '\x02',
         BOLD_ON: ESC + 'E' + '\x01',
         BOLD_OFF: ESC + 'E' + '\x00',
+        INVERT_ON: GS + 'B' + '\x01',
+        INVERT_OFF: GS + 'B' + '\x00',
         DOUBLE_HEIGHT: GS + '!' + '\x01',
         DOUBLE_WIDTH: GS + '!' + '\x10',
         DOUBLE_SIZE: GS + '!' + '\x11',
@@ -630,11 +632,12 @@ async function formatDynamicTicket(order, template) {
 
         cmd += item.bold ? ESCPOS_LOCAL.BOLD_ON : ESCPOS_LOCAL.BOLD_OFF;
         cmd += item.underline ? ESCPOS_LOCAL.UNDERLINE_ON : ESCPOS_LOCAL.UNDERLINE_OFF;
+        cmd += item.invert ? ESCPOS_LOCAL.INVERT_ON : ESCPOS_LOCAL.INVERT_OFF;
 
         return cmd;
     };
 
-    const RESET_STYLE = ESCPOS_LOCAL.FONT_A + ESCPOS_LOCAL.NORMAL_SIZE + ESCPOS_LOCAL.BOLD_OFF + ESCPOS_LOCAL.UNDERLINE_OFF;
+    const RESET_STYLE = ESCPOS_LOCAL.FONT_A + ESCPOS_LOCAL.NORMAL_SIZE + ESCPOS_LOCAL.BOLD_OFF + ESCPOS_LOCAL.UNDERLINE_OFF + ESCPOS_LOCAL.INVERT_OFF;
 
     const builder = new TicketBufferBuilder();
     builder.addText(ESCPOS_LOCAL.INIT);
@@ -822,11 +825,10 @@ async function formatDynamicTicket(order, template) {
                 const isPaidOnline = order.is_paid || ['en_ligne', 'mypos', 'apple_pay', 'google_pay', 'weero'].includes(payMethod);
                 
                 if (isPaidOnline) {
-                    visualItems.push({ text: '\n==========================================\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
-                    visualItems.push({ text: '[ PAID - PAYÉ EN LIGNE ]\n', align: 'center', bold: true, fontSize: 'double_size', fontType: 'A' });
-                    visualItems.push({ text: 'PAIEMENT VALIDÉ (MYPOS / APPLE PAY)\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
-                    visualItems.push({ text: 'NE PAS RE-FAIRE PAYER LE CLIENT\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
-                    visualItems.push({ text: '==========================================\n\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: '\n', align: 'center', bold: false, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: '               PAYÉ               \n', align: 'center', bold: true, invert: true, fontSize: 'double_size', fontType: 'A' });
+                    visualItems.push({ text: '       PAIEMENT EN LIGNE VALIDÉ    \n', align: 'center', bold: true, invert: true, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: 'NE PAS RE-FAIRE PAYER LE CLIENT\n\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
                 } else {
                     const payLabels = { 'cb': 'CB / TPE', 'especes': 'ESPÈCES' };
                     const payText = (payLabels[payMethod] || payMethod || 'EN CAISSE').toUpperCase();

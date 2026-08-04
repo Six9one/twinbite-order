@@ -4032,6 +4032,43 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
 
 function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | null; onClose: () => void }) {
   const [sendingReviews, setSendingReviews] = useState(false);
+  const [clientCount, setClientCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function loadClientCount() {
+      try {
+        const { data: orders } = await supabase
+          .from('orders')
+          .select('customer_phone')
+          .gte('created_at', '2026-07-22T00:00:00Z');
+
+        if (orders) {
+          const testPhones = ['0232112613', '0000000000'];
+          const uniquePhones = new Set(
+            orders
+              .map((o: any) => (o.customer_phone ? o.customer_phone.replace(/[^0-9]/g, '') : ''))
+              .filter((p: string) => p.length >= 9 && !testPhones.includes(p))
+          );
+          setClientCount(uniquePhones.size);
+        }
+      } catch (e) {
+        console.error('Error counting clients:', e);
+      }
+    }
+    loadClientCount();
+  }, []);
+
+  // Trigger auto-send ONCE upon QR scan / connection
+  useEffect(() => {
+    if (status === 'connected') {
+      const alreadySent = localStorage.getItem('hasAutoSentJuly22Reviews');
+      if (alreadySent !== 'true') {
+        localStorage.setItem('hasAutoSentJuly22Reviews', 'true');
+        toast.info("🚀 WhatsApp connecté ! Lancement automatique de l'envoi des avis...");
+        handleSendPastReviews();
+      }
+    }
+  }, [status]);
 
   const handleSendPastReviews = async () => {
     setSendingReviews(true);
@@ -4048,15 +4085,28 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
         return;
       }
 
+      const testPhones = ['0232112613', '0000000000'];
       const clientsMap = new Map();
       orders.forEach((o: any) => {
         if (!o.customer_phone) return;
+        if (o.customer_name && o.customer_name.toLowerCase().includes('[test]')) return;
         const clean = o.customer_phone.replace(/[^0-9]/g, '');
-        if (clean.length < 9) return;
+        if (clean.length < 9 || testPhones.includes(clean)) return;
         if (!clientsMap.has(clean)) {
           clientsMap.set(clean, { phone: o.customer_phone, name: o.customer_name, order: o });
         }
       });
+
+      // Always include preview number for testing
+      const previewPhone = '0769116301';
+      const cleanPreview = previewPhone.replace(/[^0-9]/g, '');
+      if (!clientsMap.has(cleanPreview)) {
+        clientsMap.set(cleanPreview, {
+          phone: previewPhone,
+          name: 'Aperçu',
+          order: { order_number: 'TEST', created_at: new Date().toISOString(), items: [{ name: 'Pizza Biggy' }] }
+        });
+      }
 
       const targets = Array.from(clientsMap.values());
       let sentCount = 0;
@@ -4068,11 +4118,44 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
         const firstName = (!rawName || rawName.startsWith('[POS]')) ? '' : rawName.split(/\s+/)[0];
         const hello = firstName ? ` ${firstName}` : '';
 
-        let msg = `Bonjour${hello} ! 😊\n\n`;
-        msg += `Merci d'être venu(e) chez *Twin Pizza* récemment ! 🍕\n\n`;
-        msg += `Votre avis compte énormément pour notre équipe. Si vous avez apprécié votre repas, pourriez-vous nous laisser une note ou un petit mot ⭐ ?\n\n`;
-        msg += `👉 *Donner mon avis* : ${reviewLink}\n\n`;
-        msg += `Un grand merci pour votre soutien ! 🙏 *Twin Pizza*`;
+        const orderNum = target.order?.order_number ? `#${target.order.order_number}` : '';
+        let pizzaNames = '';
+        if (target.order && target.order.items && Array.isArray(target.order.items) && target.order.items.length > 0) {
+          const names = target.order.items
+            .map((i: any) => {
+              const rawName = (i.name || i.item?.name || '').trim();
+              if (!rawName) return '';
+              const category = (i.category || i.item?.category || '').toLowerCase();
+              const lowerName = rawName.toLowerCase();
+              if (/^(pizza|soufflé|souffle|tacos|sandwich|burgers?|menu|panini|salade|tex-mex)/i.test(rawName)) {
+                return rawName;
+              }
+              if (category.includes('pizza') || category === 'pizzas' || ['biggy', 'chèvre', 'chevre', 'royale', 'reine', '4 fromages', 'quatre fromages', 'normande', 'orientale', 'campagnarde', 'hawaienne', 'calzone', 'buffalo', 'senior', 'mega', 'carnivore', 'savoyarde', 'kebab', 'tartiflette', 'mexicaine', 'barbecue', 'bbq'].some(k => lowerName.includes(k))) {
+                return `Pizza ${rawName}`;
+              }
+              if (category.includes('souffle') || category.includes('soufflé')) {
+                return `Soufflé ${rawName}`;
+              }
+              if (category.includes('tacos')) {
+                return `Tacos ${rawName}`;
+              }
+              return rawName;
+            })
+            .filter((n: string) => Boolean(n));
+          pizzaNames = names.join(', ');
+        }
+        const orderDetail = [orderNum, pizzaNames].filter(Boolean).join(' - ');
+        const orderInfoText = orderDetail ? ` (${orderDetail})` : '';
+        const orderDateStr = target.order?.created_at
+          ? new Date(target.order.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+          : '';
+        const dateText = orderDateStr ? ` du ${orderDateStr}` : '';
+
+        let msg = `Bonjour${hello} ! 🍕\n\n`;
+        msg += `Merci pour votre commande${orderInfoText}${dateText} chez *Twin Pizza* ! 😋\n`;
+        msg += `Si vous vous êtes régalé(e), un petit avis nous ferait très plaisir ⭐ :\n`;
+        msg += `👉 ${reviewLink}\n\n`;
+        msg += `Merci et à très bientôt ! 🙏`;
 
         if (typeof window !== 'undefined' && (window as any).twinHub) {
           try {
@@ -4084,7 +4167,7 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
         }
       }
 
-      toast.success(`✅ Message d'avis envoyé à ${sentCount} client(s) !`);
+      toast.success(`✅ Message d'avis envoyé avec succès à ${sentCount} client(s) !`);
     } catch (e: any) {
       toast.error('Erreur lors de l\'envoi des avis: ' + e.message);
     } finally {
@@ -4112,7 +4195,7 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
               {isConnected ? '🟢 WhatsApp Connecté' : (isQr ? '📱 Scannez le QR Code' : '🔴 Déconnecté')}
             </div>
             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-              {isConnected ? 'Les confirmations et avis sont envoyés en direct aux clients.' : 'Scannez le QR code ci-dessous avec WhatsApp pour connecter le bot.'}
+              {isConnected ? 'Les confirmations et avis (40 min) sont envoyés en direct aux clients.' : 'Scannez le QR code ci-dessous avec WhatsApp pour connecter le bot.'}
             </div>
           </div>
         </div>
@@ -4146,7 +4229,9 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
               gap: 8
             }}
           >
-            {sendingReviews ? '⏳ Envoi des avis en cours...' : '⭐ Envoyer l\'Avis Google aux 11 Clients du 22 au 25 Juillet'}
+            {sendingReviews
+              ? '⏳ Envoi des avis en cours...'
+              : `⭐ Envoyer l'Avis Google aux ${clientCount ?? 'tous les'} Clients (Du 22 Juillet au 4 Août)`}
           </button>
         </div>
       </div>

@@ -52,6 +52,8 @@ const ESCPOS = {
     RIGHT: ESC + 'a' + '\x02',          // Right alignment
     BOLD_ON: ESC + 'E' + '\x01',        // Bold on
     BOLD_OFF: ESC + 'E' + '\x00',       // Bold off
+    INVERT_ON: GS + 'B' + '\x01',       // Black background with white text
+    INVERT_OFF: GS + 'B' + '\x00',      // Normal background
     DOUBLE_HEIGHT: GS + '!' + '\x10',   // Double height
     DOUBLE_WIDTH: GS + '!' + '\x20',    // Double width
     DOUBLE_SIZE: GS + '!' + '\x30',     // Double height + width
@@ -257,8 +259,14 @@ function formatOrderForPrint(order: OrderData, ticketSettings: any): string {
     const payment = paymentLabels[order.payment_method] || { label: order.payment_method, paid: false };
 
     if (payment.paid) {
+        ticket += ESCPOS.CENTER;
+        ticket += ESCPOS.INVERT_ON;
         ticket += ESCPOS.BOLD_ON;
-        ticket += '*** COMMANDE PAYÉE ***\n';
+        ticket += ESCPOS.DOUBLE_SIZE;
+        ticket += '        PAYÉ        \n';
+        ticket += ESCPOS.NORMAL_SIZE;
+        ticket += '    PAYÉ EN LIGNE    \n';
+        ticket += ESCPOS.INVERT_OFF;
         ticket += ESCPOS.BOLD_OFF;
     } else {
         ticket += ESCPOS.DOUBLE_HEIGHT;

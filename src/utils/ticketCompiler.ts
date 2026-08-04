@@ -149,9 +149,17 @@ function buildSectionHtml(section: any, template: any, orderData: any): string {
       break;
     }
     case 'payment': {
-      const payLabel = orderData.payment_method_raw === 'en_ligne' ? '✅ PAYÉ EN LIGNE' :
-                       orderData.payment_method_raw === 'cb' ? '💳 CB' : '💵 ESPÈCES';
-      content = `<div style="${sectionStyle}">Règlement: ${payLabel}</div>`;
+      const isPaidOnline = orderData.payment_method_raw === 'en_ligne';
+      if (isPaidOnline) {
+        content = `<div style="${sectionStyle}">
+          <div style="background-color: #000; color: #fff; text-align: center; padding: 6px; font-size: 18px; font-weight: bold; margin: 4px 0; letter-spacing: 2px;">
+            PAYÉ EN LIGNE
+          </div>
+        </div>`;
+      } else {
+        const payLabel = orderData.payment_method_raw === 'cb' ? '💳 CB' : '💵 ESPÈCES';
+        content = `<div style="${sectionStyle}">Règlement: ${payLabel}</div>`;
+      }
       break;
     }
     case 'qrcode': {
