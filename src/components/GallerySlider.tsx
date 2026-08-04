@@ -82,7 +82,7 @@ export function GallerySlider() {
       <div className="relative w-full max-w-[420px] mx-auto px-1">
         {/* Fast Smooth Horizontal Sliding Gallery Frame */}
         <div
-          className="relative w-full aspect-[4/3] overflow-hidden rounded-2xl bg-stone-900 shadow-md select-none touch-pan-y"
+          className="relative w-full aspect-[4/3] overflow-hidden rounded-2xl bg-[#F7E7D5] shadow-inner select-none touch-pan-y border border-[#3B2216]/5"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -92,17 +92,17 @@ export function GallerySlider() {
             style={{ transform: `translateX(-${currentIndex * 100}%)` }}
           >
             {images.map((image, index) => (
-              <div key={image.id} className="relative w-full h-full flex-shrink-0">
+              <div key={image.id} className="relative w-full h-full flex-shrink-0 flex items-center justify-center p-2 bg-[#F7E7D5]">
                 <OptimizedImage
                   src={image.image_url}
                   alt={image.title || 'Photo Twin Pizza'}
                   eager={index === 0}
-                  className="w-full h-full object-cover object-center"
-                  containerClassName="w-full h-full"
+                  className="w-full h-full object-contain rounded-xl drop-shadow-sm"
+                  containerClassName="w-full h-full flex items-center justify-center"
                   showSkeleton={true}
                 />
                 {image.title && (
-                  <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/85 via-black/35 to-transparent p-3 pt-6 text-white text-center">
+                  <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-3 pt-6 text-white text-center rounded-b-2xl">
                     <p className="text-xs font-semibold tracking-wide">{image.title}</p>
                   </div>
                 )}
@@ -116,14 +116,14 @@ export function GallerySlider() {
               <button
                 onClick={goPrev}
                 aria-label="Photo précédente"
-                className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-black/35 hover:bg-black/65 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-sm"
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-stone-900/40 hover:bg-stone-900/70 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-sm"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={goNext}
                 aria-label="Photo suivante"
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-black/35 hover:bg-black/65 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-stone-900/40 hover:bg-stone-900/70 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-sm"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
