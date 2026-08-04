@@ -277,7 +277,7 @@ async function initWhatsApp() {
 
     whatsappClient = makeWASocket({
       auth: state,
-      browser: ['Twin Pizza', 'Desktop', '1.0.0'],
+      browser: ['Ubuntu', 'Chrome', '124.0.0.0'],
       logger: silentLogger,
       ...(waVersion ? { version: waVersion } : {}),
     });
@@ -1063,8 +1063,13 @@ function createTray() {
 
 // ─── App lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
+  const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+  app.userAgentFallback = CHROME_UA;
   try {
-    session.defaultSession.clearCache();
+    if (session && session.defaultSession) {
+      session.defaultSession.setUserAgent(CHROME_UA);
+      session.defaultSession.clearCache();
+    }
   } catch(_) {}
   try {
     if (isDev) {
