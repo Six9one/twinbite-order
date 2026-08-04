@@ -4201,11 +4201,52 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
         </div>
 
         {isQr && qr && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 16, background: '#fff', borderRadius: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 16, background: '#fff', borderRadius: 12 }}>
             <img src={qr} alt="WhatsApp QR Code" style={{ width: 220, height: 220 }} />
             <span style={{ fontSize: 11, fontWeight: 800, color: '#1e293b', textAlign: 'center' }}>
               Ouvrez WhatsApp sur téléphone ➔ Réglages / Appareils connectés ➔ Connecter un appareil
             </span>
+            <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 4 }}>
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined' && (window as any).twinHub?.getWhatsAppStatus) {
+                    (window as any).twinHub.getWhatsAppStatus();
+                    toast.info('🔄 Génération d\'un nouveau QR Code...');
+                  } else {
+                    window.location.reload();
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  background: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  color: '#334155',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                🔄 Rafraîchir le QR Code
+              </button>
+              <button
+                onClick={() => window.open('https://web.whatsapp.com', '_blank')}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  background: '#25D366',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                🌐 Ouvrir WhatsApp Web (Lier par N°)
+              </button>
+            </div>
           </div>
         )}
 
