@@ -784,152 +784,75 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               <p className="text-xs text-stone-500">Comment souhaitez-vous régler ?</p>
             </div>
 
-            {/* Payment Method Option Cards */}
-            <div className="space-y-3">
-              
-              {/* Option 1: Apple Pay */}
+            {/* Payment Method Option Cards — 2 choices only */}
+            <div className="grid grid-cols-1 gap-4">
+
+              {/* Option 1: Pay at restaurant (Espèces or CB on site) */}
               <div
-                onClick={() => setPaymentMethod('apple_pay')}
-                className={`p-4 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
-                  paymentMethod === 'apple_pay'
-                    ? 'bg-brand-50/60 dark:bg-brand-950/20 border-2 border-brand-600 shadow-sm'
-                    : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
+                onClick={() => setPaymentMethod('especes')}
+                className={`relative p-5 rounded-2xl cursor-pointer border-2 transition-all duration-200 ${
+                  paymentMethod === 'especes' || paymentMethod === 'cb'
+                    ? 'border-brand-600 bg-brand-50/60 dark:bg-brand-950/20 shadow-md'
+                    : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-stone-300 hover:shadow-sm'
                 }`}
               >
-                <div className="flex items-center gap-3.5">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-lg bg-black text-white`}>
-                    
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0 ${
+                    paymentMethod === 'especes' || paymentMethod === 'cb'
+                      ? 'bg-brand-600 text-white'
+                      : 'bg-stone-100 dark:bg-stone-800'
+                  }`}>
+                    🏪
                   </div>
-                  <div>
-                    <span className="font-bold text-sm block">Apple Pay</span>
-                    <span className="text-xs text-stone-500">Touch ID / Face ID</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-extrabold text-base block text-stone-900 dark:text-white">Espèces / CB</span>
+                    <span className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 block">Payer à la caisse du restaurant</span>
                   </div>
-                </div>
-
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                  paymentMethod === 'apple_pay' ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
-                }`}>
-                  {paymentMethod === 'apple_pay' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  <div className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${
+                    paymentMethod === 'especes' || paymentMethod === 'cb'
+                      ? 'border-brand-600 bg-brand-600 text-white'
+                      : 'border-stone-300'
+                  }`}>
+                    {(paymentMethod === 'especes' || paymentMethod === 'cb') && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  </div>
                 </div>
               </div>
 
-              {/* Option 2: Google Pay */}
-              <div
-                onClick={() => setPaymentMethod('google_pay')}
-                className={`p-4 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
-                  paymentMethod === 'google_pay'
-                    ? 'bg-brand-50/60 dark:bg-brand-950/20 border-2 border-brand-600 shadow-sm'
-                    : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
-                }`}
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm bg-stone-900 text-white`}>
-                    GPay
-                  </div>
-                  <div>
-                    <span className="font-bold text-sm block">Google Pay</span>
-                    <span className="text-xs text-stone-500">Paiement Android rapide</span>
-                  </div>
-                </div>
-
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                  paymentMethod === 'google_pay' ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
-                }`}>
-                  {paymentMethod === 'google_pay' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                </div>
-              </div>
-
-              {/* Option 3: Carte Bancaire via myPOS */}
+              {/* Option 2: Pay online (myPOS — Apple Pay / Google Pay / Carte auto-detected) */}
               <div
                 onClick={() => setPaymentMethod('en_ligne')}
-                className={`p-4 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
-                  paymentMethod === 'en_ligne'
-                    ? 'bg-brand-50/60 dark:bg-brand-950/20 border-2 border-brand-600 shadow-sm'
-                    : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
+                className={`relative p-5 rounded-2xl cursor-pointer border-2 transition-all duration-200 ${
+                  paymentMethod === 'en_ligne' || paymentMethod === 'apple_pay' || paymentMethod === 'google_pay'
+                    ? 'border-brand-600 bg-brand-50/60 dark:bg-brand-950/20 shadow-md'
+                    : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-stone-300 hover:shadow-sm'
                 }`}
               >
-                <div className="flex items-center gap-3.5">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
-                    paymentMethod === 'en_ligne' ? 'bg-brand-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                    paymentMethod === 'en_ligne' || paymentMethod === 'apple_pay' || paymentMethod === 'google_pay'
+                      ? 'bg-brand-600 text-white'
+                      : 'bg-stone-100 dark:bg-stone-800'
                   }`}>
-                    <CreditCard className="w-5 h-5" />
+                    <CreditCard className="w-6 h-6" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm">Carte Bancaire</span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Secured 🔒</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-extrabold text-base text-stone-900 dark:text-white">Payer en ligne</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">Sécurisé 🔒</span>
                     </div>
-                    <span className="text-xs text-stone-500">Visa, Mastercard</span>
+                    <span className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 block"> Apple Pay · Google Pay · Carte</span>
                   </div>
-                </div>
-
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                  paymentMethod === 'en_ligne' ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
-                }`}>
-                  {paymentMethod === 'en_ligne' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  <div className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${
+                    paymentMethod === 'en_ligne' || paymentMethod === 'apple_pay' || paymentMethod === 'google_pay'
+                      ? 'border-brand-600 bg-brand-600 text-white'
+                      : 'border-stone-300'
+                  }`}>
+                    {(paymentMethod === 'en_ligne' || paymentMethod === 'apple_pay' || paymentMethod === 'google_pay') && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  </div>
                 </div>
               </div>
 
-              {/* Option 4 & 5: Side-by-Side Row for Espèces & CB */}
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                
-                {/* Espèces */}
-                <div
-                  onClick={() => setPaymentMethod('especes')}
-                  className={`p-3.5 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
-                    paymentMethod === 'especes'
-                      ? 'bg-brand-50/60 dark:bg-brand-950/20 border-2 border-brand-600 shadow-sm'
-                      : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                      paymentMethod === 'especes' ? 'bg-brand-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
-                    }`}>
-                      <Banknote className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-sm block">Espèces</span>
-                    </div>
-                  </div>
-
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    paymentMethod === 'especes' ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
-                  }`}>
-                    {paymentMethod === 'especes' && <Check className="w-3 h-3 stroke-[3]" />}
-                  </div>
-                </div>
-
-                {/* CB */}
-                <div
-                  onClick={() => setPaymentMethod('cb')}
-                  className={`p-3.5 rounded-2xl cursor-pointer border transition-all flex items-center justify-between ${
-                    paymentMethod === 'cb'
-                      ? 'bg-brand-50/60 dark:bg-brand-950/20 border-2 border-brand-600 shadow-sm'
-                      : 'bg-white dark:bg-stone-900 border-stone-100 dark:border-stone-800'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                      paymentMethod === 'cb' ? 'bg-brand-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
-                    }`}>
-                      <CreditCard className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-sm block">CB</span>
-                    </div>
-                  </div>
-
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    paymentMethod === 'cb' ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
-                  }`}>
-                    {paymentMethod === 'cb' && <Check className="w-3 h-3 stroke-[3]" />}
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
+            </div>{/* end payment grid */}
 
             {/* Promo Code Section */}
             <div className="space-y-3 pt-2">
