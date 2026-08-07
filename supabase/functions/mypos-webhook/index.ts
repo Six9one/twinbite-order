@@ -295,7 +295,9 @@ serve(async (req) => {
         // that would re-notify the kitchen for an order it has already been given.
         if (alreadyPaid) {
           console.log(`[MYPOS-WEBHOOK] Order #${orderNumber} is already Paid — skipping (idempotent)`);
-        } else if (!signatureVerified && (!amountMatches || !isRecent)) {
+        } else if (!signatureVerified && !allowUnverified && (!amountMatches || !isRecent)) {
+          // When MYPOS_ALLOW_UNVERIFIED=true we skip this hard gate — the operator has
+          // explicitly asked us to trust unverified notifications (e.g. key mismatch).
           console.error(
             `[MYPOS-WEBHOOK] Refusing unverified notification for #${orderNumber} ` +
               `(amountMatches=${amountMatches}, isRecent=${isRecent}) — no database changes applied`
