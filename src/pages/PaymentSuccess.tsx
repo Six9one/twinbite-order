@@ -170,21 +170,11 @@ export default function PaymentSuccess() {
             </div>
           )}
 
-          {/* Webhook Status Alert */}
-          {!isPaid && isLoading ? (
-            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
-              <span>Confirmation de la transaction en cours...</span>
-            </div>
-          ) : isPaid ? (
+          {/* Webhook Status Alert — only shown when confirmed Paid */}
+          {isPaid && (
             <div className="mt-4 p-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-lg text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-1.5 font-medium">
               <CreditCard className="w-4 h-4 text-emerald-600" />
               <span>Paiement en ligne confirmé ✓</span>
-            </div>
-          ) : (
-            <div className="mt-4 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center justify-center gap-1">
-              <AlertCircle className="w-4 h-4 text-amber-600" />
-              <span>Paiement enregistré en attente de synchro</span>
             </div>
           )}
 
