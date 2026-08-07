@@ -57,6 +57,11 @@ serve(async (req) => {
       });
     }
 
+    const escapeMd = (str: string = '') => {
+      if (typeof str !== 'string') return String(str || '');
+      return str.replace(/[_*`\[\]]/g, '\\$&');
+    };
+
     // Format order items with full customization details
     const formatCustomization = (customization: any, productName: string, category?: string): string => {
       if (!customization) return '';
@@ -263,12 +268,12 @@ serve(async (req) => {
     }
 
     message += `\n\n👤 *CLIENT:*\n`;
-    message += `• Nom: ${order.customerName}\n`;
-    message += `• Tél: ${order.customerPhone}\n`;
+    message += `• Nom: ${escapeMd(order.customerName)}\n`;
+    message += `• Tél: ${escapeMd(order.customerPhone)}\n`;
 
     if (order.customerAddress) {
       const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.customerAddress)}`;
-      message += `• Adresse: [${order.customerAddress}](${mapsUrl})\n`;
+      message += `• Adresse: [${escapeMd(order.customerAddress)}](${mapsUrl})\n`;
     }
 
     message += `\n🛒 *ARTICLES:*\n${itemsList}\n`;
@@ -289,7 +294,7 @@ serve(async (req) => {
     message += `\n💰 *TOTAL TTC: ${order.total.toFixed(2)}€*\n`;
 
     if (order.customerNotes) {
-      message += `\n📝 *Notes:* ${order.customerNotes}`;
+      message += `\n📝 *Notes:* ${escapeMd(order.customerNotes)}`;
     }
 
     // Add stamp card info if available

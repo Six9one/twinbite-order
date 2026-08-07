@@ -128,45 +128,42 @@ serve(async (req) => {
   }
 
   try {
-    // 1. Parse body (myPOS sends application/x-www-form-urlencoded or multipart form)
+    // 1. Parse body (myPOS sends application/x-www-form-urlencoded or JSON)
     const contentType = req.headers.get("content-type") || "";
     const params: Record<string, string> = {};
     let rawSignature = "";
 
-    if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {
-      const formData = await req.formData();
-      for (const [key, value] of formData.entries()) {
-        if (key === "Signature") {
-          rawSignature = String(value);
-        } else {
-          params[key] = String(value);
-        }
-      }
-    } else {
-      const bodyText = await req.text();
-      let parsed = false;
+    const bodyText = await req.text();
+    console.log("[MYPOS-WEBHOOK] Raw body received:", {
+      length: bodyText.length,
+      contentType,
+      preview: bodyText.slice(0, 300)
+    });
 
-      // myPOS may post JSON rather than form data. Try that first, otherwise the urlencoded
-      // parser silently produces one garbage key and every field reads as undefined.
-      const trimmed = bodyText.trim();
-      if (trimmed.startsWith("{")) {
-        try {
-          const json = JSON.parse(trimmed);
-          for (const [key, value] of Object.entries(json)) {
-            if (key === "Signature") {
-              rawSignature = String(value);
-            } else {
-              params[key] = String(value);
-            }
+    let parsed = false;
+    const trimmed = bodyText.trim();
+
+    // Try JSON parsing
+    if (trimmed.startsWith("{")) {
+      try {
+        const json = JSON.parse(trimmed);
+        for (const [key, value] of Object.entries(json)) {
+          if (key === "Signature") {
+            rawSignature = String(value);
+          } else {
+            params[key] = String(value);
           }
-          parsed = true;
-        } catch (_) {
-          // fall through to urlencoded
         }
+        parsed = true;
+      } catch (_) {
+        // Fall back to URLSearchParams
       }
+    }
 
-      if (!parsed) {
-        const searchParams = new URLSearchParams(bodyText);
+    // Try URLSearchParams parsing
+    if (!parsed && trimmed.length > 0) {
+      try {
+        const searchParams = new URLSearchParams(trimmed);
         for (const [key, value] of searchParams.entries()) {
           if (key === "Signature") {
             rawSignature = value;
@@ -174,14 +171,10 @@ serve(async (req) => {
             params[key] = value;
           }
         }
+        parsed = true;
+      } catch (err) {
+        console.error("[MYPOS-WEBHOOK] Error parsing URLSearchParams:", err);
       }
-
-      console.log("[MYPOS-WEBHOOK] Non-form body", {
-        contentType,
-        parsedAsJson: parsed,
-        keys: Object.keys(params).join(","),
-        rawPreview: bodyText.slice(0, 400),
-      });
     }
 
     console.log("[MYPOS-WEBHOOK] Parameters received:", {

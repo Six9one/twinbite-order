@@ -501,17 +501,25 @@ export default function TVDashboard() {
     return () => clearInterval(interval);
   }, [refetch]);
 
-  // Notification triggers for new orders
+  // Notification triggers for new orders and newly Paid online orders
   useEffect(() => {
-    if (orders && orders.length > previousOrdersCount.current && previousOrdersCount.current > 0) {
-      const newestOrder = orders[0];
-      if (newestOrder && !processedOrders.current.has(newestOrder.id)) {
-        processedOrders.current.add(newestOrder.id);
-        
-        // Show new order alert overlay
+    if (!orders || orders.length === 0) return;
+
+    // Check all orders to see if any new order arrived or an online order became Paid
+    orders.forEach((ord) => {
+      const isPaidOnline = ord.payment_method === 'en_ligne' && ord.payment_status === 'Paid';
+      const paidKey = `${ord.id}_paid`;
+      const isNewOrder = !processedOrders.current.has(ord.id) && previousOrdersCount.current > 0;
+      const isNewlyPaid = isPaidOnline && !processedOrders.current.has(paidKey);
+
+      if (isNewOrder || isNewlyPaid) {
+        processedOrders.current.add(ord.id);
+        if (isPaidOnline) processedOrders.current.add(paidKey);
+
+        // Show order alert overlay
         setNewOrderInfo({
-          orderNumber: newestOrder.order_number,
-          orderType: newestOrder.order_type.toUpperCase()
+          orderNumber: ord.order_number,
+          orderType: isNewlyPaid ? `${ord.order_type.toUpperCase()} (PAYÉ EN LIGNE)` : ord.order_type.toUpperCase()
         });
         setShowNewOrderOverlay(true);
         setFlashEffect(true);
@@ -528,22 +536,23 @@ export default function TVDashboard() {
 
         // Auto print trigger (skip if in Electron, as the print-server automatically handles auto-printing)
         // Payment-test orders from /test-paiement are real rows but not real food — never print them.
-        if (autoPrintRef.current && !isTestOrder(newestOrder)) {
+        if (autoPrintRef.current && !isTestOrder(ord)) {
           if (typeof window !== 'undefined' && 'twinHub' in window) {
             console.log('🖨️ Skipping TV auto-print because print-server is active in Electron');
           } else {
             if (useNetworkPrintRef.current) {
-              printOrder(newestOrder);
+              printOrder(ord);
               setLastPrintTime(new Date());
             } else {
-              printOrderTicket(newestOrder);
+              printOrderTicket(ord);
               setLastPrintTime(new Date());
             }
           }
         }
       }
-    }
-    previousOrdersCount.current = orders?.length || 0;
+    });
+
+    previousOrdersCount.current = orders.length;
   }, [orders, soundEnabled, printOrder]);
 
   if (authLoading || !isAuthenticated) {
