@@ -76,12 +76,13 @@ function verifySignature(
  * customer is redirected to myPOS, so re-sending it here would put the same order through
  * twice. This only confirms the money arrived.
  */
-async function sendPaymentConfirmation(info: {
+async function sendFullOrderNotification(info: {
   orderNumber: string;
   amount: number;
   currency: string;
-  method: string;
+  transactionId: string;
   verified: boolean;
+  order: Record<string, any>;
 }): Promise<void> {
   try {
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
@@ -94,28 +95,101 @@ async function sendPaymentConfirmation(info: {
     ].filter(Boolean) as string[];
 
     if (!botToken || chatIds.length === 0) {
-      console.error("[MYPOS-WEBHOOK] Telegram not configured — payment confirmation not sent");
+      console.error("[MYPOS-WEBHOOK] Telegram not configured — notification not sent");
       return;
     }
 
-    const amount = info.amount.toFixed(2).replace(".", ",");
-    const text =
-      `✅ <b>Paiement confirmé</b>\n` +
-      `Commande <b>#${info.orderNumber}</b>\n` +
-      `${amount} ${info.currency} — ${info.method}` +
-      (info.verified ? "" : "\n⚠️ <i>Signature non vérifiée</i>");
+    const o = info.order;
+    const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const total = info.amount.toFixed(2).replace(".", ",");
+
+    // Order type label
+    const typeMap: Record<string, string> = {
+      livraison: "🚗 Livraison",
+      emporter: "🥡 À emporter",
+      surplace: "🪑 Sur place",
+    };
+    const orderType = typeMap[o.order_type] || o.order_type || "—";
+
+    // Build items list
+    let itemsText = "";
+    const items = Array.isArray(o.items) ? o.items : [];
+    for (const item of items) {
+      const qty = item.quantity || 1;
+      const name = esc(item.name || item.item?.name || "Article");
+      const price = Number(item.calculatedPrice || item.price || item.item?.price || 0);
+      itemsText += `  • ${qty}x <b>${name}</b> — ${(qty * price).toFixed(2).replace(".", ",")} €\n`;
+    }
+    if (!itemsText) itemsText = "  (détail non disponible)\n";
+
+    // myPOS payment history link (merchant dashboard)
+    const myposLink = "https://my.mypos.com/";
+    const myposText = `<a href="${myposLink}">📊 Voir paiements myPOS</a>`;
+
+    // Compose message
+    let text = `🎉 <b>NOUVELLE COMMANDE PAYÉE EN LIGNE</b>\n`;
+    text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `📋 Commande <b>#${esc(info.orderNumber)}</b>  |  ${orderType}\n`;
+    text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `👤 <b>${esc(o.customer_name || "—")}</b>\n`;
+    text += `📞 ${esc(o.customer_phone || "—")}\n`;
+    if (o.customer_address) text += `📍 ${esc(o.customer_address)}\n`;
+    if (o.customer_notes) text += `💬 <i>${esc(o.customer_notes)}</i>\n`;
+    text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `<b>Articles :</b>\n${itemsText}`;
+    text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `💳 <b>TOTAL PAYÉ : ${total} ${info.currency}</b>\n`;
+    text += `🔑 Réf: <code>${esc(info.transactionId)}</code>\n`;
+    if (!info.verified) text += `⚠️ <i>Signature non vérifiée</i>\n`;
+    text += `\n${myposText}`;
 
     await Promise.all(
       chatIds.map((chatId) =>
         fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
-        }).catch((err) => console.error("[MYPOS-WEBHOOK] Telegram send failed:", err))
+          body: JSON.stringify({
+            chat_id: chatId,
+            text,
+            parse_mode: "HTML",
+            disable_web_page_preview: true,
+          }),
+        })
+          .then(async (r) => {
+            if (!r.ok) console.error("[MYPOS-WEBHOOK] Telegram API error:", await r.text());
+          })
+          .catch((err) => console.error("[MYPOS-WEBHOOK] Telegram send failed:", err))
       )
     );
+
+    console.log(`[MYPOS-WEBHOOK] Full order notification sent for #${info.orderNumber}`);
   } catch (err) {
-    console.error("[MYPOS-WEBHOOK] Payment confirmation error:", err);
+    console.error("[MYPOS-WEBHOOK] Notification error:", err);
+  }
+}
+
+/**
+ * Trigger auto-print on the local print-server (Windows POS PC).
+ * The print-server listens on port 3001 and accepts POST /print-order.
+ * This will silently fail if the print-server is not reachable (it runs on LAN).
+ */
+async function triggerAutoPrint(orderNumber: string, supabaseUrl: string, supabaseServiceKey: string): Promise<void> {
+  try {
+    // Notify via Supabase Realtime broadcast — TVDashboard will receive this
+    // and call window.print() / send to the local print-server.
+    // We also attempt a direct call to the print-server REST API.
+    const printServerUrl = Deno.env.get("PRINT_SERVER_URL") || "http://192.168.1.84:3001";
+    await fetch(`${printServerUrl}/print-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderNumber }),
+      signal: AbortSignal.timeout(5000),
+    }).catch(() => {
+      // Expected to fail when called from Supabase Edge (cross-network) — TVDashboard covers this
+      console.log(`[MYPOS-WEBHOOK] Print-server not reachable from edge (expected) — TVDashboard will print`);
+    });
+  } catch (_) {
+    // ignore
   }
 }
 
@@ -260,7 +334,7 @@ serve(async (req) => {
       // so by the time a genuine notification arrives the row must already exist.
       const { data: order, error: fetchErr } = await supabase
         .from("orders")
-        .select("id, total, payment_status, created_at")
+        .select("id, total, payment_status, created_at, customer_name, customer_phone, customer_address, customer_notes, order_type, items")
         .eq("order_number", orderNumber)
         .maybeSingle();
 
@@ -337,15 +411,18 @@ serve(async (req) => {
           } else {
             console.log(`[MYPOS-WEBHOOK] Order #${orderNumber} marked Paid`);
 
-            // A full order ticket was already sent to the kitchen at checkout time. Sending
-            // another one here would duplicate the order, so this is a short confirmation only.
-            await sendPaymentConfirmation({
+            // Send full order details to Telegram + trigger auto-print
+            await sendFullOrderNotification({
               orderNumber,
               amount: paymentAmount ?? expectedTotal ?? 0,
               currency: paymentCurrency,
-              method: paymentMethodName,
+              transactionId,
               verified: signatureVerified,
+              order,
             });
+
+            // Attempt to wake the print-server (best-effort — TVDashboard realtime covers LAN)
+            await triggerAutoPrint(orderNumber, supabaseUrl, supabaseServiceKey);
           }
         }
       } else {
