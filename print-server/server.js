@@ -177,23 +177,61 @@ function cleanCustomerPhone(phone) {
     return phone || '';
 }
 
-// Convert French accented characters and emojis to clean 100% printable ASCII characters for thermal printers
+// Convert French accented characters to Code Page 1252 bytes for Kitchen Ethernet Printer
 function convertToCP1252(text) {
     if (!text) return '';
 
+    // Map of UTF-8 characters to their CP1252 equivalents
     const charMap = {
-        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
-        'à': 'a', 'â': 'a', 'ä': 'a',
-        'ù': 'u', 'û': 'u', 'ü': 'u',
-        'ô': 'o', 'ö': 'o',
-        'î': 'i', 'ï': 'i',
-        'ç': 'c',
-        'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+        'é': '\xE9', 'è': '\xE8', 'ê': '\xEA', 'ë': '\xEB',
+        'à': '\xE0', 'â': '\xE2', 'ä': '\xE4',
+        'ù': '\xF9', 'û': '\xFB', 'ü': '\xFC',
+        'ô': '\xF4', 'ö': '\xF6',
+        'î': '\xEE', 'ï': '\xEF',
+        'ç': '\xE7',
+        'É': '\xC9', 'È': '\xC8', 'Ê': '\xCA', 'Ë': '\xCB',
+        'À': '\xC0', 'Â': '\xC2', 'Ä': '\xC4',
+        'Ù': '\xD9', 'Û': '\xDB', 'Ü': '\xDC',
+        'Ô': '\xD4', 'Ö': '\xD6',
+        'Î': '\xCE', 'Ï': '\xCF',
+        'Ç': '\xC7',
+        '€': '\x80',
+        '°': '\xB0',
+        '«': '\xAB', '»': '\xBB',
+        '•': '\x95',
+        '–': '-', '—': '-',
+        '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"',
+        '\u2026': '...',
+        // Emoji replacements
+        '🍕': '[PIZZA]', '🥩': '', '🍯': '', '🥗': '', '➕': '+',
+        '📝': '*', '📏': '', '⏰': '', '🖨️': '', '✅': '[OK]', '❌': '[X]',
+        '🔌': '', '📡': '', '📥': '', '📦': '', '👋': '', '👂': '',
+    };
+
+    let result = '';
+    for (const char of text) {
+        result += charMap[char] !== undefined ? charMap[char] : char;
+    }
+    return result.replace(/[^\x00-\xFF]/g, '');
+}
+
+// Convert French accented characters to Star Line Mode CP858 bytes for Client USB Printer (Star TSP100)
+function convertToStarCP858(text) {
+    if (!text) return '';
+
+    const charMap = {
+        'é': '\x82', 'è': '\x8A', 'ê': '\x88', 'ë': 'e',
+        'à': '\x85', 'â': 'a', 'ä': 'a',
+        'ù': '\x96', 'û': 'u', 'ü': 'u',
+        'ô': '\x93', 'ö': 'o',
+        'î': '\x8C', 'ï': 'i',
+        'ç': '\x87',
+        'É': '\x90', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
         'À': 'A', 'Â': 'A', 'Ä': 'A',
         'Ù': 'U', 'Û': 'U', 'Ü': 'U',
         'Ô': 'O', 'Ö': 'O',
         'Î': 'I', 'Ï': 'I',
-        'Ç': 'C',
+        'Ç': '\x80',
         '€': 'E',
         '°': ' ',
         '«': '"', '»': '"',
@@ -201,10 +239,8 @@ function convertToCP1252(text) {
         '–': '-', '—': '-',
         '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"',
         '\u2026': '...',
-        // Emoji replacements (thermal printers don't support emoji)
         '🍕': '', '🥩': '', '🍯': '', '🥗': '', '➕': '+',
         '📝': '*', '📏': '', '⏰': '', '🖨️': '', '✅': '[OK]', '❌': '[X]',
-        '🔌': '', '📡': '', '📥': '', '📦': '', '👋': '', '👂': '',
         '🚗': '[LIVRAISON]', '🛍️': '[EMPORTER]', '🍽️': '[SUR PLACE]',
         '💳': '[CB]', '💵': '[CASH]', '👉': '-', '🌶️': '', '🍟': '',
         '🥪': '', '👶': ''
@@ -214,8 +250,7 @@ function convertToCP1252(text) {
     for (const char of text) {
         result += charMap[char] !== undefined ? charMap[char] : char;
     }
-    // Clean all non-ASCII printable characters to prevent garbled symbols on Star TSP100 / Epson printers
-    return result.replace(/[^\x20-\x7E\n\r\t]/g, '');
+    return result.replace(/[^\x20-\x7E\x80\x82\x85\x87\x88\x8A\x8C\x90\x93\x96\n\r\t]/g, '');
 }
 
 // Default ticket settings (fallback if database unavailable)
@@ -550,14 +585,15 @@ function getSeparatorLine(type, paperWidth) {
 }
 
 class TicketBufferBuilder {
-    constructor() {
+    constructor(isStar = false) {
         this.chunks = [];
+        this.isStar = isStar;
     }
     
     addText(text) {
         if (!text) return;
-        const cp1252Text = convertToCP1252(text);
-        const buf = Buffer.from(cp1252Text, 'binary');
+        const encodedText = this.isStar ? convertToStarCP858(text) : convertToCP1252(text);
+        const buf = Buffer.from(encodedText, 'binary');
         this.chunks.push(buf);
     }
     
@@ -722,7 +758,7 @@ async function formatDynamicTicket(order, template) {
 
     const RESET_STYLE = ESCPOS_LOCAL.FONT_A + ESCPOS_LOCAL.NORMAL_SIZE + ESCPOS_LOCAL.BOLD_OFF + ESCPOS_LOCAL.UNDERLINE_OFF + ESCPOS_LOCAL.INVERT_OFF;
 
-    const builder = new TicketBufferBuilder();
+    const builder = new TicketBufferBuilder(isCounter);
     builder.addText(ESCPOS_LOCAL.INIT);
 
     // Upside down print for kitchen template
