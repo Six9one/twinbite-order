@@ -177,43 +177,45 @@ function cleanCustomerPhone(phone) {
     return phone || '';
 }
 
-// Convert French accented characters to Code Page 1252 bytes
+// Convert French accented characters and emojis to clean 100% printable ASCII characters for thermal printers
 function convertToCP1252(text) {
     if (!text) return '';
 
-    // Map of UTF-8 characters to their CP1252 equivalents
     const charMap = {
-        'é': '\xE9', 'è': '\xE8', 'ê': '\xEA', 'ë': '\xEB',
-        'à': '\xE0', 'â': '\xE2', 'ä': '\xE4',
-        'ù': '\xF9', 'û': '\xFB', 'ü': '\xFC',
-        'ô': '\xF4', 'ö': '\xF6',
-        'î': '\xEE', 'ï': '\xEF',
-        'ç': '\xE7',
-        'É': '\xC9', 'È': '\xC8', 'Ê': '\xCA', 'Ë': '\xCB',
-        'À': '\xC0', 'Â': '\xC2', 'Ä': '\xC4',
-        'Ù': '\xD9', 'Û': '\xDB', 'Ü': '\xDC',
-        'Ô': '\xD4', 'Ö': '\xD6',
-        'Î': '\xCE', 'Ï': '\xCF',
-        'Ç': '\xC7',
-        '€': '\x80',
-        '°': '\xB0',
-        '«': '\xAB', '»': '\xBB',
-        '•': '\x95',
+        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+        'à': 'a', 'â': 'a', 'ä': 'a',
+        'ù': 'u', 'û': 'u', 'ü': 'u',
+        'ô': 'o', 'ö': 'o',
+        'î': 'i', 'ï': 'i',
+        'ç': 'c',
+        'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+        'À': 'A', 'Â': 'A', 'Ä': 'A',
+        'Ù': 'U', 'Û': 'U', 'Ü': 'U',
+        'Ô': 'O', 'Ö': 'O',
+        'Î': 'I', 'Ï': 'I',
+        'Ç': 'C',
+        '€': 'E',
+        '°': ' ',
+        '«': '"', '»': '"',
+        '•': '-',
         '–': '-', '—': '-',
         '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"',
         '\u2026': '...',
         // Emoji replacements (thermal printers don't support emoji)
-        '🍕': '[PIZZA]', '🥩': '', '🍯': '', '🥗': '', '➕': '+',
+        '🍕': '', '🥩': '', '🍯': '', '🥗': '', '➕': '+',
         '📝': '*', '📏': '', '⏰': '', '🖨️': '', '✅': '[OK]', '❌': '[X]',
         '🔌': '', '📡': '', '📥': '', '📦': '', '👋': '', '👂': '',
+        '🚗': '[LIVRAISON]', '🛍️': '[EMPORTER]', '🍽️': '[SUR PLACE]',
+        '💳': '[CB]', '💵': '[CASH]', '👉': '-', '🌶️': '', '🍟': '',
+        '🥪': '', '👶': ''
     };
 
     let result = '';
     for (const char of text) {
         result += charMap[char] !== undefined ? charMap[char] : char;
     }
-    // Strip any remaining characters with code point > 255 to prevent binary/UTF-8 corruption on printer
-    return result.replace(/[^\x00-\xFF]/g, '');
+    // Clean all non-ASCII printable characters to prevent garbled symbols on Star TSP100 / Epson printers
+    return result.replace(/[^\x20-\x7E\n\r\t]/g, '');
 }
 
 // Default ticket settings (fallback if database unavailable)
@@ -651,7 +653,7 @@ async function formatDynamicTicket(order, template) {
 
     const ESCPOS_LOCAL = isCounter ? {
         INIT: ESC + '@',
-        SET_CODEPAGE_1252: ESC + '\x1D' + 't' + '\x10',
+        SET_CODEPAGE_1252: '',
         CENTER: ESC + '\x1D' + 'a' + '1', 
         LEFT: ESC + '\x1D' + 'a' + '0',   
         RIGHT: ESC + '\x1D' + 'a' + '2',  
@@ -663,7 +665,7 @@ async function formatDynamicTicket(order, template) {
         NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
         UNDERLINE_ON: ESC + '-' + '\x01',
         UNDERLINE_OFF: ESC + '-' + '\x00',
-        PARTIAL_CUT: ESC + 'd' + '\x03' + GS + 'V' + '\x01',  
+        PARTIAL_CUT: ESC + 'd' + '\x03',  
         FEED: '',                        
         UPSIDE_ON:  '',
         UPSIDE_OFF: '',
@@ -706,7 +708,9 @@ async function formatDynamicTicket(order, template) {
         if (item.fontSize === 'double_height') cmd += ESCPOS_LOCAL.DOUBLE_HEIGHT;
         else if (item.fontSize === 'double_width') cmd += ESCPOS_LOCAL.DOUBLE_WIDTH;
         else if (item.fontSize === 'double_size') cmd += ESCPOS_LOCAL.DOUBLE_SIZE;
-        else if (item.fontSize === 'size_7' || item.fontSize === '7' || item.fontSize === 'large_7') cmd += GS + '!' + '\x66';
+        else if (item.fontSize === 'size_7' || item.fontSize === '7' || item.fontSize === 'large_7') {
+            cmd += isCounter ? ESCPOS_LOCAL.DOUBLE_SIZE : (GS + '!' + '\x66');
+        }
         else cmd += ESCPOS_LOCAL.NORMAL_SIZE;
 
         cmd += item.bold ? ESCPOS_LOCAL.BOLD_ON : ESCPOS_LOCAL.BOLD_OFF;
