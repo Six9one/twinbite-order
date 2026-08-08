@@ -116,8 +116,17 @@ export default function PaymentSuccess() {
     }
   }, [orderNumber]);
 
-  // Initial fetch and polling every 2s for 30s
+  // Initial fetch, polling, and iframe breakout for mobile 3DS redirects
   useEffect(() => {
+    try {
+      if (window.self !== window.top && window.top) {
+        window.top.location.href = window.location.href;
+        return;
+      }
+    } catch (e) {
+      console.warn('[PaymentSuccess] Iframe breakout check:', e);
+    }
+
     fetchOrder();
 
     const interval = setInterval(() => {
