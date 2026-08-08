@@ -954,7 +954,19 @@ async function formatDynamicTicket(order, template) {
                 const qrUrl   = (s.qrCodeUrl || '').trim() || DEFAULT_QR_URL;
                 const qrSize  = s.qrCodeSize || 120;
                 visualItems.push({ text: qrLabel + '\n', align: 'center', bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
-                visualItems.push({ text: qrUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
+                
+                if (isKitchen) {
+                    // Dot-matrix kitchen printer cannot print barcodes or graphics, use text fallback
+                    visualItems.push({ text: qrUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
+                } else if (isCounter) {
+                    // Star TSP100 supports native QR code commands in Star Line Mode
+                    const nativeStarQr = getStarQRCodeString(qrUrl, qrSize);
+                    visualItems.push({ buffer: Buffer.from(nativeStarQr, 'binary') });
+                } else {
+                    // Standard ESC/POS QR code (fully offline & native)
+                    const nativeEscPosQr = getQRCodeString(qrUrl);
+                    visualItems.push({ buffer: Buffer.from(nativeEscPosQr, 'binary') });
+                }
                 visualItems.push({ text: '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
                 break;
             }
