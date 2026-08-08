@@ -76,9 +76,10 @@ const navItems: NavItem[] = [
     ]
   },
   {
-    label: 'Clients',
+    label: 'Clients & Cartes',
     icon: Users,
     children: [
+      { label: '🗺️ Carte Clients & IP', icon: MapPin, value: 'client-map' },
       { label: 'Tickets Clients', icon: Ticket, value: 'tickets' },
     ]
   },

@@ -29,6 +29,7 @@ export default function TelegramWhatsAppManager() {
   const [printerIp, setPrinterIp] = useState<string>('192.168.1.200');
   const [printerPaperWidth, setPrinterPaperWidth] = useState<number>(80);
   const [printerAutoPrint, setPrinterAutoPrint] = useState<boolean>(true);
+  const [printerFontSize, setPrinterFontSize] = useState<string>('double_size');
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -56,6 +57,7 @@ export default function TelegramWhatsAppManager() {
         setPrinterIp(d.printer_ip || '192.168.1.200');
         setPrinterPaperWidth(d.printer_paper_width || 80);
         setPrinterAutoPrint(d.printer_auto_print ?? true);
+        setPrinterFontSize(d.printer_font_size || 'double_size');
       }
     } catch (err) {
       console.error('Settings load error:', err);
@@ -83,6 +85,7 @@ export default function TelegramWhatsAppManager() {
         printer_ip: printerIp.trim(),
         printer_paper_width: Number(printerPaperWidth),
         printer_auto_print: printerAutoPrint,
+        printer_font_size: printerFontSize,
         updated_at: new Date().toISOString(),
       };
 
@@ -338,6 +341,20 @@ export default function TelegramWhatsAppManager() {
                   >
                     <option value={80}>80mm (Standard Caisse Restaurant)</option>
                     <option value={58}>58mm (Format Compact / Reçu)</option>
+                  </select>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="prt-font">Taille du Texte des Articles (Impression Ticket)</Label>
+                  <select
+                    id="prt-font"
+                    value={printerFontSize}
+                    onChange={(e) => setPrinterFontSize(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md bg-background border border-input text-sm font-semibold"
+                  >
+                    <option value="double_size">🔠 Très Grand (Double Taille 2x2 - Lisibilité Maximale)</option>
+                    <option value="double_height">🔠 Grand (Hauteur Double)</option>
+                    <option value="size_7">🚀 Maxi (Format 3x3 Extra Large)</option>
+                    <option value="normal">🔤 Normal (Taille Standard 1x1)</option>
                   </select>
                 </div>
               </div>

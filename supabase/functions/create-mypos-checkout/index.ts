@@ -55,7 +55,8 @@ serve(async (req) => {
       customerAddress,
       customerNotes,
       subtotal,
-      tva
+      tva,
+      redirectUrl
     } = body;
 
     console.log("[CREATE-MYPOS-CHECKOUT] Creating session for order:", orderNumber, "amount:", amount);
@@ -81,10 +82,8 @@ serve(async (req) => {
       );
     }
 
-    const rawOrigin = req.headers.get("origin") || "https://twinpizza.fr";
-    const origin = (rawOrigin.includes("localhost") || rawOrigin.includes("127.0.0.1") || rawOrigin.includes("192.168.1.84"))
-      ? "https://twinpizza.fr"
-      : rawOrigin;
+    const rawOrigin = req.headers.get("origin") || req.headers.get("referer") || "http://localhost:8080";
+    const origin = rawOrigin.replace(/\/+$/, "");
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 
     // Parse customer names
@@ -130,7 +129,7 @@ serve(async (req) => {
       Amount: formattedAmount,
       Currency: "EUR",
       OrderID: String(orderNumber),
-      URL_OK: `${origin}/payment/success?order=${encodeURIComponent(orderNumber)}`,
+      URL_OK: redirectUrl || `${origin}/payment/success?order=${encodeURIComponent(orderNumber)}`,
       URL_Cancel: `${origin}/payment/cancel?order=${encodeURIComponent(orderNumber)}`,
       URL_Notify: `${supabaseUrl}/functions/v1/mypos-webhook`,
       ...cartParams,

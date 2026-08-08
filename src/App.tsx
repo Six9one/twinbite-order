@@ -25,7 +25,7 @@ import Index from "./pages/Index";
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const TVDashboard = lazy(() => import("./pages/TVDashboard"));
-const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
+import PaymentSuccess from "./pages/PaymentSuccess";
 const PaymentCancel = lazy(() => import("./pages/PaymentCancel"));
 const TicketPortal = lazy(() => import("./pages/TicketPortal"));
 const CrewDashboard = lazy(() => import("./pages/CrewDashboard"));
@@ -93,6 +93,10 @@ const App = () => {
                                             <Route path="/crew" element={<CrewDashboard />} />
                                             <Route path="/payment-success" element={<PaymentSuccess />} />
                                             <Route path="/payment/success" element={<PaymentSuccess />} />
+                                            <Route path="/payment_success" element={<PaymentSuccess />} />
+                                            <Route path="/order-success" element={<PaymentSuccess />} />
+                                            <Route path="/order/success" element={<PaymentSuccess />} />
+                                            <Route path="/success" element={<PaymentSuccess />} />
                                             <Route path="/payment-cancel" element={<PaymentCancel />} />
                                             <Route path="/payment/cancel" element={<PaymentCancel />} />
                                             <Route path="/tickets" element={<TicketPortal />} />

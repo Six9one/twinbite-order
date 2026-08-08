@@ -435,21 +435,28 @@ async function handleSettingsUpdate(savedSettings) {
 // Fetch ticket settings from Supabase
 async function fetchTicketSettings() {
     try {
+        const { data: adminRow } = await supabase
+            .from('admin_settings')
+            .select('*')
+            .maybeSingle();
+
+        if (adminRow) {
+            if (adminRow.printer_font_size) {
+                ticketSettings.itemFontSize = adminRow.printer_font_size;
+            }
+            if (adminRow.printer_paper_width) {
+                ticketSettings.paperWidth = adminRow.printer_paper_width === 58 ? '58mm' : '80mm';
+            }
+        }
+
         const { data, error } = await supabase
             .from('admin_settings')
             .select('setting_value')
             .eq('setting_key', 'ticket_templates')
             .single();
 
-        if (error) {
-            console.log('⚠️ Using default ticket settings (database fetch failed):', error.message);
-            return;
-        }
-
-        if (data?.setting_value) {
+        if (!error && data?.setting_value) {
             await handleSettingsUpdate(data.setting_value);
-        } else {
-            console.log('⚠️ No ticket_templates found in database, using defaults');
         }
     } catch (err) {
         console.log('⚠️ Using default ticket settings:', err.message);
@@ -518,6 +525,7 @@ function getStyleCmd(section) {
     if (section.fontSize === 'double_height') cmd += GS + '!' + '\x01';
     else if (section.fontSize === 'double_width') cmd += GS + '!' + '\x10';
     else if (section.fontSize === 'double_size') cmd += GS + '!' + '\x11';
+    else if (section.fontSize === 'size_7' || section.fontSize === '7' || section.fontSize === 'large_7') cmd += GS + '!' + '\x66';
     else cmd += GS + '!' + '\x00';
     
     // Bold
@@ -560,6 +568,76 @@ class TicketBufferBuilder {
     toBuffer() {
         return Buffer.concat(this.chunks);
     }
+}
+
+// Helper to extract clean customization details for printed tickets
+function formatCustomizationDetails(ci) {
+    const c = ci.customization;
+    if (!c) return { sizeLabel: null, details: [], note: null };
+
+    const name = (ci.item?.name || ci.name || '').toUpperCase();
+    const cat  = (ci.item?.category || ci.category || '').toLowerCase();
+    const isPizza = cat === 'pizza' || cat === 'pizzas' || name.includes('PIZZA');
+
+    // Helper to clean size string (e.g. "Senior (28cm)" -> "SENIOR")
+    const cleanSize = (raw) => {
+        if (!raw) return '';
+        return String(raw)
+            .replace(/\s*\(\s*\d+\s*cm\s*\)/gi, '')
+            .replace(/\s*\d+\s*cm/gi, '')
+            .replace(/\s*\d+/g, '')
+            .trim()
+            .toUpperCase();
+    };
+
+    const sizeLabel = (c.size || c.sizeLabel) ? cleanSize(c.sizeLabel || c.size) : null;
+
+    // Helper to filter out oignon / ognion
+    const filterOignons = (arr) => {
+        if (!Array.isArray(arr)) return [];
+        return arr.filter(item => !/o[gn]*ion/i.test(String(item).trim()));
+    };
+
+    const details = [];
+
+    if (isPizza) {
+        // FOR PIZZAS: DO NOT INCLUDE BASE TOMATE / BASE CRÈME
+        // ONLY INCLUDE SUPPLEMENTS, REMOVED INGREDIENTS, TOPPINGS
+        if (c.supplements?.length)          details.push(...c.supplements.map(s => '+ ' + s));
+        if (c.removedIngredients?.length)  details.push(...c.removedIngredients.map(r => 'Sans ' + r));
+        if (c.toppings?.length)            details.push(...c.toppings.map(t => '+ ' + t));
+        if (c.extraToppings?.length)       details.push(...c.extraToppings.map(t => '+ ' + t));
+    } else {
+        // NON-PIZZA ITEMS (Tacos, Sandwiches, Soufflés, etc.)
+        if (c.meats?.length)   details.push(...c.meats.map(m => '+ ' + m));
+        if (c.meat)            details.push('+ ' + c.meat);
+        if (c.sauces?.length)  details.push(...c.sauces.map(s => 'Sauce: ' + s));
+        if (c.sauce)           details.push('Sauce: ' + c.sauce);
+
+        // Filter oignons for garnitures
+        if (c.garnitures?.length) {
+            const garns = filterOignons(c.garnitures);
+            if (garns.length) details.push(...garns);
+        }
+
+        if (c.items?.length)               details.push(...c.items);
+        if (c.supplements?.length)         details.push(...c.supplements.map(s => '+ ' + s));
+        if (c.removedIngredients?.length) details.push(...c.removedIngredients.map(r => 'Sans ' + r));
+        if (c.toppings?.length)           details.push(...c.toppings.map(t => '+ ' + t));
+
+        if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
+            const ml = { frites: 'Frite', boisson: 'Boisson', supp_frites: 'Supp Frite', menu: 'Menu complet' };
+            const lbs = c.menuOption.split(',').map(o => ml[o.trim()] || o.trim()).filter(Boolean);
+            if (lbs.length) details.push(lbs.join(' + '));
+        } else if (c.menuOption === 'none' || c.menuOption === '') {
+            if (cat === 'panini' || name.includes('SANDWICH') || name.includes('PANINI')) {
+                details.push('Sans frite');
+            }
+        }
+        if (c.drink) details.push('Boisson: ' + c.drink);
+    }
+
+    return { sizeLabel, details, note: c.note || null };
 }
 
 async function formatDynamicTicket(order, template) {
@@ -628,6 +706,7 @@ async function formatDynamicTicket(order, template) {
         if (item.fontSize === 'double_height') cmd += ESCPOS_LOCAL.DOUBLE_HEIGHT;
         else if (item.fontSize === 'double_width') cmd += ESCPOS_LOCAL.DOUBLE_WIDTH;
         else if (item.fontSize === 'double_size') cmd += ESCPOS_LOCAL.DOUBLE_SIZE;
+        else if (item.fontSize === 'size_7' || item.fontSize === '7' || item.fontSize === 'large_7') cmd += GS + '!' + '\x66';
         else cmd += ESCPOS_LOCAL.NORMAL_SIZE;
 
         cmd += item.bold ? ESCPOS_LOCAL.BOLD_ON : ESCPOS_LOCAL.BOLD_OFF;
@@ -764,41 +843,18 @@ async function formatDynamicTicket(order, template) {
 
                         const c = ci.customization;
                         if (c) {
-                            const dFont = template?.detailFontType || 'B';
-                            const dSize = template?.detailFontSize || 'normal';
-                            const dBold = !!template?.detailBold;
+                            const { sizeLabel, details, note } = formatCustomizationDetails(ci);
 
-                            if (c.size) {
-                                visualItems.push({ text: '   - ' + c.size.toUpperCase() + '\n', align: s.align, bold: dBold, underline: false, fontSize: dSize, fontType: dFont });
+                            if (sizeLabel) {
+                                visualItems.push({ text: '   ' + sizeLabel + '\n', align: s.align, bold: true, underline: false, fontSize: 'double_size', fontType: 'A' });
                             }
 
-                            const otherDetails = [];
-                            if (c.meats?.length)  otherDetails.push(...c.meats.map(m => '+ ' + m));
-                            if (c.meat)           otherDetails.push('+ ' + c.meat);
-                            if (c.sauces?.length) otherDetails.push(...c.sauces.map(s => 'Sauce: ' + s));
-                            if (c.sauce)          otherDetails.push('Sauce: ' + c.sauce);
-                            if (c.garnitures?.length) otherDetails.push(...c.garnitures);
-                            if (c.supplements?.length) otherDetails.push(...c.supplements.map(s => '+ ' + s));
-                            if (c.removedIngredients?.length) otherDetails.push(...c.removedIngredients.map(r => 'Sans ' + r));
-                            
-                            if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
-                                const parts  = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
-                                const ml     = { frites: 'Frite', boisson: 'Boisson', supp_frites: 'Supp Frites', menu: 'Menu complet' };
-                                const labels = parts.map(p => ml[p] || p);
-                                if (labels.length) otherDetails.push(labels.join(' + '));
-                            } else if (c.menuOption === 'none' || c.menuOption === '') {
-                                const cat2 = (ci.item?.category || ci.category || '').toLowerCase();
-                                if (cat2 === 'panini' || name.toUpperCase().includes('SANDWICH') || name.toUpperCase().includes('PANINI'))
-                                    otherDetails.push('Sans frite');
-                            }
-                            if (c.drink) otherDetails.push('Boisson: ' + c.drink);
-
-                            otherDetails.forEach(d => {
-                                visualItems.push({ text: '   - ' + d + '\n', align: s.align, bold: dBold, underline: false, fontSize: dSize, fontType: dFont });
+                            details.forEach(d => {
+                                visualItems.push({ text: '   - ' + d + '\n', align: s.align, bold: true, underline: false, fontSize: 'double_height', fontType: 'A' });
                             });
 
-                            if (c.note) {
-                                visualItems.push({ text: '   - Note: ' + c.note + '\n', align: s.align, bold: dBold, underline: false, fontSize: dSize, fontType: dFont });
+                            if (note) {
+                                visualItems.push({ text: '   - Note: ' + note + '\n', align: s.align, bold: true, underline: false, fontSize: 'double_height', fontType: 'A' });
                             }
                         }
                     });
@@ -1041,24 +1097,31 @@ async function formatKitchenTicketClassic(order) {
 
                 // Details → appear BELOW item name
                 if (c) {
-                    if (c.size) displayLines.push(ESCPOS_KITCHEN.FONT_B + '   - ' + c.size.toUpperCase() + '\n' + ESCPOS_KITCHEN.FONT_A);
-                    const details = [];
-                    if (c.meats?.length)  details.push(...c.meats.map(m => '+ ' + m));
-                    if (c.meat)           details.push('+ ' + c.meat);
-                    if (c.sauces?.length) details.push(...c.sauces.map(sc => 'Sauce: ' + sc));
-                    if (c.sauce)          details.push('Sauce: ' + c.sauce);
-                    if (c.garnitures?.length) details.push(...c.garnitures);
-                    if (c.supplements?.length) details.push(...c.supplements.map(sp => '+ ' + sp));
-                    if (c.removedIngredients?.length) details.push(...c.removedIngredients.map(r => 'Sans ' + r));
-                    if (c.toppings?.length) details.push(...c.toppings.map(t => '+ ' + t));
-                    if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
-                        const ml = { frites:'Frite', boisson:'Boisson', supp_frites:'Supp Frites', menu:'Menu complet' };
-                        const lbs = c.menuOption.split(',').map(o => ml[o.trim()] || o.trim()).filter(Boolean);
-                        if (lbs.length) details.push(lbs.join(' + '));
+                    const { sizeLabel, details, note } = formatCustomizationDetails(ci);
+
+                    if (sizeLabel) {
+                        displayLines.push(
+                            ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE +
+                            '   ' + sizeLabel +
+                            ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + '\n'
+                        );
                     }
-                    if (c.drink) details.push('Boisson: ' + c.drink);
-                    details.forEach(d => displayLines.push('   - ' + d + '\n'));
-                    if (c.note) displayLines.push(ESCPOS_KITCHEN.BOLD_ON + '   * Note: ' + c.note + ESCPOS_KITCHEN.BOLD_OFF + '\n');
+
+                    details.forEach(d => {
+                        displayLines.push(
+                            ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_HEIGHT +
+                            '   - ' + d +
+                            ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + '\n'
+                        );
+                    });
+
+                    if (note) {
+                        displayLines.push(
+                            ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_HEIGHT +
+                            '   - Note: ' + note +
+                            ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + '\n'
+                        );
+                    }
                 }
             });
         });

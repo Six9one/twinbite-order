@@ -29,10 +29,10 @@ import { printDateLabel } from '@/config/printConfig';
 const PRINT_SERVER = 'http://localhost:3001';
 
 type OrderType = 'surplace' | 'emporter' | 'livraison';
-type PayMethod  = 'especes' | 'cb' | 'en_ligne';
+type PayMethod  = 'especes' | 'cb' | 'en_ligne' | 'divise';
 
 const TYPE_LABELS: Record<OrderType, string> = { surplace:'🍽️ Sur Place', emporter:'🛍️ À Emporter', livraison:'🚗 Livraison' };
-const PAY_LABELS:  Record<PayMethod, string>  = { especes:'💵 Espèces', cb:'💳 Carte', en_ligne:'🌐 En ligne' };
+const PAY_LABELS:  Record<PayMethod, string>  = { especes:'💵 Espèces', cb:'💳 Carte', en_ligne:'🌐 En ligne', divise:'⚖️ Divisé' };
 const CAT_ICON:    Record<string, string> = {
   pizzas:'🍕', tacos:'🌮', sandwiches:'🥖', texmex:'🌯',
   soufflets:'🥙', makloub:'🍛', mlawi:'🫓', panini:'🥪',
@@ -1213,16 +1213,18 @@ const FALLBACK_SANDWICHES_POS = [
   { id:'sw-normand',    name:'Normand',     base_price:8.50, image_url:null, is_active:true, description:'Escalope de poulet, lardons, champignons, crudités' },
 ];
 
-// ── Sandwich panel: pick sandwich → sauce + crudités (no meat) ───────────────
+// ── Sandwich panel: pick sandwich → sauce + crudités + suppléments (no meat) ───────────────
 function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>void }) {
   // Lit depuis sandwich_types (même table que le site web et la borne)
   const { data: dbProducts = [], isLoading: loadingSw } = useSandwichTypes();
   const products = (!loadingSw && dbProducts.length === 0) ? FALLBACK_SANDWICHES_POS : dbProducts;
   const { data: dbSauces = [] } = useSauceOptions();
   const { data: dbCrud = [] }   = useCruditesOptions();
+  const { data: dbSupps = [] }  = useSupplementOptions();
 
   const sauces = dbSauces.map((s:any) => ({ id:s.id, name:s.name, img:s.image_url }));
-  const crud   = dbCrud.map((g:any) => ({ id:g.id, name:g.name, img:g.image_url }));
+  const crud   = dbCrud.map((g:any) => ({ id:g.id, name:g.name, img:g.image_url, price:Number(g.price)||0 }));
+  const supps  = dbSupps.map((s:any) => ({ id:s.id, name:s.name, img:s.image_url, price:Number(s.price)||0 }));
   const defaults = ['salade','tomate','oignon'];
   const defCrud = crud.filter(g => defaults.some(d => g.name.toLowerCase().includes(d)));
   const extraCrud = crud.filter(g => !defaults.some(d => g.name.toLowerCase().includes(d)));
@@ -1231,6 +1233,7 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
   const [selSauces, setSauces] = useState<string[]>([]);
   const [removed, setRemoved] = useState<string[]>([]);
   const [selExtra, setExtra] = useState<string[]>([]);
+  const [selSupps, setSelSupps] = useState<string[]>([]);
   const [menu, setMenu] = useState<'none'|'frites'|'boisson'|'menu'>('none');
   const [note, setNote] = useState('');
 
@@ -1245,10 +1248,12 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
   }, []);
 
   const sauceSurcharge = Math.max(0, selSauces.length - FREE_SAUCES) * EXTRA_SAUCE;
-  const price = (sel?.base_price || 0) + menuOptionPrices[menu] + sauceSurcharge;
+  const suppTotal = selSupps.reduce((t,id) => t + (supps.find(s=>s.id===id)?.price||0), 0);
+  const extraCrudTotal = selExtra.reduce((t,id) => t + (extraCrud.find(g=>g.id===id)?.price||0), 0);
+  const price = (sel?.base_price || 0) + menuOptionPrices[menu] + sauceSurcharge + suppTotal + extraCrudTotal;
 
   const toggle = (id:string, arr:string[], set:any) => set(arr.includes(id) ? arr.filter((x:string)=>x!==id) : [...arr, id]);
-  const reset = () => { setSel(null); setSauces([]); setRemoved([]); setExtra([]); setMenu('none'); setNote(''); };
+  const reset = () => { setSel(null); setSauces([]); setRemoved([]); setExtra([]); setSelSupps([]); setMenu('none'); setNote(''); };
 
   const handleAdd = () => {
     if (!sel) { toast.error('Choisissez un sandwich'); return; }
@@ -1257,9 +1262,10 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
       ...defCrud.filter(g=>!removed.includes(g.id)).map(g=>g.name),
       ...extraCrud.filter(g=>selExtra.includes(g.id)).map(g=>g.name),
     ];
+    const suppNames = selSupps.map(id => supps.find(s=>s.id===id)?.name || '');
     onAdd(
       { id:sel.id, name:sel.name, price:sel.base_price, category:'sandwiches', description:'' },
-      { sauces:sauceNames, garnitures:crudNames, menuOption:menu, note },
+      { sauces:sauceNames, garnitures:crudNames, supplements:suppNames, menuOption:menu, note },
       price
     );
     reset();
@@ -1289,6 +1295,18 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
                       selected={selSauces.includes(s.id)} onClick={()=>toggle(s.id, selSauces, setSauces)} />
                   ))}
                 </div>
+
+                {supps.length > 0 && (
+                  <>
+                    <SectionTitle hint="optionnel">Suppléments</SectionTitle>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:6, marginBottom:12 }}>
+                      {supps.map(s => (
+                        <OptTile key={s.id} name={s.name} img={s.img} emoji="🧀" price={s.price}
+                          selected={selSupps.includes(s.id)} onClick={()=>toggle(s.id, selSupps, setSelSupps)} />
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
               <div>
@@ -1299,7 +1317,7 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
                       selected={!removed.includes(g.id)} onClick={()=>toggle(g.id, removed, setRemoved)} />
                   ))}
                   {extraCrud.map(g => (
-                    <OptTile key={g.id} name={g.name} img={g.img} emoji="➕"
+                    <OptTile key={g.id} name={g.name} img={g.img} emoji="➕" price={g.price}
                       selected={selExtra.includes(g.id)} onClick={()=>toggle(g.id, selExtra, setExtra)} />
                   ))}
                 </div>
@@ -1455,14 +1473,28 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
 
   const handleAdd = () => {
     if (!hasItems) { toast.error('Sélectionnez au moins un article'); return; }
-    const lines = Object.entries(qtys)
+    const selectedItems = Object.entries(qtys)
       .filter(([,q])=>q>0)
-      .map(([id,q])=>{ const p=products.find(x=>x.id===id)!; return `${q}x ${p.name}`; });
-    onAdd(
-      { id:`texmex-${Date.now()}`, name:`Tex-Mex (${lines.length} article${lines.length>1?'s':''})`, price:total, category:'texmex', description:lines.join(', ') },
-      { items:lines, note:'' },
-      total
-    );
+      .map(([id,q])=>{ const p=products.find(x=>x.id===id)!; return { id:p.id, name:p.name, qty:q, isFixed: p.category==='frites'||p.category==='croque'||p.category==='menu_enfant' }; });
+
+    if (selectedItems.length === 1) {
+      const s = selectedItems[0];
+      const displayName = s.isFixed
+        ? (s.qty > 1 ? `${s.name} (x${s.qty})` : s.name)
+        : `${s.name} (${s.qty} pièce${s.qty > 1 ? 's' : ''})`;
+      onAdd(
+        { id: s.id, name: displayName, price: total, category: 'texmex', description: displayName },
+        { items: [displayName], note: '' },
+        total
+      );
+    } else {
+      const lines = selectedItems.map(s => s.isFixed ? `${s.qty}x ${s.name}` : `${s.name} (${s.qty} pièce${s.qty > 1 ? 's' : ''})`);
+      onAdd(
+        { id: `texmex-${Date.now()}`, name: `Tex-Mex (${lines.length} articles)`, price: total, category: 'texmex', description: lines.join(', ') },
+        { items: lines, garnitures: lines, note: '' },
+        total
+      );
+    }
     setQtys({});
   };
 
@@ -1577,7 +1609,30 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
                 <span>👶 Menu Enfant</span>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:7 }}>
-                {menus.map(p=><TxTile key={p.id} p={p} />)}
+                {menus.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      onAdd(
+                        { id: p.id, name: 'MENU ENFANT', price: p.unit_price || 6.50, category: 'texmex', description: 'Menu Enfant' },
+                        { note: '' },
+                        p.unit_price || 6.50
+                      );
+                      toast.success('Menu Enfant (6.50€) ajouté au panier');
+                    }}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      padding: 12, borderRadius: 10, border: '2px solid #a855f7',
+                      background: 'rgba(168, 85, 247, 0.15)', cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <span style={{ fontSize: 24, marginBottom: 4 }}>👶</span>
+                    <span style={{ fontSize: 12, fontWeight: 900, color: '#f8fafc' }}>{p.name}</span>
+                    <span style={{ fontSize: 11, color: '#a855f7', fontWeight: 800, marginTop: 2 }}>{(p.unit_price || 6.50).toFixed(2)}€</span>
+                    <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 800, marginTop: 4 }}>⚡ Clic Direct 1-Tap</span>
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -1645,10 +1700,10 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
 
 // ── Boissons panel — canette/bouteille avec note + quantité ──────────────────
 const BOISSON_ITEMS = [
-  { id:'canette',   name:'Canette au choix',   price:1.50, hasNote:true  },
-  { id:'bouteille', name:'Grande Bouteille',   price:3.50, hasNote:true  },
-  { id:'eau-mini',  name:'Eau Mini (50cl)',     price:1.50, hasNote:false },
-  { id:'eau-grand', name:'Eau Grand (1.5L)',    price:1.50, hasNote:false },
+  { id:'canette',   name:'Canette au choix (33cl)',   price:1.50, hasNote:true  },
+  { id:'eau-mini',  name:'Eau (50cl)',               price:1.00, hasNote:false },
+  { id:'bouteille', name:'Grande Bouteille (1.5L)',   price:3.50, hasNote:true  },
+  { id:'eau-grand', name:'Eau Grand (1.5L)',          price:1.50, hasNote:false },
 ];
 function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void }) {
   const { data: dbDrinks } = useDrinks();
@@ -3663,7 +3718,7 @@ function CartItemRow({ ci, onUpdate, onRemove }: { ci:any; onUpdate:(u:any)=>voi
 }
 
 // ── Caisse side panel ─────────────────────────────────────────────────────────
-function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName, phone, setPhone, address, setAddress, notes, setNotes, discount, setDiscount, payMethod, setPayMethod, pizzaPromo, pizzaSaving, discountAmt, ht, tva, total, submitting, handleSubmit, clearCart, setShowFacture, mapboxToken, incomingCall, setIncomingCall, handleLinkIncomingCall, orderType, handleOrderType }: any) {
+function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName, phone, setPhone, address, setAddress, notes, setNotes, discountVal, setDiscountVal, discountMode, setDiscountMode, payMethod, setPayMethod, splitCash, setSplitCash, splitCard, setSplitCard, pizzaPromo, pizzaSaving, discountAmt, ht, tva, total, submitting, handleSubmit, clearCart, setShowFacture, mapboxToken, incomingCall, setIncomingCall, handleLinkIncomingCall, orderType, handleOrderType }: any) {
   const { updateCartItem, removeFromCart, addToCart } = useOrder();
   
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
@@ -3986,12 +4041,74 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
             <span style={{ color:'#22c55e' }}>-{pizzaSaving.toFixed(2)}€</span>
           </div>
         )}
-        {/* Remise */}
-        <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4 }}>
-          <span style={{ fontSize:10, color:S.muted, flex:1 }}>Remise (€)</span>
-          <input type="number" value={discount||''} onChange={(e:any)=>setDiscount(Math.max(0,parseFloat(e.target.value)||0))}
-            placeholder="0" style={{...S.input, width:56, textAlign:'right', padding:'3px 6px', fontSize:10}} />
+        {/* Remise & Offres Caissier */}
+        <div style={{ marginBottom:6, background:'rgba(0,0,0,0.15)', padding:'6px 8px', borderRadius:8, border:`1px solid ${S.border}` }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
+            <span style={{ fontSize:10, color:S.muted, fontWeight:700 }}>Remise / Offre</span>
+            <div style={{ display:'flex', gap:2 }}>
+              <button
+                type="button"
+                onClick={() => setDiscountMode('percent')}
+                style={{ padding:'2px 6px', fontSize:9, fontWeight:800, borderRadius:4, border:'none', cursor:'pointer', background: discountMode === 'percent' ? S.accent : '#374151', color: discountMode === 'percent' ? '#000' : '#fff' }}
+              >
+                %
+              </button>
+              <button
+                type="button"
+                onClick={() => setDiscountMode('euro')}
+                style={{ padding:'2px 6px', fontSize:9, fontWeight:800, borderRadius:4, border:'none', cursor:'pointer', background: discountMode === 'euro' ? S.accent : '#374151', color: discountMode === 'euro' ? '#000' : '#fff' }}
+              >
+                €
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display:'flex', gap:4, marginBottom:4 }}>
+            <input
+              type="number"
+              value={discountVal || ''}
+              onChange={(e: any) => setDiscountVal(Math.max(0, parseFloat(e.target.value) || 0))}
+              placeholder={`Valeur (${discountMode === 'percent' ? '%' : '€'})`}
+              style={{ ...S.input, flex: 1, textAlign: 'right', padding: '3px 6px', fontSize: 11 }}
+            />
+            {discountVal > 0 && (
+              <button
+                type="button"
+                onClick={() => setDiscountVal(0)}
+                style={{ padding: '3px 6px', fontSize: 10, background: '#ef444422', color: '#ef4444', border: '1px solid #ef444444', borderRadius: 6, cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Quick presets */}
+          <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+            {[
+              { label: '-5%', mode: 'percent', val: 5 },
+              { label: '-10%', mode: 'percent', val: 10 },
+              { label: '-15%', mode: 'percent', val: 15 },
+              { label: '-20%', mode: 'percent', val: 20 },
+              { label: '-1€', mode: 'euro', val: 1 },
+              { label: '-2€', mode: 'euro', val: 2 },
+              { label: 'Offert', mode: 'percent', val: 100 },
+            ].map((p, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => { setDiscountMode(p.mode as any); setDiscountVal(p.val); }}
+                style={{
+                  padding: '2px 5px', fontSize: 9, fontWeight: 700, borderRadius: 5, border: 'none', cursor: 'pointer',
+                  background: discountVal === p.val && discountMode === p.mode ? S.accent : '#1f2937',
+                  color: discountVal === p.val && discountMode === p.mode ? '#000' : S.text,
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
+
         {/* HT / TVA */}
         <div style={{ fontSize:10, color:S.muted, display:'flex', justifyContent:'space-between', marginBottom:1 }}><span>HT</span><span>{ht.toFixed(2)}€</span></div>
         <div style={{ fontSize:10, color:S.muted, display:'flex', justifyContent:'space-between', marginBottom:5 }}><span>TVA 10%</span><span>{tva.toFixed(2)}€</span></div>
@@ -4001,7 +4118,7 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
         </div>
         {/* Payment methods */}
         <div style={{ display:'flex', gap:4, marginBottom:7 }}>
-          {(['especes','cb'] as PayMethod[]).map((m:PayMethod) => (
+          {(['especes','cb','divise'] as PayMethod[]).map((m:PayMethod) => (
             <button key={m} onClick={()=>setPayMethod(m)} style={{
               flex:1, padding:'5px 4px', borderRadius:7, border:'none', cursor:'pointer', fontSize:10, fontWeight:700,
               background: payMethod===m ? '#3b82f622' : '#1f2937',
@@ -4010,6 +4127,49 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
             }}>{PAY_LABELS[m]}</button>
           ))}
         </div>
+
+        {/* Split Payment details */}
+        {payMethod === 'divise' && (
+          <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '6px 8px', borderRadius: 8, marginBottom: 7 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: '#3b82f6', marginBottom: 4 }}>
+              ⚖️ Paiement Divisé
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 4 }}>
+              <div>
+                <span style={{ fontSize: 9, color: S.muted }}>💵 Espèces (€)</span>
+                <input
+                  type="number"
+                  value={splitCash || ''}
+                  onChange={(e: any) => setSplitCash(Math.max(0, parseFloat(e.target.value) || 0))}
+                  placeholder="0.00"
+                  style={{ ...S.input, padding: '3px 6px', fontSize: 11, textAlign: 'right' }}
+                />
+              </div>
+              <div>
+                <span style={{ fontSize: 9, color: S.muted }}>💳 Carte (€)</span>
+                <input
+                  type="number"
+                  value={splitCard || ''}
+                  onChange={(e: any) => setSplitCard(Math.max(0, parseFloat(e.target.value) || 0))}
+                  placeholder="0.00"
+                  style={{ ...S.input, padding: '3px 6px', fontSize: 11, textAlign: 'right' }}
+                />
+              </div>
+            </div>
+            {(() => {
+              const paid = (splitCash || 0) + (splitCard || 0);
+              const diff = total - paid;
+              if (diff > 0.01) {
+                return <div style={{ fontSize: 10, fontWeight: 800, color: '#ef4444' }}>⚠️ Reste à payer: {diff.toFixed(2)}€</div>;
+              } else if (diff < -0.01) {
+                return <div style={{ fontSize: 10, fontWeight: 800, color: '#22c55e' }}>💵 À rendre: {Math.abs(diff).toFixed(2)}€</div>;
+              } else {
+                return <div style={{ fontSize: 10, fontWeight: 800, color: '#22c55e' }}>✅ Total exact complété</div>;
+              }
+            })()}
+          </div>
+        )}
+
         {/* Valider */}
         <button onClick={handleSubmit} disabled={submitting||cart.length===0} style={{
           width:'100%', padding:'9px', borderRadius:8, border:'none',
@@ -4021,7 +4181,7 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
         </button>
         {/* Vider */}
         <div style={{ display:'flex', gap:4, marginTop:5 }}>
-          <button onClick={()=>{clearCart();setDiscount(0);}} style={{ flex:1, padding:'6px', borderRadius:7, border:`1px solid ${S.border}`, background:'none', color:S.muted, cursor:'pointer', fontSize:10 }}>
+          <button onClick={()=>{clearCart();setDiscountVal(0);setSplitCash(0);setSplitCard(0);}} style={{ flex:1, padding:'6px', borderRadius:7, border:`1px solid ${S.border}`, background:'none', color:S.muted, cursor:'pointer', fontSize:10 }}>
             🗑️ Vider le panier
           </button>
         </div>
@@ -4280,6 +4440,267 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
   );
 }
 
+// ── Clôture de caisse & Rapports X/Z Modal ──────────────────────────────────────
+function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
+  const [loading, setLoading] = useState(true);
+  const [todayOrders, setTodayOrders] = useState<any[]>([]);
+  const [fondDeCaisse, setFondDeCaisse] = useState<number>(() => {
+    try { return Number(localStorage.getItem('pos-fond-caisse')) || 100; } catch { return 100; }
+  });
+  const [especesComptes, setEspecesComptes] = useState<number>(0);
+  const [printing, setPrinting] = useState(false);
+
+  useEffect(() => {
+    try { localStorage.setItem('pos-fond-caisse', String(fondDeCaisse)); } catch {}
+  }, [fondDeCaisse]);
+
+  useEffect(() => {
+    async function loadTodayOrders() {
+      setLoading(true);
+      try {
+        const todayAt00 = new Date();
+        todayAt00.setHours(0, 0, 0, 0);
+
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .gte('created_at', todayAt00.toISOString());
+
+        if (!error && data) {
+          setTodayOrders(data);
+        }
+      } catch (e) {
+        console.error('Error fetching today orders for Z report:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadTodayOrders();
+  }, []);
+
+  const totalTurnover = todayOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const totalOrders = todayOrders.length;
+
+  let especesTotal = 0;
+  let cbTotal = 0;
+  let enLigneTotal = 0;
+
+  todayOrders.forEach(o => {
+    const pMethod = o.payment_method;
+    const tot = Number(o.total) || 0;
+    if (pMethod === 'especes') especesTotal += tot;
+    else if (pMethod === 'cb') cbTotal += tot;
+    else if (pMethod === 'en_ligne') enLigneTotal += tot;
+    else if (pMethod === 'divise') {
+      const details = o.payment_details;
+      if (details) {
+        especesTotal += Number(details.especes) || 0;
+        cbTotal += Number(details.cb) || 0;
+      } else {
+        especesTotal += tot;
+      }
+    } else {
+      especesTotal += tot;
+    }
+  });
+
+  const tvaTotal = todayOrders.reduce((sum, o) => sum + (Number(o.tva) || 0), 0);
+
+  const channelSurPlace = todayOrders.filter(o => o.order_type === 'surplace');
+  const channelEmporter = todayOrders.filter(o => o.order_type === 'emporter');
+  const channelLivraison = todayOrders.filter(o => o.order_type === 'livraison');
+
+  const expectedCashInDrawer = fondDeCaisse + especesTotal;
+  const variance = especesComptes - expectedCashInDrawer;
+
+  const handlePrintReport = async (type: 'X' | 'Z') => {
+    setPrinting(true);
+    const nowStr = new Date().toLocaleString('fr-FR');
+    const reportTitle = type === 'X' ? 'RAPPORT X (INTERMÉDIAIRE)' : 'RAPPORT Z (CLÔTURE CAISSE)';
+
+    const printPayload = {
+      type: `RAPPORT_${type}`,
+      date: nowStr,
+      totalTurnover: totalTurnover.toFixed(2),
+      totalOrders,
+      especesTotal: especesTotal.toFixed(2),
+      cbTotal: cbTotal.toFixed(2),
+      enLigneTotal: enLigneTotal.toFixed(2),
+      tvaTotal: tvaTotal.toFixed(2),
+      fondDeCaisse: fondDeCaisse.toFixed(2),
+      expectedCashInDrawer: expectedCashInDrawer.toFixed(2),
+      especesComptes: especesComptes.toFixed(2),
+      variance: variance.toFixed(2),
+      surPlaceCount: channelSurPlace.length,
+      surPlaceTotal: channelSurPlace.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(2),
+      emporterCount: channelEmporter.length,
+      emporterTotal: channelEmporter.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(2),
+      livraisonCount: channelLivraison.length,
+      livraisonTotal: channelLivraison.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(2),
+    };
+
+    try {
+      const res = await fetch(`${PRINT_SERVER}/print`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isReport: true, report: printPayload }),
+        signal: AbortSignal.timeout(3000),
+      }).catch(() => null);
+
+      if (!res?.ok) {
+        const html = `
+          <div style="font-family:monospace;width:80mm;padding:4mm;font-size:12px;color:#000;">
+            <div style="text-align:center;font-weight:bold;font-size:16px;">TWIN PIZZA</div>
+            <div style="text-align:center;font-weight:bold;margin-bottom:8px;">${reportTitle}</div>
+            <hr/>
+            <div>Date: ${nowStr}</div>
+            <div>Commandes: ${totalOrders}</div>
+            <hr/>
+            <div style="font-weight:bold;font-size:14px;">CA TOTAL: ${totalTurnover.toFixed(2)} €</div>
+            <div>TVA (10%): ${tvaTotal.toFixed(2)} €</div>
+            <hr/>
+            <div style="font-weight:bold;">VENTES PAR RÈGLEMENT</div>
+            <div>- Espèces: ${especesTotal.toFixed(2)} €</div>
+            <div>- Carte CB: ${cbTotal.toFixed(2)} €</div>
+            <div>- En Ligne: ${enLigneTotal.toFixed(2)} €</div>
+            <hr/>
+            <div style="font-weight:bold;">VENTES PAR CANAL</div>
+            <div>- Sur Place (${channelSurPlace.length}): ${channelSurPlace.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(2)} €</div>
+            <div>- À Emporter (${channelEmporter.length}): ${channelEmporter.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(2)} €</div>
+            <div>- Livraison (${channelLivraison.length}): ${channelLivraison.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(2)} €</div>
+            <hr/>
+            <div style="font-weight:bold;">RÉCONCILIATION CAISSE</div>
+            <div>Fond de caisse: ${fondDeCaisse.toFixed(2)} €</div>
+            <div>Espèces attendues: ${expectedCashInDrawer.toFixed(2)} €</div>
+            <div>Espèces comptées: ${especesComptes.toFixed(2)} €</div>
+            <div style="font-weight:bold;">Écart: ${variance >= 0 ? '+' : ''}${variance.toFixed(2)} €</div>
+            <hr/>
+            <div style="text-align:center;margin-top:10px;">Document caisse officiel</div>
+          </div>
+        `;
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
+        document.body.appendChild(iframe);
+        const doc = iframe.contentWindow?.document;
+        if (doc) {
+          doc.open(); doc.write(`<!DOCTYPE html><html><head><title>${reportTitle}</title></head><body>${html}</body></html>`); doc.close();
+          setTimeout(() => { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); setTimeout(() => iframe.remove(), 4000); }, 300);
+        }
+      }
+      toast.success(`✅ ${reportTitle} imprimé !`);
+      if (type === 'Z') {
+        try { localStorage.setItem('pos-last-z-report', JSON.stringify({ date: nowStr, turnover: totalTurnover })); } catch {}
+        toast.success('🔒 Clôture de caisse Z validée avec succès');
+        onClose();
+      }
+    } catch {
+      toast.error('Erreur lors de l’impression du rapport');
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:999, background:'rgba(0,0,0,0.8)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div style={{ background:S.panel, border:`1px solid ${S.border}`, borderRadius:16, width:'100%', maxWidth:540, maxHeight:'90vh', overflow:'auto', padding:20, color:S.text, boxShadow:'0 12px 32px rgba(0,0,0,0.6)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, borderBottom:`1px solid ${S.border}`, paddingBottom:10 }}>
+          <div style={{ fontSize:18, fontWeight:800, color:S.accent, display:'flex', alignItems:'center', gap:8 }}>
+            🔒 Clôture de Caisse (Rapport X / Z)
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:S.muted, fontSize:18, cursor:'pointer' }}>✕</button>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign:'center', padding:30, color:S.muted }}>Chargement des données de la journée...</div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            {/* Chiffre d'affaires global */}
+            <div style={{ background:'linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(15, 23, 42, 0.4))', border:`1.5px solid ${S.accent}`, borderRadius:12, padding:14, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <div style={{ fontSize:11, textTransform:'uppercase', color:S.accent, fontWeight:800 }}>Chiffre d'Affaires du Jour</div>
+                <div style={{ fontSize:26, fontWeight:900, color:'#fff' }}>{totalTurnover.toFixed(2)} €</div>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                <div style={{ fontSize:12, fontWeight:700, color:S.muted }}>{totalOrders} commande{totalOrders > 1 ? 's' : ''}</div>
+                <div style={{ fontSize:11, color:S.muted }}>TVA (10%): {tvaTotal.toFixed(2)} €</div>
+              </div>
+            </div>
+
+            {/* Ventilation règlements */}
+            <div>
+              <div style={{ fontSize:12, fontWeight:800, color:S.accent, marginBottom:6, textTransform:'uppercase' }}>Ventilation par Règlement</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                <div style={{ background:S.card, padding:10, borderRadius:8, border:`1px solid ${S.border}` }}>
+                  <div style={{ fontSize:10, color:S.muted }}>💵 Espèces</div>
+                  <div style={{ fontSize:15, fontWeight:800, color:'#22c55e' }}>{especesTotal.toFixed(2)} €</div>
+                </div>
+                <div style={{ background:S.card, padding:10, borderRadius:8, border:`1px solid ${S.border}` }}>
+                  <div style={{ fontSize:10, color:S.muted }}>💳 Carte CB</div>
+                  <div style={{ fontSize:15, fontWeight:800, color:'#3b82f6' }}>{cbTotal.toFixed(2)} €</div>
+                </div>
+                <div style={{ background:S.card, padding:10, borderRadius:8, border:`1px solid ${S.border}` }}>
+                  <div style={{ fontSize:10, color:S.muted }}>🌐 En Ligne</div>
+                  <div style={{ fontSize:15, fontWeight:800, color:'#a855f7' }}>{enLigneTotal.toFixed(2)} €</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Réconciliation tiroir-caisse */}
+            <div style={{ background:'rgba(255,255,255,0.03)', border:`1px solid ${S.border}`, padding:12, borderRadius:10 }}>
+              <div style={{ fontSize:12, fontWeight:800, color:S.accent, marginBottom:8, textTransform:'uppercase' }}>Réconciliation Tiroir-Caisse</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:8 }}>
+                <div>
+                  <label style={{ fontSize:10, color:S.muted, display:'block', marginBottom:3 }}>Fond de caisse initial (€)</label>
+                  <input
+                    type="number"
+                    value={fondDeCaisse}
+                    onChange={e => setFondDeCaisse(Math.max(0, parseFloat(e.target.value) || 0))}
+                    style={{ ...S.input, fontSize:12 }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize:10, color:S.muted, display:'block', marginBottom:3 }}>Espèces physiques comptées (€)</label>
+                  <input
+                    type="number"
+                    value={especesComptes || ''}
+                    onChange={e => setEspecesComptes(Math.max(0, parseFloat(e.target.value) || 0))}
+                    placeholder={expectedCashInDrawer.toFixed(2)}
+                    style={{ ...S.input, fontSize:12 }}
+                  />
+                </div>
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:6, borderTop:`1px dashed ${S.border}`, fontSize:11 }}>
+                <span>Espèces attendues en caisse: <strong>{expectedCashInDrawer.toFixed(2)} €</strong></span>
+                <span style={{ fontWeight:800, color: variance === 0 ? '#22c55e' : (variance < 0 ? '#ef4444' : '#3b82f6') }}>
+                  Écart: {variance >= 0 ? '+' : ''}{variance.toFixed(2)} €
+                </span>
+              </div>
+            </div>
+
+            {/* Actions: Rapport X & Z */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:6 }}>
+              <button
+                disabled={printing}
+                onClick={() => handlePrintReport('X')}
+                style={{ ...S.btn, padding:'12px', fontWeight:800, background:'#1e293b', borderColor:'#3b82f644', color:'#3b82f6', fontSize:12 }}
+              >
+                📄 Imprimer Rapport X
+              </button>
+              <button
+                disabled={printing}
+                onClick={() => handlePrintReport('Z')}
+                style={{ ...S.btn, padding:'12px', fontWeight:800, background:'linear-gradient(135deg, #f59e0b, #ef4444)', border:'none', color:'#000', fontSize:12 }}
+              >
+                🔒 Valider & Imprimer Rapport Z
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main POS content ──────────────────────────────────────────────────────────
 function POSContent() {
   useThemeBump();
@@ -4305,12 +4726,16 @@ function POSContent() {
   const [name,     setName]     = useState('');
   const [address,  setAddress]  = useState('');
   const [notes,    setNotes]    = useState('');
-  const [discount, setDiscount] = useState(0);
+  const [discountVal, setDiscountVal] = useState<number>(0);
+  const [discountMode, setDiscountMode] = useState<'euro' | 'percent'>('euro');
+  const [splitCash, setSplitCash] = useState<number>(0);
+  const [splitCard, setSplitCard] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
   const [lastOrder,  setLastOrder]  = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showFacture,  setShowFacture]  = useState(false);
+  const [showCloture,  setShowCloture]  = useState(false);
   const [showQuickEdit, setShowQuickEdit] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [waStatus, setWaStatus] = useState<string>('disconnected');
@@ -4626,15 +5051,18 @@ function POSContent() {
 
   const handleOrderType = (t: OrderType) => { setOrderType(t); setCtxOrderType(t as any); };
 
-  // Promos
+  // Promos & Totals
   const pizzaItems = cart.filter(i => i.item.category === 'pizzas');
   const otherItems = cart.filter(i => i.item.category !== 'pizzas');
   const pizzaPromo = applyPizzaPromotions(pizzaItems, orderType);
   const otherTotal = otherItems.reduce((s,i) => s + (i.calculatedPrice||i.item.price)*i.quantity, 0);
   const pizzaSaving = pizzaPromo.originalTotal - pizzaPromo.discountedTotal;
   const afterPromo  = pizzaPromo.discountedTotal + otherTotal;
-  const discountAmt = Math.min(discount, afterPromo);
-  const total       = afterPromo - discountAmt;
+  
+  const discountAmt = discountMode === 'percent'
+    ? (afterPromo * discountVal) / 100
+    : Math.min(discountVal, afterPromo);
+  const total       = Math.max(0, afterPromo - discountAmt);
   const { ht, tva } = calculateTVA(total);
 
   // Add to cart handler (for all inline panels)
@@ -4724,6 +5152,13 @@ function POSContent() {
     if (!cart.length) { toast.error('Panier vide'); return; }
     if (needsInfo && !name.trim()) { toast.error('Nom requis'); return; }
     if (needsInfo && !address.trim()) { toast.error('Adresse requise'); return; }
+    if (payMethod === 'divise') {
+      const paid = (splitCash || 0) + (splitCard || 0);
+      if (paid < total - 0.01) {
+        toast.error(`Paiement divisé incomplet (Reste ${(total - paid).toFixed(2)}€)`);
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const orderNumber = await generateOrderNumber();
@@ -4735,6 +5170,7 @@ function POSContent() {
         customer_address: needsInfo ? address.trim() : null,
         customer_notes:   notes.trim() || null,
         payment_method:   payMethod as any,
+        payment_details:  payMethod === 'divise' ? { especes: splitCash, cb: splitCard } : null,
         subtotal: fHt, tva: fTva, total, delivery_fee: 0,
         status: 'pending', is_scheduled: false, scheduled_for: null,
       };
@@ -4749,7 +5185,7 @@ function POSContent() {
       // 2. Show success to cashier instantly — no waiting
       toast.success(`✅ Commande #${orderNumber}`);
       setLastOrder(orderNumber);
-      clearCart(); setName(''); setPhone(''); setAddress(''); setNotes(''); setDiscount(0);
+      clearCart(); setName(''); setPhone(''); setAddress(''); setNotes(''); setDiscountVal(0); setSplitCash(0); setSplitCard(0);
 
       // 3. Fire print — completely async, never blocks order flow
       fetch(`${PRINT_SERVER}/print`, {
@@ -4845,6 +5281,9 @@ function POSContent() {
           </button>
           <button title="Ouvrir le clavier virtuel tactile" onClick={toggleKeyboard} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:'#f59e0b', borderColor:'#f59e0b33', background:'#f59e0b11', display:'flex', alignItems:'center', gap:3 }}>
             ⌨️ Clavier
+          </button>
+          <button title="Clôture de Caisse X/Z" onClick={() => setShowCloture(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:'#a855f7', borderColor:'#a855f733', background:'#a855f711', display:'flex', alignItems:'center', gap:3 }}>
+            🔒 Clôture
           </button>
           <button title="Historique & Statistiques" onClick={() => setShowHistory(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:S.accent, borderColor:S.accent+'33', background:S.accent+'11', display:'flex', alignItems:'center', gap:3 }}>
             📊 Stats
@@ -4974,8 +5413,11 @@ function POSContent() {
         phone={phone} setPhone={setPhone}
         address={address} setAddress={setAddress}
         notes={notes} setNotes={setNotes}
-        discount={discount} setDiscount={setDiscount}
+        discountVal={discountVal} setDiscountVal={setDiscountVal}
+        discountMode={discountMode} setDiscountMode={setDiscountMode}
         payMethod={payMethod} setPayMethod={setPayMethod}
+        splitCash={splitCash} setSplitCash={setSplitCash}
+        splitCard={splitCard} setSplitCard={setSplitCard}
         pizzaPromo={pizzaPromo} pizzaSaving={pizzaSaving}
         discountAmt={discountAmt} ht={ht} tva={tva} total={total}
         submitting={submitting} handleSubmit={handleSubmit}
@@ -4995,6 +5437,7 @@ function POSContent() {
       {showSettings && <SettingsPanel onClose={()=>setShowSettings(false)} />}
       {showHistory && <HistoryPanel onClose={()=>setShowHistory(false)} />}
       {showFacture && <FactureHubModal onClose={()=>setShowFacture(false)} />}
+      {showCloture && <ClotureCaisseModal onClose={() => setShowCloture(false)} />}
       {showUpdateModal && <UpdatePanel onClose={()=>setShowUpdateModal(false)} />}
       {showWaModal && <WhatsAppModal status={waStatus} qr={waQr} onClose={() => setShowWaModal(false)} />}
       {customizingPizza && (

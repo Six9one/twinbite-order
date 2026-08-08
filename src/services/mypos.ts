@@ -19,6 +19,7 @@ export interface MyPosCheckoutPayload {
   customerNotes?: string | null;
   subtotal: number;
   tva: number;
+  redirectUrl?: string;
 }
 
 export interface MyPosCheckoutResponse {
@@ -34,8 +35,16 @@ export interface MyPosCheckoutResponse {
 export async function initiateMyPosCheckout(payload: MyPosCheckoutPayload): Promise<void> {
   console.log('[myPOS Service] Initiating checkout for order:', payload.orderNumber);
 
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080';
+  const defaultRedirectUrl = `${origin}/payment/success?order=${encodeURIComponent(payload.orderNumber)}`;
+
+  const finalPayload = {
+    ...payload,
+    redirectUrl: payload.redirectUrl || defaultRedirectUrl
+  };
+
   const { data, error } = await supabase.functions.invoke('create-mypos-checkout', {
-    body: payload,
+    body: finalPayload,
   });
 
   if (error) {
