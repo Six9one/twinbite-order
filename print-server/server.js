@@ -836,7 +836,7 @@ async function formatDynamicTicket(order, template) {
                         const leftPart = bullet + qty + 'x ' + cleanedName;
                         const rightPart = price.toFixed(2) + 'E';
 
-                        const pSize = template?.itemFontSize || 'double_height';
+                        const pSize = template?.itemFontSize || 'double_size';
                         const pBold = template?.itemBold !== false;
 
                         visualItems.push({ text: padLine(leftPart, rightPart, lineWidth) + '\n', align: s.align, bold: pBold, underline: false, fontSize: pSize, fontType: 'A' });
@@ -846,15 +846,15 @@ async function formatDynamicTicket(order, template) {
                             const { sizeLabel, details, note } = formatCustomizationDetails(ci);
 
                             if (sizeLabel) {
-                                visualItems.push({ text: '   ' + sizeLabel + '\n', align: s.align, bold: true, underline: false, fontSize: 'double_size', fontType: 'A' });
+                                visualItems.push({ text: '   - Taille: ' + sizeLabel + '\n', align: s.align, bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
                             }
 
                             details.forEach(d => {
-                                visualItems.push({ text: '   - ' + d + '\n', align: s.align, bold: true, underline: false, fontSize: 'double_height', fontType: 'A' });
+                                visualItems.push({ text: '   - ' + d + '\n', align: s.align, bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
                             });
 
                             if (note) {
-                                visualItems.push({ text: '   - Note: ' + note + '\n', align: s.align, bold: true, underline: false, fontSize: 'double_height', fontType: 'A' });
+                                visualItems.push({ text: '   - Note: ' + note + '\n', align: s.align, bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
                             }
                         }
                     });
@@ -1088,38 +1088,38 @@ async function formatKitchenTicketClassic(order) {
                 if (cat === 'pizza' || cat === 'pizzas' || cleanedName.startsWith('PIZZA '))
                     cleanedName = cleanedName.replace(/^PIZZA\s+/i, '');
 
-                // Item name line → appears at TOP of item block → first in displayLines for this item
+                // Item name line → BIGGEST (DOUBLE_SIZE + BOLD)
                 displayLines.push(
-                    ESCPOS_KITCHEN.BOLD_ON +
+                    ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE +
                     padLine('• ' + qty + 'x ' + cleanedName, price.toFixed(2) + 'E') +
-                    ESCPOS_KITCHEN.BOLD_OFF + '\n'
+                    ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + '\n'
                 );
 
-                // Details → appear BELOW item name
+                // Details → appear BELOW item name in normal font size
                 if (c) {
                     const { sizeLabel, details, note } = formatCustomizationDetails(ci);
 
                     if (sizeLabel) {
                         displayLines.push(
-                            ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_SIZE +
-                            '   ' + sizeLabel +
-                            ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + '\n'
+                            ESCPOS_KITCHEN.BOLD_ON +
+                            '   - Taille: ' + sizeLabel +
+                            ESCPOS_KITCHEN.BOLD_OFF + '\n'
                         );
                     }
 
                     details.forEach(d => {
                         displayLines.push(
-                            ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_HEIGHT +
+                            ESCPOS_KITCHEN.BOLD_ON +
                             '   - ' + d +
-                            ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + '\n'
+                            ESCPOS_KITCHEN.BOLD_OFF + '\n'
                         );
                     });
 
                     if (note) {
                         displayLines.push(
-                            ESCPOS_KITCHEN.BOLD_ON + ESCPOS_KITCHEN.DOUBLE_HEIGHT +
+                            ESCPOS_KITCHEN.BOLD_ON +
                             '   - Note: ' + note +
-                            ESCPOS_KITCHEN.NORMAL_SIZE + ESCPOS_KITCHEN.BOLD_OFF + '\n'
+                            ESCPOS_KITCHEN.BOLD_OFF + '\n'
                         );
                     }
                 }
