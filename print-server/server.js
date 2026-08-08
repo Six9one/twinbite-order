@@ -690,9 +690,9 @@ async function formatDynamicTicket(order, template) {
     const ESCPOS_LOCAL = isCounter ? {
         INIT: ESC + '@',
         SET_CODEPAGE_1252: '',
-        CENTER: ESC + '\x1D' + 'a' + '1', 
-        LEFT: ESC + '\x1D' + 'a' + '0',   
-        RIGHT: ESC + '\x1D' + 'a' + '2',  
+        CENTER: ESC + 'a' + '\x01', 
+        LEFT: ESC + 'a' + '\x00',   
+        RIGHT: ESC + 'a' + '\x02',  
         BOLD_ON: ESC + 'E' + '\x01',
         BOLD_OFF: ESC + 'E' + '\x00',
         INVERT_ON: '',
@@ -707,8 +707,8 @@ async function formatDynamicTicket(order, template) {
         FEED: '',                        
         UPSIDE_ON:  '',
         UPSIDE_OFF: '',
-        FONT_A: ESC + '\x1E' + 'F' + '\x00', 
-        FONT_B: ESC + '\x1E' + 'F' + '\x01', 
+        FONT_A: '', 
+        FONT_B: '', 
     } : {
         INIT: ESC + '@',
         SET_CODEPAGE_1252: ESC + 't' + '\x10',
@@ -1252,10 +1252,10 @@ async function formatCounterTicketClassic(order) {
     // Star Line Mode formatting overrides for Star TSP100 USB printer
     const ESCPOS_COUNTER = {
         INIT: ESC + '@',
-        SET_CODEPAGE_1252: ESC + '\x1D' + 't' + '\x10',
-        CENTER: ESC + '\x1D' + 'a' + '1', 
-        LEFT: ESC + '\x1D' + 'a' + '0',   
-        RIGHT: ESC + '\x1D' + 'a' + '2',  
+        SET_CODEPAGE_1252: '',
+        CENTER: ESC + 'a' + '\x01', 
+        LEFT: ESC + 'a' + '\x00',   
+        RIGHT: ESC + 'a' + '\x02',  
         BOLD_ON: ESC + 'E' + '\x01',
         BOLD_OFF: ESC + 'E' + '\x00',
         DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
@@ -1264,12 +1264,12 @@ async function formatCounterTicketClassic(order) {
         NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
         UNDERLINE_ON: ESC + '-' + '\x01',
         UNDERLINE_OFF: ESC + '-' + '\x00',
-        PARTIAL_CUT: ESC + 'd' + '\x03' + GS + 'V' + '\x01',  
+        PARTIAL_CUT: ESC + 'd' + '\x03',  
         FEED: '',                        
         UPSIDE_ON:  '',
         UPSIDE_OFF: '',
-        FONT_A: ESC + '\x1E' + 'F' + '\x00', 
-        FONT_B: ESC + '\x1E' + 'F' + '\x01', 
+        FONT_A: '', 
+        FONT_B: '', 
     };
 
     const TVA_RATE   = 10;
