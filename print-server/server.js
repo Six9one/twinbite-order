@@ -695,6 +695,8 @@ async function formatDynamicTicket(order, template) {
         RIGHT: ESC + '\x1D' + 'a' + '2',  
         BOLD_ON: ESC + 'E' + '\x01',
         BOLD_OFF: ESC + 'E' + '\x00',
+        INVERT_ON: '',
+        INVERT_OFF: '',
         DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
         DOUBLE_WIDTH: ESC + 'i' + '\x01' + '\x00',
         DOUBLE_SIZE: ESC + 'i' + '\x01' + '\x01',
@@ -751,12 +753,12 @@ async function formatDynamicTicket(order, template) {
 
         cmd += item.bold ? ESCPOS_LOCAL.BOLD_ON : ESCPOS_LOCAL.BOLD_OFF;
         cmd += item.underline ? ESCPOS_LOCAL.UNDERLINE_ON : ESCPOS_LOCAL.UNDERLINE_OFF;
-        cmd += item.invert ? ESCPOS_LOCAL.INVERT_ON : ESCPOS_LOCAL.INVERT_OFF;
+        cmd += item.invert ? (ESCPOS_LOCAL.INVERT_ON || '') : (ESCPOS_LOCAL.INVERT_OFF || '');
 
         return cmd;
     };
 
-    const RESET_STYLE = ESCPOS_LOCAL.FONT_A + ESCPOS_LOCAL.NORMAL_SIZE + ESCPOS_LOCAL.BOLD_OFF + ESCPOS_LOCAL.UNDERLINE_OFF + ESCPOS_LOCAL.INVERT_OFF;
+    const RESET_STYLE = (ESCPOS_LOCAL.FONT_A || '') + (ESCPOS_LOCAL.NORMAL_SIZE || '') + (ESCPOS_LOCAL.BOLD_OFF || '') + (ESCPOS_LOCAL.UNDERLINE_OFF || '') + (ESCPOS_LOCAL.INVERT_OFF || '');
 
     const builder = new TicketBufferBuilder(isCounter);
     builder.addText(ESCPOS_LOCAL.INIT);
