@@ -20,7 +20,6 @@ const KNOWN_STREET_COORDS: Record<string, [number, number]> = {
   'liberté': [49.3569, 1.0104],
   'liberte': [49.3569, 1.0104],
   'presbytere': [49.3588, 1.0045],
-  'presbytere': [49.3588, 1.0045],
   'coquereaux': [49.3532, 1.0130],
   'samuel paty': [49.3595, 1.0070],
   'industrie': [49.3610, 1.0150],

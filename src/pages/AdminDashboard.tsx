@@ -38,6 +38,7 @@ import { AIReceptionistManager } from '@/components/admin/AIReceptionistManager'
 import { FactureManager } from '@/components/admin/FactureManager';
 import { TenantManager } from '@/components/admin/TenantManager';
 import TelegramWhatsAppManager from '@/components/admin/TelegramWhatsAppManager';
+import { ClientIPMap } from '@/components/admin/ClientIPMap';
 import {
   LogOut, Home, Search, RefreshCw, Download, Printer,
   Clock, CheckCircle, XCircle, ChefHat, Package,
