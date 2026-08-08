@@ -1,56 +1,3 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import {
-  CheckCircle2,
-  Clock,
-  Home,
-  Printer,
-  ShoppingBag,
-  MapPin,
-  Phone,
-  User,
-  CreditCard,
-  Loader2,
-  AlertCircle
-} from 'lucide-react';
-
-interface OrderItem {
-  name?: string;
-  quantity?: number;
-  price?: number;
-  calculatedPrice?: number;
-  item?: {
-    name?: string;
-    price?: number;
-  };
-  customization?: Record<string, any>;
-}
-
-interface OrderDetail {
-  id: string;
-  order_number: string;
-  order_type: string;
-  customer_name: string;
-  customer_phone: string;
-  customer_address?: string | null;
-  customer_notes?: string | null;
-  items: OrderItem[];
-  subtotal: number;
-  tva: number;
-  delivery_fee: number;
-  total: number;
-  payment_method: string;
-  payment_status: string | null;
-  status: string;
-  created_at: string;
-  paid_at?: string | null;
-}
-
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -70,7 +17,6 @@ import {
   User,
   CreditCard,
   Loader2,
-  AlertCircle
 } from 'lucide-react';
 
 interface OrderItem {
@@ -110,17 +56,26 @@ export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const { tenant } = useTenant();
 
-  // Extract order number from any possible query parameter name
+  // Extract order number from any possible query parameter name or localStorage fallback
   const orderNumber = useMemo(() => {
-    return (
+    const fromUrl = (
       searchParams.get('order') ||
       searchParams.get('order_number') ||
       searchParams.get('order_id') ||
       searchParams.get('orderNo') ||
       searchParams.get('orderId') ||
       searchParams.get('session_id') ||
+      searchParams.get('id') ||
       ''
     );
+
+    if (fromUrl) return fromUrl;
+
+    try {
+      return localStorage.getItem('last_order_number') || '';
+    } catch (e) {
+      return '';
+    }
   }, [searchParams]);
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
@@ -135,7 +90,7 @@ export default function PaymentSuccess() {
 
     try {
       // 1. Try querying orders by order_number
-      let { data, error } = await supabase
+      let { data } = await supabase
         .from('orders')
         .select('*')
         .eq('order_number', orderNumber)
@@ -155,7 +110,7 @@ export default function PaymentSuccess() {
         setOrder(data as unknown as OrderDetail);
       }
     } catch (err) {
-      console.error('[PaymentSuccess] Unexpected error fetching order:', err);
+      console.error('[PaymentSuccess] Error fetching order:', err);
     } finally {
       setIsLoading(false);
     }
@@ -194,7 +149,6 @@ export default function PaymentSuccess() {
     return [];
   }, [order]);
 
-  const isPaid = order?.payment_status === 'Paid' || order?.payment_status === 'paid' || true;
   const orderTypeLabels: Record<string, string> = {
     livraison: 'Livraison à domicile',
     emporter: 'À emporter au restaurant',
@@ -224,7 +178,7 @@ export default function PaymentSuccess() {
     if (details.length === 0) return null;
 
     return (
-      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+      <p className="text-xs text-stone-400 mt-0.5 leading-relaxed">
         {details.join(' • ')}
       </p>
     );
@@ -247,7 +201,7 @@ export default function PaymentSuccess() {
             Merci pour votre commande !
           </h1>
           <p className="text-sm text-stone-400 mt-1">
-            Votre paiement a été validé avec succès pour <span className="text-amber-400 font-bold">{tenant?.name || 'votre commande'}</span>.
+            Votre paiement a été validé avec succès pour <span className="text-amber-400 font-bold">{tenant?.name || 'Twin Pizza'}</span>.
           </p>
 
           {orderNumber && (
@@ -301,10 +255,12 @@ export default function PaymentSuccess() {
                 <User className="w-3.5 h-3.5 text-stone-400" />
                 <span className="font-semibold text-white">{order.customer_name}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5 text-stone-400" />
-                <span>{order.customer_phone}</span>
-              </div>
+              {order.customer_phone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="w-3.5 h-3.5 text-stone-400" />
+                  <span>{order.customer_phone}</span>
+                </div>
+              )}
               {order.customer_address && (
                 <div className="flex items-start gap-2">
                   <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5" />
@@ -352,7 +308,7 @@ export default function PaymentSuccess() {
               </div>
             ) : (
               <p className="text-xs text-stone-400 italic py-2">
-                Votre commande #{orderNumber || 'récente'} a bien été transmise en cuisine.
+                Votre commande #{orderNumber || 'récente'} a bien été enregistrée et est transmise en cuisine.
               </p>
             )}
           </div>
@@ -376,7 +332,7 @@ export default function PaymentSuccess() {
               )}
               {Number(order.tva) > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-stone-400">TVA (10%):</span>
+                  <span className="text-stone-400">TVA:</span>
                   <span className="font-mono">{Number(order.tva).toFixed(2)} €</span>
                 </div>
               )}
@@ -412,4 +368,3 @@ export default function PaymentSuccess() {
     </div>
   );
 }
-
