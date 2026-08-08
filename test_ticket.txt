@@ -1,0 +1,3 @@
+TEST PRINT STAR TSP100
+--------------------
+Hello World!
