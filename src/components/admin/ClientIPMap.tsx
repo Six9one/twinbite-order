@@ -81,7 +81,7 @@ export function ClientIPMap() {
     };
   }, []);
 
-  // Fetch orders and convert addresses to lat/lng coordinates
+  // Fetch orders and convert real client addresses to lat/lng coordinates
   const fetchOrderLocations = async () => {
     try {
       setLoading(true);
@@ -89,17 +89,33 @@ export function ClientIPMap() {
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(200);
+        .limit(300);
 
       if (error) throw error;
 
       const networks = ['Orange 4G/5G', 'SFR Mobile', 'Bouygues Telecom 5G', 'Free Mobile 4G'];
       const mapped: MappedOrder[] = [];
+      let totalPosFiltered = 0;
 
       (data || []).forEach((o: any, idx: number) => {
         const addr = (o.customer_address || '').trim();
-        const lowerAddr = addr.toLowerCase();
+        const custName = (o.customer_name || '').toLowerCase();
+        const orderType = (o.order_type || '').toLowerCase();
 
+        // STRICTLY EXCLUDE POS AND KIOSK / BORNE / IN-STORE ORDERS
+        const isPOSOrBorne = orderType === 'surplace' ||
+                             orderType === 'borne' ||
+                             orderType === 'kiosk' ||
+                             custName.includes('pos') ||
+                             custName.includes('borne') ||
+                             !addr;
+
+        if (isPOSOrBorne) {
+          totalPosFiltered++;
+          return; // Skip POS & Borne completely per user request
+        }
+
+        const lowerAddr = addr.toLowerCase();
         let baseLat = 49.3563; // Grand-Couronne default
         let baseLng = 1.0089;
         let city = 'Grand-Couronne (76530)';
@@ -118,17 +134,17 @@ export function ClientIPMap() {
           }
         }
 
-        // Add micro jitter to prevent exact overlapping of pins on the map
-        const jitterLat = (Math.random() - 0.5) * 0.0035;
-        const jitterLng = (Math.random() - 0.5) * 0.0035;
+        // Add micro jitter so multiple client orders on the same street don't stack exactly on 1 pixel
+        const jitterLat = (Math.random() - 0.5) * 0.0025;
+        const jitterLng = (Math.random() - 0.5) * 0.0025;
 
         mapped.push({
           id: o.id,
           order_number: o.order_number,
-          customer_name: o.customer_name || 'Client POS/Borne',
+          customer_name: o.customer_name || 'Client Web/Phone',
           customer_phone: o.customer_phone || '',
-          customer_address: addr || 'Commande au comptoir (Sur Place / À Emporter)',
-          order_type: o.order_type || 'surplace',
+          customer_address: addr,
+          order_type: o.order_type || 'livraison',
           total: Number(o.total) || 0,
           created_at: o.created_at,
           lat: baseLat + (matched ? jitterLat * 0.5 : jitterLat),
@@ -310,7 +326,7 @@ export function ClientIPMap() {
                   onClick={() => setFilterType('all')}
                   className={`px-2.5 py-1 rounded-md transition-all font-semibold ${filterType === 'all' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}
                 >
-                  Tous ({orders.length})
+                  Tous Clients Externes ({orders.length})
                 </button>
                 <button
                   onClick={() => setFilterType('livraison')}
@@ -322,13 +338,7 @@ export function ClientIPMap() {
                   onClick={() => setFilterType('emporter')}
                   className={`px-2.5 py-1 rounded-md transition-all font-semibold ${filterType === 'emporter' ? 'bg-amber-500 text-white' : 'text-muted-foreground'}`}
                 >
-                  À Emporter
-                </button>
-                <button
-                  onClick={() => setFilterType('surplace')}
-                  className={`px-2.5 py-1 rounded-md transition-all font-semibold ${filterType === 'surplace' ? 'bg-emerald-500 text-white' : 'text-muted-foreground'}`}
-                >
-                  Sur Place / Borne
+                  À Emporter Client ({orders.filter(o => o.order_type === 'emporter').length})
                 </button>
               </div>
 
@@ -352,23 +362,22 @@ export function ClientIPMap() {
           <div className="absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur border border-slate-700/60 rounded-xl p-3 shadow-2xl z-20 text-xs space-y-1.5">
             <div className="font-bold text-slate-200 mb-1 flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5 text-red-400" />
-              Légende de la Carte
+              Légende de la Carte (IP Clients Externe)
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-red-500 border border-white inline-block"></span>
-              <span className="text-slate-300">Hub Twin Pizza (Restaurant)</span>
+              <span className="text-slate-300">Hub Twin Pizza (Pizzeria)</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-blue-500 border border-white inline-block"></span>
-              <span className="text-slate-300">Commande Livraison (Client)</span>
+              <span className="text-slate-300">Livraison Client Distant</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-amber-500 border border-white inline-block"></span>
-              <span className="text-slate-300">Commande À Emporter</span>
+              <span className="text-slate-300">À Emporter (Commandé en Ligne)</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-emerald-500 border border-white inline-block"></span>
-              <span className="text-slate-300">Sur Place / Borne POS</span>
+            <div className="flex items-center gap-2 text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+              🚫 <i>Les commandes sur borne et caisse POS en caisse sont exclues.</i>
             </div>
           </div>
         </CardContent>
