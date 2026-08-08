@@ -48,7 +48,7 @@ import {
 } from 'lucide-react';
 const logoImage = '/favicon.png';
 
-type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'salades' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture' | 'analytics-web' | 'tenants' | 'integrations' | 'client-map';
+type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'salades' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture' | 'analytics-web' | 'tenants' | 'integrations';
 
 
 
@@ -853,9 +853,6 @@ export default function AdminDashboard() {
           {activeTab === 'ai-receptionist' && <AIReceptionistManager />}
 
           {activeTab === 'facture' && <FactureManager />}
-
-          {/* Interactive Client IP Location Map */}
-          {activeTab === 'client-map' && <ClientIPMap />}
 
           {/* Web Analytics (Umami) */}
           {activeTab === 'analytics-web' && (
