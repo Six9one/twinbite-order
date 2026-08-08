@@ -250,7 +250,7 @@ function convertToStarCP858(text) {
     for (const char of text) {
         result += charMap[char] !== undefined ? charMap[char] : char;
     }
-    return result.replace(/[^\x20-\x7E\x80\x82\x85\x87\x88\x8A\x8C\x90\x93\x96\n\r\t]/g, '');
+    return result.replace(/[^\x00-\x7E\x80\x82\x85\x87\x88\x8A\x8C\x90\x93\x96]/g, '');
 }
 
 // Default ticket settings (fallback if database unavailable)
