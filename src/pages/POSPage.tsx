@@ -5636,7 +5636,6 @@ function POSContent() {
       )}
       <PanelGroup
         direction="horizontal"
-        autoSaveId="pos-layout-h"
         className={`pos-root ${currentThemeMode === 'glassy' ? 'pos-theme-apple' : ''}`}
         style={{ height:'100%', background:'transparent', color:S.text }}
       >
