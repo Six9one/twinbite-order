@@ -10,6 +10,7 @@ import {
   getSourceBadgeProps,
   getSourceLabel,
 } from '@/lib/orderUtils';
+import { syncPendingPOSOrders } from '@/lib/orderSync';
 import { supabase } from '@/integrations/supabase/client';
 import { useCategories, useProductsByCategory } from '@/hooks/useProducts';
 import { useCategoryImages } from '@/hooks/useCategoryImages';
@@ -5299,30 +5300,11 @@ function POSContent() {
 
   const needsInfo = orderType === 'livraison';
 
-  // ── Startup recovery: flush any orders saved offline during previous session ──
+  // ── Startup recovery: flush and synchronize any orders saved offline during previous session ──
   useEffect(() => {
-    const flushPendingOrders = async () => {
-      try {
-        const raw = localStorage.getItem('pos-pending-orders');
-        if (!raw) return;
-        const pending = JSON.parse(raw);
-        if (!Array.isArray(pending) || pending.length === 0) return;
-        console.log(`[POS] Flushing ${pending.length} pending order(s) from offline queue...`);
-        for (const order of pending) {
-          try {
-            const { _savedAt, ...payload } = order;
-            const { error } = await (supabase as any).from('orders').insert(payload, { returning: 'minimal' });
-            if (!error) {
-              const updated = JSON.parse(localStorage.getItem('pos-pending-orders') || '[]')
-                .filter((o: any) => o.order_number !== payload.order_number);
-              localStorage.setItem('pos-pending-orders', JSON.stringify(updated));
-            }
-          } catch { /* will retry on next boot or via retryOrderToSupabase */ }
-        }
-      } catch { /* localStorage may be unavailable */ }
-    };
-    // Delay slightly to not compete with initial render
-    const t = setTimeout(flushPendingOrders, 2000);
+    const t = setTimeout(() => {
+      syncPendingPOSOrders();
+    }, 1000);
     return () => clearTimeout(t);
   }, []);
 
@@ -5556,9 +5538,10 @@ function POSContent() {
   // A background loop retries failed Supabase writes indefinitely.
   const retryOrderToSupabase = async (payload: any, attempt = 1): Promise<void> => {
     try {
+      const { _savedAt, payment_details, ...cleanPayload } = payload;
       const { error } = await (supabase as any)
         .from('orders')
-        .insert(payload, { returning: 'minimal' });
+        .insert(cleanPayload, { returning: 'minimal' });
       if (error) throw error;
       // Sync: remove from pending queue
       try {
@@ -5588,16 +5571,25 @@ function POSContent() {
     try {
       const orderNumber = await generateOrderNumber();
       const { ht: fHt, tva: fTva } = calculateTVA(total);
+      const splitNote = payMethod === 'divise' ? `[Divisé: Espèces ${Number(splitCash || 0).toFixed(2)}€ / CB ${Number(splitCard || 0).toFixed(2)}€]` : '';
+      const finalNotes = [notes.trim(), splitNote].filter(Boolean).join(' ');
+
       const payload = {
-        order_number: orderNumber, order_type: orderType, items: cart as any,
-        customer_name:    needsInfo ? name.trim() : `[POS] ${TYPE_LABELS[orderType]}`,
-        customer_phone:   phone.trim() || 'pos',
+        order_number: orderNumber,
+        order_type: orderType,
+        items: cart as any,
+        customer_name: needsInfo ? name.trim() : (name.trim() || `[POS] ${TYPE_LABELS[orderType]}`),
+        customer_phone: phone.trim() || 'pos',
         customer_address: needsInfo ? address.trim() : null,
-        customer_notes:   notes.trim() ? `[POS] ${notes.trim()}` : '[POS]',
-        payment_method:   payMethod as any,
-        payment_details:  payMethod === 'divise' ? { especes: splitCash, cb: splitCard } : null,
-        subtotal: fHt, tva: fTva, total, delivery_fee: 0,
-        status: 'pending', is_scheduled: false, scheduled_for: null,
+        customer_notes: finalNotes ? `[POS] ${finalNotes}` : '[POS]',
+        payment_method: payMethod as any,
+        subtotal: fHt,
+        tva: fTva,
+        total,
+        delivery_fee: 0,
+        status: 'pending',
+        is_scheduled: false,
+        scheduled_for: null,
       };
 
       // 1. Persist to localStorage immediately (offline safety net)

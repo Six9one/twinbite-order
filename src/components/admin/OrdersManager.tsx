@@ -21,6 +21,7 @@ import {
     calculateBusinessStats,
     type OrderSource,
 } from '@/lib/orderUtils';
+import { syncPendingPOSOrders } from '@/lib/orderSync';
 import {
     Search, Printer, Download, RefreshCw, Clock, ChefHat, CheckCircle, XCircle,
     Package, Ban, CreditCard, Banknote, Globe, TrendingUp, ShoppingBag, Receipt,
@@ -88,6 +89,9 @@ export function OrdersManager() {
 
     const fetchOrders = useCallback(async () => {
         setLoading(true);
+        try {
+            await syncPendingPOSOrders();
+        } catch {}
         const { start, end } = rangeFor(preset);
         const { data, error } = await supabase
             .from('orders')
