@@ -50,6 +50,17 @@ export async function syncPendingPOSOrders(): Promise<{ synced: number; failed: 
           failed++;
           continue;
         }
+      } else {
+        const { error } = await (supabase as any)
+          .from('orders')
+          .update(cleanPayload)
+          .eq('id', existing.id);
+
+        if (error) {
+          console.error(`[orderSync] Failed to update #${cleanPayload.order_number}:`, error);
+          failed++;
+          continue;
+        }
       }
 
       // Successfully inserted or already exists: remove from localStorage
