@@ -251,26 +251,40 @@ export function OrdersManager() {
                 <StatCard icon={Globe} label="Payées en ligne" value={String(stats.paidOnline)} />
             </div>
 
-            {/* Multi-channel summary bar (What we did) */}
+            {/* Multi-channel summary bar (Clickable quick filters) */}
             <div className="grid grid-cols-3 gap-2">
-                <div className="bg-purple-500/10 border border-purple-500/20 p-2.5 rounded-lg flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs font-bold text-purple-600 dark:text-purple-400">
-                        <span>📲 Borne</span>
+                <button
+                    type="button"
+                    onClick={() => setSourceFilter(sourceFilter === 'borne' ? 'all' : 'borne')}
+                    className={`p-2.5 rounded-lg flex items-center justify-between transition-all text-left ${sourceFilter === 'borne' ? 'bg-purple-500/25 border-2 border-purple-500 shadow-sm' : 'bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/15'}`}
+                >
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400">
+                        <span>📲 Borne ({stats.bySource.borne.count})</span>
                     </div>
                     <span className="font-mono font-black text-sm">{eur(stats.bySource.borne.revenue)}</span>
-                </div>
-                <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                        <span>💻 POS</span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setSourceFilter(sourceFilter === 'pos' ? 'all' : 'pos')}
+                    className={`p-2.5 rounded-lg flex items-center justify-between transition-all text-left ${sourceFilter === 'pos' ? 'bg-emerald-500/25 border-2 border-emerald-500 shadow-sm' : 'bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/15'}`}
+                >
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        <span>💻 Caisse POS ({stats.bySource.pos.count})</span>
                     </div>
                     <span className="font-mono font-black text-sm">{eur(stats.bySource.pos.revenue)}</span>
-                </div>
-                <div className="bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-lg flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400">
-                        <span>🌐 Web</span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setSourceFilter(sourceFilter === 'web' ? 'all' : 'web')}
+                    className={`p-2.5 rounded-lg flex items-center justify-between transition-all text-left ${sourceFilter === 'web' ? 'bg-blue-500/25 border-2 border-blue-500 shadow-sm' : 'bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/15'}`}
+                >
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400">
+                        <span>🌐 Web ({stats.bySource.web.count})</span>
                     </div>
                     <span className="font-mono font-black text-sm">{eur(stats.bySource.web.revenue)}</span>
-                </div>
+                </button>
             </div>
 
             {/* Collapsible Sold Items Summary ("What we sold") */}

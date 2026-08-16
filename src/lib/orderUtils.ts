@@ -25,14 +25,31 @@ export function detectOrderSource(order: {
   customer_phone?: string | null;
   customer_name?: string | null;
   customer_notes?: string | null;
+  payment_method?: string | null;
+  payment_status?: string | null;
 }): OrderSource {
   const phone = (order.customer_phone || '').toLowerCase().trim();
   const name = (order.customer_name || '').toLowerCase().trim();
   const notes = (order.customer_notes || '').toLowerCase();
+  const payment = (order.payment_method || '').toLowerCase();
 
-  if (phone === 'pos' || name.startsWith('[pos]')) return 'pos';
-  if (phone === 'borne' || notes.includes('[borne]')) return 'borne';
-  return 'web';
+  // 1. Borne tactile
+  if (phone === 'borne' || notes.includes('[borne]') || name.includes('[borne]')) {
+    return 'borne';
+  }
+
+  // 2. Commande Web en ligne (Site twinpizza.fr)
+  if (
+    payment === 'en_ligne' ||
+    notes.includes('[web]') ||
+    name.includes('[web]') ||
+    phone === 'web'
+  ) {
+    return 'web';
+  }
+
+  // 3. Caisse / POS (Toutes les commandes comptoir, téléphone, sur place, emporter ou livraison saisies en caisse)
+  return 'pos';
 }
 
 /**

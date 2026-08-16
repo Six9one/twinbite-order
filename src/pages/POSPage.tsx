@@ -5593,7 +5593,7 @@ function POSContent() {
         customer_name:    needsInfo ? name.trim() : `[POS] ${TYPE_LABELS[orderType]}`,
         customer_phone:   phone.trim() || 'pos',
         customer_address: needsInfo ? address.trim() : null,
-        customer_notes:   notes.trim() || null,
+        customer_notes:   notes.trim() ? `[POS] ${notes.trim()}` : '[POS]',
         payment_method:   payMethod as any,
         payment_details:  payMethod === 'divise' ? { especes: splitCash, cb: splitCard } : null,
         subtotal: fHt, tva: fTva, total, delivery_fee: 0,
