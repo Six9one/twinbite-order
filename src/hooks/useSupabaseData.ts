@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/context/TenantContext';
+import { getBusinessDateRange } from '@/lib/orderUtils';
+export * from '@/lib/orderUtils';
 
 // Types based on database schema
 export interface DeliveryZone {
@@ -207,7 +209,7 @@ export function useDesserts() {
   });
 }
 
-// Orders
+// Orders with Business Day range (covers night shifts until 04:00 AM)
 export function useOrders(dateFilter?: string) {
   const { tenant } = useTenant();
   return useQuery({
@@ -219,14 +221,10 @@ export function useOrders(dateFilter?: string) {
         .order('created_at', { ascending: false });
 
       if (dateFilter) {
-        const startOfDay = new Date(dateFilter);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(dateFilter);
-        endOfDay.setHours(23, 59, 59, 999);
-
+        const { start, end } = getBusinessDateRange(dateFilter);
         query = query
-          .gte('created_at', startOfDay.toISOString())
-          .lte('created_at', endOfDay.toISOString());
+          .gte('created_at', start.toISOString())
+          .lte('created_at', end.toISOString());
       }
 
       const { data, error } = await query;

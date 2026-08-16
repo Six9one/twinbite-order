@@ -1,6 +1,15 @@
 import { useState, useEffect, useReducer, useRef, memo, useMemo, useCallback } from 'react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { useCreateOrder, generateOrderNumber, useOrders, useDrinks } from '@/hooks/useSupabaseData';
+import {
+  getBusinessDate,
+  getBusinessDateRange,
+  formatBusinessDateDisplay,
+  calculateBusinessStats,
+  detectOrderSource,
+  getSourceBadgeProps,
+  getSourceLabel,
+} from '@/lib/orderUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { useCategories, useProductsByCategory } from '@/hooks/useProducts';
 import { useCategoryImages } from '@/hooks/useCategoryImages';
@@ -2434,9 +2443,8 @@ function SimplePanel({ categorySlug, title, onAdd }: { categorySlug:string; titl
 
 // ── History & Stats panel (past orders today) ──────────────────────────────────
 function HistoryPanel({ onClose }: { onClose:()=>void }) {
-  const d = new Date();
-  const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  const { data: orders = [], isLoading, refetch } = useOrders(todayStr);
+  const currentBizDate = getBusinessDate(new Date(), 4);
+  const { data: orders = [], isLoading, refetch } = useOrders(currentBizDate);
 
   const [loadingActions, setLoadingActions] = useState<Record<string, 'reprint' | 'facture' | null>>({});
 
@@ -2483,30 +2491,10 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
     }).join(', ');
   };
 
-  // Calculations
-  const validOrders = orders.filter(o => o.status !== 'cancelled');
-  const totalSales = validOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-  const totalCount = validOrders.length;
-
-  const byType = validOrders.reduce((acc, o) => {
-    acc[o.order_type] = (acc[o.order_type] || 0) + (o.total || 0);
-    return acc;
-  }, {} as Record<string, number>);
-
-  const countByType = validOrders.reduce((acc, o) => {
-    acc[o.order_type] = (acc[o.order_type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const byPay = validOrders.reduce((acc, o) => {
-    acc[o.payment_method] = (acc[o.payment_method] || 0) + (o.total || 0);
-    return acc;
-  }, {} as Record<string, number>);
-
-  const countByPay = validOrders.reduce((acc, o) => {
-    acc[o.payment_method] = (acc[o.payment_method] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Calculations using complete business statistics
+  const bizStats = useMemo(() => calculateBusinessStats(orders), [orders]);
+  const totalSales = bizStats.totalRevenue;
+  const totalCount = bizStats.totalOrdersCount;
 
   const getStatusBadge = (status: string) => {
     const labels: Record<string, string> = {
@@ -2532,13 +2520,13 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
 
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
-      <div className="pos-glassy-panel" onClick={e=>e.stopPropagation()} style={{ width:480, maxWidth:'90%', height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, display:'flex', flexDirection:'column' }}>
+      <div className="pos-glassy-panel" onClick={e=>e.stopPropagation()} style={{ width:500, maxWidth:'95%', height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, display:'flex', flexDirection:'column' }}>
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
           <div>
-            <div style={{ fontSize:16, fontWeight:800, color:S.text }}>📊 Historique & Stats</div>
-            <div style={{ fontSize:11, color:S.muted, marginTop:2 }}>
-              Journée du {d.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' })}
+            <div style={{ fontSize:16, fontWeight:800, color:S.text }}>📊 Historique & Stats du Jour</div>
+            <div style={{ fontSize:11, color:S.accent, marginTop:2, fontWeight:700 }}>
+              {formatBusinessDateDisplay(currentBizDate)} (Actif jusqu'à 04:00)
             </div>
           </div>
           <button onClick={onClose} style={{ ...S.btn, padding:'5px 12px' }}>✕</button>
@@ -2551,19 +2539,43 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
           ) : (
             <>
               {/* Stats Section */}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
                 <div style={{ background:S.card, border:`1px solid ${S.border}`, borderRadius:10, padding:'12px 14px' }}>
-                  <div style={{ fontSize:11, color:S.muted, fontWeight:700 }}>CHIFFRE D'AFFAIRES</div>
-                  <div style={{ fontSize:22, fontWeight:800, color:S.accent, marginTop:4 }}>{totalSales.toFixed(2)}€</div>
+                  <div style={{ fontSize:10, color:S.muted, fontWeight:800, textTransform:'uppercase' }}>CA Global (Web+Borne+POS)</div>
+                  <div style={{ fontSize:22, fontWeight:900, color:S.accent, marginTop:4 }}>{totalSales.toFixed(2)}€</div>
                 </div>
                 <div style={{ background:S.card, border:`1px solid ${S.border}`, borderRadius:10, padding:'12px 14px' }}>
-                  <div style={{ fontSize:11, color:S.muted, fontWeight:700 }}>COMMANDES TOTALES</div>
-                  <div style={{ fontSize:22, fontWeight:800, color:S.text, marginTop:4 }}>{totalCount}</div>
+                  <div style={{ fontSize:10, color:S.muted, fontWeight:800, textTransform:'uppercase' }}>Commandes Valides</div>
+                  <div style={{ fontSize:22, fontWeight:900, color:S.text, marginTop:4 }}>{totalCount}</div>
+                </div>
+              </div>
+
+              {/* Multi-Channel Distribution */}
+              <div style={{ background:S.card, border:`1px solid ${S.border}`, borderRadius:10, padding:'10px 14px', marginBottom:12 }}>
+                <div style={{ fontSize:10, color:S.muted, fontWeight:800, textTransform:'uppercase', borderBottom:`1px solid ${S.border}44`, paddingBottom:4, marginBottom:6 }}>
+                  Répartition par Origine (Canal)
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, fontSize:11 }}>
+                  <div style={{ background:'rgba(168,85,247,0.08)', padding:'6px 8px', borderRadius:6, border:'1px solid rgba(168,85,247,0.2)' }}>
+                    <div style={{ color:'#a855f7', fontWeight:700 }}>📲 Borne</div>
+                    <div style={{ fontWeight:800, fontSize:13 }}>{bizStats.bySource.borne.revenue.toFixed(1)}€</div>
+                    <div style={{ fontSize:9, color:S.muted }}>{bizStats.bySource.borne.count} cmd</div>
+                  </div>
+                  <div style={{ background:'rgba(16,185,129,0.08)', padding:'6px 8px', borderRadius:6, border:'1px solid rgba(16,185,129,0.2)' }}>
+                    <div style={{ color:'#10b981', fontWeight:700 }}>💻 POS</div>
+                    <div style={{ fontWeight:800, fontSize:13 }}>{bizStats.bySource.pos.revenue.toFixed(1)}€</div>
+                    <div style={{ fontSize:9, color:S.muted }}>{bizStats.bySource.pos.count} cmd</div>
+                  </div>
+                  <div style={{ background:'rgba(59,130,246,0.08)', padding:'6px 8px', borderRadius:6, border:'1px solid rgba(59,130,246,0.2)' }}>
+                    <div style={{ color:'#3b82f6', fontWeight:700 }}>🌐 Web</div>
+                    <div style={{ fontWeight:800, fontSize:13 }}>{bizStats.bySource.web.revenue.toFixed(1)}€</div>
+                    <div style={{ fontSize:9, color:S.muted }}>{bizStats.bySource.web.count} cmd</div>
+                  </div>
                 </div>
               </div>
 
               {/* Stats Details Grid */}
-              <div style={{ background:S.card, border:`1px solid ${S.border}`, borderRadius:10, padding:'12px 14px', marginBottom:20 }}>
+              <div style={{ background:S.card, border:`1px solid ${S.border}`, borderRadius:10, padding:'12px 14px', marginBottom:16 }}>
                 <div style={{ fontSize:11, color:S.text, fontWeight:800, borderBottom:`1px solid ${S.border}`, paddingBottom:6, marginBottom:8 }}>
                   Détail par Type & Paiement
                 </div>
@@ -2574,15 +2586,15 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
                     <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
                       <div style={{ display:'flex', justifyContent:'space-between' }}>
                         <span>🍽️ Sur place</span>
-                        <span style={{ fontWeight:700 }}>{countByType['surplace']||0} ({ (byType['surplace']||0).toFixed(1) }€)</span>
+                        <span style={{ fontWeight:700 }}>{bizStats.byType.surplace?.count||0} ({(bizStats.byType.surplace?.revenue||0).toFixed(1)}€)</span>
                       </div>
                       <div style={{ display:'flex', justifyContent:'space-between' }}>
                         <span>🛍️ À emporter</span>
-                        <span style={{ fontWeight:700 }}>{countByType['emporter']||0} ({ (byType['emporter']||0).toFixed(1) }€)</span>
+                        <span style={{ fontWeight:700 }}>{bizStats.byType.emporter?.count||0} ({(bizStats.byType.emporter?.revenue||0).toFixed(1)}€)</span>
                       </div>
                       <div style={{ display:'flex', justifyContent:'space-between' }}>
                         <span>🚗 Livraison</span>
-                        <span style={{ fontWeight:700 }}>{countByType['livraison']||0} ({ (byType['livraison']||0).toFixed(1) }€)</span>
+                        <span style={{ fontWeight:700 }}>{bizStats.byType.livraison?.count||0} ({(bizStats.byType.livraison?.revenue||0).toFixed(1)}€)</span>
                       </div>
                     </div>
                   </div>
@@ -2592,15 +2604,15 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
                     <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
                       <div style={{ display:'flex', justifyContent:'space-between' }}>
                         <span>💵 Espèces</span>
-                        <span style={{ fontWeight:700 }}>{countByPay['especes']||0} ({ (byPay['especes']||0).toFixed(1) }€)</span>
+                        <span style={{ fontWeight:700 }}>{bizStats.payments.especes.count} ({bizStats.payments.especes.total.toFixed(1)}€)</span>
                       </div>
                       <div style={{ display:'flex', justifyContent:'space-between' }}>
-                        <span>💳 Carte bancaire</span>
-                        <span style={{ fontWeight:700 }}>{countByPay['cb']||0} ({ (byPay['cb']||0).toFixed(1) }€)</span>
+                        <span>💳 Carte CB</span>
+                        <span style={{ fontWeight:700 }}>{bizStats.payments.cb.count} ({bizStats.payments.cb.total.toFixed(1)}€)</span>
                       </div>
                       <div style={{ display:'flex', justifyContent:'space-between' }}>
                         <span>🌐 En ligne</span>
-                        <span style={{ fontWeight:700 }}>{countByPay['en_ligne']||0} ({ (byPay['en_ligne']||0).toFixed(1) }€)</span>
+                        <span style={{ fontWeight:700 }}>{bizStats.payments.enLigne.count} ({bizStats.payments.enLigne.total.toFixed(1)}€)</span>
                       </div>
                     </div>
                   </div>
@@ -2610,20 +2622,21 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
               {/* Orders List Section */}
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
                 <span style={{ fontSize:12, fontWeight:800, color:S.muted, textTransform:'uppercase', letterSpacing:1 }}>
-                  Historique des commandes ({orders.length})
+                  Journal des commandes ({orders.length})
                 </span>
                 <button onClick={() => refetch()} style={{ ...S.btn, padding:'3px 8px', fontSize:10 }}>🔄 Rafraîchir</button>
               </div>
 
               {orders.length === 0 ? (
                 <div style={{ textAlign:'center', color:S.muted, padding:'30px 0', fontSize:12 }}>
-                  Aucune commande enregistrée aujourd'hui.
+                  Aucune commande enregistrée pour cette journée d'activité.
                 </div>
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                   {orders.map(order => {
                     const actionState = loadingActions[order.order_number];
                     const isCancelled = order.status === 'cancelled';
+                    const srcBadge = getSourceBadgeProps(order);
                     return (
                       <div key={order.id} style={{
                         background: S.card,
@@ -2635,15 +2648,18 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
                         gap: 6,
                         opacity: isCancelled ? 0.6 : 1,
                       }}>
-                        {/* Row 1: Order Num + Client + Time */}
-                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                        {/* Row 1: Order Num + Source + Client + Time */}
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
                           <span style={{ fontSize:13, fontWeight:800, color:S.text }}>
                             #{order.order_number}
                           </span>
-                          <span style={{ fontSize:12, fontWeight:700, color:S.text, marginLeft:8, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          <span style={{ fontSize:9, fontWeight:800, padding:'1px 5px', borderRadius:3, background:srcBadge.bgColor, color:srcBadge.color, border:`1px solid ${srcBadge.borderColor}` }}>
+                            {srcBadge.emoji} {srcBadge.shortLabel}
+                          </span>
+                          <span style={{ fontSize:12, fontWeight:700, color:S.text, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                             {order.customer_name}
                           </span>
-                          <span style={{ fontSize:11, color:S.muted, marginLeft:8 }}>
+                          <span style={{ fontSize:11, color:S.muted }}>
                             {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })}
                           </span>
                         </div>
@@ -4443,6 +4459,9 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
 // ── Clôture de caisse & Rapports X/Z Modal ──────────────────────────────────────
 function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true);
+  const [bizDate, setBizDate] = useState(() => getBusinessDate(new Date(), 4));
+  const [activeTab, setActiveTab] = useState<'synthese' | 'articles' | 'caisse'>('synthese');
+  const [itemSearch, setItemSearch] = useState('');
   const [todayOrders, setTodayOrders] = useState<any[]>([]);
   const [fondDeCaisse, setFondDeCaisse] = useState<number>(() => {
     try { return Number(localStorage.getItem('pos-fond-caisse')) || 100; } catch { return 100; }
@@ -4455,247 +4474,653 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
   }, [fondDeCaisse]);
 
   useEffect(() => {
-    async function loadTodayOrders() {
+    async function loadDayOrders() {
       setLoading(true);
       try {
-        const todayAt00 = new Date();
-        todayAt00.setHours(0, 0, 0, 0);
+        const { start, end } = getBusinessDateRange(bizDate, 4);
 
         const { data, error } = await supabase
           .from('orders')
           .select('*')
-          .gte('created_at', todayAt00.toISOString());
+          .gte('created_at', start.toISOString())
+          .lte('created_at', end.toISOString())
+          .order('created_at', { ascending: false });
 
         if (!error && data) {
           setTodayOrders(data);
         }
       } catch (e) {
-        console.error('Error fetching today orders for Z report:', e);
+        console.error('Error fetching orders for Z report:', e);
       } finally {
         setLoading(false);
       }
     }
-    loadTodayOrders();
-  }, []);
+    loadDayOrders();
+  }, [bizDate]);
 
-  const totalTurnover = todayOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-  const totalOrders = todayOrders.length;
+  // Comprehensive calculation of all statistics
+  const stats = useMemo(() => calculateBusinessStats(todayOrders), [todayOrders]);
 
-  let especesTotal = 0;
-  let cbTotal = 0;
-  let enLigneTotal = 0;
+  const expectedCashInDrawer = fondDeCaisse + stats.payments.especes.total;
+  const variance = (especesComptes || expectedCashInDrawer) - expectedCashInDrawer;
 
-  todayOrders.forEach(o => {
-    const pMethod = o.payment_method;
-    const tot = Number(o.total) || 0;
-    if (pMethod === 'especes') especesTotal += tot;
-    else if (pMethod === 'cb') cbTotal += tot;
-    else if (pMethod === 'en_ligne') enLigneTotal += tot;
-    else if (pMethod === 'divise') {
-      const details = o.payment_details;
-      if (details) {
-        especesTotal += Number(details.especes) || 0;
-        cbTotal += Number(details.cb) || 0;
-      } else {
-        especesTotal += tot;
-      }
-    } else {
-      especesTotal += tot;
-    }
-  });
-
-  const tvaTotal = todayOrders.reduce((sum, o) => sum + (Number(o.tva) || 0), 0);
-
-  const channelSurPlace = todayOrders.filter(o => o.order_type === 'surplace');
-  const channelEmporter = todayOrders.filter(o => o.order_type === 'emporter');
-  const channelLivraison = todayOrders.filter(o => o.order_type === 'livraison');
-
-  const expectedCashInDrawer = fondDeCaisse + especesTotal;
-  const variance = especesComptes - expectedCashInDrawer;
+  const filteredItems = useMemo(() => {
+    if (!itemSearch.trim()) return stats.items.list;
+    const q = itemSearch.toLowerCase();
+    return stats.items.list.filter(it => it.name.toLowerCase().includes(q) || it.category.toLowerCase().includes(q));
+  }, [stats.items.list, itemSearch]);
 
   const handlePrintReport = async (type: 'X' | 'Z') => {
     setPrinting(true);
     const nowStr = new Date().toLocaleString('fr-FR');
-    const reportTitle = type === 'X' ? 'RAPPORT X (INTERMÉDIAIRE)' : 'RAPPORT Z (CLÔTURE CAISSE)';
+    const reportTitle = type === 'X' ? 'RAPPORT X (POINTAGE INTERMÉDIAIRE)' : 'RAPPORT Z (CLÔTURE DE JOURNÉE)';
 
     const printPayload = {
       type: `RAPPORT_${type}`,
+      reportType: type,
+      businessDate: bizDate,
+      businessDateDisplay: formatBusinessDateDisplay(bizDate),
       date: nowStr,
-      totalTurnover: totalTurnover.toFixed(2),
-      totalOrders,
-      especesTotal: especesTotal.toFixed(2),
-      cbTotal: cbTotal.toFixed(2),
-      enLigneTotal: enLigneTotal.toFixed(2),
-      tvaTotal: tvaTotal.toFixed(2),
+      totalTurnover: stats.totalRevenue.toFixed(2),
+      totalHT: stats.taxes.ht.toFixed(2),
+      totalTVA: stats.taxes.tva.toFixed(2),
+      totalOrders: stats.totalOrdersCount,
+      avgOrder: stats.avgOrderValue.toFixed(2),
+      cancelledCount: stats.cancelledOrdersCount,
+      cancelledTotal: stats.cancelledRevenue.toFixed(2),
+      // Source Breakdown (What we did)
+      borneCount: stats.bySource.borne.count,
+      borneTotal: stats.bySource.borne.revenue.toFixed(2),
+      bornePct: stats.bySource.borne.percentage.toFixed(0),
+      posCount: stats.bySource.pos.count,
+      posTotal: stats.bySource.pos.revenue.toFixed(2),
+      posPct: stats.bySource.pos.percentage.toFixed(0),
+      webCount: stats.bySource.web.count,
+      webTotal: stats.bySource.web.revenue.toFixed(2),
+      webPct: stats.bySource.web.percentage.toFixed(0),
+      // Payments
+      especesTotal: stats.payments.especes.total.toFixed(2),
+      especesCount: stats.payments.especes.count,
+      cbTotal: stats.payments.cb.total.toFixed(2),
+      cbCount: stats.payments.cb.count,
+      enLigneTotal: stats.payments.enLigne.total.toFixed(2),
+      enLigneCount: stats.payments.enLigne.count,
+      // Order types
+      surPlaceCount: stats.byType.surplace?.count || 0,
+      surPlaceTotal: (stats.byType.surplace?.revenue || 0).toFixed(2),
+      emporterCount: stats.byType.emporter?.count || 0,
+      emporterTotal: (stats.byType.emporter?.revenue || 0).toFixed(2),
+      livraisonCount: stats.byType.livraison?.count || 0,
+      livraisonTotal: (stats.byType.livraison?.revenue || 0).toFixed(2),
+      // Cash reconciliation
       fondDeCaisse: fondDeCaisse.toFixed(2),
       expectedCashInDrawer: expectedCashInDrawer.toFixed(2),
-      especesComptes: especesComptes.toFixed(2),
+      especesComptes: (especesComptes || expectedCashInDrawer).toFixed(2),
       variance: variance.toFixed(2),
-      surPlaceCount: channelSurPlace.length,
-      surPlaceTotal: channelSurPlace.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(2),
-      emporterCount: channelEmporter.length,
-      emporterTotal: channelEmporter.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(2),
-      livraisonCount: channelLivraison.length,
-      livraisonTotal: channelLivraison.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(2),
+      // Sold items list ("What we sold")
+      totalItemsSold: stats.items.totalCount,
+      items: stats.items.list.map(it => ({
+        name: it.name,
+        category: it.category,
+        quantity: it.quantity,
+        revenue: it.revenue.toFixed(2)
+      })),
     };
 
     try {
-      const res = await fetch(`${PRINT_SERVER}/print`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isReport: true, report: printPayload }),
-        signal: AbortSignal.timeout(3000),
-      }).catch(() => null);
+      // 1. Try sending directly to print-server
+      let printedServer = false;
+      try {
+        const res = await fetch(`${PRINT_SERVER}/print-report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(printPayload),
+          signal: AbortSignal.timeout(3000),
+        });
+        if (res.ok) {
+          printedServer = true;
+        }
+      } catch {}
 
-      if (!res?.ok) {
+      // 2. If print-server is not reachable, fallback to iframe print
+      if (!printedServer) {
+        const itemsRowsHtml = stats.items.list.map(it => `
+          <div style="display:flex;justify-content:space-between;padding:1px 0;font-size:11px;">
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${it.quantity}x ${it.name}</span>
+            <span style="font-weight:bold;margin-left:8px;">${it.revenue.toFixed(2)} €</span>
+          </div>
+        `).join('');
+
         const html = `
-          <div style="font-family:monospace;width:80mm;padding:4mm;font-size:12px;color:#000;">
+          <div style="font-family:monospace;width:80mm;padding:3mm;font-size:12px;color:#000;line-height:1.35;">
             <div style="text-align:center;font-weight:bold;font-size:16px;">TWIN PIZZA</div>
-            <div style="text-align:center;font-weight:bold;margin-bottom:8px;">${reportTitle}</div>
-            <hr/>
-            <div>Date: ${nowStr}</div>
-            <div>Commandes: ${totalOrders}</div>
-            <hr/>
-            <div style="font-weight:bold;font-size:14px;">CA TOTAL: ${totalTurnover.toFixed(2)} €</div>
-            <div>TVA (10%): ${tvaTotal.toFixed(2)} €</div>
-            <hr/>
-            <div style="font-weight:bold;">VENTES PAR RÈGLEMENT</div>
-            <div>- Espèces: ${especesTotal.toFixed(2)} €</div>
-            <div>- Carte CB: ${cbTotal.toFixed(2)} €</div>
-            <div>- En Ligne: ${enLigneTotal.toFixed(2)} €</div>
-            <hr/>
-            <div style="font-weight:bold;">VENTES PAR CANAL</div>
-            <div>- Sur Place (${channelSurPlace.length}): ${channelSurPlace.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(2)} €</div>
-            <div>- À Emporter (${channelEmporter.length}): ${channelEmporter.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(2)} €</div>
-            <div>- Livraison (${channelLivraison.length}): ${channelLivraison.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(2)} €</div>
-            <hr/>
-            <div style="font-weight:bold;">RÉCONCILIATION CAISSE</div>
-            <div>Fond de caisse: ${fondDeCaisse.toFixed(2)} €</div>
-            <div>Espèces attendues: ${expectedCashInDrawer.toFixed(2)} €</div>
-            <div>Espèces comptées: ${especesComptes.toFixed(2)} €</div>
-            <div style="font-weight:bold;">Écart: ${variance >= 0 ? '+' : ''}${variance.toFixed(2)} €</div>
-            <hr/>
-            <div style="text-align:center;margin-top:10px;">Document caisse officiel</div>
+            <div style="text-align:center;font-size:10px;color:#555;">60 Rue Georges Clemenceau, Grand-Couronne</div>
+            <div style="text-align:center;font-weight:bold;margin:6px 0;font-size:13px;border-top:1px dashed #000;border-bottom:1px dashed #000;padding:4px 0;">
+              ${reportTitle}
+            </div>
+            
+            <div style="font-size:11px;">
+              <div><strong>Journée d'activité :</strong> ${formatBusinessDateDisplay(bizDate)}</div>
+              <div><strong>Tiré le :</strong> ${nowStr}</div>
+              <div><strong>Plage horaire :</strong> 04:00 -> 04:00 (J+1)</div>
+            </div>
+            <hr style="border:none;border-top:1px dashed #000;margin:6px 0;" />
+            
+            <!-- CHIFFRE D'AFFAIRES -->
+            <div style="font-size:14px;font-weight:bold;display:flex;justify-content:space-between;">
+              <span>CA TOTAL TTC :</span>
+              <span>${stats.totalRevenue.toFixed(2)} €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>Total HT :</span>
+              <span>${stats.taxes.ht.toFixed(2)} €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>TVA (10%) :</span>
+              <span>${stats.taxes.tva.toFixed(2)} €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>Commandes valides :</span>
+              <span>${stats.totalOrdersCount} (Panier : ${stats.avgOrderValue.toFixed(2)} €)</span>
+            </div>
+            ${stats.cancelledOrdersCount > 0 ? `
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:#666;">
+                <span>Annulées (hors CA) :</span>
+                <span>${stats.cancelledOrdersCount} cmd (${stats.cancelledRevenue.toFixed(2)} €)</span>
+              </div>
+            ` : ''}
+
+            <hr style="border:none;border-top:1px dashed #000;margin:6px 0;" />
+
+            <!-- ORIGINES / CANAUX (WHAT WE DID) -->
+            <div style="font-weight:bold;font-size:12px;margin-bottom:3px;">VENTES PAR CANAL (ORIGINE)</div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>📲 Borne Tactile (${stats.bySource.borne.count}) :</span>
+              <span>${stats.bySource.borne.revenue.toFixed(2)} € (${stats.bySource.borne.percentage.toFixed(0)}%)</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>💻 Caisse POS (${stats.bySource.pos.count}) :</span>
+              <span>${stats.bySource.pos.revenue.toFixed(2)} € (${stats.bySource.pos.percentage.toFixed(0)}%)</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>🌐 Site Web En Ligne (${stats.bySource.web.count}) :</span>
+              <span>${stats.bySource.web.revenue.toFixed(2)} € (${stats.bySource.web.percentage.toFixed(0)}%)</span>
+            </div>
+
+            <hr style="border:none;border-top:1px dashed #000;margin:6px 0;" />
+
+            <!-- REGLEMENTS -->
+            <div style="font-weight:bold;font-size:12px;margin-bottom:3px;">VENTES PAR RÈGLEMENT</div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>💵 Espèces (${stats.payments.especes.count}) :</span>
+              <span>${stats.payments.especes.total.toFixed(2)} €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>💳 Carte CB (${stats.payments.cb.count}) :</span>
+              <span>${stats.payments.cb.total.toFixed(2)} €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>🌐 En Ligne / Stripe (${stats.payments.enLigne.count}) :</span>
+              <span>${stats.payments.enLigne.total.toFixed(2)} €</span>
+            </div>
+
+            <hr style="border:none;border-top:1px dashed #000;margin:6px 0;" />
+
+            <!-- TYPES DE COMMANDE -->
+            <div style="font-weight:bold;font-size:12px;margin-bottom:3px;">VENTES PAR TYPE DE SERVICE</div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>🍽️ Sur Place (${stats.byType.surplace?.count || 0}) :</span>
+              <span>${(stats.byType.surplace?.revenue || 0).toFixed(2)} €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>🛍️ À Emporter (${stats.byType.emporter?.count || 0}) :</span>
+              <span>${(stats.byType.emporter?.revenue || 0).toFixed(2)} €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>🚗 Livraison (${stats.byType.livraison?.count || 0}) :</span>
+              <span>${(stats.byType.livraison?.revenue || 0).toFixed(2)} €</span>
+            </div>
+
+            <hr style="border:none;border-top:1px dashed #000;margin:6px 0;" />
+
+            <!-- RECONCILIATION TIROIR -->
+            <div style="font-weight:bold;font-size:12px;margin-bottom:3px;">RÉCONCILIATION TIROIR-CAISSE</div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>Fond de caisse :</span>
+              <span>${fondDeCaisse.toFixed(2)} €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>Espèces attendues :</span>
+              <span>${expectedCashInDrawer.toFixed(2)} €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
+              <span>Espèces comptées :</span>
+              <span>${(especesComptes || expectedCashInDrawer).toFixed(2)} €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:bold;margin-top:2px;">
+              <span>Écart de caisse :</span>
+              <span>${variance >= 0 ? '+' : ''}${variance.toFixed(2)} €</span>
+            </div>
+
+            <hr style="border:none;border-top:1px dashed #000;margin:6px 0;" />
+
+            <!-- ARTICLES VENDUS (WHAT WE SOLD) -->
+            <div style="font-weight:bold;font-size:12px;margin-bottom:3px;">
+              ARTICLES VENDUS (${stats.items.totalCount} pièces)
+            </div>
+            ${itemsRowsHtml || '<div style="font-size:10px;color:#777;">Aucun article</div>'}
+
+            <hr style="border:none;border-top:1px dashed #000;margin:8px 0;" />
+            <div style="text-align:center;font-size:10px;color:#444;">
+              Document certifié - TWIN PIZZA<br/>
+              Fin de rapport
+            </div>
           </div>
         `;
+
         const iframe = document.createElement('iframe');
         iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
         document.body.appendChild(iframe);
         const doc = iframe.contentWindow?.document;
         if (doc) {
-          doc.open(); doc.write(`<!DOCTYPE html><html><head><title>${reportTitle}</title></head><body>${html}</body></html>`); doc.close();
-          setTimeout(() => { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); setTimeout(() => iframe.remove(), 4000); }, 300);
+          doc.open();
+          doc.write(`<!DOCTYPE html><html><head><title>${reportTitle}</title><style>@page{size:80mm auto;margin:0;}</style></head><body>${html}</body></html>`);
+          doc.close();
+          setTimeout(() => {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+            setTimeout(() => iframe.remove(), 4000);
+          }, 300);
         }
       }
+
       toast.success(`✅ ${reportTitle} imprimé !`);
       if (type === 'Z') {
-        try { localStorage.setItem('pos-last-z-report', JSON.stringify({ date: nowStr, turnover: totalTurnover })); } catch {}
-        toast.success('🔒 Clôture de caisse Z validée avec succès');
+        try {
+          localStorage.setItem('pos-last-z-report', JSON.stringify({
+            date: nowStr,
+            businessDate: bizDate,
+            turnover: stats.totalRevenue
+          }));
+        } catch {}
+        toast.success('🔒 Clôture de journée Z enregistrée avec succès');
         onClose();
       }
-    } catch {
+    } catch (e: any) {
+      console.error('Print error:', e);
       toast.error('Erreur lors de l’impression du rapport');
     } finally {
       setPrinting(false);
     }
   };
 
+  const yesterdayBiz = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return getBusinessDate(d, 4);
+  }, []);
+
+  const todayBiz = useMemo(() => getBusinessDate(new Date(), 4), []);
+
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:999, background:'rgba(0,0,0,0.8)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div style={{ background:S.panel, border:`1px solid ${S.border}`, borderRadius:16, width:'100%', maxWidth:540, maxHeight:'90vh', overflow:'auto', padding:20, color:S.text, boxShadow:'0 12px 32px rgba(0,0,0,0.6)' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, borderBottom:`1px solid ${S.border}`, paddingBottom:10 }}>
-          <div style={{ fontSize:18, fontWeight:800, color:S.accent, display:'flex', alignItems:'center', gap:8 }}>
-            🔒 Clôture de Caisse (Rapport X / Z)
+    <div style={{ position:'fixed', inset:0, zIndex:999, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(5px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div style={{ background:S.panel, border:`1px solid ${S.border}`, borderRadius:18, width:'100%', maxWidth:680, maxHeight:'92vh', overflow:'hidden', display:'flex', flexDirection:'column', color:S.text, boxShadow:'0 16px 40px rgba(0,0,0,0.7)' }}>
+        
+        {/* Header */}
+        <div style={{ padding:'16px 20px', borderBottom:`1px solid ${S.border}`, display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(255,255,255,0.02)' }}>
+          <div>
+            <div style={{ fontSize:18, fontWeight:900, color:S.accent, display:'flex', alignItems:'center', gap:8 }}>
+              🔒 Clôture de Caisse (Rapport X / Z)
+            </div>
+            <div style={{ fontSize:11, color:S.muted, marginTop:2 }}>
+              Journée du <strong style={{ color:S.text }}>{formatBusinessDateDisplay(bizDate)}</strong> (Service jusqu'à 04:00)
+            </div>
           </div>
-          <button onClick={onClose} style={{ background:'none', border:'none', color:S.muted, fontSize:18, cursor:'pointer' }}>✕</button>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:S.muted, fontSize:20, cursor:'pointer', padding:4 }}>✕</button>
         </div>
 
-        {loading ? (
-          <div style={{ textAlign:'center', padding:30, color:S.muted }}>Chargement des données de la journée...</div>
-        ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-            {/* Chiffre d'affaires global */}
-            <div style={{ background:'linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(15, 23, 42, 0.4))', border:`1.5px solid ${S.accent}`, borderRadius:12, padding:14, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <div>
-                <div style={{ fontSize:11, textTransform:'uppercase', color:S.accent, fontWeight:800 }}>Chiffre d'Affaires du Jour</div>
-                <div style={{ fontSize:26, fontWeight:900, color:'#fff' }}>{totalTurnover.toFixed(2)} €</div>
-              </div>
-              <div style={{ textAlign:'right' }}>
-                <div style={{ fontSize:12, fontWeight:700, color:S.muted }}>{totalOrders} commande{totalOrders > 1 ? 's' : ''}</div>
-                <div style={{ fontSize:11, color:S.muted }}>TVA (10%): {tvaTotal.toFixed(2)} €</div>
-              </div>
-            </div>
-
-            {/* Ventilation règlements */}
-            <div>
-              <div style={{ fontSize:12, fontWeight:800, color:S.accent, marginBottom:6, textTransform:'uppercase' }}>Ventilation par Règlement</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
-                <div style={{ background:S.card, padding:10, borderRadius:8, border:`1px solid ${S.border}` }}>
-                  <div style={{ fontSize:10, color:S.muted }}>💵 Espèces</div>
-                  <div style={{ fontSize:15, fontWeight:800, color:'#22c55e' }}>{especesTotal.toFixed(2)} €</div>
-                </div>
-                <div style={{ background:S.card, padding:10, borderRadius:8, border:`1px solid ${S.border}` }}>
-                  <div style={{ fontSize:10, color:S.muted }}>💳 Carte CB</div>
-                  <div style={{ fontSize:15, fontWeight:800, color:'#3b82f6' }}>{cbTotal.toFixed(2)} €</div>
-                </div>
-                <div style={{ background:S.card, padding:10, borderRadius:8, border:`1px solid ${S.border}` }}>
-                  <div style={{ fontSize:10, color:S.muted }}>🌐 En Ligne</div>
-                  <div style={{ fontSize:15, fontWeight:800, color:'#a855f7' }}>{enLigneTotal.toFixed(2)} €</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Réconciliation tiroir-caisse */}
-            <div style={{ background:'rgba(255,255,255,0.03)', border:`1px solid ${S.border}`, padding:12, borderRadius:10 }}>
-              <div style={{ fontSize:12, fontWeight:800, color:S.accent, marginBottom:8, textTransform:'uppercase' }}>Réconciliation Tiroir-Caisse</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:8 }}>
-                <div>
-                  <label style={{ fontSize:10, color:S.muted, display:'block', marginBottom:3 }}>Fond de caisse initial (€)</label>
-                  <input
-                    type="number"
-                    value={fondDeCaisse}
-                    onChange={e => setFondDeCaisse(Math.max(0, parseFloat(e.target.value) || 0))}
-                    style={{ ...S.input, fontSize:12 }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize:10, color:S.muted, display:'block', marginBottom:3 }}>Espèces physiques comptées (€)</label>
-                  <input
-                    type="number"
-                    value={especesComptes || ''}
-                    onChange={e => setEspecesComptes(Math.max(0, parseFloat(e.target.value) || 0))}
-                    placeholder={expectedCashInDrawer.toFixed(2)}
-                    style={{ ...S.input, fontSize:12 }}
-                  />
-                </div>
-              </div>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:6, borderTop:`1px dashed ${S.border}`, fontSize:11 }}>
-                <span>Espèces attendues en caisse: <strong>{expectedCashInDrawer.toFixed(2)} €</strong></span>
-                <span style={{ fontWeight:800, color: variance === 0 ? '#22c55e' : (variance < 0 ? '#ef4444' : '#3b82f6') }}>
-                  Écart: {variance >= 0 ? '+' : ''}{variance.toFixed(2)} €
-                </span>
-              </div>
-            </div>
-
-            {/* Actions: Rapport X & Z */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:6 }}>
-              <button
-                disabled={printing}
-                onClick={() => handlePrintReport('X')}
-                style={{ ...S.btn, padding:'12px', fontWeight:800, background:'#1e293b', borderColor:'#3b82f644', color:'#3b82f6', fontSize:12 }}
-              >
-                📄 Imprimer Rapport X
-              </button>
-              <button
-                disabled={printing}
-                onClick={() => handlePrintReport('Z')}
-                style={{ ...S.btn, padding:'12px', fontWeight:800, background:'linear-gradient(135deg, #f59e0b, #ef4444)', border:'none', color:'#000', fontSize:12 }}
-              >
-                🔒 Valider & Imprimer Rapport Z
-              </button>
-            </div>
+        {/* Date Selector Banner */}
+        <div style={{ padding:'10px 20px', background:'rgba(0,0,0,0.2)', borderBottom:`1px solid ${S.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', gap:6 }}>
+            <button
+              onClick={() => setBizDate(todayBiz)}
+              style={{
+                ...S.btn,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 800,
+                background: bizDate === todayBiz ? S.accent : '#1f2937',
+                color: bizDate === todayBiz ? '#000' : S.text,
+                borderColor: bizDate === todayBiz ? S.accent : S.border
+              }}
+            >
+              📅 Aujourd'hui (Service actif)
+            </button>
+            <button
+              onClick={() => setBizDate(yesterdayBiz)}
+              style={{
+                ...S.btn,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 800,
+                background: bizDate === yesterdayBiz ? S.accent : '#1f2937',
+                color: bizDate === yesterdayBiz ? '#000' : S.text,
+                borderColor: bizDate === yesterdayBiz ? S.accent : S.border
+              }}
+            >
+              ⏮️ Hier
+            </button>
           </div>
-        )}
+
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <span style={{ fontSize:11, color:S.muted }}>Autre date :</span>
+            <input
+              type="date"
+              value={bizDate}
+              onChange={e => e.target.value && setBizDate(e.target.value)}
+              style={{ ...S.input, padding:'3px 8px', fontSize:11, width:'auto' }}
+            />
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div style={{ display:'flex', borderBottom:`1px solid ${S.border}`, background:'rgba(255,255,255,0.01)' }}>
+          <button
+            onClick={() => setActiveTab('synthese')}
+            style={{
+              flex: 1,
+              padding: '10px 14px',
+              fontSize: 12,
+              fontWeight: 800,
+              border: 'none',
+              cursor: 'pointer',
+              background: activeTab === 'synthese' ? 'rgba(249,115,22,0.12)' : 'transparent',
+              color: activeTab === 'synthese' ? S.accent : S.muted,
+              borderBottom: `2px solid ${activeTab === 'synthese' ? S.accent : 'transparent'}`
+            }}
+          >
+            📈 Synthèse & Canaux
+          </button>
+          <button
+            onClick={() => setActiveTab('articles')}
+            style={{
+              flex: 1,
+              padding: '10px 14px',
+              fontSize: 12,
+              fontWeight: 800,
+              border: 'none',
+              cursor: 'pointer',
+              background: activeTab === 'articles' ? 'rgba(249,115,22,0.12)' : 'transparent',
+              color: activeTab === 'articles' ? S.accent : S.muted,
+              borderBottom: `2px solid ${activeTab === 'articles' ? S.accent : 'transparent'}`
+            }}
+          >
+            📦 Articles Vendus ({stats.items.totalCount})
+          </button>
+          <button
+            onClick={() => setActiveTab('caisse')}
+            style={{
+              flex: 1,
+              padding: '10px 14px',
+              fontSize: 12,
+              fontWeight: 800,
+              border: 'none',
+              cursor: 'pointer',
+              background: activeTab === 'caisse' ? 'rgba(249,115,22,0.12)' : 'transparent',
+              color: activeTab === 'caisse' ? S.accent : S.muted,
+              borderBottom: `2px solid ${activeTab === 'caisse' ? S.accent : 'transparent'}`
+            }}
+          >
+            💵 Tiroir & Réconciliation
+          </button>
+        </div>
+
+        {/* Body Content */}
+        <div style={{ flex:1, overflowY:'auto', padding:20 }}>
+          {loading ? (
+            <div style={{ textAlign:'center', padding:40, color:S.muted }}>
+              ⏳ Chargement et calcul des ventes de la journée...
+            </div>
+          ) : (
+            <>
+              {/* TAB 1: SYNTHÈSE */}
+              {activeTab === 'synthese' && (
+                <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                  {/* Grand CA Banner */}
+                  <div style={{ background:'linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(15, 23, 42, 0.6))', border:`1.5px solid ${S.accent}`, borderRadius:14, padding:'16px 18px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div>
+                      <div style={{ fontSize:10, textTransform:'uppercase', color:S.accent, fontWeight:900, letterSpacing:1 }}>
+                        Chiffre d'Affaires Global (TTC)
+                      </div>
+                      <div style={{ fontSize:28, fontWeight:900, color:'#fff', marginTop:2 }}>
+                        {stats.totalRevenue.toFixed(2)} €
+                      </div>
+                      <div style={{ fontSize:11, color:S.muted, marginTop:2 }}>
+                        HT : {stats.taxes.ht.toFixed(2)} € | TVA (10%) : {stats.taxes.tva.toFixed(2)} €
+                      </div>
+                    </div>
+                    <div style={{ textAlign:'right' }}>
+                      <div style={{ fontSize:14, fontWeight:800, color:'#fff' }}>{stats.totalOrdersCount} commande{stats.totalOrdersCount > 1 ? 's' : ''}</div>
+                      <div style={{ fontSize:11, color:S.muted }}>Panier moyen : {stats.avgOrderValue.toFixed(2)} €</div>
+                      <div style={{ fontSize:11, color:S.accent, fontWeight:700 }}>{stats.items.totalCount} articles vendus</div>
+                    </div>
+                  </div>
+
+                  {/* Multi-Channel Distribution (What we did) */}
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:800, color:S.accent, marginBottom:6, textTransform:'uppercase' }}>
+                      Répartition par Origine (Canal de Vente)
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                      <div style={{ background:'rgba(168,85,247,0.08)', padding:10, borderRadius:10, border:'1px solid rgba(168,85,247,0.25)' }}>
+                        <div style={{ fontSize:10, color:'#a855f7', fontWeight:800 }}>📲 BORNE TACTILE</div>
+                        <div style={{ fontSize:17, fontWeight:900, color:'#fff', marginTop:2 }}>{stats.bySource.borne.revenue.toFixed(2)} €</div>
+                        <div style={{ fontSize:10, color:S.muted }}>{stats.bySource.borne.count} cmd ({stats.bySource.borne.percentage.toFixed(0)}%)</div>
+                      </div>
+                      <div style={{ background:'rgba(16,185,129,0.08)', padding:10, borderRadius:10, border:'1px solid rgba(16,185,129,0.25)' }}>
+                        <div style={{ fontSize:10, color:'#10b981', fontWeight:800 }}>💻 CAISSE (POS)</div>
+                        <div style={{ fontSize:17, fontWeight:900, color:'#fff', marginTop:2 }}>{stats.bySource.pos.revenue.toFixed(2)} €</div>
+                        <div style={{ fontSize:10, color:S.muted }}>{stats.bySource.pos.count} cmd ({stats.bySource.pos.percentage.toFixed(0)}%)</div>
+                      </div>
+                      <div style={{ background:'rgba(59,130,246,0.08)', padding:10, borderRadius:10, border:'1px solid rgba(59,130,246,0.25)' }}>
+                        <div style={{ fontSize:10, color:'#3b82f6', fontWeight:800 }}>🌐 SITE WEB (EN LIGNE)</div>
+                        <div style={{ fontSize:17, fontWeight:900, color:'#fff', marginTop:2 }}>{stats.bySource.web.revenue.toFixed(2)} €</div>
+                        <div style={{ fontSize:10, color:S.muted }}>{stats.bySource.web.count} cmd ({stats.bySource.web.percentage.toFixed(0)}%)</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payments Breakdown */}
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:800, color:S.accent, marginBottom:6, textTransform:'uppercase' }}>
+                      Ventilation par Mode de Règlement
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                      <div style={{ background:S.card, padding:10, borderRadius:10, border:`1px solid ${S.border}` }}>
+                        <div style={{ fontSize:10, color:S.muted }}>💵 Espèces (Cash)</div>
+                        <div style={{ fontSize:16, fontWeight:800, color:'#22c55e', marginTop:2 }}>{stats.payments.especes.total.toFixed(2)} €</div>
+                        <div style={{ fontSize:10, color:S.muted }}>{stats.payments.especes.count} règlement{stats.payments.especes.count > 1 ? 's' : ''}</div>
+                      </div>
+                      <div style={{ background:S.card, padding:10, borderRadius:10, border:`1px solid ${S.border}` }}>
+                        <div style={{ fontSize:10, color:S.muted }}>💳 Carte Bancaire</div>
+                        <div style={{ fontSize:16, fontWeight:800, color:'#3b82f6', marginTop:2 }}>{stats.payments.cb.total.toFixed(2)} €</div>
+                        <div style={{ fontSize:10, color:S.muted }}>{stats.payments.cb.count} règlement{stats.payments.cb.count > 1 ? 's' : ''}</div>
+                      </div>
+                      <div style={{ background:S.card, padding:10, borderRadius:10, border:`1px solid ${S.border}` }}>
+                        <div style={{ fontSize:10, color:S.muted }}>🌐 En Ligne (Stripe)</div>
+                        <div style={{ fontSize:16, fontWeight:800, color:'#a855f7', marginTop:2 }}>{stats.payments.enLigne.total.toFixed(2)} €</div>
+                        <div style={{ fontSize:10, color:S.muted }}>{stats.payments.enLigne.count} paiement{stats.payments.enLigne.count > 1 ? 's' : ''}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Order Types */}
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:800, color:S.accent, marginBottom:6, textTransform:'uppercase' }}>
+                      Ventilation par Type de Service
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                      <div style={{ background:S.card, padding:8, borderRadius:8, border:`1px solid ${S.border}` }}>
+                        <span style={{ fontSize:10, color:S.muted }}>🍽️ Sur Place</span>
+                        <div style={{ fontSize:13, fontWeight:800, marginTop:2 }}>{(stats.byType.surplace?.revenue || 0).toFixed(2)} € <span style={{ fontSize:10, color:S.muted }}>({stats.byType.surplace?.count || 0})</span></div>
+                      </div>
+                      <div style={{ background:S.card, padding:8, borderRadius:8, border:`1px solid ${S.border}` }}>
+                        <span style={{ fontSize:10, color:S.muted }}>🛍️ À Emporter</span>
+                        <div style={{ fontSize:13, fontWeight:800, marginTop:2 }}>{(stats.byType.emporter?.revenue || 0).toFixed(2)} € <span style={{ fontSize:10, color:S.muted }}>({stats.byType.emporter?.count || 0})</span></div>
+                      </div>
+                      <div style={{ background:S.card, padding:8, borderRadius:8, border:`1px solid ${S.border}` }}>
+                        <span style={{ fontSize:10, color:S.muted }}>🚗 Livraison</span>
+                        <div style={{ fontSize:13, fontWeight:800, marginTop:2 }}>{(stats.byType.livraison?.revenue || 0).toFixed(2)} € <span style={{ fontSize:10, color:S.muted }}>({stats.byType.livraison?.count || 0})</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: ARTICLES VENDUS (WHAT WE SOLD) */}
+              {activeTab === 'articles' && (
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+                    <input
+                      type="text"
+                      placeholder="🔍 Filtrer les articles ou catégories..."
+                      value={itemSearch}
+                      onChange={e => setItemSearch(e.target.value)}
+                      style={{ ...S.input, flex:1, fontSize:12, padding:'6px 12px' }}
+                    />
+                    <span style={{ fontSize:11, color:S.muted, fontWeight:700 }}>
+                      {filteredItems.length} référence{filteredItems.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  <div style={{ background:S.card, border:`1px solid ${S.border}`, borderRadius:10, overflow:'hidden', maxHeight:380, overflowY:'auto' }}>
+                    {filteredItems.length === 0 ? (
+                      <div style={{ textAlign:'center', padding:30, color:S.muted, fontSize:12 }}>
+                        Aucun article vendu sur cette période.
+                      </div>
+                    ) : (
+                      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                        <thead>
+                          <tr style={{ background:'rgba(255,255,255,0.03)', borderBottom:`1px solid ${S.border}`, textAlign:'left', color:S.muted, fontSize:10, textTransform:'uppercase' }}>
+                            <th style={{ padding:'8px 12px' }}>Article</th>
+                            <th style={{ padding:'8px 12px' }}>Catégorie</th>
+                            <th style={{ padding:'8px 12px', textAlign:'center' }}>Qté</th>
+                            <th style={{ padding:'8px 12px', textAlign:'right' }}>Total (€)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredItems.map((it, idx) => (
+                            <tr key={it.name} style={{ borderBottom:`1px solid ${S.border}33`, background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
+                              <td style={{ padding:'8px 12px', fontWeight:700, color:S.text }}>{it.name}</td>
+                              <td style={{ padding:'8px 12px', color:S.muted, fontSize:11, textTransform:'capitalize' }}>{it.category}</td>
+                              <td style={{ padding:'8px 12px', textAlign:'center', fontWeight:800, color:S.accent }}>{it.quantity}</td>
+                              <td style={{ padding:'8px 12px', textAlign:'right', fontWeight:800, color:S.text }}>{it.revenue.toFixed(2)} €</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: RÉCONCILIATION TIROIR */}
+              {activeTab === 'caisse' && (
+                <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                  <div style={{ background:'rgba(255,255,255,0.02)', border:`1px solid ${S.border}`, padding:16, borderRadius:12 }}>
+                    <div style={{ fontSize:12, fontWeight:800, color:S.accent, marginBottom:12, textTransform:'uppercase' }}>
+                      Contrôle des Espèces Physiques
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+                      <div>
+                        <label style={{ fontSize:11, color:S.muted, display:'block', marginBottom:4, fontWeight:700 }}>
+                          Fond de caisse initial (€)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={fondDeCaisse}
+                          onChange={e => setFondDeCaisse(Math.max(0, parseFloat(e.target.value) || 0))}
+                          style={{ ...S.input, fontSize:13 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize:11, color:S.muted, display:'block', marginBottom:4, fontWeight:700 }}>
+                          Espèces physiques comptées (€)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={especesComptes || ''}
+                          onChange={e => setEspecesComptes(Math.max(0, parseFloat(e.target.value) || 0))}
+                          placeholder={expectedCashInDrawer.toFixed(2)}
+                          style={{ ...S.input, fontSize:13 }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display:'flex', flexDirection:'column', gap:6, paddingTop:12, borderTop:`1px dashed ${S.border}`, fontSize:12 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span style={{ color:S.muted }}>Ventes espèces de la journée :</span>
+                        <span style={{ fontWeight:700 }}>{stats.payments.especes.total.toFixed(2)} €</span>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span style={{ color:S.muted }}>Espèces attendues au tiroir (Fond + Ventes) :</span>
+                        <span style={{ fontWeight:800, color:S.accent }}>{expectedCashInDrawer.toFixed(2)} €</span>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span style={{ color:S.muted }}>Espèces réelles dans le tiroir :</span>
+                        <span style={{ fontWeight:800 }}>{(especesComptes || expectedCashInDrawer).toFixed(2)} €</span>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:8, borderTop:`1px solid ${S.border}`, fontSize:13 }}>
+                        <span style={{ fontWeight:800 }}>Écart de caisse :</span>
+                        <span style={{ fontWeight:900, fontSize:15, color: variance === 0 ? '#22c55e' : (variance < 0 ? '#ef4444' : '#3b82f6') }}>
+                          {variance >= 0 ? '+' : ''}{variance.toFixed(2)} € {variance === 0 ? '✓ Équilibré' : (variance < 0 ? '⚠️ Manquant' : 'ℹ️ Excédent')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div style={{ padding:'14px 20px', borderTop:`1px solid ${S.border}`, background:'rgba(0,0,0,0.3)', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <button
+            disabled={printing || loading}
+            onClick={() => handlePrintReport('X')}
+            style={{
+              ...S.btn,
+              padding: '12px',
+              fontWeight: 800,
+              background: '#1e293b',
+              borderColor: '#3b82f644',
+              color: '#3b82f6',
+              fontSize: 12,
+              cursor: printing ? 'wait' : 'pointer'
+            }}
+          >
+            📄 Imprimer Rapport X (Pointage)
+          </button>
+          <button
+            disabled={printing || loading}
+            onClick={() => handlePrintReport('Z')}
+            style={{
+              ...S.btn,
+              padding: '12px',
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+              border: 'none',
+              color: '#000',
+              fontSize: 12,
+              cursor: printing ? 'wait' : 'pointer'
+            }}
+          >
+            🔒 Valider & Imprimer Rapport Z (Clôture)
+          </button>
+        </div>
       </div>
     </div>
   );

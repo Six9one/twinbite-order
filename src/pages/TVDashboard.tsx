@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrders, useUpdateOrderStatus, Order, useDrinks, useDesserts } from '@/hooks/useSupabaseData';
+import { getBusinessDate } from '@/lib/orderUtils';
 import { useAllProducts } from '@/hooks/useProducts';
 import { useCategoryImages } from '@/hooks/useCategoryImages';
 import {
@@ -326,7 +327,7 @@ ${footer}
 
 export default function TVDashboard() {
   const { isAuthenticated, isLoading: authLoading } = useAdminAuth();
-  const [dateFilter] = useState(new Date().toISOString().slice(0, 10));
+  const [dateFilter] = useState(() => getBusinessDate(new Date(), 4));
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(() => {
     return localStorage.getItem('autoPrintEnabled') === 'true';

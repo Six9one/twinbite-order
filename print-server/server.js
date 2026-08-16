@@ -1523,6 +1523,109 @@ async function formatUnifiedTicket(order) {
     return formatCounterTicket(order);
 }
 
+function formatReportTicket(report) {
+    const ESCPOS_COUNTER = {
+        INIT: ESC + '@',
+        CENTER: ESC + 'a' + '\x01', 
+        LEFT: ESC + 'a' + '\x00',   
+        RIGHT: ESC + 'a' + '\x02',  
+        BOLD_ON: ESC + 'E' + '\x01',
+        BOLD_OFF: ESC + 'E' + '\x00',
+        DOUBLE_HEIGHT: ESC + 'i' + '\x00' + '\x01',
+        DOUBLE_WIDTH: ESC + 'i' + '\x01' + '\x00',
+        DOUBLE_SIZE: ESC + 'i' + '\x01' + '\x01',
+        NORMAL_SIZE: ESC + 'i' + '\x00' + '\x00',
+        PARTIAL_CUT: ESC + 'd' + '\x03',  
+    };
+    const DASH_42 = '------------------------------------------\n';
+    const DOUBLE_42 = '==========================================\n';
+
+    let t = '';
+    t += ESCPOS_COUNTER.INIT;
+    t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + ESCPOS_COUNTER.DOUBLE_SIZE + 'TWIN PIZZA\n' + ESCPOS_COUNTER.NORMAL_SIZE + ESCPOS_COUNTER.BOLD_OFF;
+    t += ESCPOS_COUNTER.CENTER + '60 Rue Georges Clemenceau, Grand-Couronne\n02 32 11 26 13\n';
+    t += DOUBLE_42;
+    
+    // Title
+    const title = report.type === 'RAPPORT_X' || report.reportType === 'X'
+        ? 'RAPPORT X (POINTAGE INTERMEDIAIRE)'
+        : 'RAPPORT Z (CLOTURE DE JOURNEE)';
+    t += ESCPOS_COUNTER.CENTER + ESCPOS_COUNTER.BOLD_ON + title + '\n' + ESCPOS_COUNTER.BOLD_OFF;
+    t += ESCPOS_COUNTER.LEFT;
+    t += `Journee d'activite: ${report.businessDateDisplay || report.businessDate || ''}\n`;
+    t += `Tire le: ${report.date || new Date().toLocaleString('fr-FR')}\n`;
+    t += `Plage: 04:00 -> 04:00 (J+1)\n`;
+    t += DASH_42;
+
+    // Turnover & Taxes
+    t += ESCPOS_COUNTER.BOLD_ON + ESCPOS_COUNTER.DOUBLE_HEIGHT;
+    t += `CA TOTAL TTC: ${report.totalTurnover || '0.00'} EUR\n`;
+    t += ESCPOS_COUNTER.NORMAL_SIZE + ESCPOS_COUNTER.BOLD_OFF;
+    t += `Total HT: ${report.totalHT || '0.00'} EUR  |  TVA (10%): ${report.totalTVA || '0.00'} EUR\n`;
+    t += `Commandes valides: ${report.totalOrders || 0}  (Panier: ${report.avgOrder || '0.00'} EUR)\n`;
+    if (Number(report.cancelledCount) > 0) {
+        t += `Annulees (hors CA): ${report.cancelledCount} cmd (${report.cancelledTotal || '0.00'} EUR)\n`;
+    }
+    t += DASH_42;
+
+    // Multi-Channel (What we did)
+    t += ESCPOS_COUNTER.BOLD_ON + 'VENTES PAR CANAL (ORIGINE)\n' + ESCPOS_COUNTER.BOLD_OFF;
+    t += `  Borne Tactile:   ${report.borneCount || 0} cmd - ${report.borneTotal || '0.00'} EUR (${report.bornePct || 0}%)\n`;
+    t += `  Caisse POS:      ${report.posCount || 0} cmd - ${report.posTotal || '0.00'} EUR (${report.posPct || 0}%)\n`;
+    t += `  Site Web Ligne:  ${report.webCount || 0} cmd - ${report.webTotal || '0.00'} EUR (${report.webPct || 0}%)\n`;
+    t += DASH_42;
+
+    // Payments
+    t += ESCPOS_COUNTER.BOLD_ON + 'VENTES PAR REGLEMENT\n' + ESCPOS_COUNTER.BOLD_OFF;
+    t += `  Especes (Cash):  ${report.especesTotal || '0.00'} EUR (${report.especesCount || 0} pmt)\n`;
+    t += `  Carte CB:        ${report.cbTotal || '0.00'} EUR (${report.cbCount || 0} pmt)\n`;
+    t += `  En Ligne Stripe: ${report.enLigneTotal || '0.00'} EUR (${report.enLigneCount || 0} pmt)\n`;
+    t += DASH_42;
+
+    // Order Types
+    t += ESCPOS_COUNTER.BOLD_ON + 'VENTES PAR SERVICE\n' + ESCPOS_COUNTER.BOLD_OFF;
+    t += `  Sur Place:   ${report.surPlaceCount || 0} cmd - ${report.surPlaceTotal || '0.00'} EUR\n`;
+    t += `  A Emporter:  ${report.emporterCount || 0} cmd - ${report.emporterTotal || '0.00'} EUR\n`;
+    t += `  Livraison:   ${report.livraisonCount || 0} cmd - ${report.livraisonTotal || '0.00'} EUR\n`;
+    t += DASH_42;
+
+    // Cash Drawer Reconciliation
+    t += ESCPOS_COUNTER.BOLD_ON + 'RECONCILIATION TIROIR-CAISSE\n' + ESCPOS_COUNTER.BOLD_OFF;
+    t += `  Fond de caisse:     ${report.fondDeCaisse || '0.00'} EUR\n`;
+    t += `  Especes attendues:  ${report.expectedCashInDrawer || '0.00'} EUR\n`;
+    t += `  Especes comptees:   ${report.especesComptes || '0.00'} EUR\n`;
+    const varNum = Number(report.variance) || 0;
+    t += ESCPOS_COUNTER.BOLD_ON + `  Ecart de caisse:    ${varNum >= 0 ? '+' : ''}${report.variance || '0.00'} EUR\n` + ESCPOS_COUNTER.BOLD_OFF;
+    t += DASH_42;
+
+    // Itemized Sales List ("What we sold")
+    if (Array.isArray(report.items) && report.items.length > 0) {
+        t += ESCPOS_COUNTER.BOLD_ON + `ARTICLES VENDUS (${report.totalItemsSold || report.items.length} pcs)\n` + ESCPOS_COUNTER.BOLD_OFF;
+        report.items.forEach(it => {
+            const line = `${String(it.quantity).padStart(3)}x ${it.name}`;
+            const price = `${Number(it.revenue).toFixed(2)} EUR`;
+            const spaces = Math.max(1, 42 - line.length - price.length);
+            t += line.slice(0, 42 - price.length - 1) + ' '.repeat(spaces) + price + '\n';
+        });
+        t += DASH_42;
+    }
+
+    t += ESCPOS_COUNTER.CENTER + 'Document certifie - TWIN PIZZA\n';
+    t += ESCPOS_COUNTER.CENTER + '--- Fin de Rapport ---\n\n\n\n';
+    t += ESCPOS_COUNTER.PARTIAL_CUT;
+
+    return Buffer.from(t, 'latin1');
+}
+
+async function printReportTicket(report) {
+    const label = report.type || 'RAPPORT_Z';
+    return enqueuePrintJob(async () => {
+        console.log(`🖨️ Impression ${label} pour ${report.businessDate || report.date}...`);
+        const data = formatReportTicket(report);
+        return sendToAllPrinters(data, label);
+    }, label);
+}
+
 // Send data to printer via TCP
 function sendToPrinter(data, targetIp) {
     return new Promise((resolve, reject) => {
@@ -2924,9 +3027,46 @@ function setupHttpServer() {
         }
     });
 
-    // Print order ticket (POST - called directly by POSPage on order creation)
+    // Print Z/X Report (POST - called directly by POSPage on cash register closing or check)
+    app.post('/print-report', async (req, res) => {
+        const report = req.body.report || req.body;
+        console.log(`\n📥 Direct POS report print request: ${report.type || 'RAPPORT'} for ${report.businessDate || report.date}`);
+        try {
+            const success = await printReportTicket(report);
+            if (success) {
+                console.log(`✅ Report ${report.type || 'RAPPORT'} printed successfully`);
+                res.json({ success: true, message: 'Report printed' });
+            } else {
+                console.error(`❌ Failed to print report ${report.type || 'RAPPORT'}`);
+                res.status(500).json({ error: 'Failed to print report' });
+            }
+        } catch (err) {
+            console.error('❌ Direct POS report print error:', err.message);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // Print order ticket or report (POST - called directly by POSPage)
     app.post('/print', async (req, res) => {
-        const { orderNumber, order } = req.body;
+        const { orderNumber, order, isReport, report } = req.body;
+
+        // If this is a register report (X or Z)
+        if (isReport || report || req.body.type?.startsWith('RAPPORT_')) {
+            const reportData = report || req.body;
+            console.log(`\n📥 POS closing report print request (${reportData.type || 'RAPPORT'})`);
+            try {
+                const success = await printReportTicket(reportData);
+                if (success) {
+                    return res.json({ success: true, message: 'Report printed' });
+                } else {
+                    return res.status(500).json({ error: 'Failed to print report' });
+                }
+            } catch (err) {
+                console.error('❌ Report print error:', err.message);
+                return res.status(500).json({ error: err.message });
+            }
+        }
+
         console.log(`\n📥 Direct POS print request for order #${orderNumber || order?.order_number}`);
 
         try {

@@ -40,6 +40,14 @@ import { TenantManager } from '@/components/admin/TenantManager';
 import TelegramWhatsAppManager from '@/components/admin/TelegramWhatsAppManager';
 import { ClientIPMap } from '@/components/admin/ClientIPMap';
 import {
+  getBusinessDate,
+  formatBusinessDateDisplay,
+  calculateBusinessStats,
+  detectOrderSource,
+  getSourceBadgeProps,
+  getSourceLabel,
+} from '@/lib/orderUtils';
+import {
   LogOut, Home, Search, RefreshCw, Download, Printer,
   Clock, CheckCircle, XCircle, ChefHat, Package,
   MapPin, Phone, User, MessageSquare, CreditCard, Banknote, Shield,
@@ -202,7 +210,7 @@ export default function AdminDashboard() {
 
   const [activeTab, setActiveTab] = useState<AdminTab>('pizzas');
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10));
+  const [dateFilter, setDateFilter] = useState(() => getBusinessDate(new Date(), 4));
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -573,20 +581,22 @@ export default function AdminDashboard() {
 
         <main className="flex-1 p-6 overflow-auto">
           {/* Dashboard */}
-          {activeTab === 'dashboard' && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {activeTab === 'dashboard' && (() => {
+            const dashStats = calculateBusinessStats(orders || []);
+            return (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h1 className="text-3xl font-extrabold tracking-tight">Tableau de Bord</h1>
-                  <p className="text-muted-foreground">Bienvenue ! Voici le résumé de l'activité pour aujourd'hui.</p>
+                  <p className="text-muted-foreground">Résumé multi-canal de l'activité (Web, Borne tactile et Caisse POS).</p>
                 </div>
                 <div className="flex items-center gap-3 bg-card border shadow-sm p-3 rounded-2xl">
                   <div className="bg-amber-500/10 p-2.5 rounded-xl">
                     <Clock className="w-5 h-5 text-amber-500" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Date Actuelle</p>
-                    <p className="text-sm font-bold">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Journée d'Activité</p>
+                    <p className="text-sm font-bold capitalize">{formatBusinessDateDisplay(dateFilter)}</p>
                   </div>
                 </div>
               </div>
@@ -596,9 +606,9 @@ export default function AdminDashboard() {
                 <Card className="p-6 border-none bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl shadow-emerald-500/20 transition-all hover:shadow-emerald-500/30 hover:-translate-y-1">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-emerald-100 text-xs font-bold uppercase tracking-wider">Ventes Total (Jour)</p>
+                      <p className="text-emerald-100 text-xs font-bold uppercase tracking-wider">CA Global (Web+Borne+POS)</p>
                       <h3 className="text-3xl font-black mt-1">
-                        {orders?.reduce((acc, o) => acc + (o.status !== 'cancelled' ? o.total : 0), 0).toFixed(2)}€
+                        {dashStats.totalRevenue.toFixed(2)}€
                       </h3>
                     </div>
                     <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
@@ -606,8 +616,8 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="mt-5 flex items-center gap-2 text-xs text-emerald-500 font-bold">
-                    <span className="bg-white px-2 py-1 rounded-full">{orders?.length || 0} commandes</span>
-                    <span className="text-emerald-100 font-normal">Activité en direct</span>
+                    <span className="bg-white px-2 py-1 rounded-full">{dashStats.totalOrdersCount} commandes</span>
+                    <span className="text-emerald-100 font-normal">Toutes sources confondues</span>
                   </div>
                 </Card>
 
@@ -650,7 +660,7 @@ export default function AdminDashboard() {
                 <Card className="p-6 border-none bg-gradient-to-br from-gray-700 to-slate-900 text-white shadow-xl shadow-gray-500/20 transition-all hover:shadow-gray-500/30 hover:-translate-y-1">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-gray-300 text-xs font-bold uppercase tracking-wider">Livrées / Terminer</p>
+                      <p className="text-gray-300 text-xs font-bold uppercase tracking-wider">Livrées / Terminées</p>
                       <h3 className="text-3xl font-black mt-1">
                         {orders?.filter(o => o.status === 'completed').length || 0}
                       </h3>
@@ -661,9 +671,51 @@ export default function AdminDashboard() {
                   </div>
                   <div className="mt-5 flex items-center gap-2 text-xs text-gray-400 font-bold">
                     <span className="bg-white/10 px-2 py-1 rounded-full">Historique</span>
-                    <span className="text-gray-400 font-normal">Total aujourd'hui</span>
+                    <span className="text-gray-400 font-normal">Total journée</span>
                   </div>
                 </Card>
+              </div>
+
+              {/* Multi-Channel Distribution Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 rounded-xl border bg-purple-500/10 border-purple-500/20 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl p-2 rounded-lg bg-purple-500/20">📲</span>
+                    <div>
+                      <p className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Borne Tactile</p>
+                      <p className="text-xl font-black text-foreground">{dashStats.bySource.borne.revenue.toFixed(2)}€</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30 font-bold">
+                    {dashStats.bySource.borne.count} cmd ({dashStats.bySource.borne.percentage.toFixed(0)}%)
+                  </Badge>
+                </div>
+
+                <div className="p-4 rounded-xl border bg-emerald-500/10 border-emerald-500/20 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl p-2 rounded-lg bg-emerald-500/20">💻</span>
+                    <div>
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Caisse (POS)</p>
+                      <p className="text-xl font-black text-foreground">{dashStats.bySource.pos.revenue.toFixed(2)}€</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold">
+                    {dashStats.bySource.pos.count} cmd ({dashStats.bySource.pos.percentage.toFixed(0)}%)
+                  </Badge>
+                </div>
+
+                <div className="p-4 rounded-xl border bg-blue-500/10 border-blue-500/20 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl p-2 rounded-lg bg-blue-500/20">🌐</span>
+                    <div>
+                      <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Site Web (En Ligne)</p>
+                      <p className="text-xl font-black text-foreground">{dashStats.bySource.web.revenue.toFixed(2)}€</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 font-bold">
+                    {dashStats.bySource.web.count} cmd ({dashStats.bySource.web.percentage.toFixed(0)}%)
+                  </Badge>
+                </div>
               </div>
 
               {/* Status Breakdown & Details */}
@@ -758,7 +810,8 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* Orders */}
           {activeTab === 'orders' && <OrdersManager />}
@@ -1422,18 +1475,20 @@ function AdminTable({ tableName, title }: { tableName: string; title: string }) 
 function VentesSection({ orders }: { orders: Order[] }) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
-  const [startDate, setStartDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
-  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [startDate, setStartDate] = useState(() => getBusinessDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 4));
+  const [endDate, setEndDate] = useState(() => getBusinessDate(new Date(), 4));
 
-  // Filter orders
+  // Filter orders by business date and criteria
   const filteredOrders = orders.filter(order => {
-    const orderDate = new Date(order.created_at).toISOString().slice(0, 10);
+    const orderDate = getBusinessDate(new Date(order.created_at), 4);
     const matchesDate = orderDate >= startDate && orderDate <= endDate;
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesPayment = paymentFilter === 'all' ||
       (paymentFilter === 'paid' && order.payment_method === 'en_ligne') ||
       (paymentFilter === 'unpaid' && order.payment_method !== 'en_ligne');
-    return matchesDate && matchesStatus && matchesPayment;
+    const matchesSource = sourceFilter === 'all' || detectOrderSource(order) === sourceFilter;
+    return matchesDate && matchesStatus && matchesPayment && matchesSource;
   });
 
   // Calculate stats
@@ -1446,9 +1501,10 @@ function VentesSection({ orders }: { orders: Order[] }) {
 
   const exportVentes = () => {
     const csv = [
-      ['N° Commande', 'Date', 'Type', 'Client', 'Téléphone', 'Total', 'Paiement', 'Statut'].join(';'),
+      ['N° Commande', 'Origine', 'Date', 'Type', 'Client', 'Téléphone', 'Total', 'Paiement', 'Statut'].join(';'),
       ...filteredOrders.map(o => [
         o.order_number,
+        getSourceLabel(o),
         new Date(o.created_at).toLocaleString('fr-FR'),
         o.order_type,
         o.customer_name,
@@ -1472,7 +1528,7 @@ function VentesSection({ orders }: { orders: Order[] }) {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-          <p className="text-green-600 text-sm font-medium">CA Total</p>
+          <p className="text-green-600 text-sm font-medium">CA Total (Toutes sources)</p>
           <p className="text-2xl font-bold text-green-700">{totalRevenue.toFixed(2)}€</p>
           <p className="text-xs text-muted-foreground">{filteredOrders.length} commandes</p>
         </div>
@@ -1514,6 +1570,16 @@ function VentesSection({ orders }: { orders: Order[] }) {
           />
         </div>
         <select
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          className="h-10 px-3 rounded-md border bg-background"
+        >
+          <option value="all">Toutes origines</option>
+          <option value="borne">📲 Borne</option>
+          <option value="pos">💻 Caisse POS</option>
+          <option value="web">🌐 Site Web</option>
+        </select>
+        <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="h-10 px-3 rounded-md border bg-background"
@@ -1547,6 +1613,7 @@ function VentesSection({ orders }: { orders: Order[] }) {
             <thead className="bg-muted/50">
               <tr>
                 <th className="text-left p-3 font-medium">N°</th>
+                <th className="text-left p-3 font-medium">Origine</th>
                 <th className="text-left p-3 font-medium">Date</th>
                 <th className="text-left p-3 font-medium">Client</th>
                 <th className="text-left p-3 font-medium">Type</th>
@@ -1558,14 +1625,21 @@ function VentesSection({ orders }: { orders: Order[] }) {
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={8} className="text-center py-8 text-muted-foreground">
                     Aucune vente trouvée pour cette période
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => (
+                filteredOrders.map((order) => {
+                  const srcBadge = getSourceBadgeProps(order);
+                  return (
                   <tr key={order.id} className="border-t hover:bg-muted/30">
                     <td className="p-3 font-mono text-sm">{order.order_number}</td>
+                    <td className="p-3">
+                      <Badge variant="outline" className={`text-[10px] font-bold ${srcBadge.badgeClass}`}>
+                        {srcBadge.emoji} {srcBadge.shortLabel}
+                      </Badge>
+                    </td>
                     <td className="p-3 text-sm">
                       {new Date(order.created_at).toLocaleDateString('fr-FR')}
                       <br />
@@ -1600,7 +1674,8 @@ function VentesSection({ orders }: { orders: Order[] }) {
                       </Badge>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

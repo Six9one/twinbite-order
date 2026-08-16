@@ -20,6 +20,7 @@ import {
     Loader2,
 } from 'lucide-react';
 import { useOrders, useUpdateOrderStatus, Order } from '@/hooks/useSupabaseData';
+import { getBusinessDate, getSourceBadgeProps } from '@/lib/orderUtils';
 
 const statusConfig = {
     pending: { label: 'En attente', color: 'bg-yellow-500', textColor: 'text-yellow-500', borderColor: 'border-yellow-500/30' },
@@ -36,7 +37,7 @@ const orderTypeLabels: Record<string, string> = {
 };
 
 export function OrdersKanban() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getBusinessDate(new Date(), 4);
     const { data: orders, isLoading, refetch } = useOrders(today);
     const updateStatus = useUpdateOrderStatus();
     const [soundEnabled, setSoundEnabled] = useState(true);
@@ -247,12 +248,17 @@ function OrderCard({
     const items = Array.isArray(order.items) ? order.items : [];
     const itemsCount = items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0);
 
+    const srcBadge = getSourceBadgeProps(order);
+
     return (
         <Card className="p-4 bg-[#161618] border-white/10 hover:border-orange-500/30 transition-all">
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-orange-500">{order.order_number}</span>
+                    <Badge variant="outline" className={`text-[10px] font-bold ${srcBadge.badgeClass}`}>
+                        {srcBadge.emoji} {srcBadge.shortLabel}
+                    </Badge>
                     <Badge variant="outline" className="text-xs">
                         {orderTypeLabels[order.order_type] || order.order_type}
                     </Badge>
