@@ -5300,13 +5300,29 @@ function POSContent() {
 
   const needsInfo = orderType === 'livraison';
 
-  // ── Startup recovery: flush and synchronize any orders saved offline during previous session ──
-  useEffect(() => {
-    const t = setTimeout(() => {
-      syncPendingPOSOrders();
-    }, 1000);
-    return () => clearTimeout(t);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+
+  const checkPendingCount = useCallback(() => {
+    try {
+      const raw = localStorage.getItem('pos-pending-orders') || '[]';
+      const arr = JSON.parse(raw);
+      setPendingSyncCount(Array.isArray(arr) ? arr.length : 0);
+    } catch {
+      setPendingSyncCount(0);
+    }
   }, []);
+
+  // ── Startup & Periodic sync of offline/pending orders to Supabase ──
+  useEffect(() => {
+    checkPendingCount();
+    const runSync = async () => {
+      await syncPendingPOSOrders();
+      checkPendingCount();
+    };
+    runSync();
+    const interval = setInterval(runSync, 4000);
+    return () => clearInterval(interval);
+  }, [checkPendingCount]);
 
   // Fetch Mapbox token for autocomplete
 
@@ -5666,6 +5682,33 @@ function POSContent() {
             <span style={{ background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'2px 8px', borderRadius:6, fontSize:9, fontWeight:700 }}>
               ✅ #{lastOrder}
             </span>
+          )}
+
+          {pendingSyncCount > 0 && (
+            <button
+              title="Commandes en attente de synchronisation sur cette caisse"
+              onClick={async () => {
+                const res = await syncPendingPOSOrders();
+                checkPendingCount();
+                if (res.synced > 0) toast.success(`✅ ${res.synced} commande(s) synchronisée(s) !`);
+              }}
+              style={{
+                background: '#ef4444',
+                color: '#fff',
+                padding: '3px 8px',
+                borderRadius: 6,
+                fontSize: 10,
+                fontWeight: 900,
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                animation: 'pulse 1.5s infinite',
+              }}
+            >
+              🔄 {pendingSyncCount} en attente (cliquer pour synchroniser)
+            </button>
           )}
 
           <div style={{ flex: 1 }} />

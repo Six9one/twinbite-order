@@ -239,6 +239,14 @@ export function OrdersManager() {
                     onClick={() => setShowItemsSummary(!showItemsSummary)} className="gap-1.5 font-medium">
                     <Package className="w-4 h-4" /> 📦 Articles Vendus ({bizStats.items.totalCount})
                 </Button>
+                <Button size="sm" variant="outline" onClick={async () => {
+                    const res = await syncPendingPOSOrders();
+                    fetchOrders();
+                    if (res.synced > 0) toast.success(`✅ ${res.synced} commande(s) locale(s) synchronisée(s) !`);
+                    else toast.info("Toutes les commandes locales sont déjà synchronisées.");
+                }} className="gap-1.5 font-bold text-amber-600 dark:text-amber-400">
+                    <RefreshCw className="w-4 h-4" /> 🔄 Sync Caisse
+                </Button>
                 <Button size="sm" variant="outline" onClick={fetchOrders} disabled={loading} className="gap-1.5">
                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Actualiser
                 </Button>
