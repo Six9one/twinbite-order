@@ -2,13 +2,19 @@
 // This version automatically checks for updates and refreshes cached content
 
 // VERSION: Change this when deploying updates - triggers cache refresh
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = `twin-pizza-${CACHE_VERSION}`;
 
 // Files to cache for offline support (minimal - only essentials)
 const STATIC_CACHE = [
     '/favicon.png',
-    '/manifest.json'
+    '/manifest.json',
+    '/courses-manifest.json',
+    '/kitchen-manifest.json',
+    '/icons/courses-apple-touch-icon.png',
+    '/icons/kitchen-apple-touch-icon.png',
+    '/icons/courses-icon.png',
+    '/icons/kitchen-icon.png'
 ];
 
 // Files that should NEVER be cached (always fetch fresh)
