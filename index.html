@@ -79,12 +79,18 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" id="dynamic-app-title" content="Twin Pizza" />
 
-  <!-- Instant iOS Route-Based PWA Icon / Title Configurator -->
+  <!-- Instant iOS Route-Based PWA Icon / Title / URL Configurator -->
   <script>
     (function() {
       var p = window.location.pathname.toLowerCase();
       if (p.indexOf('/courses') === 0 || p.indexOf('/orders') === 0) {
         document.title = "Twin Courses";
+        var canonical = document.querySelector('link[rel="canonical"]');
+        if (canonical) canonical.href = "https://twinpizza.fr/courses";
+        var ogUrl = document.querySelector('meta[property="og:url"]');
+        if (ogUrl) ogUrl.content = "https://twinpizza.fr/courses";
+        var ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle) ogTitle.content = "Twin Courses";
         var appleIcons = document.querySelectorAll('link[rel="apple-touch-icon"]');
         appleIcons.forEach(function(el) { el.href = "/icons/courses-apple-touch-icon.png"; });
         var appTitle = document.getElementById('dynamic-app-title');
@@ -95,6 +101,12 @@
         if (themeColor) themeColor.content = "#059669";
       } else if (p.indexOf('/kitchen') === 0) {
         document.title = "Twin Kitchen";
+        var canonical = document.querySelector('link[rel="canonical"]');
+        if (canonical) canonical.href = "https://twinpizza.fr/kitchen";
+        var ogUrl = document.querySelector('meta[property="og:url"]');
+        if (ogUrl) ogUrl.content = "https://twinpizza.fr/kitchen";
+        var ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle) ogTitle.content = "Twin Kitchen";
         var appleIcons = document.querySelectorAll('link[rel="apple-touch-icon"]');
         appleIcons.forEach(function(el) { el.href = "/icons/kitchen-apple-touch-icon.png"; });
         var appTitle = document.getElementById('dynamic-app-title');

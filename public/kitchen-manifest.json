@@ -1,14 +1,21 @@
 {
-  "name": "Twin Pizza Cuisine & HACCP",
+  "id": "/kitchen",
+  "name": "Twin Kitchen",
   "short_name": "Twin Kitchen",
   "description": "Application de suivi sanitaire HACCP, relevés de température et réceptions",
   "start_url": "/kitchen",
-  "scope": "/kitchen",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#ea580c",
   "orientation": "portrait-primary",
   "icons": [
+    {
+      "src": "/icons/kitchen-apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/icons/kitchen-icon.png",
       "sizes": "512x512",
