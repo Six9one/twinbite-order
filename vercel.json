@@ -1,5 +1,4 @@
 {
-  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/courses",
@@ -11,6 +10,10 @@
     },
     {
       "source": "/orders",
+      "destination": "/courses/index.html"
+    },
+    {
+      "source": "/orders/(.*)",
       "destination": "/courses/index.html"
     },
     {
