@@ -29,7 +29,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "COL",
     "unitPriceEstimate": 58,
-    "image": "https://images.unsplash.com/photo-1559561853-08451507cbe7?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/cantadora-mozzarella-600.png",
     "presets": [
       1,
       2,
