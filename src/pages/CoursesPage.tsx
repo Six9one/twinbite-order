@@ -8,6 +8,7 @@ import {
   saveDraftOrder,
   clearDraftOrder,
   getAllSupplierProducts,
+  syncOverridesFromCloud,
 } from '@/lib/coursesService';
 import {
   FOOD_CATEGORY_CHIPS,
@@ -96,6 +97,11 @@ export default function CoursesPage() {
     setProducts(getAllSupplierProducts());
     const savedDraft = loadDraftOrder();
     setQuantities(savedDraft);
+
+    // Sync custom photos from Supabase
+    syncOverridesFromCloud().then(() => {
+      setProducts(getAllSupplierProducts());
+    });
   }, []);
 
   const handleInstallClick = async () => {

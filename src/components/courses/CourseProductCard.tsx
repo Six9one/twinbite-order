@@ -36,12 +36,12 @@ export function CourseProductCard({
         }`}
       >
         {/* Product Image */}
-        <div className="relative w-full aspect-square rounded-[18px] overflow-hidden bg-slate-100 mb-2 border border-slate-100">
+        <div className="relative w-full aspect-square rounded-[18px] overflow-hidden bg-slate-50 mb-2 border border-slate-100/80 flex items-center justify-center p-1.5">
           <img
             src={product.image}
             alt={displayName}
             loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-200"
+            className="w-full h-full object-contain group-hover:scale-[1.05] transition-transform duration-200"
             onError={(e) => {
               (e.target as HTMLImageElement).src = '/cat_pizza_3d.webp';
             }}
@@ -114,12 +114,12 @@ export function CourseProductCard({
       }`}
     >
       <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-        <div className="relative w-12 h-12 rounded-[14px] overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-100">
+        <div className="relative w-12 h-12 rounded-[14px] overflow-hidden bg-slate-50 flex-shrink-0 border border-slate-100/80 flex items-center justify-center p-1">
           <img
             src={product.image}
             alt={displayName}
             loading="lazy"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
             onError={(e) => {
               (e.target as HTMLImageElement).src = '/cat_pizza_3d.webp';
             }}

@@ -76,12 +76,52 @@ export function getProductOverrides(): Record<string, Partial<SupplierProduct>> 
   return {};
 }
 
+// Fetch remote overrides from Supabase
+export async function syncOverridesFromCloud(): Promise<Record<string, Partial<SupplierProduct>>> {
+  try {
+    const { data, error } = await supabase
+      .from('site_settings' as any)
+      .select('value')
+      .eq('key', 'courses_catalog_overrides')
+      .maybeSingle();
+
+    if (data && (data as any).value) {
+      const remote = typeof (data as any).value === 'string' 
+        ? JSON.parse((data as any).value) 
+        : (data as any).value;
+      const local = getProductOverrides();
+      const merged = { ...remote, ...local };
+      localStorage.setItem(STORAGE_PRODUCT_OVERRIDES_KEY, JSON.stringify(merged));
+      return merged;
+    }
+  } catch (e) {
+    console.warn('Could not sync overrides from Supabase:', e);
+  }
+  return getProductOverrides();
+}
+
 // Save product override
 export function updateProductOverride(productId: string, data: Partial<SupplierProduct>) {
   try {
     const current = getProductOverrides();
     current[productId] = { ...(current[productId] || {}), ...data };
     localStorage.setItem(STORAGE_PRODUCT_OVERRIDES_KEY, JSON.stringify(current));
+
+    // Async push to Supabase site_settings for global synchronization
+    (async () => {
+      try {
+        await supabase
+          .from('site_settings' as any)
+          .upsert({
+            key: 'courses_catalog_overrides',
+            value: current,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'key' });
+      } catch (err) {
+        console.warn('Failed pushing override to cloud:', err);
+      }
+    })();
+
     return current;
   } catch (e) {
     console.error('Error updating product override:', e);
@@ -92,6 +132,11 @@ export function updateProductOverride(productId: string, data: Partial<SupplierP
 // Reset all product overrides
 export function resetProductOverrides() {
   localStorage.removeItem(STORAGE_PRODUCT_OVERRIDES_KEY);
+  supabase
+    .from('site_settings' as any)
+    .delete()
+    .eq('key', 'courses_catalog_overrides')
+    .then(() => {});
 }
 
 // Get custom products added on the fly
