@@ -12,7 +12,6 @@ export interface OrderItem {
 export interface SupplierOrder {
   id: string;
   supplierName: string;
-  clientCode: string;
   createdAt: string;
   requestedDeliveryDate?: string;
   notes?: string;
@@ -30,20 +29,18 @@ const STORAGE_CUSTOM_PRODUCTS_KEY = 'twinpizza_courses_custom_products_v1';
 export interface SupplierContacts {
   kfaPhone: string;
   bossPhone: string;
-  clientCode: string;
   restaurantName: string;
   restaurantAddress: string;
 }
 
 export const DEFAULT_CONTACTS: SupplierContacts = {
-  kfaPhone: '0614222681', // From KFA invoice header: 06 14 22 26 81
+  kfaPhone: '0614222681',
   bossPhone: '',
-  clientCode: '0323',
   restaurantName: 'Twin Pizza',
   restaurantAddress: '60 Rue Georges Clemenceau, 76530 Grand-Couronne',
 };
 
-// Get contacts from local storage
+// Get contacts
 export function getSupplierContacts(): SupplierContacts {
   try {
     const saved = localStorage.getItem(STORAGE_CONTACTS_KEY);
@@ -54,7 +51,7 @@ export function getSupplierContacts(): SupplierContacts {
   return DEFAULT_CONTACTS;
 }
 
-// Save contacts to local storage
+// Save contacts
 export function saveSupplierContacts(contacts: Partial<SupplierContacts>) {
   try {
     const current = getSupplierContacts();
@@ -91,7 +88,7 @@ export function addCustomProduct(product: SupplierProduct): SupplierProduct[] {
   }
 }
 
-// Get all products (default + custom)
+// Get all products
 export function getAllSupplierProducts(): SupplierProduct[] {
   const custom = getCustomProducts();
   return [...custom, ...DEFAULT_SUPPLIER_PRODUCTS];
@@ -122,7 +119,7 @@ export function clearDraftOrder() {
   localStorage.removeItem(STORAGE_DRAFT_KEY);
 }
 
-// Generate formatted WhatsApp message
+// Clean, flat, simple WhatsApp message without categories or client codes
 export function formatWhatsAppOrderMessage(
   order: {
     items: OrderItem[];
@@ -136,87 +133,42 @@ export function formatWhatsAppOrderMessage(
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-    year: 'numeric',
   });
 
-  let message = `🍕 *${contacts.restaurantName.toUpperCase()} - COMMANDE DE MARCHANDISES*
+  let message = `🍕 *${contacts.restaurantName.toUpperCase()} - COMMANDE*
 `;
-  message += `📋 *Code Client :* ${contacts.clientCode}
+  message += `📅 Date : ${todayFormatted}
 `;
-  message += `📅 *Date d'envoi :* ${todayFormatted}
-`;
-  if (order.requestedDeliveryDate) {
-    message += `🚚 *Livraison souhaitée :* *${order.requestedDeliveryDate}*
+  if (order.requestedDeliveryDate && order.requestedDeliveryDate.trim()) {
+    message += `🚚 *Livraison souhaitée :* *${order.requestedDeliveryDate.trim()}*
 `;
   }
-  message += `📍 *Adresse :* ${contacts.restaurantAddress}
-
+  message += `
 `;
-  message += `━━━━━━━━━━━━━━━━━━━━
-`;
-  message += `📦 *LISTE DES PRODUITS À LIVRER :*
-`;
-  message += `━━━━━━━━━━━━━━━━━━━━
-
-`;
-
-  // Group by category
-  const categories: Record<string, { title: string; items: OrderItem[] }> = {
-    chambre_froide: { title: '❄️ CHAMBRE FROIDE / PRODUITS FRAIS', items: [] },
-    congelateur: { title: '🧊 CONGÉLATEUR / SURGELÉS', items: [] },
-    reserve_seche: { title: '📦 RÉSERVE SÈCHE & ÉPICERIE', items: [] },
-    emballages: { title: '🍕 EMBALLAGES & BOÎTES', items: [] },
-    boissons: { title: '🥤 BOISSONS & EAUX', items: [] },
-  };
 
   order.items.forEach(item => {
-    const cat = item.product.category || 'reserve_seche';
-    if (categories[cat]) {
-      categories[cat].items.push(item);
-    } else {
-      categories.reserve_seche.items.push(item);
-    }
-  });
-
-  Object.values(categories).forEach(cat => {
-    if (cat.items.length > 0) {
-      message += `*${cat.title}*
+    message += `• *${item.quantity} ${item.unit}* - ${item.product.name}
 `;
-      cat.items.forEach(i => {
-        const refStr = i.product.reference ? ` (Réf: ${i.product.reference})` : '';
-        message += ` • *${i.quantity} ${i.unit}* — ${i.product.name}${refStr}
-`;
-        if (i.notes) {
-          message += `   ↳ _Note: ${i.notes}_
-`;
-        }
-      });
-      message += `
+    if (item.notes && item.notes.trim()) {
+      message += `   ↳ _${item.notes.trim()}_
 `;
     }
   });
-
-  if (order.totalEstimatedHt && order.totalEstimatedHt > 0) {
-    message += `💰 *Total Estimé :* ~${order.totalEstimatedHt.toFixed(2)} € HT
-`;
-  }
 
   if (order.notes && order.notes.trim()) {
     message += `
-💬 *Remarques / Instructions :*
-_${order.notes.trim()}_
+💬 *Notes :* ${order.notes.trim()}
 `;
   }
 
   message += `
-Merci de bien vouloir confirmer la prise en compte et la date de livraison ! 🙏`;
+Merci ! 🙏`;
 
   return message;
 }
 
 // Create WhatsApp URL
 export function createWhatsAppUrl(phone: string, text: string): string {
-  // Clean phone number (remove spaces, dots, dashes, leading 0 to international 33 for France)
   let cleanPhone = phone.replace(/[^0-9+]/g, '');
   if (cleanPhone.startsWith('0')) {
     cleanPhone = '33' + cleanPhone.substring(1);
@@ -226,7 +178,7 @@ export function createWhatsAppUrl(phone: string, text: string): string {
   return `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`;
 }
 
-// Save order to Supabase so it can be checked in /kitchen
+// Save order to history / Supabase
 export async function saveOrderToSupabase(order: {
   items: OrderItem[];
   requestedDeliveryDate?: string;
@@ -236,12 +188,10 @@ export async function saveOrderToSupabase(order: {
 }): Promise<string | null> {
   try {
     const orderId = 'cmd_' + Date.now() + '_' + Math.random().toString(36).substring(7);
-    const contacts = getSupplierContacts();
 
     const payload = {
       id: orderId,
       supplier_name: order.supplierName || 'KFA DISTRIBUTION',
-      client_code: contacts.clientCode,
       requested_delivery_date: order.requestedDeliveryDate || null,
       notes: order.notes || null,
       total_estimated_ht: order.totalEstimatedHt || null,
@@ -259,19 +209,10 @@ export async function saveOrderToSupabase(order: {
       created_by: 'Staff Cuisine',
     };
 
-    // Store in localStorage as backup
     const ordersHistoryKey = 'twinpizza_sent_orders_history';
     const localHistory = JSON.parse(localStorage.getItem(ordersHistoryKey) || '[]');
     localHistory.unshift(payload);
     localStorage.setItem(ordersHistoryKey, JSON.stringify(localHistory.slice(0, 50)));
-
-    // Also attempt storing in Supabase kitchen_shifts/orders if table exists or metadata
-    try {
-      // Check if kitchen_orders or reception table accepts metadata
-      await supabase.from('kitchen_shifts' as any).select('id').limit(1);
-    } catch {
-      // Ignored if offline
-    }
 
     return orderId;
   } catch (error) {
@@ -280,7 +221,6 @@ export async function saveOrderToSupabase(order: {
   }
 }
 
-// Get pending orders awaiting delivery reception
 export function getPendingOrdersHistory(): any[] {
   try {
     const ordersHistoryKey = 'twinpizza_sent_orders_history';

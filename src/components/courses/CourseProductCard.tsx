@@ -1,131 +1,161 @@
-import { useState } from 'react';
 import { SupplierProduct } from '@/data/supplierCatalog';
 import { Minus, Plus, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 interface CourseProductCardProps {
   product: SupplierProduct;
   quantity: number;
+  viewMode?: 'grid' | 'list';
   onUpdateQuantity: (quantity: number) => void;
 }
 
 export function CourseProductCard({
   product,
   quantity,
+  viewMode = 'grid',
   onUpdateQuantity,
 }: CourseProductCardProps) {
   const isSelected = quantity > 0;
 
-  const handleIncrement = (amount = 1) => {
-    onUpdateQuantity(quantity + amount);
+  const handleIncrement = () => {
+    onUpdateQuantity(quantity + 1);
   };
 
-  const handleDecrement = (amount = 1) => {
-    onUpdateQuantity(Math.max(0, quantity - amount));
+  const handleDecrement = () => {
+    onUpdateQuantity(Math.max(0, quantity - 1));
   };
 
-  return (
-    <div
-      className={`relative rounded-2xl p-3.5 transition-all duration-200 border ${
-        isSelected
-          ? 'bg-emerald-950/30 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/50'
-          : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
-      }`}
-    >
-      <div className="flex items-center gap-3.5">
-        {/* Product Image */}
-        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-800 flex-shrink-0 border border-slate-700/50">
+  if (viewMode === 'grid') {
+    return (
+      <div
+        className={`relative flex flex-col justify-between p-2.5 rounded-xl border transition-all duration-150 ${
+          isSelected
+            ? 'bg-emerald-50/80 border-emerald-500 shadow-sm ring-1 ring-emerald-400/40'
+            : 'bg-white border-slate-200 hover:border-slate-300 shadow-[0_1px_3px_rgba(0,0,0,0.04)]'
+        }`}
+      >
+        {/* Top Image & Badge */}
+        <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-slate-100 mb-2 border border-slate-100">
           <img
             src={product.image}
             alt={product.name}
             loading="lazy"
             className="w-full h-full object-cover"
             onError={(e) => {
-              // Fallback image if network fails
               (e.target as HTMLImageElement).src = '/cat_pizza_3d.webp';
             }}
           />
           {isSelected && (
-            <div className="absolute top-1 left-1 w-5 h-5 bg-emerald-500 text-slate-950 rounded-full flex items-center justify-center shadow-lg">
-              <Check className="w-3.5 h-3.5 stroke-[3]" />
+            <div className="absolute top-1 right-1 w-5 h-5 bg-emerald-600 text-white rounded-full flex items-center justify-center shadow">
+              <Check className="w-3 h-3 stroke-[3]" />
             </div>
           )}
         </div>
 
-        {/* Product Info & Controls */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-1 mb-1">
-            <h3 className="font-semibold text-white text-sm sm:text-base leading-tight line-clamp-2">
-              {product.name}
-            </h3>
-            {product.reference && (
-              <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded flex-shrink-0">
-                #{product.reference}
-              </span>
-            )}
-          </div>
+        {/* Title & Unit */}
+        <div className="flex-1 min-h-[44px] mb-2">
+          <h3 className="font-bold text-slate-900 text-xs leading-snug line-clamp-2">
+            {product.name}
+          </h3>
+          <span className="text-[11px] font-semibold text-emerald-700 block mt-0.5">
+            {product.defaultUnit}
+          </span>
+        </div>
 
-          <div className="flex items-center justify-between mt-2">
-            {/* Unit display */}
-            <span className="text-xs font-medium text-slate-400">
-              Unité : <span className="text-emerald-400 font-semibold">{product.defaultUnit}</span>
-            </span>
+        {/* Compact Stepper */}
+        <div className="flex items-center justify-between bg-slate-100/90 p-1 rounded-lg border border-slate-200/80">
+          <button
+            type="button"
+            onClick={handleDecrement}
+            disabled={quantity === 0}
+            className="w-7 h-7 rounded-md bg-white border border-slate-200 hover:bg-slate-50 active:bg-slate-200 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-slate-700 shadow-xs transition-colors"
+          >
+            <Minus className="w-3.5 h-3.5" />
+          </button>
 
-            {/* Main Stepper Controls */}
-            <div className="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
-              <button
-                type="button"
-                onClick={() => handleDecrement(1)}
-                disabled={quantity === 0}
-                className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-white transition-colors"
-                aria-label="Diminuer"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
+          <span
+            className={`text-xs font-black tabular-nums ${
+              isSelected ? 'text-emerald-700' : 'text-slate-400'
+            }`}
+          >
+            {quantity}
+          </span>
 
-              <div className="min-w-[2.5rem] text-center">
-                <span
-                  className={`font-bold text-sm sm:text-base tabular-nums ${
-                    isSelected ? 'text-emerald-400' : 'text-slate-500'
-                  }`}
-                >
-                  {quantity}
-                </span>
-              </div>
+          <button
+            type="button"
+            onClick={handleIncrement}
+            className="w-7 h-7 rounded-md bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white flex items-center justify-center shadow-xs transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-              <button
-                type="button"
-                onClick={() => handleIncrement(1)}
-                className="w-8 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-400 flex items-center justify-center text-white shadow-md transition-colors"
-                aria-label="Augmenter"
-              >
-                <Plus className="w-4 h-4 stroke-[2.5]" />
-              </button>
+  // List View (Ultra Compact Row)
+  return (
+    <div
+      className={`flex items-center justify-between p-2 rounded-xl border transition-all duration-150 ${
+        isSelected
+          ? 'bg-emerald-50/70 border-emerald-500 ring-1 ring-emerald-400/30'
+          : 'bg-white border-slate-200 hover:border-slate-300 shadow-[0_1px_2px_rgba(0,0,0,0.03)]'
+      }`}
+    >
+      <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
+        <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-100">
+          <img
+            src={product.image}
+            alt={product.name}
+            loading="lazy"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/cat_pizza_3d.webp';
+            }}
+          />
+          {isSelected && (
+            <div className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-emerald-600 text-white rounded-full flex items-center justify-center">
+              <Check className="w-2.5 h-2.5 stroke-[3]" />
             </div>
-          </div>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold text-slate-900 text-xs leading-tight truncate">
+            {product.name}
+          </h3>
+          <span className="text-[11px] font-semibold text-emerald-700">
+            {product.defaultUnit}
+          </span>
         </div>
       </div>
 
-      {/* Quick Tap Presets Bar (when configured for bulky items like poultry/mozza/fries) */}
-      {product.presets && product.presets.length > 0 && (
-        <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-800/80 overflow-x-auto no-scrollbar">
-          <span className="text-[11px] text-slate-400 mr-1 flex-shrink-0 font-medium">Ajout rapide:</span>
-          {product.presets.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => onUpdateQuantity(preset)}
-              className={`text-xs py-1 px-2.5 rounded-lg font-medium transition-all flex-shrink-0 ${
-                quantity === preset
-                  ? 'bg-emerald-500 text-slate-950 font-bold shadow'
-                  : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 active:scale-95 border border-slate-700/60'
-              }`}
-            >
-              {preset} {product.defaultUnit}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Stepper */}
+      <div className="flex items-center gap-1.5 bg-slate-100 p-0.5 rounded-lg border border-slate-200 flex-shrink-0">
+        <button
+          type="button"
+          onClick={handleDecrement}
+          disabled={quantity === 0}
+          className="w-7 h-7 rounded-md bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-slate-700 shadow-xs"
+        >
+          <Minus className="w-3.5 h-3.5" />
+        </button>
+
+        <span
+          className={`min-w-[1.5rem] text-center text-xs font-black tabular-nums ${
+            isSelected ? 'text-emerald-700' : 'text-slate-400'
+          }`}
+        >
+          {quantity}
+        </span>
+
+        <button
+          type="button"
+          onClick={handleIncrement}
+          className="w-7 h-7 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shadow-xs"
+        >
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+        </button>
+      </div>
     </div>
   );
 }
