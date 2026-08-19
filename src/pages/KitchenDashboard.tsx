@@ -28,6 +28,16 @@ const KitchenDashboard = () => {
         const params = new URLSearchParams(window.location.search);
         const tab = params.get('tab');
         if (tab) setActiveTab(tab);
+
+        let manifestLink = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+        if (manifestLink) {
+            manifestLink.href = '/kitchen-manifest.json';
+        }
+        return () => {
+            if (manifestLink) {
+                manifestLink.href = '/manifest.json';
+            }
+        };
     }, []);
 
     return (
@@ -35,17 +45,29 @@ const KitchenDashboard = () => {
             <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur border-b border-slate-800">
                 <div className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center">
-                            <ClipboardList className="h-6 w-6 text-white" />
+                        <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md flex-shrink-0 bg-orange-600 border border-orange-500/40">
+                            <img
+                                src="/icons/kitchen-icon.png"
+                                alt="Twin Kitchen"
+                                className="w-full h-full object-cover"
+                            />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-white">Twin Pizza HACCP</h1>
-                            <p className="text-xs text-slate-400">Suivi sanitaire cuisine</p>
+                            <h1 className="text-xl font-bold text-white leading-tight">Twin Pizza HACCP</h1>
+                            <p className="text-xs text-slate-400">Suivi sanitaire & cuisine</p>
                         </div>
                     </div>
-                    <a href="/" className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700">
-                        <Home className="h-5 w-5 text-slate-400" />
-                    </a>
+                    <div className="flex items-center gap-2">
+                        <a
+                            href="/courses"
+                            className="px-3 py-2 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition-colors"
+                        >
+                            <span>🛒 Courses</span>
+                        </a>
+                        <a href="/" className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700">
+                            <Home className="h-5 w-5 text-slate-400" />
+                        </a>
+                    </div>
                 </div>
             </header>
 
