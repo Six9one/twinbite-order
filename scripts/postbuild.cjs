@@ -29,8 +29,13 @@ function customizeHtml(html, options) {
   // Manifest
   custom = custom.replace(/<link rel="manifest".*?>/gi, `<link rel="manifest" href="${options.manifest}" />`);
 
-  // Apple Touch Icon
-  custom = custom.replace(/<link rel="apple-touch-icon".*?>/gi, `<link rel="apple-touch-icon" href="${options.appleIcon}" /><link rel="apple-touch-icon" sizes="180x180" href="${options.appleIcon}" />`);
+  // Strip all existing apple-touch-icon tags first to avoid duplicates
+  custom = custom.replace(/<link rel="apple-touch-icon.*?".*?>/gi, '');
+  custom = custom.replace(/<link rel="apple-touch-icon-precomposed".*?>/gi, '');
+
+  // Inject pristine Apple Touch Icon tags
+  const appleTags = `\n  <link rel="apple-touch-icon" href="${options.appleIcon}" />\n  <link rel="apple-touch-icon" sizes="180x180" href="${options.appleIcon}" />\n  <link rel="apple-touch-icon-precomposed" href="${options.appleIcon}" />`;
+  custom = custom.replace(/<\/head>/i, `${appleTags}\n</head>`);
 
   // Apple Web App Title
   custom = custom.replace(/<meta name="apple-mobile-web-app-title".*?>/gi, `<meta name="apple-mobile-web-app-title" content="${options.shortName}" />`);
@@ -56,6 +61,13 @@ const coursesDir = path.join(distDir, 'courses');
 if (!fs.existsSync(coursesDir)) fs.mkdirSync(coursesDir, { recursive: true });
 fs.writeFileSync(path.join(coursesDir, 'index.html'), coursesHtml, 'utf8');
 
+// Copy apple-touch-icon directly to /courses/apple-touch-icon.png as fallback
+const coursesSrcIcon = path.join(distDir, 'icons', 'courses-apple-touch-icon.png');
+if (fs.existsSync(coursesSrcIcon)) {
+  fs.copyFileSync(coursesSrcIcon, path.join(coursesDir, 'apple-touch-icon.png'));
+  fs.copyFileSync(coursesSrcIcon, path.join(coursesDir, 'apple-touch-icon-precomposed.png'));
+}
+
 const ordersDir = path.join(distDir, 'orders');
 if (!fs.existsSync(ordersDir)) fs.mkdirSync(ordersDir, { recursive: true });
 fs.writeFileSync(path.join(ordersDir, 'index.html'), coursesHtml, 'utf8');
@@ -75,6 +87,13 @@ const kitchenHtml = customizeHtml(baseHtml, {
 const kitchenDir = path.join(distDir, 'kitchen');
 if (!fs.existsSync(kitchenDir)) fs.mkdirSync(kitchenDir, { recursive: true });
 fs.writeFileSync(path.join(kitchenDir, 'index.html'), kitchenHtml, 'utf8');
+
+// Copy apple-touch-icon directly to /kitchen/apple-touch-icon.png as fallback
+const kitchenSrcIcon = path.join(distDir, 'icons', 'kitchen-apple-touch-icon.png');
+if (fs.existsSync(kitchenSrcIcon)) {
+  fs.copyFileSync(kitchenSrcIcon, path.join(kitchenDir, 'apple-touch-icon.png'));
+  fs.copyFileSync(kitchenSrcIcon, path.join(kitchenDir, 'apple-touch-icon-precomposed.png'));
+}
 console.log('✓ Generated dist/kitchen/index.html');
 
 console.log('Postbuild finished successfully!');
