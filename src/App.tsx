@@ -42,6 +42,7 @@ const PromoWeekend = lazy(() => import("./pages/PromoWeekend"));
 const RegisterRestaurant = lazy(() => import("./pages/RegisterRestaurant"));
 const SuperAdminDashboard = lazy(() => import("./pages/SuperAdminDashboard"));
 const TestPaiement = lazy(() => import("./pages/TestPaiement"));
+const CoursesPage = lazy(() => import("./pages/CoursesPage"));
 
 // Components
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -102,6 +103,8 @@ const App = () => {
                                             <Route path="/tickets" element={<TicketPortal />} />
                                             <Route path="/ticket" element={<TicketPortal />} />
                                             <Route path="/kitchen" element={<KitchenDashboard />} />
+                                            <Route path="/courses" element={<CoursesPage />} />
+                                            <Route path="/orders" element={<CoursesPage />} />
                                             {/* Legal pages */}
                                             <Route path="/mentions-legales" element={<MentionsLegales />} />
                                             <Route path="/confidentialite" element={<Confidentialite />} />
