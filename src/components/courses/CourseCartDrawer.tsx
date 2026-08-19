@@ -7,6 +7,7 @@ import {
   saveOrderToSupabase,
   clearDraftOrder,
 } from '@/lib/coursesService';
+import { getCleanDisplayName } from '@/lib/coursesNameFormatter';
 import {
   Sheet,
   SheetContent,
@@ -27,6 +28,9 @@ import {
   Phone,
   Settings,
   PackageCheck,
+  ChevronRight,
+  Minus,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -49,7 +53,7 @@ export function CourseCartDrawer({
   const [showConfig, setShowConfig] = useState(false);
 
   const distinctCount = items.length;
-  const totalCount = items.reduce((sum, i) => sum + i.quantity, 0);
+  const totalUnitsCount = items.reduce((sum, i) => sum + i.quantity, 0);
 
   const handleSendToKFA = async () => {
     if (items.length === 0) {
@@ -128,28 +132,31 @@ export function CourseCartDrawer({
   if (items.length === 0) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 p-3 bg-gradient-to-t from-white via-white/95 to-transparent pointer-events-none">
+    <div className="fixed bottom-0 left-0 right-0 z-40 p-3 sm:p-4 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent pointer-events-none pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
       <div className="max-w-xl mx-auto pointer-events-auto">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
             <button
               type="button"
-              className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-lg shadow-emerald-900/20 flex items-center justify-between px-4 transition-all"
+              className="w-full h-13 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-semibold rounded-2xl shadow-lg shadow-emerald-950/15 flex items-center justify-between px-4 sm:px-5 transition-all duration-200"
             >
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
-                  <ShoppingCart className="w-3.5 h-3.5 text-white" />
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                  <ShoppingCart className="w-4 h-4 text-white" />
                 </div>
                 <div className="text-left">
-                  <div className="text-xs sm:text-sm font-extrabold leading-tight">
+                  <div className="text-sm font-bold leading-tight">
                     {distinctCount} {distinctCount > 1 ? 'articles' : 'article'} sélectionnés
+                  </div>
+                  <div className="text-[11px] text-emerald-100 font-medium">
+                    Total : {totalUnitsCount} unités
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 bg-emerald-800/60 py-1 px-2.5 rounded-lg text-xs font-semibold">
-                <span>Finaliser</span>
-                <span>→</span>
+              <div className="flex items-center gap-1 bg-emerald-800/50 hover:bg-emerald-800/70 py-1.5 px-3 rounded-xl text-xs font-bold transition-colors">
+                <span>Voir le panier</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </div>
             </button>
           </SheetTrigger>
@@ -159,20 +166,20 @@ export function CourseCartDrawer({
             className="h-[88vh] bg-white border-t border-slate-200 text-slate-900 rounded-t-3xl p-0 flex flex-col shadow-2xl"
           >
             {/* Header */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 rounded-t-3xl">
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 rounded-t-3xl">
               <div>
                 <SheetTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <PackageCheck className="w-4 h-4 text-emerald-600" />
+                  <PackageCheck className="w-5 h-5 text-emerald-600" />
                   Récapitulatif de Commande
                 </SheetTitle>
-                <p className="text-[11px] text-slate-500">
-                  {distinctCount} articles à envoyer
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {distinctCount} {distinctCount > 1 ? 'articles prêts' : 'article prêt'} à envoyer
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowConfig(!showConfig)}
-                className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-colors"
+                className="p-2 rounded-xl bg-white border border-slate-200/80 text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs"
                 title="Paramètres de contact"
               >
                 <Settings className="w-4 h-4" />
@@ -180,30 +187,30 @@ export function CourseCartDrawer({
             </div>
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
               {/* Settings Section */}
               {showConfig && (
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
                   <h4 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                     Numéros WhatsApp
                   </h4>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-[10px] text-slate-500">KFA Commercial</Label>
+                      <Label className="text-[11px] text-slate-500">KFA Commercial</Label>
                       <Input
                         value={contacts.kfaPhone}
                         onChange={(e) => setContacts({ ...contacts, kfaPhone: e.target.value })}
                         placeholder="0614222681"
-                        className="h-8 bg-white border-slate-300 text-xs"
+                        className="h-9 bg-white border-slate-300 text-xs rounded-xl mt-1"
                       />
                     </div>
                     <div>
-                      <Label className="text-[10px] text-slate-500">Boss / Gérant</Label>
+                      <Label className="text-[11px] text-slate-500">Boss / Gérant</Label>
                       <Input
                         value={contacts.bossPhone}
                         onChange={(e) => setContacts({ ...contacts, bossPhone: e.target.value })}
                         placeholder="06..."
-                        className="h-8 bg-white border-slate-300 text-xs"
+                        className="h-9 bg-white border-slate-300 text-xs rounded-xl mt-1"
                       />
                     </div>
                   </div>
@@ -211,74 +218,80 @@ export function CourseCartDrawer({
               )}
 
               {/* Items List */}
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                     Articles choisis
                   </span>
                   <button
                     type="button"
                     onClick={onClear}
-                    className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1 font-semibold"
+                    className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1 font-semibold transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    Vider
+                    Vider la commande
                   </button>
                 </div>
 
-                <div className="space-y-1.5">
-                  {items.map((item) => (
-                    <div
-                      key={item.product.id}
-                      className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200/80 rounded-xl"
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                        <img
-                          src={item.product.image}
-                          alt=""
-                          className="w-8 h-8 rounded-lg object-cover bg-slate-200 flex-shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/cat_pizza_3d.webp';
-                          }}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs font-bold text-slate-900 truncate">
-                            {item.product.name}
-                          </div>
-                          <div className="text-[11px] font-semibold text-emerald-700">
-                            {item.quantity} {item.unit}
+                <div className="space-y-2">
+                  {items.map((item) => {
+                    const cleanName = getCleanDisplayName(item.product.name);
+
+                    return (
+                      <div
+                        key={item.product.id}
+                        className="flex items-center justify-between p-2.5 bg-slate-50/80 border border-slate-200/80 rounded-2xl"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                          <img
+                            src={item.product.image}
+                            alt={cleanName}
+                            className="w-10 h-10 rounded-xl object-cover bg-slate-200 flex-shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/cat_pizza_3d.webp';
+                            }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
+                              {cleanName}
+                            </div>
+                            <div className="text-[11px] font-medium text-emerald-700">
+                              {item.quantity} {item.unit}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Stepper */}
-                      <div className="flex items-center gap-1 flex-shrink-0 bg-white p-0.5 rounded-lg border border-slate-200">
-                        <button
-                          type="button"
-                          onClick={() => onUpdateQuantity(item.product.id, Math.max(0, item.quantity - 1))}
-                          className="w-6 h-6 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded flex items-center justify-center text-xs font-bold"
-                        >
-                          -
-                        </button>
-                        <span className="w-5 text-center text-xs font-black text-slate-900">{item.quantity}</span>
-                        <button
-                          type="button"
-                          onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                          className="w-6 h-6 bg-emerald-600 text-white rounded flex items-center justify-center text-xs font-bold"
-                        >
-                          +
-                        </button>
+                        {/* Stepper */}
+                        <div className="flex items-center gap-1 flex-shrink-0 bg-white p-1 rounded-xl border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => onUpdateQuantity(item.product.id, Math.max(0, item.quantity - 1))}
+                            className="w-7 h-7 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg flex items-center justify-center text-xs font-bold transition-colors"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-6 text-center text-xs font-bold text-slate-900 tabular-nums">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
+                            className="w-7 h-7 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center justify-center text-xs font-bold transition-colors"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Delivery date & Notes */}
-              <div className="space-y-2.5 pt-1">
+              <div className="space-y-3 pt-1">
                 <div>
-                  <Label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-1">
-                    <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                  <Label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-1.5">
+                    <Calendar className="w-4 h-4 text-emerald-600" />
                     Date de livraison souhaitée
                   </Label>
                   <Input
@@ -286,31 +299,31 @@ export function CourseCartDrawer({
                     placeholder="Ex: Demain matin avant 11h, Jeudi 21/08..."
                     value={deliveryDate}
                     onChange={(e) => setDeliveryDate(e.target.value)}
-                    className="bg-white border-slate-300 text-slate-900 h-9 text-xs"
+                    className="bg-white border-slate-300 text-slate-900 h-10 text-xs sm:text-sm rounded-xl"
                   />
                 </div>
 
                 <div>
-                  <Label className="text-xs font-bold text-slate-700 mb-1 block">
+                  <Label className="text-xs font-bold text-slate-700 mb-1.5 block">
                     Remarques ou instructions
                   </Label>
                   <Textarea
                     placeholder="Ex: Poulet bien frais date longue svp..."
                     value={orderNotes}
                     onChange={(e) => setOrderNotes(e.target.value)}
-                    className="bg-white border-slate-300 text-slate-900 text-xs h-16 resize-none"
+                    className="bg-white border-slate-300 text-slate-900 text-xs sm:text-sm h-18 resize-none rounded-xl"
                   />
                 </div>
               </div>
             </div>
 
             {/* Bottom Actions */}
-            <div className="p-3.5 border-t border-slate-200 bg-white space-y-2">
+            <div className="p-4 border-t border-slate-200 bg-white space-y-2.5 pb-[calc(env(safe-area-inset-bottom,0px)+16px)]">
               <Button
                 type="button"
                 onClick={handleSendToKFA}
                 disabled={isSending}
-                className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 font-bold text-xs text-white rounded-xl shadow flex items-center justify-center gap-1.5"
+                className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 font-bold text-sm text-white rounded-2xl shadow-md flex items-center justify-center gap-2"
               >
                 <Send className="w-4 h-4" />
                 Envoyer à KFA (WhatsApp)
@@ -321,18 +334,18 @@ export function CourseCartDrawer({
                   type="button"
                   variant="outline"
                   onClick={handleSendToBoss}
-                  className="h-9 border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl"
+                  className="h-10 border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl"
                 >
-                  <Phone className="w-3 h-3 mr-1 text-emerald-600" />
+                  <Phone className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
                   Envoyer au Boss
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleCopyMessage}
-                  className="h-9 border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl"
+                  className="h-10 border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl"
                 >
-                  <Copy className="w-3 h-3 mr-1" />
+                  <Copy className="w-3.5 h-3.5 mr-1.5" />
                   Copier texte
                 </Button>
               </div>

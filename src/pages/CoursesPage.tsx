@@ -9,8 +9,13 @@ import {
   clearDraftOrder,
   getAllSupplierProducts,
 } from '@/lib/coursesService';
+import {
+  FOOD_CATEGORY_CHIPS,
+  getProductFoodCategory,
+} from '@/lib/coursesNameFormatter';
 import { CourseProductCard } from '@/components/courses/CourseProductCard';
 import { CourseSearchBar } from '@/components/courses/CourseSearchBar';
+import { CourseCategoryChips } from '@/components/courses/CourseCategoryChips';
 import { CourseCartDrawer } from '@/components/courses/CourseCartDrawer';
 import { CourseAddCustomItemDialog } from '@/components/courses/CourseAddCustomItemDialog';
 import {
@@ -21,8 +26,7 @@ import {
   Share,
   LayoutGrid,
   List,
-  CheckCircle2,
-  Package,
+  PackageOpen,
 } from 'lucide-react';
 import {
   Dialog,
@@ -36,6 +40,7 @@ export default function CoursesPage() {
   const [products, setProducts] = useState<SupplierProduct[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [showOnlySelected, setShowOnlySelected] = useState<boolean>(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -45,15 +50,19 @@ export default function CoursesPage() {
   const [showIosGuide, setShowIosGuide] = useState(false);
 
   useEffect(() => {
-    document.title = "Twin Courses - Réassort & Commandes";
+    document.title = 'Twin Courses - Réassort & Commandes';
     let manifestLink = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
     if (manifestLink) {
       manifestLink.href = '/courses-manifest.json';
     }
     let appleIcons = document.querySelectorAll<HTMLLinkElement>('link[rel="apple-touch-icon"]');
-    appleIcons.forEach((el) => { el.href = '/icons/courses-apple-touch-icon.png'; });
+    appleIcons.forEach((el) => {
+      el.href = '/icons/courses-apple-touch-icon.png';
+    });
     let appTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
-    if (appTitle) { appTitle.content = 'Twin Courses'; }
+    if (appTitle) {
+      appTitle.content = 'Twin Courses';
+    }
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
@@ -74,8 +83,12 @@ export default function CoursesPage() {
       if (manifestLink) {
         manifestLink.href = '/manifest.json';
       }
-      appleIcons.forEach((el) => { el.href = '/favicon.png'; });
-      if (appTitle) { appTitle.content = 'Twin Pizza'; }
+      appleIcons.forEach((el) => {
+        el.href = '/favicon.png';
+      });
+      if (appTitle) {
+        appTitle.content = 'Twin Pizza';
+      }
     };
   }, []);
 
@@ -150,64 +163,93 @@ export default function CoursesPage() {
     return list;
   }, [quantities, products]);
 
+  // Compute category counts for chips
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: products.length };
+    FOOD_CATEGORY_CHIPS.forEach((c) => {
+      if (c.id !== 'all') counts[c.id] = 0;
+    });
+
+    products.forEach((p) => {
+      const cat = getProductFoodCategory(p);
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+
+    return counts;
+  }, [products]);
+
+  // Filter products by category, search, and selection
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
       if (showOnlySelected) {
         return (quantities[product.id] || 0) > 0;
       }
 
+      // Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchesName = product.name.toLowerCase().includes(q);
         const matchesRef = product.reference?.toLowerCase().includes(q);
         const matchesUnit = product.defaultUnit?.toLowerCase().includes(q);
-        return matchesName || matchesRef || matchesUnit;
+        if (!matchesName && !matchesRef && !matchesUnit) return false;
+      }
+
+      // Category Chip
+      if (selectedCategory !== 'all') {
+        const cat = getProductFoodCategory(product);
+        if (cat !== selectedCategory) return false;
       }
 
       return true;
     });
-  }, [products, showOnlySelected, searchQuery, quantities]);
+  }, [products, showOnlySelected, selectedCategory, searchQuery, quantities]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 font-sans antialiased">
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3.5 py-2.5 shadow-2xs">
-        <div className="max-w-xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-28 font-sans antialiased">
+      {/* Premium Sticky Header */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3.5 sm:px-6 py-2.5 shadow-2xs">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
             <a
               href="/kitchen?tab=reception"
-              className="p-1.5 -ml-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              className="p-2 -ml-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
               title="Retour cuisine"
+              aria-label="Retour cuisine"
             >
               <ArrowLeft className="w-5 h-5" />
             </a>
 
             {/* Logo */}
-            <div className="w-8 h-8 rounded-lg overflow-hidden shadow-xs flex-shrink-0 bg-emerald-600 border border-emerald-500">
+            <div className="w-8 h-8 rounded-xl overflow-hidden shadow-xs flex-shrink-0 bg-emerald-600 border border-emerald-500/80">
               <img
-                src="/icons/courses-icon.png"
+                src="/icons/courses-apple-touch-icon.png"
                 alt="Twin Courses"
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/icons/courses-icon.png';
+                }}
               />
             </div>
 
             <div>
-              <h1 className="text-sm font-extrabold text-slate-900 leading-tight">
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
                 Twin Courses
               </h1>
-              <p className="text-[10px] text-slate-500 font-medium">Réassort & Courses</p>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Réassort & Courses
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Install Button */}
             {isInstallable && (
               <button
                 type="button"
                 onClick={handleInstallClick}
-                className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs transition-all active:scale-95"
+                className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
               >
-                <Download className="w-3 h-3" />
+                <Download className="w-3.5 h-3.5" />
                 <span>Installer</span>
               </button>
             )}
@@ -216,8 +258,8 @@ export default function CoursesPage() {
               <button
                 type="button"
                 onClick={handleClearAll}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 text-xs transition-colors"
-                title="Vider le panier"
+                className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 text-xs transition-colors"
+                title="Vider la commande"
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
@@ -225,9 +267,9 @@ export default function CoursesPage() {
 
             <a
               href="/kitchen"
-              className="px-2 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold flex items-center gap-1 border border-slate-200 transition-colors"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-200/80 transition-colors"
             >
-              <Utensils className="w-3.5 h-3.5" />
+              <Utensils className="w-3.5 h-3.5 text-emerald-600" />
               <span className="hidden xs:inline">Cuisine</span>
             </a>
           </div>
@@ -235,21 +277,37 @@ export default function CoursesPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-xl mx-auto px-3.5 pt-3 space-y-2.5">
-        {/* Search Bar */}
+      <main className="max-w-6xl mx-auto px-3.5 sm:px-6 pt-3.5 space-y-3.5">
+        {/* 1. Search Bar */}
         <CourseSearchBar
           searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchChange={(q) => {
+            setSearchQuery(q);
+            if (q && showOnlySelected) setShowOnlySelected(false);
+          }}
         />
 
-        {/* View Controls & Cart Filter */}
-        <div className="flex items-center justify-between pt-0.5">
-          {/* Quick Filter: All vs Selected */}
-          <div className="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded-lg border border-slate-200">
+        {/* 2. Category Navigation Chips */}
+        {!showOnlySelected && (
+          <CourseCategoryChips
+            categories={FOOD_CATEGORY_CHIPS}
+            selectedCategory={selectedCategory}
+            onSelectCategory={(catId) => {
+              setSelectedCategory(catId);
+              if (searchQuery) setSearchQuery('');
+            }}
+            categoryCounts={categoryCounts}
+          />
+        )}
+
+        {/* 3. Segmented Control (Tous / Panier) & View Toggle */}
+        <div className="flex items-center justify-between pt-1">
+          {/* Segmented Filter */}
+          <div className="inline-flex items-center bg-slate-200/70 p-0.5 rounded-xl border border-slate-200/80 shadow-2xs">
             <button
               type="button"
               onClick={() => setShowOnlySelected(false)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 ${
                 !showOnlySelected
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -257,10 +315,11 @@ export default function CoursesPage() {
             >
               Tous ({products.length})
             </button>
+
             <button
               type="button"
               onClick={() => setShowOnlySelected(true)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 flex items-center gap-1.5 ${
                 showOnlySelected
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -269,8 +328,10 @@ export default function CoursesPage() {
               <span>🛒 Panier</span>
               {orderItems.length > 0 && (
                 <span
-                  className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
-                    showOnlySelected ? 'bg-white text-emerald-800' : 'bg-emerald-600 text-white'
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold tabular-nums ${
+                    showOnlySelected
+                      ? 'bg-white text-emerald-800'
+                      : 'bg-emerald-600 text-white'
                   }`}
                 >
                   {orderItems.length}
@@ -279,54 +340,71 @@ export default function CoursesPage() {
             </button>
           </div>
 
-          {/* Grid vs List Toggle */}
-          <div className="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded-lg border border-slate-200">
+          {/* Grid / List Toggle */}
+          <div className="inline-flex items-center bg-slate-200/70 p-0.5 rounded-xl border border-slate-200/80 shadow-2xs">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              className={`p-1 rounded-md transition-all ${
+              className={`p-1.5 rounded-lg transition-all duration-150 ${
                 viewMode === 'grid'
                   ? 'bg-white text-emerald-700 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
               title="Aperçu en Grille"
+              aria-label="Aperçu en Grille"
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
+              <LayoutGrid className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`p-1 rounded-md transition-all ${
+              className={`p-1.5 rounded-lg transition-all duration-150 ${
                 viewMode === 'list'
                   ? 'bg-white text-emerald-700 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
               title="Aperçu en Liste"
+              aria-label="Aperçu en Liste"
             >
-              <List className="w-3.5 h-3.5" />
+              <List className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Products Display (Grid 2-col or List) */}
+        {/* 4. Products Display (Responsive 2-col on Mobile, 3-5 on Desktop) */}
         {filteredProducts.length === 0 ? (
-          <div className="text-center py-10 px-4 bg-white rounded-xl border border-slate-200 shadow-2xs">
-            <Package className="w-8 h-8 text-slate-400 mx-auto mb-1.5" />
-            <p className="text-xs font-bold text-slate-700">
-              {showOnlySelected ? 'Votre panier est vide' : 'Aucun produit trouvé'}
-            </p>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+          <div className="text-center py-12 px-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
+            <PackageOpen className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+            <h3 className="text-sm font-bold text-slate-800">
               {showOnlySelected
-                ? 'Sélectionnez des articles dans la liste'
-                : 'Ajoutez-le avec le bouton ci-dessous'}
+                ? 'Votre panier est vide'
+                : searchQuery
+                ? 'Aucun produit trouvé'
+                : 'Aucun produit dans cette catégorie'}
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              {showOnlySelected
+                ? 'Sélectionnez des articles dans le catalogue pour préparer votre commande.'
+                : searchQuery
+                ? 'Essayez un autre mot-clé ou ajoutez un article sur-mesure.'
+                : 'Sélectionnez une autre catégorie ci-dessus.'}
             </p>
+            {showOnlySelected && (
+              <button
+                type="button"
+                onClick={() => setShowOnlySelected(false)}
+                className="mt-3 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-xs"
+              >
+                Parcourir le catalogue
+              </button>
+            )}
           </div>
         ) : (
           <div
             className={`${
               viewMode === 'grid'
-                ? 'grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5'
-                : 'space-y-1.5'
+                ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4'
+                : 'space-y-2'
             }`}
           >
             {filteredProducts.map((product) => (
@@ -341,13 +419,13 @@ export default function CoursesPage() {
           </div>
         )}
 
-        {/* Add custom item */}
-        <div className="pt-1">
+        {/* 5. Add Custom Item on the fly */}
+        <div className="pt-2">
           <CourseAddCustomItemDialog onProductAdded={handleCustomProductAdded} />
         </div>
       </main>
 
-      {/* Bottom Cart Drawer */}
+      {/* Floating Cart Drawer Bar */}
       <CourseCartDrawer
         items={orderItems}
         onClear={handleClearAll}
@@ -356,25 +434,25 @@ export default function CoursesPage() {
 
       {/* iOS Installation Instructions */}
       <Dialog open={showIosGuide} onOpenChange={setShowIosGuide}>
-        <DialogContent className="bg-white border-slate-200 text-slate-900 max-w-sm rounded-2xl shadow-xl">
+        <DialogContent className="bg-white border-slate-200 text-slate-900 max-w-sm rounded-3xl shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Download className="w-4 h-4 text-emerald-600" />
               Installer Twin Courses
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-2.5 pt-1 text-xs text-slate-600">
+          <div className="space-y-3 pt-1 text-xs text-slate-600">
             <p>Pour installer sur votre écran d'accueil iPhone ou iPad :</p>
-            <div className="space-y-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-              <div className="flex items-center gap-2">
+            <div className="space-y-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+              <div className="flex items-center gap-2.5">
                 <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-[10px] flex-shrink-0">
                   1
                 </span>
                 <span>
-                  Touchez <strong>Partager</strong> <Share className="w-3 h-3 inline mx-0.5 text-emerald-600" /> en bas de Safari.
+                  Touchez <strong>Partager</strong> <Share className="w-3.5 h-3.5 inline mx-0.5 text-emerald-600" /> en bas de Safari.
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-[10px] flex-shrink-0">
                   2
                 </span>
@@ -382,7 +460,7 @@ export default function CoursesPage() {
                   Touchez <strong>« Sur l'écran d'accueil »</strong> 📲.
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-[10px] flex-shrink-0">
                   3
                 </span>
