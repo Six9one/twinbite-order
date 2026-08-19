@@ -25,6 +25,7 @@ const KitchenDashboard = () => {
     }, []);
 
     useEffect(() => {
+        document.title = "Twin Kitchen - Suivi Sanitaire & HACCP";
         const params = new URLSearchParams(window.location.search);
         const tab = params.get('tab');
         if (tab) setActiveTab(tab);
@@ -33,10 +34,17 @@ const KitchenDashboard = () => {
         if (manifestLink) {
             manifestLink.href = '/kitchen-manifest.json';
         }
+        let appleIcons = document.querySelectorAll<HTMLLinkElement>('link[rel="apple-touch-icon"]');
+        appleIcons.forEach((el) => { el.href = '/icons/kitchen-apple-touch-icon.png'; });
+        let appTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+        if (appTitle) { appTitle.content = 'Twin Kitchen'; }
+
         return () => {
             if (manifestLink) {
                 manifestLink.href = '/manifest.json';
             }
+            appleIcons.forEach((el) => { el.href = '/favicon.png'; });
+            if (appTitle) { appTitle.content = 'Twin Pizza'; }
         };
     }, []);
 
