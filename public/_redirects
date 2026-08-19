@@ -1,1 +1,4 @@
-/*    /index.html   200
+/courses    /courses/index.html   200
+/orders     /courses/index.html   200
+/kitchen    /kitchen/index.html   200
+/*          /index.html           200
