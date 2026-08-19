@@ -178,7 +178,7 @@ export default function CoursesPage() {
             {/* Logo */}
             <div className="w-8 h-8 rounded-lg overflow-hidden shadow-xs flex-shrink-0 bg-emerald-600 border border-emerald-500">
               <img
-                src="/icons/courses-icon.svg"
+                src="/icons/courses-icon.png"
                 alt="Twin Courses"
                 className="w-full h-full object-cover"
               />
