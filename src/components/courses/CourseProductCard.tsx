@@ -1,19 +1,23 @@
 import { SupplierProduct } from '@/data/supplierCatalog';
 import { getCleanDisplayName } from '@/lib/coursesNameFormatter';
-import { Minus, Plus, Check } from 'lucide-react';
+import { Minus, Plus, Check, Camera, Sparkles } from 'lucide-react';
 
 interface CourseProductCardProps {
   product: SupplierProduct;
   quantity: number;
   viewMode?: 'grid' | 'list';
+  isScanMode?: boolean;
   onUpdateQuantity: (quantity: number) => void;
+  onTriggerCamera?: (productId: string) => void;
 }
 
 export function CourseProductCard({
   product,
   quantity,
   viewMode = 'grid',
+  isScanMode = false,
   onUpdateQuantity,
+  onTriggerCamera,
 }: CourseProductCardProps) {
   const isSelected = quantity > 0;
   const displayName = getCleanDisplayName(product.name);
@@ -46,10 +50,26 @@ export function CourseProductCard({
               (e.target as HTMLImageElement).src = '/cat_pizza_3d.webp';
             }}
           />
-          {isSelected && (
+          {isSelected && !isScanMode && (
             <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-emerald-600 text-white rounded-full flex items-center justify-center shadow-xs">
               <Check className="w-3 h-3 stroke-[3]" />
             </div>
+          )}
+
+          {/* Direct Camera Button in Scan Mode */}
+          {isScanMode && (
+            <button
+              type="button"
+              onClick={() => onTriggerCamera?.(product.id)}
+              className="absolute inset-0 bg-emerald-950/60 backdrop-blur-xs flex flex-col items-center justify-center gap-1 text-white p-2 animate-in fade-in duration-150"
+            >
+              <div className="w-9 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center shadow-lg transform active:scale-95 transition-all">
+                <Camera className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] font-bold text-emerald-100 bg-emerald-900/80 px-2 py-0.5 rounded-md">
+                Shooter IA
+              </span>
+            </button>
           )}
         </div>
 

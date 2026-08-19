@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   SupplierProduct,
 } from '@/data/supplierCatalog';
@@ -28,6 +28,8 @@ import {
   LayoutGrid,
   List,
   PackageOpen,
+  Camera,
+  Sparkles,
 } from 'lucide-react';
 import {
   Dialog,
@@ -49,6 +51,18 @@ export default function CoursesPage() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [showIosGuide, setShowIosGuide] = useState(false);
+
+  // Photo Scan Mode on Courses Page
+  const [photoScanMode, setPhotoScanMode] = useState<boolean>(false);
+  const [activeScanProductId, setActiveScanProductId] = useState<string | null>(null);
+  const [processingScan, setProcessingScan] = useState<{
+    id: string;
+    name: string;
+    stage: string;
+    percent: number;
+  } | null>(null);
+
+  const cameraScanInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     document.title = 'Twin Courses - Réassort & Commandes';
@@ -103,6 +117,61 @@ export default function CoursesPage() {
       setProducts(getAllSupplierProducts());
     });
   }, []);
+
+  const handleTriggerCameraScan = (productId: string) => {
+    setActiveScanProductId(productId);
+    cameraScanInputRef.current?.click();
+  };
+
+  const handleCameraScanFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeScanProductId) return;
+    const prod = products.find((p) => p.id === activeScanProductId);
+    const prodName = prod?.name || 'Produit';
+
+    try {
+      setProcessingScan({
+        id: activeScanProductId,
+        name: prodName,
+        stage: '📸 Photo reçue...',
+        percent: 10,
+      });
+
+      const { removeBackgroundAndOptimize } = await import('@/utils/aiBackgroundRemover');
+      const { uploadBlobToSupabaseStorage } = await import('@/utils/cloudinary');
+      const { updateProductOverride } = await import('@/lib/coursesService');
+
+      const optimizedWebp = await removeBackgroundAndOptimize(file, (stage, percent) => {
+        setProcessingScan({
+          id: activeScanProductId,
+          name: prodName,
+          stage,
+          percent,
+        });
+      });
+
+      setProcessingScan({
+        id: activeScanProductId,
+        name: prodName,
+        stage: '☁️ Synchronisation...',
+        percent: 95,
+      });
+
+      const publicUrl = await uploadBlobToSupabaseStorage(optimizedWebp, `course_${activeScanProductId}`);
+      updateProductOverride(activeScanProductId, { image: publicUrl });
+      setProducts(getAllSupplierProducts());
+
+      setProcessingScan(null);
+      setActiveScanProductId(null);
+      toast.success(`✨ Photo détourée et synchronisée pour "${prodName}" !`);
+    } catch (err: any) {
+      console.error('Scan error:', err);
+      setProcessingScan(null);
+      toast.error('Erreur lors du détourage : ' + (err?.message || 'Inconnue'));
+    }
+
+    e.target.value = '';
+  };
 
   const handleInstallClick = async () => {
     const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
@@ -248,6 +317,29 @@ export default function CoursesPage() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Camera Scanner Mode Button */}
+            <button
+              type="button"
+              onClick={() => {
+                const next = !photoScanMode;
+                setPhotoScanMode(next);
+                if (next) {
+                  toast.info('📸 Mode Scanner Photo activé !', {
+                    description: 'Touchez n\'importe quel article pour le prendre en photo et le détourer.',
+                  });
+                }
+              }}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                photoScanMode
+                  ? 'bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-400/50 font-extrabold'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80'
+              }`}
+              title="Activer le scanner photo IA"
+            >
+              <Camera className={`w-3.5 h-3.5 ${photoScanMode ? 'text-slate-950' : 'text-emerald-600'}`} />
+              <span>{photoScanMode ? 'Mode Photo ON' : 'Scanner Photo'}</span>
+            </button>
+
             {/* Install Button */}
             {isInstallable && (
               <button
@@ -281,6 +373,77 @@ export default function CoursesPage() {
           </div>
         </div>
       </header>
+
+      {/* Hidden Mobile Camera Input */}
+      <input
+        type="file"
+        ref={cameraScanInputRef}
+        onChange={handleCameraScanFile}
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+      />
+
+      {/* AI Processing Modal Overlay */}
+      {processingScan && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl text-center space-y-4 border border-emerald-500/30 animate-in fade-in zoom-in duration-200">
+            <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping"></div>
+              <div className="relative w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-300 flex items-center justify-center">
+                <Sparkles className="w-7 h-7 animate-spin text-emerald-600" style={{ animationDuration: '3s' }} />
+              </div>
+            </div>
+
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase tracking-wider mb-1.5">
+                ✨ IA Auto-Détourage
+              </span>
+              <h3 className="text-sm font-bold text-slate-900 line-clamp-1">
+                {processingScan.name}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                {processingScan.stage}
+              </p>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="space-y-1">
+              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                <div
+                  className="h-full bg-emerald-600 transition-all duration-300 rounded-full"
+                  style={{ width: `${processingScan.percent}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>Sans arrière-plan</span>
+                <span className="text-emerald-700 font-bold">{processingScan.percent}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Scanner Mode Alert Banner */}
+      {photoScanMode && (
+        <div className="max-w-6xl mx-auto px-3.5 sm:px-6 pt-3">
+          <div className="bg-amber-500/15 border border-amber-500/40 rounded-2xl p-3 flex items-center justify-between gap-3 text-amber-900">
+            <div className="flex items-center gap-2 text-xs font-semibold">
+              <span className="text-base">📸</span>
+              <span>
+                <strong>Mode Scanner Photo Actif :</strong> Touchez l'icône appareil photo sur n'importe quel article pour le prendre en photo et le détourer en direct.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPhotoScanMode(false)}
+              className="px-2.5 py-1 rounded-xl bg-amber-600 text-white text-[11px] font-bold hover:bg-amber-700 whitespace-nowrap shadow-2xs"
+            >
+              Quitter
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-3.5 sm:px-6 pt-3.5 space-y-3.5">
@@ -419,7 +582,9 @@ export default function CoursesPage() {
                 product={product}
                 viewMode={viewMode}
                 quantity={quantities[product.id] || 0}
+                isScanMode={photoScanMode}
                 onUpdateQuantity={(qty) => handleUpdateQuantity(product.id, qty)}
+                onTriggerCamera={handleTriggerCameraScan}
               />
             ))}
           </div>

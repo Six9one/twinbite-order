@@ -45,7 +45,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 6.8,
-    "image": "https://images.unsplash.com/photo-1544025162-d76694265947?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1936.webp",
     "presets": [
       1,
       2,
@@ -61,7 +61,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 6.99,
-    "image": "https://images.unsplash.com/photo-1562967914-608f82629710?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0201.webp",
     "presets": [
       1,
       2,
@@ -77,7 +77,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 4.74,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0975.webp",
     "presets": [
       1,
       2
@@ -91,7 +91,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 17.99,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0078.webp",
     "presets": [
       1,
       2
@@ -105,7 +105,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 11.99,
-    "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0791.webp",
     "presets": [
       1,
       2
@@ -119,7 +119,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 5.4,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0049.webp",
     "presets": [
       1,
       2,
@@ -135,7 +135,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 5,
-    "image": "https://images.unsplash.com/photo-1588168333986-5078d3ae3976?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0991.webp",
     "presets": [
       2,
       3,
@@ -150,7 +150,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "Kg",
     "unitPriceEstimate": 5.6,
-    "image": "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0037.webp",
     "presets": [
       5,
       10,
@@ -166,7 +166,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 7.99,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0227.webp",
     "presets": [
       1,
       2
@@ -180,7 +180,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "COL",
     "unitPriceEstimate": 12,
-    "image": "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0971.webp",
     "presets": [
       2,
       4,
@@ -196,7 +196,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 4.5,
-    "image": "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0143.webp",
     "presets": [
       1,
       2
@@ -210,7 +210,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 7.89,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1568.webp",
     "presets": [
       1,
       2
@@ -224,7 +224,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 20.8,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1656.webp",
     "presets": [
       1,
       2
@@ -238,7 +238,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "COL",
     "unitPriceEstimate": 25,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1659.webp",
     "presets": [
       1,
       2
@@ -252,7 +252,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.5,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1687.webp",
     "presets": [
       1,
       2
@@ -266,7 +266,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 9.99,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1702.webp",
     "presets": [
       1,
       2
@@ -280,7 +280,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 8.25,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1708.webp",
     "presets": [
       1,
       2
@@ -294,7 +294,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 2.083,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1722.webp",
     "presets": [
       1,
       2
@@ -308,7 +308,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 7.5,
-    "image": "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1734.webp",
     "presets": [
       5,
       10,
@@ -324,7 +324,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 4.74,
-    "image": "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1790.webp",
     "presets": [
       5,
       10,
@@ -340,7 +340,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 12.5,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1801.webp",
     "presets": [
       1,
       2
@@ -354,7 +354,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.99,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1834.webp",
     "presets": [
       1,
       2
@@ -368,7 +368,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 5.69,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1836.webp",
     "presets": [
       1,
       2
@@ -382,7 +382,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 4.265,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1843.webp",
     "presets": [
       1,
       2
@@ -396,7 +396,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.5,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1845.webp",
     "presets": [
       1,
       2
@@ -410,7 +410,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 24.99,
-    "image": "https://images.unsplash.com/photo-1544025162-d76694265947?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1853.webp",
     "presets": [
       1,
       2,
@@ -426,7 +426,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 6.08,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1855.webp",
     "presets": [
       1,
       2
@@ -440,7 +440,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 53.9,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1889.webp",
     "presets": [
       1,
       2
@@ -454,7 +454,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 6.95,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1930.webp",
     "presets": [
       1,
       2
@@ -468,7 +468,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 7.8,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1937.webp",
     "presets": [
       1,
       2
@@ -482,7 +482,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.744,
-    "image": "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1987.webp",
     "presets": [
       5,
       10,
@@ -498,7 +498,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 7.7,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_1991.webp",
     "presets": [
       1,
       2
@@ -512,7 +512,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 14.28,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_2047.webp",
     "presets": [
       1,
       2
@@ -526,7 +526,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 14.28,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_2048.webp",
     "presets": [
       1,
       2
@@ -540,7 +540,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 14.28,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_2049.webp",
     "presets": [
       1,
       2
@@ -554,7 +554,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 5.991,
-    "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_2098.webp",
     "presets": [
       1,
       2
@@ -568,7 +568,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 6.019,
-    "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_2099.webp",
     "presets": [
       1,
       2
@@ -582,7 +582,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 5.991,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_2100.webp",
     "presets": [
       1,
       2
@@ -596,7 +596,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 45.6,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_2101.webp",
     "presets": [
       1,
       2
@@ -610,7 +610,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 4.6,
-    "image": "https://images.unsplash.com/photo-1632778149955-e80f8ceca2e8?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_2298.webp",
     "presets": [
       1,
       2,
@@ -625,7 +625,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 4.99,
-    "image": "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_2299.webp",
     "presets": [
       5,
       10,
@@ -641,7 +641,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 14.5,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_2346.webp",
     "presets": [
       1,
       2
@@ -655,7 +655,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 4.58,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0250.webp",
     "presets": [
       1,
       2
@@ -669,7 +669,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 9.4,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0046.webp",
     "presets": [
       1,
       2
@@ -683,7 +683,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 6.5,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0192.webp",
     "presets": [
       1,
       2
@@ -697,7 +697,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 17.5,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0093.webp",
     "presets": [
       1,
       2
@@ -711,7 +711,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 4.99,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0280.webp",
     "presets": [
       1,
       2
@@ -725,7 +725,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 17.5,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0581.webp",
     "presets": [
       1,
       2
@@ -739,7 +739,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 17,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0090.webp",
     "presets": [
       1,
       2
@@ -753,7 +753,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 5.6,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0419.webp",
     "presets": [
       1,
       2
@@ -767,7 +767,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 11.9,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0007.webp",
     "presets": [
       1,
       2
@@ -781,7 +781,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "COL",
     "unitPriceEstimate": 12.9,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0153.webp",
     "presets": [
       1,
       2
@@ -795,7 +795,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 11.99,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0173.webp",
     "presets": [
       1,
       2
@@ -809,7 +809,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 11.99,
-    "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0133.webp",
     "presets": [
       1,
       2
@@ -823,7 +823,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 11.99,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0137.webp",
     "presets": [
       1,
       2
@@ -837,7 +837,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 11.99,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0651.webp",
     "presets": [
       1,
       2
@@ -851,7 +851,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 16.99,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0142.webp",
     "presets": [
       1,
       2
@@ -865,7 +865,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.414,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0140.webp",
     "presets": [
       1,
       2
@@ -879,7 +879,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 12.8,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0145.webp",
     "presets": [
       1,
       2
@@ -893,7 +893,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 12.5,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0276.webp",
     "presets": [
       1,
       2
@@ -907,7 +907,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 24.99,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0348.webp",
     "presets": [
       1,
       2
@@ -921,7 +921,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 7.9,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0638.webp",
     "presets": [
       1,
       2
@@ -935,7 +935,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 2.25,
-    "image": "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0970.webp",
     "presets": [
       2,
       4,
@@ -951,7 +951,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "COL",
     "unitPriceEstimate": 12.8,
-    "image": "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0116.webp",
     "presets": [
       1,
       2
@@ -965,7 +965,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 16.5,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0602.webp",
     "presets": [
       1,
       2
@@ -979,7 +979,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 4,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0256.webp",
     "presets": [
       1,
       2
@@ -993,7 +993,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 6.75,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0257.webp",
     "presets": [
       1,
       2
@@ -1007,7 +1007,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.5,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0119.webp",
     "presets": [
       1,
       2
@@ -1021,7 +1021,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 2.25,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0288.webp",
     "presets": [
       1,
       2
@@ -1035,7 +1035,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 5,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0444.webp",
     "presets": [
       1,
       2
@@ -1049,7 +1049,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 6.49,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0080.webp",
     "presets": [
       1,
       2
@@ -1063,7 +1063,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "COL",
     "unitPriceEstimate": 34.72,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0255.webp",
     "presets": [
       1,
       2
@@ -1077,7 +1077,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 8.9,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0181.webp",
     "presets": [
       1,
       2
@@ -1091,7 +1091,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 6.5,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0264.webp",
     "presets": [
       1,
       2
@@ -1105,7 +1105,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 6.25,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0246.webp",
     "presets": [
       1,
       2
@@ -1119,7 +1119,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.5,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0398.webp",
     "presets": [
       1,
       2,
@@ -1135,7 +1135,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 12.5,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0221.webp",
     "presets": [
       1,
       2
@@ -1149,7 +1149,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 20.75,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0083.webp",
     "presets": [
       1,
       2
@@ -1163,7 +1163,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.99,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0017.webp",
     "presets": [
       1,
       2
@@ -1177,7 +1177,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 7.5,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0408.webp",
     "presets": [
       1,
       2
@@ -1191,7 +1191,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 7.5,
-    "image": "https://images.unsplash.com/photo-1544025162-d76694265947?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0560.webp",
     "presets": [
       1,
       2,
@@ -1207,7 +1207,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 15.5,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0922.webp",
     "presets": [
       1,
       2
@@ -1221,7 +1221,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 14.5,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0176.webp",
     "presets": [
       1,
       2
@@ -1235,7 +1235,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 23.51,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0108.webp",
     "presets": [
       1,
       2
@@ -1249,7 +1249,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.5,
-    "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0135.webp",
     "presets": [
       1,
       2
@@ -1263,7 +1263,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 22.7,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0106.webp",
     "presets": [
       1,
       2
@@ -1277,7 +1277,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.414,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0154.webp",
     "presets": [
       1,
       2
@@ -1291,7 +1291,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 5.5,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0122.webp",
     "presets": [
       1,
       2
@@ -1305,7 +1305,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 11.28,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0285.webp",
     "presets": [
       1,
       2
@@ -1319,7 +1319,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 14.557,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0430.webp",
     "presets": [
       1,
       2
@@ -1333,7 +1333,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.9,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0443.webp",
     "presets": [
       1,
       2
@@ -1347,7 +1347,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 3.99,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0765.webp",
     "presets": [
       1,
       2
@@ -1361,7 +1361,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 7.99,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0055.webp",
     "presets": [
       1,
       2
@@ -1375,7 +1375,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 7.3,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0863.webp",
     "presets": [
       1,
       2
@@ -1389,7 +1389,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.5,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0861.webp",
     "presets": [
       1,
       2,
@@ -1405,7 +1405,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "COL",
     "unitPriceEstimate": 20.9,
-    "image": "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0098.webp",
     "presets": [
       1,
       2
@@ -1419,7 +1419,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 22.7,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0556.webp",
     "presets": [
       1,
       2
@@ -1433,7 +1433,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 0.95,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0194.webp",
     "presets": [
       1,
       2
@@ -1447,7 +1447,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 16,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0225.webp",
     "presets": [
       1,
       2
@@ -1461,7 +1461,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 24,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0925.webp",
     "presets": [
       1,
       2
@@ -1475,7 +1475,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 5.7,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0290.webp",
     "presets": [
       1,
       2
@@ -1489,7 +1489,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 15.4,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0003.webp",
     "presets": [
       1,
       2
@@ -1503,7 +1503,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.1,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0432.webp",
     "presets": [
       1,
       2
@@ -1517,7 +1517,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.9,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0433.webp",
     "presets": [
       1,
       2
@@ -1531,7 +1531,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 18,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0994.webp",
     "presets": [
       1,
       2
@@ -1545,7 +1545,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "congelateur",
     "defaultUnit": "U",
     "unitPriceEstimate": 24,
-    "image": "https://images.unsplash.com/photo-1632778149955-e80f8ceca2e8?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0296.webp",
     "presets": [
       1,
       2,
@@ -1560,7 +1560,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.4,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0531.webp",
     "presets": [
       1,
       2
@@ -1574,7 +1574,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 12.99,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0138.webp",
     "presets": [
       1,
       2
@@ -1588,7 +1588,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 12.5,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0325.webp",
     "presets": [
       1,
       2
@@ -1602,7 +1602,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 11.17,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0141.webp",
     "presets": [
       1,
       2
@@ -1616,7 +1616,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 14.5,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0172.webp",
     "presets": [
       1,
       2
@@ -1630,7 +1630,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "COL",
     "unitPriceEstimate": 16.5,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0006.webp",
     "presets": [
       1,
       2
@@ -1644,7 +1644,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 14.6,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0245.webp",
     "presets": [
       1,
       2
@@ -1658,7 +1658,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.5,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0308.webp",
     "presets": [
       1,
       2
@@ -1672,7 +1672,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 11.5,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0263.webp",
     "presets": [
       1,
       2
@@ -1686,7 +1686,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 13.5,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0174.webp",
     "presets": [
       1,
       2
@@ -1700,7 +1700,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 21.99,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0104.webp",
     "presets": [
       1,
       2
@@ -1714,7 +1714,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 21,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0113.webp",
     "presets": [
       1,
       2
@@ -1728,7 +1728,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 7.49,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0191.webp",
     "presets": [
       1,
       2
@@ -1742,7 +1742,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "COL",
     "unitPriceEstimate": 12.89,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0158.webp",
     "presets": [
       1,
       2
@@ -1756,7 +1756,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 8.1,
-    "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0231.webp",
     "presets": [
       1,
       2
@@ -1770,7 +1770,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 1.29,
-    "image": "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0152.webp",
     "presets": [
       1,
       2
@@ -1784,7 +1784,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "boissons",
     "defaultUnit": "U",
     "unitPriceEstimate": 12.99,
-    "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0139.webp",
     "presets": [
       1,
       2
@@ -1798,7 +1798,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "reserve_seche",
     "defaultUnit": "U",
     "unitPriceEstimate": 15,
-    "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0306.webp",
     "presets": [
       1,
       2
@@ -1812,7 +1812,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "chambre_froide",
     "defaultUnit": "U",
     "unitPriceEstimate": 10.9,
-    "image": "https://images.unsplash.com/photo-1559561853-08451507cbe7?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0014.webp",
     "presets": [
       1,
       2,
@@ -1828,7 +1828,7 @@ export const DEFAULT_SUPPLIER_PRODUCTS: SupplierProduct[] = [
     "category": "emballages",
     "defaultUnit": "U",
     "unitPriceEstimate": 6.9,
-    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+    "image": "/images/products/prod_0132.webp",
     "presets": [
       1,
       2
