@@ -25,6 +25,7 @@ export interface SupplierOrder {
 const STORAGE_DRAFT_KEY = 'twinpizza_courses_draft_v1';
 const STORAGE_CONTACTS_KEY = 'twinpizza_courses_contacts_v1';
 const STORAGE_CUSTOM_PRODUCTS_KEY = 'twinpizza_courses_custom_products_v1';
+const STORAGE_PRODUCT_OVERRIDES_KEY = 'twinpizza_courses_product_overrides_v1';
 
 export interface SupplierContacts {
   kfaPhone: string;
@@ -64,6 +65,35 @@ export function saveSupplierContacts(contacts: Partial<SupplierContacts>) {
   }
 }
 
+// Product overrides (custom images, names, etc.)
+export function getProductOverrides(): Record<string, Partial<SupplierProduct>> {
+  try {
+    const saved = localStorage.getItem(STORAGE_PRODUCT_OVERRIDES_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch (e) {
+    console.error('Error reading product overrides:', e);
+  }
+  return {};
+}
+
+// Save product override
+export function updateProductOverride(productId: string, data: Partial<SupplierProduct>) {
+  try {
+    const current = getProductOverrides();
+    current[productId] = { ...(current[productId] || {}), ...data };
+    localStorage.setItem(STORAGE_PRODUCT_OVERRIDES_KEY, JSON.stringify(current));
+    return current;
+  } catch (e) {
+    console.error('Error updating product override:', e);
+    return {};
+  }
+}
+
+// Reset all product overrides
+export function resetProductOverrides() {
+  localStorage.removeItem(STORAGE_PRODUCT_OVERRIDES_KEY);
+}
+
 // Get custom products added on the fly
 export function getCustomProducts(): SupplierProduct[] {
   try {
@@ -88,10 +118,18 @@ export function addCustomProduct(product: SupplierProduct): SupplierProduct[] {
   }
 }
 
-// Get all products
+// Get all products with overrides applied
 export function getAllSupplierProducts(): SupplierProduct[] {
   const custom = getCustomProducts();
-  return [...custom, ...DEFAULT_SUPPLIER_PRODUCTS];
+  const overrides = getProductOverrides();
+  
+  const all = [...custom, ...DEFAULT_SUPPLIER_PRODUCTS];
+  return all.map((prod) => {
+    if (overrides[prod.id]) {
+      return { ...prod, ...overrides[prod.id] };
+    }
+    return prod;
+  });
 }
 
 // Load draft items

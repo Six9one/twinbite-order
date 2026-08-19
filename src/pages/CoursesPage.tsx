@@ -325,7 +325,7 @@ export default function CoursesPage() {
           <div
             className={`${
               viewMode === 'grid'
-                ? 'grid grid-cols-2 gap-2'
+                ? 'grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5'
                 : 'space-y-1.5'
             }`}
           >

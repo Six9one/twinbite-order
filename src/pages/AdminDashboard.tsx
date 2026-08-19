@@ -38,6 +38,7 @@ import { AIReceptionistManager } from '@/components/admin/AIReceptionistManager'
 import { FactureManager } from '@/components/admin/FactureManager';
 import { TenantManager } from '@/components/admin/TenantManager';
 import TelegramWhatsAppManager from '@/components/admin/TelegramWhatsAppManager';
+import { CoursesCatalogManager } from '@/components/admin/CoursesCatalogManager';
 import { ClientIPMap } from '@/components/admin/ClientIPMap';
 import {
   getBusinessDate,
@@ -56,7 +57,7 @@ import {
 } from 'lucide-react';
 const logoImage = '/favicon.png';
 
-type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'salades' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture' | 'analytics-web' | 'tenants' | 'integrations';
+type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'salades' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'courses-catalog' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture' | 'analytics-web' | 'tenants' | 'integrations';
 
 
 
@@ -886,6 +887,9 @@ export default function AdminDashboard() {
 
           {/* Wizard Images */}
           {activeTab === 'wizard-images' && <WizardImagesManager />}
+
+          {/* Courses & Supplier Catalog Photos */}
+          {activeTab === 'courses-catalog' && <CoursesCatalogManager />}
 
           {/* Price Manager */}
           {activeTab === 'prices' && <PriceManager />}

@@ -133,6 +133,7 @@ const navItems: NavItem[] = [
       { label: 'Galerie Photos', icon: Images, value: 'gallery' },
       { label: 'Images Catégories', icon: Image, value: 'category-images' },
       { label: 'Images Wizard', icon: Image, value: 'wizard-images' },
+      { label: '🛒 Photos & Catalogue Courses', icon: Package, value: 'courses-catalog' },
       { label: 'Contenu Site', icon: Globe, value: 'content' },
     ]
   },
