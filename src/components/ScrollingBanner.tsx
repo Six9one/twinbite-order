@@ -3,80 +3,55 @@ import { useStoreStatus } from '@/hooks/useSiteSettings';
 export function ScrollingBanner() {
     const { status } = useStoreStatus();
 
-    // Don't render if disabled or no text
     if (!status.scrollingBannerEnabled || !status.scrollingBannerText) {
         return null;
     }
 
     const bannerColor = status.scrollingBannerColor || '#dc2626';
-    const bannerText = status.scrollingBannerText;
+    // Duplicate text enough times to guarantee seamless looping
+    const items = Array(6).fill(status.scrollingBannerText);
 
     return (
         <div
-            className="scrolling-banner-wrapper"
-            style={{ backgroundColor: bannerColor }}
+            style={{
+                backgroundColor: bannerColor,
+                width: '100%',
+                overflow: 'hidden',
+                position: 'relative',
+                zIndex: 40,
+                padding: '8px 0',
+                flexShrink: 0,
+            }}
         >
-            <div className="scrolling-banner-track">
-                {/* Repeat text multiple times for seamless infinite scroll */}
-                {[...Array(4)].map((_, i) => (
-                    <span key={i} className="scrolling-banner-item">
-                        {bannerText}
-                        <span className="scrolling-banner-separator">✦</span>
+            <div style={{
+                display: 'flex',
+                whiteSpace: 'nowrap',
+                animation: 'scrollBanner 24s linear infinite',
+                willChange: 'transform',
+            }}>
+                {items.map((text, i) => (
+                    <span
+                        key={i}
+                        style={{
+                            display: 'inline-block',
+                            color: 'white',
+                            fontWeight: 700,
+                            fontSize: '13px',
+                            letterSpacing: '0.4px',
+                            padding: '0 28px',
+                            flexShrink: 0,
+                        }}
+                    >
+                        {text}
+                        <span style={{ margin: '0 20px', opacity: 0.6, fontSize: '10px', verticalAlign: 'middle' }}>✦</span>
                     </span>
                 ))}
             </div>
 
             <style>{`
-                .scrolling-banner-wrapper {
-                    width: 100%;
-                    overflow: hidden;
-                    position: relative;
-                    z-index: 50;
-                    padding: 8px 0;
-                }
-
-                .scrolling-banner-track {
-                    display: inline-flex;
-                    white-space: nowrap;
-                    animation: scrollBannerLoop 20s linear infinite;
-                    will-change: transform;
-                }
-
-                .scrolling-banner-item {
-                    display: inline-block;
-                    color: white;
-                    font-weight: 700;
-                    font-size: 14px;
-                    letter-spacing: 0.5px;
-                    padding: 0 40px;
-                }
-
-                .scrolling-banner-separator {
-                    display: inline-block;
-                    margin: 0 24px;
-                    opacity: 0.7;
-                    font-size: 10px;
-                    vertical-align: middle;
-                }
-
-                @keyframes scrollBannerLoop {
-                    0% {
-                        transform: translateX(0);
-                    }
-                    100% {
-                        transform: translateX(-50%);
-                    }
-                }
-
-                /* On smaller screens, slightly smaller text */
-                @media (max-width: 640px) {
-                    .scrolling-banner-item {
-                        font-size: 12px;
-                        padding: 0 24px;
-                    }
-                    .scrolling-banner-separator {
-                        margin: 0 16px;
-                    }
+                @keyframes scrollBanner {
+                    0%   { transform: translateX(0); }
+                    100% { transform: translateX(-50%); }
                 }
             `}</style>
         </div>

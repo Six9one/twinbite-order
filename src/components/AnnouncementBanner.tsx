@@ -1,7 +1,7 @@
 import { useStoreStatus } from '@/hooks/useSiteSettings';
 import { X, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 export function AnnouncementBanner() {
     const { status, isStoreClosed, closedMessage } = useStoreStatus();
@@ -12,97 +12,87 @@ export function AnnouncementBanner() {
         setDismissed(false);
     }, [status.bannerMessage]);
 
-    // Show closed overlay if store is closed
-    if (isStoreClosed && !dismissed) {
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                <div className="bg-red-600 text-white rounded-2xl shadow-2xl max-w-lg w-full p-8 relative animate-in zoom-in-95 duration-300">
-                    {/* Close button */}
-                    <button
-                        onClick={() => setDismissed(true)}
-                        className="absolute top-4 right-4 hover:bg-white/20 p-2 rounded-full transition-colors"
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
+    // Track visit when banner is shown
+    useEffect(() => {
+        const shouldShow = (isStoreClosed || (status.showBanner && !!status.bannerMessage));
+        if (!shouldShow || dismissed) return;
 
-                    {/* Icon */}
-                    <div className="flex justify-center mb-6">
-                        <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
-                            <AlertTriangle className="w-10 h-10" />
-                        </div>
+        // Fire-and-forget: increment visitor counter in site_settings
+        supabase
+            .from('site_settings')
+            .select('key, value')
+            .eq('key', 'vacation_visitors')
+            .maybeSingle()
+            .then(({ data }) => {
+                const current = parseInt(data?.value ?? '0', 10) || 0;
+                supabase
+                    .from('site_settings')
+                    .upsert({ key: 'vacation_visitors', value: String(current + 1) }, { onConflict: 'key' })
+                    .then(() => {});
+            });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isStoreClosed, status.showBanner, status.bannerMessage]);
+
+    const shouldShow = isStoreClosed || (status.showBanner && !!status.bannerMessage);
+    if (!shouldShow || dismissed) return null;
+
+    const isClosedOverlay = isStoreClosed;
+    const bannerType = status.bannerType;
+
+    const bgColor = isClosedOverlay ? 'bg-red-600' :
+        bannerType === 'error' ? 'bg-red-600' :
+        bannerType === 'warning' ? 'bg-red-600' :
+        'bg-blue-600';
+
+    const Icon = isClosedOverlay ? AlertTriangle :
+        bannerType === 'error' ? AlertCircle :
+        bannerType === 'warning' ? AlertTriangle :
+        Info;
+
+    const message = isClosedOverlay ? closedMessage : status.bannerMessage;
+
+    return (
+        <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+        >
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/75 backdrop-blur-[6px]"
+                onClick={() => setDismissed(true)}
+            />
+
+            {/* Card */}
+            <div
+                className={`${bgColor} relative z-10 rounded-3xl shadow-2xl w-full max-w-sm p-7 text-white text-center`}
+                style={{ maxHeight: '90vh', overflowY: 'auto' }}
+            >
+                {/* Close button */}
+                <button
+                    onClick={() => setDismissed(true)}
+                    className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+                >
+                    <X className="w-4 h-4" />
+                </button>
+
+                {/* Icon */}
+                <div className="flex justify-center mb-5">
+                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                        <Icon className="w-8 h-8" />
                     </div>
-
-                    {/* Message */}
-                    <p className="text-2xl font-bold text-center mb-6">{closedMessage}</p>
-
-                    {/* Close button */}
-                    <Button
-                        onClick={() => setDismissed(true)}
-                        variant="outline"
-                        className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20"
-                    >
-                        J'ai compris
-                    </Button>
                 </div>
+
+                {/* Message */}
+                <p className="text-xl font-bold leading-snug mb-6 whitespace-pre-line">{message}</p>
+
+                {/* Button */}
+                <button
+                    onClick={() => setDismissed(true)}
+                    className="w-full h-12 rounded-2xl bg-white/15 border border-white/30 text-white font-bold hover:bg-white/25 transition-colors"
+                >
+                    J'ai compris
+                </button>
             </div>
-        );
-    }
-
-    // Show custom banner as big centered modal if enabled
-    if (status.showBanner && status.bannerMessage && !dismissed) {
-        const bgColor =
-            status.bannerType === 'error' ? 'bg-red-600' :
-                status.bannerType === 'warning' ? 'bg-yellow-500' :
-                    'bg-blue-600';
-
-        const textColor = status.bannerType === 'warning' ? 'text-black' : 'text-white';
-        const buttonBg = status.bannerType === 'warning' ? 'bg-black/10 border-black/30 text-black hover:bg-black/20' : 'bg-white/10 border-white/30 text-white hover:bg-white/20';
-
-        const Icon =
-            status.bannerType === 'error' ? AlertCircle :
-                status.bannerType === 'warning' ? AlertTriangle :
-                    Info;
-
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                <div className={`${bgColor} ${textColor} rounded-2xl shadow-2xl max-w-lg w-full p-8 relative animate-in zoom-in-95 duration-300`}>
-                    {/* Close button */}
-                    <button
-                        onClick={() => setDismissed(true)}
-                        className={`absolute top-4 right-4 hover:bg-white/20 p-2 rounded-full transition-colors ${textColor}`}
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
-
-                    {/* Icon */}
-                    <div className="flex justify-center mb-6">
-                        <div className={`w-20 h-20 ${status.bannerType === 'warning' ? 'bg-black/10' : 'bg-white/20'} rounded-full flex items-center justify-center`}>
-                            <Icon className="w-10 h-10" />
-                        </div>
-                    </div>
-
-                    {/* Title */}
-                    <h2 className="text-xl font-bold text-center mb-4">
-                        {status.bannerType === 'error' ? '⚠️ Annonce Importante' :
-                            status.bannerType === 'warning' ? '📢 Information' :
-                                '📣 Annonce'}
-                    </h2>
-
-                    {/* Message */}
-                    <p className="text-lg text-center mb-6 whitespace-pre-line">{status.bannerMessage}</p>
-
-                    {/* Close button */}
-                    <Button
-                        onClick={() => setDismissed(true)}
-                        variant="outline"
-                        className={`w-full ${buttonBg}`}
-                    >
-                        J'ai compris
-                    </Button>
-                </div>
-            </div>
-        );
-    }
-
-    return null;
+        </div>
+    );
 }
