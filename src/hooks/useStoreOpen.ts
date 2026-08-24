@@ -63,6 +63,7 @@ const windowsFor = (row: OpeningHourRow | undefined): [number, number][] => {
 
 export function useStoreOpen(): StoreOpenState {
   const [rows, setRows] = useState<OpeningHourRow[] | null>(null);
+  const [tempClosed, setTempClosed] = useState<{ isClosed: boolean; message: string } | null>(null);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -71,6 +72,23 @@ export function useStoreOpen(): StoreOpenState {
       .select('day_of_week, is_open, open_time, close_time, open_time_evening, close_time_evening')
       .order('day_of_week')
       .then(({ data }) => setRows((data as unknown as OpeningHourRow[]) ?? []));
+
+    supabase
+      .from('site_settings' as any)
+      .select('key, value')
+      .in('key', ['store_is_open', 'store_is_temp_closed', 'store_temp_closed_message'])
+      .then(({ data }) => {
+        if (data) {
+          const isTempClosed = data.find((d: any) => d.key === 'store_is_temp_closed')?.value === 'true';
+          const isOpen = data.find((d: any) => d.key === 'store_is_open')?.value !== 'false';
+          const msg = data.find((d: any) => d.key === 'store_temp_closed_message')?.value || '';
+          if (isTempClosed || !isOpen) {
+            setTempClosed({ isClosed: true, message: msg });
+          } else {
+            setTempClosed({ isClosed: false, message: '' });
+          }
+        }
+      });
   }, []);
 
   // Re-evaluate every minute so the pill flips over on its own without a reload.
@@ -78,6 +96,10 @@ export function useStoreOpen(): StoreOpenState {
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
+
+  if (tempClosed?.isClosed) {
+    return { isOpen: false, label: 'ouvre samedi à 17h30', loading: false };
+  }
 
   if (rows === null) return { isOpen: null, label: '', loading: true };
 
