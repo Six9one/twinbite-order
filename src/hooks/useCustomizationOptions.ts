@@ -27,7 +27,6 @@ function makeOptionHook(table: string) {
       const { data, error } = await supabase
         .from(table as any)
         .select('*')
-        .eq('is_active', true)
         .order('display_order', { ascending: true });
       if (error) throw error;
       return (data as CustomizationOption[]).map(opt => ({

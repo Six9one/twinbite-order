@@ -77,6 +77,10 @@ const getMeatEmoji = (name: string) => {
   return '🥩';
 };
 
+const isMeatOutOfStock = (meat: { name: string; is_active?: boolean }) => {
+  return meat.is_active === false || meat.name.toLowerCase().includes('cordon');
+};
+
 function OptionCard({
   name,
   imageUrl,
@@ -84,6 +88,7 @@ function OptionCard({
   isSelected,
   isDefault,
   isDisabled,
+  isUnavailable,
   price,
   extraInfo,
   onClick,
@@ -94,15 +99,16 @@ function OptionCard({
   isSelected: boolean;
   isDefault?: boolean;
   isDisabled?: boolean;
+  isUnavailable?: boolean;
   price?: number;
   extraInfo?: string;
   onClick: () => void;
 }) {
   return (
     <Card
-      className={`cursor-pointer transition-all overflow-hidden ${
+      className={`cursor-pointer transition-all overflow-hidden relative ${
         isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
-      } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+      } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''} ${isUnavailable ? 'grayscale' : ''}`}
       onClick={isDisabled ? undefined : onClick}
     >
       {/* Image or emoji - compact container so items fit on screen without scrolling */}
@@ -111,6 +117,13 @@ function OptionCard({
           <img src={imageUrl} alt={name} className="max-h-full max-w-full object-contain transition-transform hover:scale-105" />
         ) : (
           <span className="text-3xl">{emoji}</span>
+        )}
+        {isUnavailable && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/35 backdrop-blur-[0.5px]">
+            <span className="bg-red-600/95 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-md uppercase tracking-wider">
+              Rupture
+            </span>
+          </div>
         )}
         {isSelected && (
           <div className={`absolute top-1 right-1 rounded-full w-5 h-5 flex items-center justify-center shadow-sm ${
@@ -125,7 +138,11 @@ function OptionCard({
         {price !== undefined && price > 0 && (
           <p className="text-xs text-primary font-semibold">+{price.toFixed(2)}€</p>
         )}
-        {extraInfo && <p className="text-xs text-muted-foreground">{extraInfo}</p>}
+        {extraInfo && (
+          <p className={`text-xs ${isUnavailable ? 'text-red-500 font-bold' : 'text-muted-foreground'}`}>
+            {extraInfo}
+          </p>
+        )}
       </div>
     </Card>
   );
@@ -191,8 +208,8 @@ export function TacosWizard({ onClose, initialSize, initialMeatNames, initialSau
   const { data: dbSauces } = useSauceOptions();
 
   const allMeats = (dbMeats && dbMeats.length > 0)
-    ? dbMeats.map(m => ({ id: m.id, name: m.name, price: Number(m.price), image_url: m.image_url }))
-    : staticMeatOptions.map(m => ({ ...m, image_url: null }));
+    ? dbMeats.map(m => ({ id: m.id, name: m.name, price: Number(m.price), image_url: m.image_url, is_active: m.is_active !== false }))
+    : staticMeatOptions.map(m => ({ ...m, image_url: null, is_active: !m.name.toLowerCase().includes('cordon') }));
 
   const meatOptions = allMeats.filter(m =>
     allowedMeatNames.some(allowed =>
@@ -218,7 +235,8 @@ export function TacosWizard({ onClose, initialSize, initialMeatNames, initialSau
         .map(o => o.id);
 
     if (initialMeatNames?.length) {
-      const matched = matchByName(initialMeatNames, meatOptions);
+      const availableOptions = meatOptions.filter(m => !isMeatOutOfStock(m));
+      const matched = matchByName(initialMeatNames, availableOptions);
       if (matched.length) setSelectedMeats(matched);
     }
     if (initialSauceNames?.length) {
@@ -235,6 +253,15 @@ export function TacosWizard({ onClose, initialSize, initialMeatNames, initialSau
 
   const toggleMeat = (meatId: string) => {
     autoSyncPreset.current = false;
+    const meat = meatOptions.find(m => m.id === meatId);
+    if (meat && isMeatOutOfStock(meat)) {
+      toast({
+        title: 'Rupture de stock',
+        description: `${meat.name} est actuellement en rupture de stock.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     if (selectedMeats.includes(meatId)) {
       setSelectedMeats(selectedMeats.filter(m => m !== meatId));
     } else if (selectedMeats.length < maxMeats) {
@@ -376,17 +403,22 @@ export function TacosWizard({ onClose, initialSize, initialMeatNames, initialSau
               <Badge>{selectedMeats.length}/{maxMeats}</Badge>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {meatOptions.map((meat) => (
-                <OptionCard
-                  key={meat.id}
-                  name={meat.name}
-                  emoji={getMeatEmoji(meat.name)}
-                  imageUrl={meat.image_url}
-                  isSelected={selectedMeats.includes(meat.id)}
-                  isDisabled={selectedMeats.length >= maxMeats && !selectedMeats.includes(meat.id)}
-                  onClick={() => toggleMeat(meat.id)}
-                />
-              ))}
+              {meatOptions.map((meat) => {
+                const outOfStock = isMeatOutOfStock(meat);
+                return (
+                  <OptionCard
+                    key={meat.id}
+                    name={meat.name}
+                    emoji={getMeatEmoji(meat.name)}
+                    imageUrl={meat.image_url}
+                    isSelected={selectedMeats.includes(meat.id)}
+                    isDisabled={outOfStock || (selectedMeats.length >= maxMeats && !selectedMeats.includes(meat.id))}
+                    isUnavailable={outOfStock}
+                    extraInfo={outOfStock ? 'Rupture de stock' : undefined}
+                    onClick={() => toggleMeat(meat.id)}
+                  />
+                );
+              })}
             </div>
           </div>
         );
