@@ -852,7 +852,8 @@ function PizzaPanel({
 // ── Tacos / Sandwich / TexMex / Unified panel ─────────────────────────────────
 function CustomizablePanel({ categorySlug, title, onAdd }: { categorySlug:string; title:string; onAdd:(item:any,custom:any,price:number)=>void }) {
   const { data: products = [] } = useProductsByCategory(categorySlug);
-  const { data: meats   = [] } = useMeatOptions();
+  const { data: rawMeats = [] } = useMeatOptions();
+  const meats = rawMeats.filter((m: any) => m.is_active !== false && !m.name.toLowerCase().includes('cordon'));
   const { data: sauces  = [] } = useSauceOptions();
   const { data: supps   = [] } = useSupplementOptions();
 
@@ -1047,7 +1048,7 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
   const { data: dbGarn = [] }    = useGarnitureOptions();
   const { data: dbCrud = [] }    = useCruditesOptions();
 
-  const meats  = dbMeats.map((m:any) => ({ id:m.id, name:m.name, img:m.image_url, price:Number(m.price)||0 }));
+  const meats  = dbMeats.map((m:any) => ({ id:m.id, name:m.name, img:m.image_url, price:Number(m.price)||0, is_active: m.is_active !== false }));
   const sauces = dbSauces.map((s:any) => ({ id:s.id, name:s.name, img:s.image_url }));
   const supps  = dbSupps.map((s:any) => ({ id:s.id, name:s.name, img:s.image_url, price:Number(s.price)||0 }));
   const garnSrc = (isCrudite ? dbCrud : dbGarn).map((g:any) => ({ id:g.id, name:g.name, img:g.image_url, price:Number(g.price)||0 }));
@@ -1116,12 +1117,15 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
             {/* Meats */}
             <SectionTitle hint={`max ${maxMeats} — détermine la taille`}>Viandes</SectionTitle>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:6, marginBottom:12 }}>
-              {meats.map(m => (
-                <OptTile key={m.id} name={m.name} img={m.img} emoji="🥩"
-                  selected={selMeats.includes(m.id)}
-                  disabled={selMeats.length >= maxMeats && !selMeats.includes(m.id)}
-                  onClick={()=>toggle(m.id, selMeats, setMeats, maxMeats)} />
-              ))}
+              {meats.map(m => {
+                const outOfStock = m.is_active === false || m.name.toLowerCase().includes('cordon');
+                return (
+                  <OptTile key={m.id} name={outOfStock ? `${m.name} (RUPTURE)` : m.name} img={m.img} emoji="🥩"
+                    selected={selMeats.includes(m.id)}
+                    disabled={outOfStock || (selMeats.length >= maxMeats && !selMeats.includes(m.id))}
+                    onClick={()=>toggle(m.id, selMeats, setMeats, maxMeats)} />
+                );
+              })}
             </div>
 
             {/* Garnitures */}
