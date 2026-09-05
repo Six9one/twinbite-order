@@ -19,10 +19,6 @@ import { UnifiedProductWizard } from '@/components/wizards/UnifiedProductWizard'
 import { useStoreOpen } from '@/hooks/useStoreOpen';
 import { AnnouncementBanner } from '@/components/AnnouncementBanner';
 import { ScrollingBanner } from '@/components/ScrollingBanner';
-import { useStoreStatus } from '@/hooks/useSiteSettings';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-
 function MainApp() {
   const { orderType, setOrderType, getItemCount } = useOrder();
   const [searchParams] = useSearchParams();
@@ -35,11 +31,8 @@ function MainApp() {
   const [showOrderTypePopup, setShowOrderTypePopup] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [bestSellerModal, setBestSellerModal] = useState<BestSellerPreset | null>(null);
-  const [showClosedModal, setShowClosedModal] = useState(false);
-  const { status, isStoreClosed } = useStoreStatus();
+  const [pendingBestSeller, setPendingBestSeller] = useState<BestSellerPreset | null>(null);
   const { isOpen, label: hoursLabel } = useStoreOpen();
-
-  const storeActuallyClosed = !isOpen || isStoreClosed;
 
   useEffect(() => {
     if (searchParams.get('checkout') === '1' || searchParams.get('retry') === '1' || searchParams.get('cancel') === '1') {
@@ -70,10 +63,6 @@ function MainApp() {
   }, []);
 
   const handleSelectCategory = (categoryId?: string) => {
-    if (storeActuallyClosed) {
-      setShowClosedModal(true);
-      return;
-    }
     if (categoryId) {
       setActiveCategory(categoryId);
     }
@@ -85,10 +74,6 @@ function MainApp() {
   };
 
   const handleStartOrder = (type?: OrderType) => {
-    if (storeActuallyClosed) {
-      setShowClosedModal(true);
-      return;
-    }
     if (type) {
       setOrderType(type);
       setView('menu');
@@ -102,11 +87,6 @@ function MainApp() {
   };
 
   const handleOrderTypePick = (type: OrderType) => {
-    if (storeActuallyClosed) {
-      setShowOrderTypePopup(false);
-      setShowClosedModal(true);
-      return;
-    }
     setOrderType(type);
     setShowOrderTypePopup(false);
     if (pendingBestSeller) {
@@ -118,10 +98,6 @@ function MainApp() {
   };
 
   const handleBestSellerSelect = (preset: BestSellerPreset) => {
-    if (storeActuallyClosed) {
-      setShowClosedModal(true);
-      return;
-    }
     if (!orderType) {
       setPendingBestSeller(preset);
       setShowOrderTypePopup(true);
@@ -205,36 +181,6 @@ function MainApp() {
         </Link>
       )}
 
-      {/* Vacation / Closed Modal when attempting to order */}
-      <Dialog open={showClosedModal} onOpenChange={setShowClosedModal}>
-        <DialogContent className="max-w-sm rounded-[2rem] bg-gradient-to-b from-stone-900 via-stone-850 to-stone-900 border border-amber-500/30 text-white p-6 shadow-2xl">
-          <DialogHeader className="text-center space-y-3">
-            <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mx-auto text-3xl animate-bounce">
-              🏖️
-            </div>
-            <DialogTitle className="text-xl font-black text-white">
-              Fermé pour vacances
-            </DialogTitle>
-            <DialogDescription className="text-stone-300 text-sm leading-relaxed">
-              Chers clients, notre restaurant est actuellement <span className="text-amber-400 font-bold">fermé du lundi au vendredi</span> pour congés.
-              <br /><br />
-              🍕 Nous aurons le plaisir de vous retrouver dès ce <strong className="text-white text-base underline decoration-amber-400">Samedi à 17h30</strong> !
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="mt-4 pt-4 border-t border-white/10 text-center space-y-3">
-            <p className="text-xs text-amber-200/90 italic">
-              Merci pour votre fidélité et votre compréhension ❤️
-            </p>
-            <Button
-              onClick={() => setShowClosedModal(false)}
-              className="w-full bg-amber-500 hover:bg-amber-600 text-stone-950 font-black rounded-xl h-11"
-            >
-              J'ai compris
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <Suspense fallback={null}>
         <NewCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />
@@ -320,32 +266,30 @@ function MainApp() {
             <p className="text-[12px] text-white/60 font-medium mt-1 tracking-wider uppercase">Grand-Couronne</p>
 
             {/* Store Status */}
-            <div
-              className={`mt-3 flex items-center gap-2 rounded-full pl-2.5 pr-3.5 py-1.5 backdrop-blur-md border ${
-                !storeActuallyClosed ? 'bg-emerald-500/15 border-emerald-300/30' : 'bg-red-500/20 border-red-300/40'
-              }`}
-            >
-              <span className="relative flex w-2 h-2">
-                {!storeActuallyClosed && <span className="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-75 animate-ping" />}
-                <span className={`relative inline-flex w-2 h-2 rounded-full ${!storeActuallyClosed ? 'bg-emerald-400' : 'bg-red-400'}`} />
-              </span>
-              <span className="text-[12px] font-bold text-white leading-none">
-                {!storeActuallyClosed ? 'Ouvert' : 'Fermé pour vacances'}
-                {storeActuallyClosed && <span className="font-medium text-amber-300"> · Réouverture samedi à 17h30</span>}
-              </span>
-            </div>
+            {isOpen !== null && (
+              <div
+                className={`mt-3 flex items-center gap-2 rounded-full pl-2.5 pr-3.5 py-1.5 backdrop-blur-md border ${
+                  isOpen ? 'bg-emerald-500/15 border-emerald-300/30' : 'bg-red-500/15 border-red-300/30'
+                }`}
+              >
+                <span className="relative flex w-2 h-2">
+                  {isOpen && <span className="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-75 animate-ping" />}
+                  <span className={`relative inline-flex w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                </span>
+                <span className="text-[12px] font-bold text-white leading-none">
+                  {isOpen ? 'Ouvert' : 'Fermé'}
+                  {hoursLabel && <span className="font-medium text-white/70"> · {hoursLabel}</span>}
+                </span>
+              </div>
+            )}
 
             {/* Primary Call to Action */}
             <button
               onClick={() => handleStartOrder()}
-              className={`mt-4 w-full max-w-[300px] flex items-center justify-center gap-2 h-[52px] rounded-2xl font-black text-[15px] tracking-tight shadow-[0_8px_24px_rgba(0,0,0,0.25)] transition-all active:scale-[0.98] ${
-                storeActuallyClosed
-                  ? 'bg-amber-500/90 hover:bg-amber-500 text-stone-950 border border-amber-300/40'
-                  : 'bg-[#F5B041] hover:bg-[#e8a232] text-[#3B2216]'
-              }`}
+              className="mt-4 w-full max-w-[300px] flex items-center justify-center gap-2 h-[52px] rounded-2xl bg-[#F5B041] hover:bg-[#e8a232] active:scale-[0.98] text-[#3B2216] font-black text-[16px] tracking-tight shadow-[0_8px_24px_rgba(0,0,0,0.25)] transition-all"
             >
               <ShoppingBag className="w-[18px] h-[18px]" />
-              {storeActuallyClosed ? 'Fermé pour vacances (Infos)' : (getItemCount() > 0 ? 'Continuer ma commande' : 'Commander')}
+              {getItemCount() > 0 ? 'Continuer ma commande' : 'Commander'}
               <ArrowRight className="w-[18px] h-[18px]" />
             </button>
 
@@ -368,26 +312,6 @@ function MainApp() {
             </div>
           </div>
         </div>
-
-        {/* Dedicated Vacation Banner Card */}
-        {storeActuallyClosed && (
-          <div className="rounded-[1.75rem] bg-gradient-to-r from-[#2c1313] via-[#3d1818] to-[#2c1313] border-2 border-amber-400/40 p-4 text-white text-center shadow-xl space-y-2 animate-in fade-in slide-in-from-top-3 duration-300">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 text-xs font-black uppercase tracking-wider">
-              🏖️ Fermeture pour vacances
-            </div>
-            <p className="font-extrabold text-sm text-stone-100">
-              Le restaurant est actuellement fermé du <span className="text-amber-300">lundi au vendredi</span>.
-            </p>
-            <div className="bg-amber-500/15 border border-amber-500/30 rounded-xl py-2 px-3">
-              <p className="font-black text-sm text-amber-300">
-                🍕 Réouverture dès SAMEDI à 17H30 !
-              </p>
-            </div>
-            <p className="text-[11px] text-stone-300 italic pt-1">
-              Merci pour votre fidélité et votre compréhension ❤️
-            </p>
-          </div>
-        )}
 
         {/* Top Ventes Carousel */}
         <div className="pt-2 pb-1">

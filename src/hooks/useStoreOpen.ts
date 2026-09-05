@@ -98,7 +98,7 @@ export function useStoreOpen(): StoreOpenState {
   }, []);
 
   if (tempClosed?.isClosed) {
-    return { isOpen: false, label: 'ouvre samedi à 17h30', loading: false };
+    return { isOpen: false, label: tempClosed.message || 'Fermé temporairement', loading: false };
   }
 
   if (rows === null) return { isOpen: null, label: '', loading: true };
