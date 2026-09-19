@@ -37,6 +37,7 @@ const defaultSettings: Record<string, string> = {
     'min_order_delivery': '12',
     'delivery_time': '20-35 min',
     'free_delivery_min': '15',
+    'store_delivery_available': 'false',
 
     // Messages
     'closed_message': 'Nous sommes actuellement fermés. Revenez pendant nos heures d\'ouverture!',
@@ -239,6 +240,24 @@ export function SiteContentManager() {
                 {/* Delivery Tab */}
                 <TabsContent value="delivery" className="space-y-4">
                     <Card className="p-4 space-y-4">
+                        <div className="p-4 rounded-xl border flex items-center justify-between bg-stone-50 dark:bg-stone-900">
+                            <div>
+                                <Label className="text-base font-bold">Disponibilité de la livraison</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    {settings.store_delivery_available === 'false'
+                                        ? '🔴 Livraison désactivée (Pas de livreur disponible - commandes bloquées)'
+                                        : '🟢 Livraison disponible et activée sur le site'}
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant={settings.store_delivery_available === 'false' ? 'outline' : 'destructive'}
+                                onClick={() => updateSetting('store_delivery_available', settings.store_delivery_available === 'false' ? 'true' : 'false')}
+                            >
+                                {settings.store_delivery_available === 'false' ? '🟢 Réactiver la livraison' : '🔴 Désactiver la livraison'}
+                            </Button>
+                        </div>
+
                         <h3 className="font-semibold">Paramètres de livraison</h3>
 
                         <div className="grid md:grid-cols-3 gap-4">

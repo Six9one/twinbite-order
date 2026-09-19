@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +40,8 @@ import { TenantManager } from '@/components/admin/TenantManager';
 import TelegramWhatsAppManager from '@/components/admin/TelegramWhatsAppManager';
 import { CoursesCatalogManager } from '@/components/admin/CoursesCatalogManager';
 import { ClientIPMap } from '@/components/admin/ClientIPMap';
+import { ClientsManager } from '@/components/admin/ClientsManager';
+import { EnhancedLoyaltyManager } from '@/components/admin/EnhancedLoyaltyManager';
 import {
   getBusinessDate,
   formatBusinessDateDisplay,
@@ -57,7 +59,7 @@ import {
 } from 'lucide-react';
 const logoImage = '/favicon.png';
 
-type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'salades' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'courses-catalog' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture' | 'analytics-web' | 'tenants' | 'integrations';
+type AdminTab = 'dashboard' | 'stats' | 'orders' | 'order-history' | 'ventes' | 'zones' | 'pizzas' | 'sandwiches' | 'soufflet' | 'makloub' | 'mlawi' | 'tacos' | 'panini' | 'croques' | 'texmex' | 'frites' | 'milkshakes' | 'crepes' | 'gaufres' | 'salades' | 'crudites' | 'settings' | 'meats' | 'sauces' | 'garnitures' | 'supplements' | 'drinks' | 'desserts' | 'printer' | 'tickets' | 'ticket-templates' | 'promotions' | 'hours' | 'payments' | 'carousel' | 'reviews' | 'content' | 'store-status' | 'category-images' | 'wizard-images' | 'courses-catalog' | 'prices' | 'haccp' | 'availability' | 'ai-receptionist' | 'facture' | 'analytics-web' | 'tenants' | 'integrations' | 'clients' | 'loyalty';
 
 
 
@@ -209,7 +211,21 @@ export default function AdminDashboard() {
     ticketSettingsRef.current = ticketSettings;
   }, [ticketSettings]);
 
-  const [activeTab, setActiveTab] = useState<AdminTab>('pizzas');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab') as AdminTab;
+  const [activeTab, setActiveTabState] = useState<AdminTab>(urlTab || 'clients');
+
+  const setActiveTab = useCallback((tab: AdminTab) => {
+    setActiveTabState(tab);
+    setSearchParams({ tab });
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab') as AdminTab;
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTabState(tabFromUrl);
+    }
+  }, [searchParams]);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState(() => getBusinessDate(new Date(), 4));
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -546,6 +562,22 @@ export default function AdminDashboard() {
                 {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
               </Button>
 
+              {/* Base Clients button */}
+              <Button
+                variant={activeTab === 'clients' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab('clients')}
+                className={`gap-1.5 px-3 font-black shadow-sm ${
+                  activeTab === 'clients'
+                    ? 'bg-amber-500 text-black hover:bg-amber-600'
+                    : 'border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'
+                }`}
+                title="Consulter la base de données clients et paniers"
+              >
+                <Users className="w-4 h-4" />
+                <span className="hidden md:inline">Base Clients & Paniers</span>
+              </Button>
+
               {/* Desktop only buttons */}
               <Link to="/" target="_blank" className="hidden md:block">
                 <Button variant="outline" size="sm" className="gap-2 bg-emerald-500 text-white hover:bg-emerald-600">
@@ -866,6 +898,10 @@ export default function AdminDashboard() {
 
           {/* Ticket Manager */}
           {activeTab === 'tickets' && <TicketManager />}
+
+          {/* Base de Données Clients & CRM */}
+          {activeTab === 'clients' && <ClientsManager />}
+          {activeTab === 'loyalty' && <EnhancedLoyaltyManager />}
 
           {/* New Sections */}
           {activeTab === 'promotions' && <PromotionsManager />}

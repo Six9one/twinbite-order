@@ -853,7 +853,7 @@ function PizzaPanel({
 function CustomizablePanel({ categorySlug, title, onAdd }: { categorySlug:string; title:string; onAdd:(item:any,custom:any,price:number)=>void }) {
   const { data: products = [] } = useProductsByCategory(categorySlug);
   const { data: rawMeats = [] } = useMeatOptions();
-  const meats = rawMeats.filter((m: any) => m.is_active !== false && !m.name.toLowerCase().includes('cordon'));
+  const meats = rawMeats.filter((m: any) => m.is_active !== false);
   const { data: sauces  = [] } = useSauceOptions();
   const { data: supps   = [] } = useSupplementOptions();
 
@@ -1118,7 +1118,7 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
             <SectionTitle hint={`max ${maxMeats} — détermine la taille`}>Viandes</SectionTitle>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:6, marginBottom:12 }}>
               {meats.map(m => {
-                const outOfStock = m.is_active === false || m.name.toLowerCase().includes('cordon');
+                const outOfStock = m.is_active === false;
                 return (
                   <OptTile key={m.id} name={outOfStock ? `${m.name} (RUPTURE)` : m.name} img={m.img} emoji="🥩"
                     selected={selMeats.includes(m.id)}

@@ -1,6 +1,8 @@
 import { Truck, ShoppingBag, UtensilsCrossed } from 'lucide-react';
 import { OrderType } from '@/types/order';
 import { useOrder } from '@/context/OrderContext';
+import { useStoreStatus } from '@/hooks/useSiteSettings';
+import { toast } from 'sonner';
 
 const orderTypes = [
   {
@@ -29,8 +31,13 @@ interface OrderTypeSelectorProps {
 
 export function OrderTypeSelector({ onSelect }: OrderTypeSelectorProps) {
   const { orderType, setOrderType } = useOrder();
+  const { isDeliveryAvailable } = useStoreStatus();
 
   const handleSelect = (type: OrderType) => {
+    if (type === 'livraison' && !isDeliveryAvailable) {
+      toast.error("La livraison est actuellement indisponible (pas de livreur ce soir). Commandes uniquement à emporter ou sur place.");
+      return;
+    }
     setOrderType(type);
   };
 
@@ -55,20 +62,29 @@ export function OrderTypeSelector({ onSelect }: OrderTypeSelectorProps) {
         {orderTypes.map((option) => {
           const Icon = option.icon;
           const isSelected = orderType === option.type;
+          const isOptionDisabled = option.type === 'livraison' && !isDeliveryAvailable;
 
           return (
             <button
               key={option.type}
               onClick={() => handleSelect(option.type)}
-              className={`order-type-card ${isSelected ? 'selected' : ''}`}
+              className={`order-type-card ${isSelected ? 'selected' : ''} ${
+                isOptionDisabled ? 'opacity-50 cursor-not-allowed border-red-300 bg-stone-50' : ''
+              }`}
             >
               <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center transition-colors ${
-                isSelected ? 'bg-primary' : 'bg-muted'
+                isOptionDisabled
+                  ? 'bg-muted-foreground/20 text-muted-foreground'
+                  : isSelected ? 'bg-primary' : 'bg-muted'
               }`}>
-                <Icon className={`w-8 h-8 ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+                <Icon className={`w-8 h-8 ${isOptionDisabled ? 'text-muted-foreground' : isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
               </div>
-              <h3 className="font-display text-xl font-semibold mb-2">{option.label}</h3>
-              <p className="text-sm text-muted-foreground">{option.description}</p>
+              <h3 className={`font-display text-xl font-semibold mb-2 ${isOptionDisabled ? 'line-through text-stone-400' : ''}`}>
+                {option.label}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {isOptionDisabled ? '🚫 Indisponible ce soir (Pas de livreur)' : option.description}
+              </p>
             </button>
           );
         })}

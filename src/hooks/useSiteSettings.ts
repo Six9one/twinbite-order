@@ -14,6 +14,7 @@ interface StoreStatus {
     scrollingBannerEnabled: boolean;
     scrollingBannerText: string;
     scrollingBannerColor: string;
+    isDeliveryAvailable: boolean;
 }
 
 interface SiteSettings {
@@ -47,6 +48,7 @@ const defaultStatus: StoreStatus = {
     scrollingBannerEnabled: false,
     scrollingBannerText: '',
     scrollingBannerColor: '#dc2626',
+    isDeliveryAvailable: false,
 };
 
 const defaultSettings: SiteSettings = {
@@ -96,7 +98,7 @@ export function useStoreStatus() {
             const { data } = await supabase
                 .from('site_settings' as any)
                 .select('*')
-                .like('key', 'store_%');
+                .or('key.like.store_%,key.eq.delivery_available');
 
             if (data) {
                 const settings = data as unknown as { key: string; value: string }[];
@@ -115,6 +117,7 @@ export function useStoreStatus() {
                     if (s.key === 'store_scrolling_banner_enabled') newStatus.scrollingBannerEnabled = s.value === 'true';
                     if (s.key === 'store_scrolling_banner_text') newStatus.scrollingBannerText = s.value;
                     if (s.key === 'store_scrolling_banner_color') newStatus.scrollingBannerColor = s.value;
+                    if (s.key === 'store_delivery_available' || s.key === 'delivery_available') newStatus.isDeliveryAvailable = s.value === 'true';
                 });
 
                 setStatus({ ...defaultStatus, ...newStatus });
@@ -150,6 +153,7 @@ export function useStoreStatus() {
         loading,
         isStoreClosed: isStoreClosed(),
         closedMessage: getClosedMessage(),
+        isDeliveryAvailable: status.isDeliveryAvailable ?? false,
         refetch: fetchStatus,
     };
 }

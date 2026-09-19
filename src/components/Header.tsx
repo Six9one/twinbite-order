@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 const logoImage = '/favicon.png';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useTenantSettings } from '@/hooks/useTenantSettings';
+import { useStoreStatus } from '@/hooks/useSiteSettings';
+import { toast } from 'sonner';
 
 interface HeaderProps {
   onCartClick: () => void;
@@ -40,11 +42,8 @@ export function Header({
   onScheduleClick
 }: HeaderProps) {
   const { name, logoUrl } = useTenantSettings();
-  const {
-    getItemCount,
-    orderType,
-    setOrderType
-  } = useOrder();
+  const { orderType, setOrderType, getItemCount } = useOrder();
+  const { isDeliveryAvailable } = useStoreStatus();
   const itemCount = getItemCount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const prevItemCount = useRef(itemCount);
@@ -59,12 +58,20 @@ export function Header({
   }, [itemCount]);
 
   const handleOrderTypeChange = (type: OrderType) => {
+    if (type === 'livraison' && !isDeliveryAvailable) {
+      toast.error("La livraison est actuellement indisponible (pas de livreur ce soir). Commandes disponibles uniquement à emporter ou sur place.");
+      return;
+    }
     setOrderType(type);
     if (onOrderTypeSelect) {
       onOrderTypeSelect(type);
     }
   };
   const handleLivraisonClick = () => {
+    if (!isDeliveryAvailable) {
+      toast.error("La livraison est actuellement indisponible (pas de livreur ce soir). Commandes disponibles uniquement à emporter ou sur place.");
+      return;
+    }
     setOrderType('livraison');
     if (onOrderTypeSelect) {
       onOrderTypeSelect('livraison');
@@ -101,9 +108,15 @@ export function Header({
               Menu
             </Button>
 
-            <Button variant="ghost" onClick={handleLivraisonClick} className="gap-2 text-sm font-semibold hover:text-primary transition-colors">
+            <Button
+              variant="ghost"
+              onClick={handleLivraisonClick}
+              className={`gap-2 text-sm font-semibold transition-colors ${
+                !isDeliveryAvailable ? 'text-stone-400 line-through' : 'hover:text-primary'
+              }`}
+            >
               <Truck className="w-4 h-4" />
-              Livraison
+              Livraison {!isDeliveryAvailable && '(Fermé)'}
             </Button>
 
             <DropdownMenu>
@@ -116,14 +129,19 @@ export function Header({
               <DropdownMenuContent align="center" className="w-48 p-1">
                 {Object.entries(orderTypeConfig).map(([type, config]) => {
                   const Icon = config.icon;
+                  const isTypeDisabled = type === 'livraison' && !isDeliveryAvailable;
                   return (
                     <DropdownMenuItem
                       key={type}
                       onClick={() => handleOrderTypeChange(type as OrderType)}
-                      className="gap-2 cursor-pointer py-2 px-3 rounded-md focus:bg-primary/10 focus:text-primary"
+                      className={`gap-2 py-2 px-3 rounded-md ${
+                        isTypeDisabled
+                          ? 'opacity-50 cursor-not-allowed line-through text-stone-400'
+                          : 'cursor-pointer focus:bg-primary/10 focus:text-primary'
+                      }`}
                     >
                       <Icon className="w-4 h-4" />
-                      <span className="font-medium">{config.label}</span>
+                      <span className="font-medium">{config.label} {isTypeDisabled ? '(Indisponible)' : ''}</span>
                     </DropdownMenuItem>
                   );
                 })}
@@ -239,11 +257,15 @@ export function Header({
             <Button
               variant="outline"
               onClick={handleLivraisonClick}
-              className="w-full h-14 justify-between px-5 text-base font-semibold rounded-2xl border-muted-foreground/10 hover:bg-muted active:scale-[0.98] transition-transform"
+              className={`w-full h-14 justify-between px-5 text-base font-semibold rounded-2xl border-muted-foreground/10 active:scale-[0.98] transition-transform ${
+                !isDeliveryAvailable ? 'opacity-60 bg-stone-50' : 'hover:bg-muted'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <Truck className="w-6 h-6 text-primary" />
-                <span>Zone de Livraison</span>
+                <Truck className={`w-6 h-6 ${!isDeliveryAvailable ? 'text-stone-400' : 'text-primary'}`} />
+                <span className={!isDeliveryAvailable ? 'line-through text-stone-500' : ''}>
+                  Zone de Livraison {!isDeliveryAvailable && '(Indisponible)'}
+                </span>
               </div>
               <ChevronDown className="w-5 h-5 -rotate-90 opacity-40" />
             </Button>

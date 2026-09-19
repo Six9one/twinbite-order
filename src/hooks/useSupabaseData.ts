@@ -240,6 +240,18 @@ export function useCreateOrder() {
 
   return useMutation({
     mutationFn: async (order: Omit<Order, 'id' | 'created_at' | 'updated_at'>) => {
+      if (order.order_type === 'livraison') {
+        const { data: deliverySetting } = await supabase
+          .from('site_settings' as any)
+          .select('value')
+          .in('key', ['store_delivery_available', 'delivery_available']);
+
+        const isDeliveryDisabled = deliverySetting?.some((s: any) => s.value === 'false');
+        if (isDeliveryDisabled) {
+          throw new Error("La livraison est actuellement indisponible (pas de livreur en service). Veuillez choisir À emporter ou Sur place.");
+        }
+      }
+
       const { error } = await supabase
         .from('orders')
         .insert(order as any, { returning: 'minimal' } as any); // avoid SELECT to satisfy RLS policies

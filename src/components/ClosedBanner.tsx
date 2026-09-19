@@ -11,6 +11,7 @@ import { setHours, setMinutes, addDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ShoppingBag, Truck, UtensilsCrossed, CalendarClock } from 'lucide-react';
+import { useStoreStatus } from '@/hooks/useSiteSettings';
 
 interface OpeningHour {
   day_of_week: number;
@@ -71,6 +72,7 @@ interface ClosedBannerProps {
 
 export function ClosedBanner({ onScheduleConfirmed }: ClosedBannerProps) {
   const { setOrderType, setScheduledInfo } = useOrder();
+  const { isDeliveryAvailable } = useStoreStatus();
 
   // Start with closed overlay showing immediately while we check
   const [isClosed, setIsClosed] = useState(true);
@@ -395,19 +397,24 @@ export function ClosedBanner({ onScheduleConfirmed }: ClosedBannerProps) {
                   <div className="grid grid-cols-3 gap-2">
                     {orderOptions.map((opt) => {
                       const Icon = opt.icon;
+                      const isOptionDisabled = opt.type === 'livraison' && !isDeliveryAvailable;
                       return (
                         <button
                           key={opt.type}
-                          onClick={() => setSelectedOrderType(opt.type)}
+                          disabled={isOptionDisabled}
+                          onClick={() => !isOptionDisabled && setSelectedOrderType(opt.type)}
                           className={cn(
                             "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all",
-                            selectedOrderType === opt.type
-                              ? "border-purple-500 bg-purple-50"
-                              : "border-gray-200 hover:border-gray-300"
+                            isOptionDisabled
+                              ? "opacity-40 cursor-not-allowed bg-gray-100 border-gray-200"
+                              : selectedOrderType === opt.type
+                                ? "border-purple-500 bg-purple-50"
+                                : "border-gray-200 hover:border-gray-300"
                           )}
                         >
-                          <Icon className={cn("w-5 h-5", selectedOrderType === opt.type ? "text-purple-500" : "text-gray-400")} />
-                          <span className="text-xs font-medium">{opt.label}</span>
+                          <Icon className={cn("w-5 h-5", isOptionDisabled ? "text-gray-300" : selectedOrderType === opt.type ? "text-purple-500" : "text-gray-400")} />
+                          <span className={cn("text-xs font-medium", isOptionDisabled && "line-through text-gray-400")}>{opt.label}</span>
+                          {isOptionDisabled && <span className="text-[8px] text-red-500 font-bold">Fermé</span>}
                         </button>
                       );
                     })}

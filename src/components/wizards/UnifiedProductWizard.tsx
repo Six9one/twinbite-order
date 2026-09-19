@@ -183,7 +183,7 @@ function getOptionEmoji(name: string, map: Record<string, string>): string {
 }
 
 const isMeatOutOfStock = (meat: { name: string; is_active?: boolean }) => {
-  return meat.is_active === false || meat.name.toLowerCase().includes('cordon');
+  return meat.is_active === false;
 };
 
 function OptionCard({
@@ -287,7 +287,7 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
 
   const allMeats = dbMeats && dbMeats.length > 0
     ? dbMeats.map(m => ({ id: m.id, name: m.name, price: Number(m.price), image_url: m.image_url, is_active: m.is_active !== false }))
-    : staticMeatOptions.map(m => ({ ...m, image_url: null, is_active: !m.name.toLowerCase().includes('cordon') }));
+    : staticMeatOptions.map(m => ({ ...m, image_url: null, is_active: true }));
 
   const meatOptions = allMeats.filter(m =>
     allowedMeatNames.some(allowed => m.name.toLowerCase().includes(allowed.toLowerCase()))

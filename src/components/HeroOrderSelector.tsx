@@ -11,6 +11,8 @@ import { format, addDays, setHours, setMinutes, isSunday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'react-router-dom';
+import { useStoreStatus } from '@/hooks/useSiteSettings';
+import { toast } from 'sonner';
 
 interface HeroOrderSelectorProps {
   onSelect: () => void;
@@ -67,6 +69,7 @@ export function HeroOrderSelector({
     setScheduledInfo
   } = useOrder();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isDeliveryAvailable } = useStoreStatus();
 
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [selectedOrderType, setSelectedOrderType] = useState<OrderType>(null);
@@ -84,6 +87,10 @@ export function HeroOrderSelector({
   }, [searchParams, setSearchParams]);
 
   const handleSelect = (type: OrderType) => {
+    if (type === 'livraison' && !isDeliveryAvailable) {
+      toast.error("La livraison est actuellement indisponible (pas de livreur ce soir). Commandes disponibles uniquement à emporter ou sur place.");
+      return;
+    }
     setOrderType(type);
     setScheduledInfo({ isScheduled: false, scheduledFor: null });
     onSelect();
@@ -127,21 +134,36 @@ export function HeroOrderSelector({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-4 mb-5 sm:mb-6">
         {orderOptions.map(option => {
           const Icon = option.icon;
+          const isOptionDisabled = option.type === 'livraison' && !isDeliveryAvailable;
           return (
             <Card
               key={option.type}
-              className="p-5 sm:p-5 cursor-pointer transition-all duration-300 bg-background/95 hover:bg-primary/10 hover:scale-[1.02] active:scale-[0.97] active:bg-primary/20 border-2 border-transparent shadow-lg"
+              className={`p-5 sm:p-5 transition-all duration-300 border-2 shadow-lg ${
+                isOptionDisabled
+                  ? 'opacity-50 cursor-not-allowed bg-muted/60 border-stone-200'
+                  : 'cursor-pointer bg-background/95 hover:bg-primary/10 hover:scale-[1.02] active:scale-[0.97] active:bg-primary/20 border-transparent'
+              }`}
               onClick={() => handleSelect(option.type)}
             >
               <div className="flex items-center gap-5 sm:flex-col sm:text-center sm:gap-0">
-                <div className="w-16 h-16 sm:w-16 sm:h-16 sm:mx-auto rounded-full flex items-center justify-center sm:mb-4 transition-colors bg-primary flex-shrink-0 shadow-md">
+                <div className={`w-16 h-16 sm:w-16 sm:h-16 sm:mx-auto rounded-full flex items-center justify-center sm:mb-4 transition-colors flex-shrink-0 shadow-md ${
+                  isOptionDisabled ? 'bg-muted-foreground/30' : 'bg-primary'
+                }`}>
                   <Icon className="w-8 h-8 sm:w-8 sm:h-8 text-white" />
                 </div>
                 <div className="flex-1 sm:flex-none">
-                  <h3 className="font-display font-bold text-xl sm:text-xl mb-1 sm:mb-1">{option.label}</h3>
-                  <p className="text-base sm:text-sm text-muted-foreground mb-2 sm:mb-3">{option.description}</p>
-                  <span className="inline-block text-sm sm:text-xs font-semibold px-4 py-2 sm:px-3 sm:py-1.5 rounded-full bg-primary/10 text-primary whitespace-nowrap">
-                    🍕 {option.promo}
+                  <h3 className={`font-display font-bold text-xl sm:text-xl mb-1 sm:mb-1 ${isOptionDisabled ? 'line-through text-stone-500' : ''}`}>
+                    {option.label}
+                  </h3>
+                  <p className="text-base sm:text-sm text-muted-foreground mb-2 sm:mb-3">
+                    {isOptionDisabled ? 'Indisponible ce soir' : option.description}
+                  </p>
+                  <span className={`inline-block text-sm sm:text-xs font-semibold px-4 py-2 sm:px-3 sm:py-1.5 rounded-full whitespace-nowrap ${
+                    isOptionDisabled
+                      ? 'bg-red-100 text-red-600 font-bold'
+                      : 'bg-primary/10 text-primary'
+                  }`}>
+                    {isOptionDisabled ? '🚫 Pas de livreur disponible' : `🍕 ${option.promo}`}
                   </span>
                 </div>
               </div>
@@ -182,19 +204,31 @@ export function HeroOrderSelector({
               <div className="grid grid-cols-3 gap-2">
                 {orderOptions.map(option => {
                   const Icon = option.icon;
+                  const isOptionDisabled = option.type === 'livraison' && !isDeliveryAvailable;
                   return (
                     <Card
                       key={option.type}
                       className={cn(
-                        "p-3 cursor-pointer transition-all text-center",
-                        selectedOrderType === option.type
-                          ? "ring-2 ring-purple-500 bg-purple-50"
-                          : "hover:bg-muted"
+                        "p-3 transition-all text-center",
+                        isOptionDisabled
+                          ? "opacity-40 cursor-not-allowed bg-stone-100"
+                          : selectedOrderType === option.type
+                            ? "ring-2 ring-purple-500 bg-purple-50 cursor-pointer"
+                            : "hover:bg-muted cursor-pointer"
                       )}
-                      onClick={() => setSelectedOrderType(option.type)}
+                      onClick={() => {
+                        if (isOptionDisabled) {
+                          toast.error("La livraison est actuellement indisponible (pas de livreur ce soir).");
+                          return;
+                        }
+                        setSelectedOrderType(option.type);
+                      }}
                     >
                       <Icon className="w-6 h-6 mx-auto mb-1 text-purple-600" />
-                      <p className="text-xs font-medium truncate">{option.label}</p>
+                      <p className={cn("text-xs font-medium truncate", isOptionDisabled && "line-through text-stone-400")}>
+                        {option.label}
+                      </p>
+                      {isOptionDisabled && <span className="text-[9px] text-red-500 font-bold block">Indisponible</span>}
                     </Card>
                   );
                 })}

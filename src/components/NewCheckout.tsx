@@ -5,6 +5,7 @@ import { applyPizzaPromotions, calculateTVA } from '@/utils/promotions';
 import { useCreateOrder, generateOrderNumber } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
 import { usePaymentSettings } from '@/hooks/usePaymentSettings';
+import { useStoreStatus } from '@/hooks/useSiteSettings';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -98,6 +99,19 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
   const { cart, orderType, setOrderType, clearCart, scheduledInfo, setScheduledInfo } = useOrder();
   const createOrder = useCreateOrder();
   const { data: paymentSettings } = usePaymentSettings();
+  const { isDeliveryAvailable } = useStoreStatus();
+
+  // If delivery is unavailable and orderType is livraison, auto-switch to emporter
+  useEffect(() => {
+    if (!isDeliveryAvailable && orderType === 'livraison') {
+      setOrderType('emporter');
+      toast({
+        title: 'Livraison indisponible',
+        description: "La livraison est actuellement indisponible (pas de livreur ce soir). Votre commande est passée en mode À emporter.",
+        variant: 'destructive',
+      });
+    }
+  }, [isDeliveryAvailable, orderType, setOrderType]);
 
   // Wizard Steps: 1 ('info') | 2 ('payment') | 'success'
   const [step, setStep] = useState<'info' | 'payment' | 'success'>('info');
@@ -207,6 +221,12 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
       return false;
     }
 
+    if (orderType === 'livraison' && !isDeliveryAvailable) {
+      toast({ title: 'Livraison indisponible', description: 'La livraison est indisponible ce soir (aucun livreur disponible). Veuillez choisir À emporter ou Sur place.', variant: 'destructive' });
+      setOrderType('emporter');
+      return false;
+    }
+
     if (orderType === 'livraison' && !customerInfo.address?.trim()) {
       toast({ title: 'Adresse requise', description: 'Veuillez entrer votre adresse de livraison', variant: 'destructive' });
       return false;
@@ -221,6 +241,11 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     }
     if (!orderType) {
       toast({ title: 'Erreur', description: 'Type de commande non sélectionné', variant: 'destructive' });
+      return;
+    }
+    if (orderType === 'livraison' && !isDeliveryAvailable) {
+      toast({ title: 'Livraison indisponible', description: 'La livraison est indisponible ce soir (aucun livreur disponible). Veuillez choisir À emporter ou Sur place.', variant: 'destructive' });
+      setOrderType('emporter');
       return;
     }
     if (orderSubmitted || isProcessing) return;
@@ -322,6 +347,12 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
 
   const handleConfirmOrder = async () => {
     if (!isCartValid) return;
+    if (orderType === 'livraison' && !isDeliveryAvailable) {
+      toast({ title: 'Livraison indisponible', description: 'La livraison est indisponible ce soir (aucun livreur disponible). Veuillez choisir À emporter ou Sur place.', variant: 'destructive' });
+      setOrderType('emporter');
+      setStep('info');
+      return;
+    }
     if (!orderType || !customerInfo.name?.trim() || !customerInfo.phone?.trim()) {
       toast({ title: 'Erreur', description: 'Veuillez remplir vos informations', variant: 'destructive' });
       setStep('info');
@@ -613,19 +644,33 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               ].map(type => {
                 const Icon = type.icon;
                 const active = orderType === type.id;
+                const isTypeDisabled = type.id === 'livraison' && !isDeliveryAvailable;
                 return (
                   <button
                     key={type.id}
                     type="button"
-                    onClick={() => setOrderType(type.id as any)}
+                    onClick={() => {
+                      if (isTypeDisabled) {
+                        toast({
+                          title: 'Livraison indisponible',
+                          description: "Aucun livreur disponible ce soir. Commandes à emporter ou sur place uniquement.",
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+                      setOrderType(type.id as any);
+                    }}
                     className={`py-1.5 px-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                      active
-                        ? 'bg-white dark:bg-stone-800 text-[#DB7F1E] shadow-sm'
-                        : 'text-stone-500 dark:text-stone-400 hover:text-stone-900'
+                      isTypeDisabled
+                        ? 'opacity-40 line-through cursor-not-allowed text-stone-400'
+                        : active
+                          ? 'bg-white dark:bg-stone-800 text-[#DB7F1E] shadow-sm'
+                          : 'text-stone-500 dark:text-stone-400 hover:text-stone-900'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
                     <span>{type.label}</span>
+                    {isTypeDisabled && <span className="text-[9px] no-underline text-red-500 font-semibold">(Fermé)</span>}
                   </button>
                 );
               })}

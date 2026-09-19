@@ -17,8 +17,10 @@ import { PizzaWizard } from '@/components/wizards/PizzaWizard';
 import { TacosWizard } from '@/components/wizards/TacosWizard';
 import { UnifiedProductWizard } from '@/components/wizards/UnifiedProductWizard';
 import { useStoreOpen } from '@/hooks/useStoreOpen';
+import { useStoreStatus } from '@/hooks/useSiteSettings';
 import { AnnouncementBanner } from '@/components/AnnouncementBanner';
 import { ScrollingBanner } from '@/components/ScrollingBanner';
+import { toast } from 'sonner';
 function MainApp() {
   const { orderType, setOrderType, getItemCount } = useOrder();
   const [searchParams] = useSearchParams();
@@ -33,6 +35,15 @@ function MainApp() {
   const [bestSellerModal, setBestSellerModal] = useState<BestSellerPreset | null>(null);
   const [pendingBestSeller, setPendingBestSeller] = useState<BestSellerPreset | null>(null);
   const { isOpen, label: hoursLabel } = useStoreOpen();
+  const { isDeliveryAvailable } = useStoreStatus();
+
+  // If delivery is disabled and user has delivery selected, immediately switch to takeaway
+  useEffect(() => {
+    if (!isDeliveryAvailable && orderType === 'livraison') {
+      setOrderType('emporter');
+      toast.error("La livraison est actuellement indisponible (pas de livreur ce soir). Votre commande est passée en mode À emporter.");
+    }
+  }, [isDeliveryAvailable, orderType, setOrderType]);
 
   useEffect(() => {
     if (searchParams.get('checkout') === '1' || searchParams.get('retry') === '1' || searchParams.get('cancel') === '1') {
@@ -74,6 +85,12 @@ function MainApp() {
   };
 
   const handleStartOrder = (type?: OrderType) => {
+    if (type === 'livraison' && !isDeliveryAvailable) {
+      toast.error("La livraison est actuellement indisponible (pas de livreur ce soir). Commandes disponibles uniquement à emporter ou sur place.");
+      setOrderType('emporter');
+      setView('menu');
+      return;
+    }
     if (type) {
       setOrderType(type);
       setView('menu');
@@ -87,6 +104,10 @@ function MainApp() {
   };
 
   const handleOrderTypePick = (type: OrderType) => {
+    if (type === 'livraison' && !isDeliveryAvailable) {
+      toast.error("La livraison est actuellement indisponible (pas de livreur ce soir). Commandes disponibles uniquement à emporter ou sur place.");
+      return;
+    }
     setOrderType(type);
     setShowOrderTypePopup(false);
     if (pendingBestSeller) {
@@ -202,12 +223,36 @@ function MainApp() {
                 { type: 'emporter' as OrderType, label: 'Emporter', emoji: '🛍️' },
                 { type: 'livraison' as OrderType, label: 'Livraison', emoji: '🚗' },
                 { type: 'surplace' as OrderType, label: 'Sur Place', emoji: '🍽️' },
-              ] as const).map((opt) => (
-                <button key={opt.type} onClick={() => handleOrderTypePick(opt.type)} className="flex flex-col items-center gap-2.5 p-5 rounded-2xl bg-stone-50 hover:bg-amber-50 active:scale-95 transition-all duration-200 group">
-                  <span className="text-3xl group-hover:scale-110 transition-transform duration-200">{opt.emoji}</span>
-                  <span className="text-xs font-bold text-stone-700 group-hover:text-amber-700">{opt.label}</span>
-                </button>
-              ))}
+              ] as const).map((opt) => {
+                const isLivraisonDisabled = opt.type === 'livraison' && !isDeliveryAvailable;
+                return (
+                  <button
+                    key={opt.type}
+                    onClick={() => {
+                      if (isLivraisonDisabled) {
+                        toast.error("La livraison est actuellement indisponible (pas de livreur ce soir). Commandes uniquement à emporter ou sur place.");
+                        return;
+                      }
+                      handleOrderTypePick(opt.type);
+                    }}
+                    className={`flex flex-col items-center gap-2.5 p-5 rounded-2xl transition-all duration-200 group relative ${
+                      isLivraisonDisabled
+                        ? 'bg-stone-100 opacity-60 cursor-not-allowed'
+                        : 'bg-stone-50 hover:bg-amber-50 active:scale-95'
+                    }`}
+                  >
+                    <span className={`text-3xl ${isLivraisonDisabled ? 'grayscale' : 'group-hover:scale-110 transition-transform duration-200'}`}>{opt.emoji}</span>
+                    <span className={`text-xs font-bold text-center ${isLivraisonDisabled ? 'text-stone-400 line-through' : 'text-stone-700 group-hover:text-amber-700'}`}>
+                      {opt.label}
+                    </span>
+                    {isLivraisonDisabled && (
+                      <span className="text-[9px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full mt-[-4px]">
+                        Pas de livreur
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -299,16 +344,30 @@ function MainApp() {
                 { type: 'emporter' as OrderType, label: 'Emporter', emoji: '🛍️' },
                 { type: 'livraison' as OrderType, label: 'Livraison', emoji: '🚗' },
                 { type: 'surplace' as OrderType, label: 'Sur Place', emoji: '🍽️' },
-              ] as const).map((opt) => (
-                <button
-                  key={opt.type}
-                  onClick={() => handleStartOrder(opt.type)}
-                  className="flex items-center gap-1.5 rounded-full bg-white/12 hover:bg-white/20 active:scale-95 backdrop-blur-md border border-white/15 px-3 py-1.5 text-[11px] font-bold text-white/90 transition-all"
-                >
-                  <span className="text-[13px] leading-none">{opt.emoji}</span>
-                  {opt.label}
-                </button>
-              ))}
+              ] as const).map((opt) => {
+                const isLivraisonDisabled = opt.type === 'livraison' && !isDeliveryAvailable;
+                return (
+                  <button
+                    key={opt.type}
+                    onClick={() => {
+                      if (isLivraisonDisabled) {
+                        toast.error("La livraison est actuellement indisponible (pas de livreur ce soir). Commandes disponibles uniquement à emporter ou sur place.");
+                        return;
+                      }
+                      handleStartOrder(opt.type);
+                    }}
+                    className={`flex items-center gap-1.5 rounded-full backdrop-blur-md border px-3 py-1.5 text-[11px] font-bold transition-all ${
+                      isLivraisonDisabled
+                        ? 'bg-red-500/20 border-red-500/40 text-red-200 opacity-70'
+                        : 'bg-white/12 hover:bg-white/20 active:scale-95 border-white/15 text-white/90'
+                    }`}
+                  >
+                    <span className="text-[13px] leading-none">{opt.emoji}</span>
+                    <span className={isLivraisonDisabled ? 'line-through' : ''}>{opt.label}</span>
+                    {isLivraisonDisabled && <span className="text-[9px] no-underline font-normal text-red-200">(Fermé)</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

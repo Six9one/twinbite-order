@@ -2,7 +2,7 @@
 // This version automatically checks for updates and refreshes cached content
 
 // VERSION: Change this when deploying updates - triggers cache refresh
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const CACHE_NAME = `twin-pizza-${CACHE_VERSION}`;
 
 // Files to cache for offline support (minimal - only essentials)

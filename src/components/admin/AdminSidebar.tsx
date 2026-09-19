@@ -44,7 +44,7 @@ import {
   Store,
   Bot
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useTenant } from '@/context/TenantContext';
 const logoImage = '/favicon.png';
@@ -58,6 +58,11 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  {
+    label: '👥 Base Clients & Paniers',
+    icon: Users,
+    value: 'clients',
+  },
   {
     label: 'Commandes',
     icon: Package,
@@ -76,10 +81,12 @@ const navItems: NavItem[] = [
     ]
   },
   {
-    label: 'Clients',
+    label: 'Clients & CRM',
     icon: Users,
     children: [
-      { label: 'Tickets Clients', icon: Ticket, value: 'tickets' },
+      { label: '👥 Base de Données Clients', icon: Users, value: 'clients' },
+      { label: '⭐ Programme Fidélité', icon: Star, value: 'loyalty' },
+      { label: '🎫 Tickets Clients', icon: Ticket, value: 'tickets' },
     ]
   },
   {
@@ -171,8 +178,17 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ activeTab, onTabChange, isOpen = true, onClose }: AdminSidebarProps) {
   const { tenant } = useTenant();
-  // All sections closed by default - open only when clicked
-  const [openGroups, setOpenGroups] = useState<string[]>([]);
+  // Open Clients & CRM and Commandes by default
+  const [openGroups, setOpenGroups] = useState<string[]>(['Clients & CRM', 'Commandes']);
+
+  useEffect(() => {
+    // Automatically open group if activeTab is inside it
+    navItems.forEach(group => {
+      if (group.children?.some(c => c.value === activeTab)) {
+        setOpenGroups(prev => prev.includes(group.label) ? prev : [...prev, group.label]);
+      }
+    });
+  }, [activeTab]);
 
   const toggleGroup = (label: string) => {
     setOpenGroups(prev =>
