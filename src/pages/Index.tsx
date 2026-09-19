@@ -210,12 +210,18 @@ function MainApp() {
       <FloatingGlassCart onOpenCart={() => setIsCartOpen(true)} />
 
       {showOrderTypePopup && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center">
+        <div className="fixed inset-0 z-[1000] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setShowOrderTypePopup(false); setPendingBestSeller(null); }} />
           <div className="relative z-10 w-full max-w-md mx-4 mb-5 bg-white rounded-[1.75rem] shadow-2xl p-6 animate-in slide-in-from-bottom-8 duration-300">
             <button onClick={() => { setShowOrderTypePopup(false); setPendingBestSeller(null); }} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors">
               <X className="w-4 h-4 text-stone-400" />
             </button>
+            {pendingBestSeller && (
+              <div className="flex items-center justify-center gap-2 mb-2 bg-amber-50 rounded-xl py-1.5 px-3 border border-amber-200/60 max-w-xs mx-auto">
+                <span className="text-sm font-bold text-amber-900">{pendingBestSeller.name}</span>
+                <span className="text-xs font-extrabold text-amber-700 bg-amber-200/60 px-2 py-0.5 rounded-full">{pendingBestSeller.price.toFixed(2)} €</span>
+              </div>
+            )}
             <p className="text-lg font-black text-stone-800 text-center mb-1 tracking-tight">Mode de commande</p>
             <p className="text-xs text-stone-400 text-center mb-5">Choisissez comment récupérer votre commande</p>
             <div className="grid grid-cols-3 gap-3">
@@ -259,7 +265,7 @@ function MainApp() {
       )}
 
       {bestSellerModal && (
-        <div className="fixed inset-0 z-[100] bg-background animate-in fade-in slide-in-from-bottom-8 duration-300">
+        <div className="fixed inset-0 z-[1000] bg-background animate-in fade-in slide-in-from-bottom-8 duration-300">
           <Suspense fallback={null}>
             {bestSellerModal.type === 'pizza' && (
               <PizzaWizard

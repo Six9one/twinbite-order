@@ -117,7 +117,7 @@ export function BestSellerSlider({ onSelect }: BestSellerSliderProps) {
   );
 
   return (
-    <div>
+    <div className="relative z-0 isolate">
       <h2 className="text-[1.1rem] font-extrabold text-[#3B2216] tracking-tight mb-1 px-5 flex items-center gap-1.5">
         🔥 Top Ventes
       </h2>

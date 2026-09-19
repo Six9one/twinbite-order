@@ -169,7 +169,7 @@ export function StackedCarousel({
         }}
         onDragEnd={handleDragEnd}
         onTap={handleTap}
-        className="absolute inset-0 z-50 cursor-grab active:cursor-grabbing"
+        className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing"
       />
 
       {items.map((item, i) => (
@@ -214,7 +214,7 @@ const Card = ({ item, index, total, progress, config, cardClassName }: CardProps
     [0, 1, 1, 1, 0]
   );
   const dimOverlay = useTransform(offset, [-2, -0.5, 0, 0.5, 2], [0.45, 0.18, 0, 0.18, 0.45]);
-  const zIndex = useTransform(offset, (o) => Math.round(100 - Math.abs(o) * 10));
+  const zIndex = useTransform(offset, (o) => Math.round(10 - Math.abs(o) * 2));
   const textOpacity = useTransform(offset, [-0.5, 0, 0.5], [0, 1, 0]);
 
   return (
