@@ -53,7 +53,7 @@ import {
 import {
   LogOut, Home, Search, RefreshCw, Download, Printer,
   Clock, CheckCircle, XCircle, ChefHat, Package,
-  MapPin, Phone, User, MessageSquare, CreditCard, Banknote, Shield,
+  MapPin, Phone, User, Users, MessageSquare, CreditCard, Banknote, Shield,
   Utensils, Droplet, Leaf, Plus, Trash2, Edit2, Tv, TrendingUp,
   Menu, Volume2, VolumeX, Bell, LayoutDashboard
 } from 'lucide-react';
