@@ -34,11 +34,9 @@ import { HACCPManager } from '@/components/admin/HACCPManager';
 import { TicketManager } from '@/components/admin/TicketManager';
 import { OrdersManager } from '@/components/admin/OrdersManager';
 import { AvailabilityManager } from '@/components/admin/AvailabilityManager';
-import { AIReceptionistManager } from '@/components/admin/AIReceptionistManager';
 import { FactureManager } from '@/components/admin/FactureManager';
 import { TenantManager } from '@/components/admin/TenantManager';
 import TelegramWhatsAppManager from '@/components/admin/TelegramWhatsAppManager';
-import { CoursesCatalogManager } from '@/components/admin/CoursesCatalogManager';
 import { ClientIPMap } from '@/components/admin/ClientIPMap';
 import { ClientsManager } from '@/components/admin/ClientsManager';
 import { EnhancedLoyaltyManager } from '@/components/admin/EnhancedLoyaltyManager';
@@ -924,9 +922,6 @@ export default function AdminDashboard() {
           {/* Wizard Images */}
           {activeTab === 'wizard-images' && <WizardImagesManager />}
 
-          {/* Courses & Supplier Catalog Photos */}
-          {activeTab === 'courses-catalog' && <CoursesCatalogManager />}
-
           {/* Price Manager */}
           {activeTab === 'prices' && <PriceManager />}
 
@@ -941,9 +936,6 @@ export default function AdminDashboard() {
 
           {/* Telegram, WhatsApp & Printer Integrations */}
           {activeTab === 'integrations' && <TelegramWhatsAppManager />}
-
-          {/* AI Phone Receptionist */}
-          {activeTab === 'ai-receptionist' && <AIReceptionistManager />}
 
           {activeTab === 'facture' && <FactureManager />}
 

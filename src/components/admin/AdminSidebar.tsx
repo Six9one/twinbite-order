@@ -140,7 +140,6 @@ const navItems: NavItem[] = [
       { label: 'Galerie Photos', icon: Images, value: 'gallery' },
       { label: 'Images Catégories', icon: Image, value: 'category-images' },
       { label: 'Images Wizard', icon: Image, value: 'wizard-images' },
-      { label: '🛒 Photos & Catalogue Courses', icon: Package, value: 'courses-catalog' },
       { label: 'Contenu Site', icon: Globe, value: 'content' },
     ]
   },
@@ -159,7 +158,6 @@ const navItems: NavItem[] = [
     children: [
       { label: '🏢 Multi-Tenant SaaS', icon: Building2, value: 'tenants' },
       { label: '🤖 Telegram & WhatsApp', icon: Bot, value: 'integrations' },
-      { label: 'Réceptionniste AI', icon: Phone, value: 'ai-receptionist' },
       { label: 'Paiements', icon: CreditCard, value: 'payments' },
       { label: 'Configuration Imprimante', icon: Printer, value: 'printer' },
       { label: 'Templates Tickets', icon: FileText, value: 'ticket-templates' },
