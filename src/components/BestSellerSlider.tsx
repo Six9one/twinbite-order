@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { StackedCarousel, StackedCarouselItem } from '@/components/ui/stacked-carousel';
 import { useBestSellerPrices } from '@/hooks/useBestSellerPrices';
+import { resolveImg } from '@/utils/resolveImg';
 
 export type BestSellerType = 'pizza' | 'soufflet' | 'tacos' | 'makloub';
 
@@ -30,7 +31,7 @@ export const BEST_SELLERS: BestSellerPreset[] = [
     price: 18,
     type: 'pizza',
     // Real product photo from the DB (Menu Digital > Pizzas > Royale), not the generic category icon.
-    image: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/product-images/products/f4eda3fc-d268-4039-9fa6-586052b51e95-1783335629898.jpg',
+    image: 'https://supabase.twinpizza.fr/storage/v1/object/public/product-images/products/f4eda3fc-d268-4039-9fa6-586052b51e95-1783335629898.jpg',
     rank: 1,
     pizzaId: 'pizza-t-14',
     composition: ['Base Tomate', 'Mozzarella', 'Viande hachée', 'Merguez', 'Poivrons'],
@@ -40,7 +41,7 @@ export const BEST_SELLERS: BestSellerPreset[] = [
     name: 'Pizza 4 Fromages',
     price: 18,
     type: 'pizza',
-    image: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/product-images/products/9d250a2f-03ba-4226-ba46-94301076ca30-1766440507578.png',
+    image: 'https://supabase.twinpizza.fr/storage/v1/object/public/product-images/products/9d250a2f-03ba-4226-ba46-94301076ca30-1766440507578.png',
     rank: 2,
     pizzaId: 'pizza-t-9',
     composition: ['Base Tomate', 'Mozzarella', 'Bleu', 'Chèvre', 'Parmesan'],
@@ -50,7 +51,7 @@ export const BEST_SELLERS: BestSellerPreset[] = [
     name: 'Pizza Tartiflette',
     price: 18,
     type: 'pizza',
-    image: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/product-images/products/8fdfec47-2d9c-4a13-a62c-2b5a1c8f4b8c-1766452039692.png',
+    image: 'https://supabase.twinpizza.fr/storage/v1/object/public/product-images/products/8fdfec47-2d9c-4a13-a62c-2b5a1c8f4b8c-1766452039692.png',
     rank: 3,
     pizzaId: 'pizza-c-1',
     composition: ['Base Crème', 'Lardons', 'Reblochon', 'Pomme de terre'],
@@ -104,7 +105,7 @@ export function BestSellerSlider({ onSelect }: BestSellerSliderProps) {
     () =>
       BEST_SELLERS.map((b) => ({
         id: b.id,
-        image: b.image,
+        image: resolveImg(b.image) || b.image,
         title: b.name,
         subtitle: `${(prices[b.id] ?? b.price).toFixed(2)} €`,
         badge: (

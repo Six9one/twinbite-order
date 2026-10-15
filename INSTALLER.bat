@@ -114,10 +114,10 @@ echo  [4/7] Creation des fichiers de configuration...
 :: Root .env
 echo  Ecriture de .env...
 (
-echo VITE_SUPABASE_PROJECT_ID=hsylnrzxeyqxczdalurj
-echo VITE_SUPABASE_URL=https://hsylnrzxeyqxczdalurj.supabase.co
-echo VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzeWxucnp4ZXlxeGN6ZGFsdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4ODIzMDksImV4cCI6MjA4MTQ1ODMwOX0.LmDeLvw6vHO7mjHi2qWeWwIEaNDutZ1spsahUGxEAnc
-echo VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzeWxucnp4ZXlxeGN6ZGFsdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4ODIzMDksImV4cCI6MjA4MTQ1ODMwOX0.LmDeLvw6vHO7mjHi2qWeWwIEaNDutZ1spsahUGxEAnc
+echo VITE_SUPABASE_PROJECT_ID=vps-supabase
+echo VITE_SUPABASE_URL=https://supabase.twinpizza.fr
+echo VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkxOTkwODc1LCJleHAiOjE5NDk2NzA4NzV9.LjYBCNmBY0nFEOLsSZqazv0ZV0476pTNO3p-adF4NGY
+echo VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_UHPAUX-4RC3VCwWZc8wxec_RFTIels3
 echo VITE_MAPBOX_PUBLIC_TOKEN=pk.eyJ1Ijoic2FwaG91dSIsImEiOiJjbWxkeGx3ZnExZGd6M2dwa29jbWQxY280In0.58_v8unUiqxjtjr-QhalMw
 echo PRINTER_IP=192.168.1.100
 echo PRINTER_PORT=9100
@@ -127,8 +127,8 @@ echo  OK  .env cree.
 :: print-server/.env
 echo  Ecriture de print-server/.env...
 (
-echo SUPABASE_URL=https://hsylnrzxeyqxczdalurj.supabase.co
-echo SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzeWxucnp4ZXlxeGN6ZGFsdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4ODIzMDksImV4cCI6MjA4MTQ1ODMwOX0.LmDeLvw6vHO7mjHi2qWeWwIEaNDutZ1spsahUGxEAnc
+echo SUPABASE_URL=https://supabase.twinpizza.fr
+echo SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkxOTkwODc1LCJleHAiOjE5NDk2NzA4NzV9.LjYBCNmBY0nFEOLsSZqazv0ZV0476pTNO3p-adF4NGY
 echo PRINTER_IPS=192.168.1.200
 echo PRINTER_PORT=9100
 echo USB_PRINTER_NAME=Star TSP100 Cutter (TSP143)

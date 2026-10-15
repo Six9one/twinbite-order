@@ -26,8 +26,11 @@ loadImageCache();
 /**
  * Resolves a remote image URL to its local cache counterpart if it exists.
  * Falls back to the original URL if not cached.
+ * Automatically rewrites deprecated Supabase cloud URLs to the self-hosted VPS URL.
  */
 export function resolveImg(url?: string | null): string | undefined {
   if (!url) return undefined;
-  return LOCAL_IMG[url] || url;
+  // Auto-rewrite deprecated Supabase cloud domain to self-hosted VPS
+  const sanitizedUrl = url.replace('https://hsylnrzxeyqxczdalurj.supabase.co', 'https://supabase.twinpizza.fr');
+  return LOCAL_IMG[sanitizedUrl] || LOCAL_IMG[url] || sanitizedUrl;
 }

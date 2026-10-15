@@ -2,8 +2,19 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const DEFAULT_VPS_URL = 'https://supabase.twinpizza.fr';
+const DEFAULT_VPS_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkxOTkwODc1LCJleHAiOjE5NDk2NzA4NzV9.LjYBCNmBY0nFEOLsSZqazv0ZV0476pTNO3p-adF4NGY';
+
+let rawUrl = import.meta.env.VITE_SUPABASE_URL;
+let rawKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!rawUrl || rawUrl.includes('hsylnrzxeyqxczdalurj')) {
+  rawUrl = DEFAULT_VPS_URL;
+  rawKey = DEFAULT_VPS_KEY;
+}
+
+const SUPABASE_URL = rawUrl;
+const SUPABASE_PUBLISHABLE_KEY = rawKey || DEFAULT_VPS_KEY;
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

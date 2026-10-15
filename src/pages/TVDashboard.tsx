@@ -92,7 +92,7 @@ const playOrderSound = () => {
   try {
     // Custom shop notification sound uploaded to Supabase
     const soundUrls = [
-      'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/sound/shop-notification-355746.mp3',
+      'https://supabase.twinpizza.fr/storage/v1/object/public/sound/shop-notification-355746.mp3',
       'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3', // fallback
     ];
 
