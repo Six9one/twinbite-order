@@ -18,7 +18,7 @@ export const DEFAULT_TENANT: Tenant = {
   id: DEFAULT_TENANT_ID,
   name: 'Twin Pizza',
   slug: 'twin-pizza',
-  domain: 'allstar.tn',
+  domain: 'twinpizza.fr',
   plan: 'pro',
   is_active: true,
 };

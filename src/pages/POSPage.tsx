@@ -2449,7 +2449,20 @@ function SimplePanel({ categorySlug, title, onAdd }: { categorySlug:string; titl
 // ── History & Stats panel (past orders today) ──────────────────────────────────
 function HistoryPanel({ onClose }: { onClose:()=>void }) {
   const currentBizDate = getBusinessDate(new Date(), 4);
-  const { data: orders = [], isLoading, refetch } = useOrders(currentBizDate);
+  const [selectedDate, setSelectedDate] = useState<string>(currentBizDate);
+  const { data: orders = [], isLoading, refetch } = useOrders(selectedDate);
+
+  const shiftDate = (days: number) => {
+    try {
+      const [y, m, d] = selectedDate.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      dt.setDate(dt.getDate() + days);
+      const newY = dt.getFullYear();
+      const newM = String(dt.getMonth() + 1).padStart(2, '0');
+      const newD = String(dt.getDate()).padStart(2, '0');
+      setSelectedDate(`${newY}-${newM}-${newD}`);
+    } catch {}
+  };
 
   const [loadingActions, setLoadingActions] = useState<Record<string, 'reprint' | 'facture' | null>>({});
 
@@ -2527,14 +2540,33 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
       <div className="pos-glassy-panel" onClick={e=>e.stopPropagation()} style={{ width:500, maxWidth:'95%', height:'100%', background:S.panel, borderLeft:`1px solid ${S.border}`, display:'flex', flexDirection:'column' }}>
         {/* Header */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
-          <div>
-            <div style={{ fontSize:16, fontWeight:800, color:S.text }}>📊 Historique & Stats du Jour</div>
-            <div style={{ fontSize:11, color:S.accent, marginTop:2, fontWeight:700 }}>
-              {formatBusinessDateDisplay(currentBizDate)} (Actif jusqu'à 04:00)
+        <div style={{ display:'flex', flexDirection:'column', gap:8, padding:'14px 18px', borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div>
+              <div style={{ fontSize:16, fontWeight:800, color:S.text }}>📊 Historique & Stats</div>
+              <div style={{ fontSize:11, color:S.accent, marginTop:2, fontWeight:700 }}>
+                {formatBusinessDateDisplay(selectedDate)} {selectedDate === currentBizDate ? "(Aujourd'hui, actif jusqu'à 04:00)" : ''}
+              </div>
             </div>
+            <button onClick={onClose} style={{ ...S.btn, padding:'5px 12px' }}>✕</button>
           </div>
-          <button onClick={onClose} style={{ ...S.btn, padding:'5px 12px' }}>✕</button>
+          
+          {/* Quick Date Navigator */}
+          <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+            <button onClick={() => shiftDate(-1)} style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:700 }}>◀ Jour préc.</button>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={e => e.target.value && setSelectedDate(e.target.value)}
+              style={{ ...S.input, width:'auto', padding:'4px 8px', fontSize:11, color:'#fff', cursor:'pointer' }}
+            />
+            {selectedDate !== currentBizDate && (
+              <button onClick={() => setSelectedDate(currentBizDate)} style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:700, color:S.accent, borderColor:S.accent+'44' }}>
+                Aujourd'hui
+              </button>
+            )}
+            <button onClick={() => shiftDate(1)} disabled={selectedDate >= currentBizDate} style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:700, opacity: selectedDate >= currentBizDate ? 0.4 : 1 }}>Jour suiv. ▶</button>
+          </div>
         </div>
 
         {/* Content Area */}
