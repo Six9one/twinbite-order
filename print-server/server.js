@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from 'fs';
 import { writeFile } from 'fs/promises';
 import { promises as fsPromises } from 'fs';
 import { exec } from 'child_process';
+import { createHash } from 'crypto';
 import express from 'express';
 import cors from 'cors';
 import { buildLogoBytes, buildLogoBytesFromUrl } from './logo-escpos.js';
@@ -20,8 +21,21 @@ config({ path: join(__dirname, '.env') });                         // print-serv
 config({ path: join(__dirname, '..', '.env'), override: false });  // root .env fallback
 
 // Support SUPABASE_URL (print-server/.env) OR VITE_SUPABASE_URL (root .env)
-const SUPABASE_URL      = (process.env.SUPABASE_URL      || process.env.VITE_SUPABASE_URL      || '').replace(/['"]/g, '').trim();
-const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').replace(/['"]/g, '').trim();
+let SUPABASE_URL      = (process.env.SUPABASE_URL      || process.env.VITE_SUPABASE_URL      || '').replace(/['"]/g, '').trim();
+let SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').replace(/['"]/g, '').trim();
+
+// The old Supabase cloud project is still online but no longer receives orders:
+// never listen to it (same guard as src/integrations/supabase/client.ts)
+const VPS_SUPABASE_URL = 'https://supabase.twinpizza.fr';
+const VPS_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkxOTkwODc1LCJleHAiOjE5NDk2NzA4NzV9.LjYBCNmBY0nFEOLsSZqazv0ZV0476pTNO3p-adF4NGY';
+if (!SUPABASE_URL || SUPABASE_URL.includes('supabase.co')) {
+    console.log('[PRINT] Ignoring Supabase cloud URL from .env → using self-hosted VPS');
+    SUPABASE_URL = VPS_SUPABASE_URL;
+    SUPABASE_ANON_KEY = VPS_SUPABASE_ANON_KEY;
+}
+
+// Hash of this file: lets the Hub detect a stale print server still running old code
+const CODE_VERSION = createHash('sha1').update(readFileSync(__filename)).digest('hex').slice(0, 12);
 const PRINTER_IPS = (process.env.PRINTER_IPS || process.env.PRINTER_IP || '').split(',').map(ip => ip.trim()).filter(Boolean);
 const PRINTER_PORT = parseInt(process.env.PRINTER_PORT || '9100', 10);
 // Star TSP100 USB (PC restaurant / caisse) — ticket client avec prix
@@ -2794,7 +2808,7 @@ function setupHttpServer() {
 
     // Health / status endpoints (both paths, Electron checks /status)
     const statusHandler = (req, res) => {
-        res.json({ status: 'ok', online: true, printers: PRINTER_IPS, port: PRINTER_PORT });
+        res.json({ status: 'ok', online: true, printers: PRINTER_IPS, port: PRINTER_PORT, codeVersion: CODE_VERSION, supabaseUrl: SUPABASE_URL });
     };
     app.get('/health', statusHandler);
     app.get('/status', statusHandler);

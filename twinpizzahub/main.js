@@ -607,14 +607,60 @@ function startVite() {
 
 // ─── Spawn print server ───────────────────────────────────────────────────────
 // First check if a print server is already running (started by LANCER_TWINPIZZA.bat)
+function getPrintServerFileVersion() {
+  try {
+    const serverPath = path.join(__dirname, '..', 'print-server', 'server.js');
+    return require('crypto').createHash('sha1').update(fs.readFileSync(serverPath)).digest('hex').slice(0, 12);
+  } catch (_) {
+    return null;
+  }
+}
+
+// Kill whatever process listens on port 3001 (an orphaned print server keeps running
+// old code after app.exit(), and would otherwise block every update)
+function killPortProcess(port) {
+  return new Promise((resolve) => {
+    exec(`netstat -ano | findstr :${port} | findstr LISTENING`, { windowsHide: true }, (err, stdout) => {
+      const pids = [...new Set((stdout || '').split('\n').map(l => l.trim().split(/\s+/).pop()).filter(p => /^\d+$/.test(p) && p !== '0'))];
+      if (pids.length === 0) return resolve();
+      console.log(`🖨️ Killing stale process(es) on port ${port}: ${pids.join(', ')}`);
+      exec(`taskkill /F ${pids.map(p => '/PID ' + p).join(' ')}`, { windowsHide: true }, () => setTimeout(resolve, 1000));
+    });
+  });
+}
+
+function stopPrintServer() {
+  if (printServerProcess) {
+    try {
+      printServerProcess.removeAllListeners('exit');
+      printServerProcess.kill();
+    } catch (_) {}
+    printServerProcess = null;
+  }
+  return killPortProcess(3001);
+}
+
+async function restartPrintServer() {
+  await stopPrintServer();
+  spawnPrintServer();
+}
+
 function startPrintServer() {
-  // Ping port 3001 — if already running, skip spawning
+  // Ping port 3001 — reuse a running server only if it runs the current code
   const testReq = http.get('http://localhost:3001/status', (res) => {
-    if (res.statusCode === 200) {
-      console.log('🖨️ Print server already running on port 3001 — skipping spawn.');
-      return;
-    }
-    spawnPrintServer();
+    let body = '';
+    res.on('data', c => { body += c; });
+    res.on('end', () => {
+      let runningVersion = null;
+      try { runningVersion = JSON.parse(body).codeVersion || null; } catch (_) {}
+      const fileVersion = getPrintServerFileVersion();
+      if (res.statusCode === 200 && runningVersion && runningVersion === fileVersion) {
+        console.log('🖨️ Print server already running on port 3001 (up to date) — skipping spawn.');
+        return;
+      }
+      console.log(`🖨️ Print server on 3001 is stale (${runningVersion || 'old'} ≠ ${fileVersion}) — restarting it.`);
+      restartPrintServer();
+    });
   });
   testReq.on('error', () => {
     // Not running — spawn it
@@ -622,7 +668,7 @@ function startPrintServer() {
   });
   testReq.setTimeout(1000, () => {
     testReq.destroy();
-    spawnPrintServer();
+    restartPrintServer();
   });
 }
 
@@ -973,6 +1019,9 @@ ipcMain.handle('trigger-update', async () => {
       if (buildRes2.error) {
         console.warn('Build warning (already up to date):', buildRes2.stderr);
       }
+      // Restart the print server too: it may still be an old orphaned process
+      sendStatus('Redémarrage du serveur d\'impression...');
+      await restartPrintServer();
       sendStatus('Application à jour ! Rechargement...');
       setTimeout(() => {
         reloadAllWindows();
@@ -1011,6 +1060,11 @@ ipcMain.handle('trigger-update', async () => {
     if (buildRes.error) {
       throw new Error(`Erreur lors de la reconstruction: ${buildRes.stderr}`);
     }
+
+    // Always restart the print server so it runs the freshly pulled code
+    sendStatus('Redémarrage du serveur d\'impression...');
+    if (needsMainRelaunch) await stopPrintServer();
+    else await restartPrintServer();
 
     if (needsMainRelaunch) {
       sendStatus('Mise à jour du cœur Hub — Redémarrage...');
