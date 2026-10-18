@@ -248,9 +248,8 @@ function KioskContent() {
                 scheduled_for: null,
             });
 
-            // Send Telegram notification
-            try {
-                await supabase.functions.invoke('send-telegram-notification', {
+            // Send Telegram notification (non-blocking: never delay the kiosk on a slow/failing function)
+            supabase.functions.invoke('send-telegram-notification', {
                     body: {
                         orderNumber: newOrderNumber,
                         customerName: customerName.trim(),
@@ -274,10 +273,9 @@ function KioskContent() {
                         scheduledFor: null,
                         isKiosk: true,
                     },
+                }).catch((telegramError) => {
+                    console.error('[KIOSK] Telegram notification failed:', telegramError);
                 });
-            } catch (telegramError) {
-                console.error('[KIOSK] Telegram notification failed:', telegramError);
-            }
 
 
             // Print ticket
@@ -297,39 +295,33 @@ function KioskContent() {
             };
             printKioskTicket(printData);
 
-            // Also trigger the network print server (electron app auto-prints via Supabase realtime,
-            // but we also explicitly call print-order edge function as backup)
-            try {
-                await supabase.functions.invoke('print-order', {
-                    body: {
-                        order: {
-                            id: `kiosk-${Date.now()}`,
-                            order_number: newOrderNumber,
-                            order_type: orderType,
-                            status: 'pending',
-                            customer_name: customerName.trim(),
-                            customer_phone: 'Borne',
-                            customer_notes: `[BORNE] ${orderType === 'surplace' ? 'Sur Place' : 'À Emporter'}`,
-                            items: cart.map(item => ({
-                                name: item.item.name,
-                                quantity: item.quantity,
-                                totalPrice: (item.calculatedPrice || item.item.price) * item.quantity,
-                                customization: item.customization,
-                            })),
-                            subtotal: ht,
-                            tva: tva,
-                            delivery_fee: 0,
-                            total: total,
-                            payment_method: 'especes',
-                            created_at: new Date().toISOString(),
-                            isKiosk: true,
-                        },
+            // Trigger print backup non-blockingly (electron print server auto-prints via Supabase realtime/polling)
+            supabase.functions.invoke('print-order', {
+                body: {
+                    order: {
+                        id: `kiosk-${Date.now()}`,
+                        order_number: newOrderNumber,
+                        order_type: orderType,
+                        status: 'pending',
+                        customer_name: customerName.trim(),
+                        customer_phone: 'Borne',
+                        customer_notes: `[BORNE] ${orderType === 'surplace' ? 'Sur Place' : 'À Emporter'}`,
+                        items: cart.map(item => ({
+                            name: item.item.name,
+                            quantity: item.quantity,
+                            totalPrice: (item.calculatedPrice || item.item.price) * item.quantity,
+                            customization: item.customization,
+                        })),
+                        subtotal: ht,
+                        tva: tva,
+                        delivery_fee: 0,
+                        total: total,
+                        payment_method: 'especes',
+                        created_at: new Date().toISOString(),
+                        isKiosk: true,
                     },
-                });
-                console.log('[KIOSK] Print server notified via edge function');
-            } catch (printServerError) {
-                console.warn('[KIOSK] Print server edge function failed (order still in DB for auto-print):', printServerError);
-            }
+                },
+            }).catch(() => {});
 
             clearCart();
             setScreen('success');

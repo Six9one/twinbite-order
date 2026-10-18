@@ -34,11 +34,11 @@ const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 250;
 const SETTINGS_REFRESH_INTERVAL = 60000;
 
-let cachedResolvedUsbPrinterName = getCounterPrinterName();
+let cachedResolvedUsbPrinterName = null;
 
 // Logo ESC/POS bytes — preloaded once at startup
 let logoBytes = null;
-const POLL_INTERVAL = 10000;
+const POLL_INTERVAL = 1500;
 let lastEventReceivedAt = Date.now();
 
 // Validate — exit immediately (Electron restarts us in 5s) if keys missing
@@ -391,37 +391,49 @@ let lastProcessedTestTimestamp = Date.now();
 // Execute a test print locally on the print-server
 async function runLocalTestPrint(printerType, layoutMode) {
     const targetLayoutMode = layoutMode || 'customizable';
+    const targetPrinter = printerType || 'counter';
 
-    const generateData = async (type) => {
+    console.log(`📡 runLocalTestPrint: target=${targetPrinter}, layout=${targetLayoutMode}`);
+
+    const hasUsbPrinter = Boolean(cachedResolvedUsbPrinterName && 
+                          cachedResolvedUsbPrinterName !== 'Star TSP100 Cutter (TSP143)' &&
+                          cachedResolvedUsbPrinterName.trim().length > 0);
+
+    const generateData = async (type, isStar) => {
         if (type === 'kitchen') {
             if (targetLayoutMode === 'customizable') {
-                return formatDynamicTicket(MOCK_TEST_ORDER, ticketSettings.kitchenTemplate);
+                return formatDynamicTicket(MOCK_TEST_ORDER, ticketSettings.kitchenTemplate, isStar);
             }
             return formatKitchenTicketClassic(MOCK_TEST_ORDER);
         } else {
             if (targetLayoutMode === 'customizable') {
-                return formatDynamicTicket(MOCK_TEST_ORDER, ticketSettings.counterTemplate);
+                return formatDynamicTicket(MOCK_TEST_ORDER, ticketSettings.counterTemplate, isStar);
             }
             return formatCounterTicketClassic(MOCK_TEST_ORDER);
         }
     };
 
-    if (printerType === 'kitchen' || printerType === 'both') {
+    if (targetPrinter === 'kitchen' || targetPrinter === 'both') {
         if (PRINTER_IPS.length > 0) {
             console.log(`🖨️  Printing test kitchen ticket to Ethernet IPs: ${PRINTER_IPS.join(', ')}`);
-            const ticketData = await generateData('kitchen');
+            const ticketData = await generateData('kitchen', false);
             await Promise.allSettled(
                 PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, `Test Kitchen`))
             );
         }
     }
 
-    if (printerType === 'counter' || printerType === 'both') {
-        const usbPrinterName = COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME;
-        if (usbPrinterName && usbPrinterName.trim()) {
-            console.log(`🖨️  Printing test client ticket to USB: "${usbPrinterName}"`);
-            const ticketData = await generateData('counter');
-            await sendToUSBPrinter(ticketData, usbPrinterName);
+    if (targetPrinter === 'counter' || targetPrinter === 'both') {
+        if (hasUsbPrinter) {
+            console.log(`🖨️  Printing test client ticket to USB: "${cachedResolvedUsbPrinterName}"`);
+            const ticketData = await generateData('counter', true);
+            await sendToUSBPrinter(ticketData, cachedResolvedUsbPrinterName);
+        } else if (PRINTER_IPS.length > 0) {
+            console.log(`🖨️  Printing test client ticket to Ethernet (no USB printer): ${PRINTER_IPS.join(', ')}`);
+            const ticketData = await generateData('counter', false);
+            await Promise.allSettled(
+                PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, `Test Client`))
+            );
         }
     }
 }
@@ -472,11 +484,12 @@ async function handleSettingsUpdate(savedSettings) {
 // Fetch ticket settings from Supabase
 async function fetchTicketSettings() {
     try {
-        const { data: adminRow } = await supabase
+        const { data: adminRows } = await supabase
             .from('admin_settings')
             .select('*')
-            .maybeSingle();
+            .limit(25);
 
+        const adminRow = (adminRows || []).find(r => r.setting_key === 'printer_settings')?.setting_value;
         if (adminRow) {
             if (adminRow.printer_font_size) {
                 ticketSettings.itemFontSize = adminRow.printer_font_size;
@@ -486,14 +499,19 @@ async function fetchTicketSettings() {
             }
         }
 
-        const { data, error } = await supabase
-            .from('admin_settings')
-            .select('setting_value')
-            .eq('setting_key', 'ticket_templates')
-            .single();
+        const templatesRow = (adminRows || []).find(r => r.setting_key === 'ticket_templates');
+        if (templatesRow?.setting_value) {
+            await handleSettingsUpdate(templatesRow.setting_value);
+        } else {
+            const { data, error } = await supabase
+                .from('admin_settings')
+                .select('setting_value')
+                .eq('setting_key', 'ticket_templates')
+                .single();
 
-        if (!error && data?.setting_value) {
-            await handleSettingsUpdate(data.setting_value);
+            if (!error && data?.setting_value) {
+                await handleSettingsUpdate(data.setting_value);
+            }
         }
     } catch (err) {
         console.log('⚠️ Using default ticket settings:', err.message);
@@ -514,6 +532,46 @@ function getLine() {
 function padLine(left, right, width = 42) {
     const gap = width - left.length - right.length;
     return left + ' '.repeat(Math.max(1, gap)) + right;
+}
+
+// Word-wrap a single line to `width` chars (hard-splits words longer than width)
+function wrapLine(line, width) {
+    if (width < 1 || line.length <= width) return [line];
+    const out = [];
+    let cur = '';
+    for (const word of line.split(/\s+/).filter(Boolean)) {
+        let w = word;
+        while (w.length > width) {
+            if (cur) { out.push(cur); cur = ''; }
+            out.push(w.slice(0, width));
+            w = w.slice(width);
+        }
+        if (!cur) cur = w;
+        else if (cur.length + 1 + w.length <= width) cur += ' ' + w;
+        else { out.push(cur); cur = w; }
+    }
+    if (cur) out.push(cur);
+    return out.length ? out : [''];
+}
+
+// Like padLine, but never exceeds `width`: the left part wraps onto extra lines
+// and the right part (price) goes at the end of the last line, or on its own line. Returns text with '\n'.
+function padLineFit(left, right, width = 42) {
+    if (left.length + 1 + right.length <= width) return padLine(left, right, width);
+    const lines = wrapLine(left, width);
+    const last = lines[lines.length - 1];
+    if (last.length + 1 + right.length <= width) lines[lines.length - 1] = padLine(last, right, width);
+    else lines.push(right.padStart(width));
+    return lines.join('\n');
+}
+
+// Prevent the printer from auto-wrapping: wrap every line of `text` to `width`
+function wrapText(text, width) {
+    return text.split('\n').map(l => {
+        // Keep pre-padded lines (separators, centered banners) intact when they only overflow with spaces
+        const trimmed = l.length > width ? l.trim() : l;
+        return wrapLine(trimmed, width).join('\n');
+    }).join('\n');
 }
 const DASH_LINE = '-'.repeat(42) + '\n';
 
@@ -636,32 +694,43 @@ function formatCustomizationDetails(ci) {
         return arr.filter(item => !/o[gn]*ion/i.test(String(item).trim()));
     };
 
+    // Helper to deduplicate items
+    const dedup = (arr) => {
+        if (!Array.isArray(arr)) return [];
+        return [...new Set(arr.map(x => String(x).trim()).filter(Boolean))];
+    };
+
     const details = [];
 
     if (isPizza) {
         // FOR PIZZAS: DO NOT INCLUDE BASE TOMATE / BASE CRÈME
         // ONLY INCLUDE SUPPLEMENTS, REMOVED INGREDIENTS, TOPPINGS
-        if (c.supplements?.length)          details.push(...c.supplements.map(s => '+ ' + s));
-        if (c.removedIngredients?.length)  details.push(...c.removedIngredients.map(r => 'Sans ' + r));
-        if (c.toppings?.length)            details.push(...c.toppings.map(t => '+ ' + t));
-        if (c.extraToppings?.length)       details.push(...c.extraToppings.map(t => '+ ' + t));
+        const supps = dedup(c.supplements);
+        const removed = dedup(c.removedIngredients);
+        const toppings = dedup(c.toppings);
+        const extraToppings = dedup(c.extraToppings);
+        if (supps.length)         details.push(...supps.map(s => '+ ' + s));
+        if (removed.length)       details.push(...removed.map(r => 'Sans ' + r));
+        if (toppings.length)      details.push(...toppings.map(t => '+ ' + t));
+        if (extraToppings.length) details.push(...extraToppings.map(t => '+ ' + t));
     } else {
         // NON-PIZZA ITEMS (Tacos, Sandwiches, Soufflés, etc.)
-        if (c.meats?.length)   details.push(...c.meats.map(m => '+ ' + m));
-        if (c.meat)            details.push('+ ' + c.meat);
-        if (c.sauces?.length)  details.push(...c.sauces.map(s => 'Sauce: ' + s));
-        if (c.sauce)           details.push('Sauce: ' + c.sauce);
+        const rawMeats = Array.isArray(c.meats) ? c.meats : (c.meat ? [c.meat] : []);
+        const meats = dedup(rawMeats);
+        const rawSauces = Array.isArray(c.sauces) ? c.sauces : (c.sauce ? [c.sauce] : []);
+        const sauces = dedup(rawSauces);
+        const garnitures = dedup(filterOignons(c.garnitures || []));
+        const supps = dedup(c.supplements);
+        const removed = dedup(c.removedIngredients);
+        const toppings = dedup(c.toppings);
 
-        // Filter oignons for garnitures
-        if (c.garnitures?.length) {
-            const garns = filterOignons(c.garnitures);
-            if (garns.length) details.push(...garns);
-        }
-
-        if (c.items?.length)               details.push(...c.items);
-        if (c.supplements?.length)         details.push(...c.supplements.map(s => '+ ' + s));
-        if (c.removedIngredients?.length) details.push(...c.removedIngredients.map(r => 'Sans ' + r));
-        if (c.toppings?.length)           details.push(...c.toppings.map(t => '+ ' + t));
+        if (meats.length)      details.push(...meats.map(m => '+ ' + m));
+        if (sauces.length)     details.push(...sauces.map(s => 'Sauce: ' + s));
+        if (garnitures.length) details.push(...garnitures);
+        if (c.items?.length)   details.push(...dedup(c.items));
+        if (supps.length)      details.push(...supps.map(s => '+ ' + s));
+        if (removed.length)    details.push(...removed.map(r => 'Sans ' + r));
+        if (toppings.length)   details.push(...toppings.map(t => '+ ' + t));
 
         if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
             const ml = { frites: 'Frite', boisson: 'Boisson', supp_frites: 'Supp Frite', menu: 'Menu complet' };
@@ -678,16 +747,24 @@ function formatCustomizationDetails(ci) {
     return { sizeLabel, details, note: c.note || null };
 }
 
-async function formatDynamicTicket(order, template) {
+async function formatDynamicTicket(order, template, isStar = false) {
     const paperWidth = template?.paperWidth || ticketSettings.paperWidth || '80mm';
     const lineWidth = paperWidth === '58mm' ? 32 : 42;
-    
-    const isCounter = template === ticketSettings.counterTemplate || 
-                      (template?.name || '').toLowerCase().includes('caisse') || 
-                      (template?.name || '').toLowerCase().includes('counter') || 
-                      (template?.name || '').toLowerCase().includes('client');
 
-    const ESCPOS_LOCAL = isCounter ? {
+    // Characters that fit on one printed line for a given font size
+    const charsFor = (fontSize) => {
+        if (fontSize === 'double_width' || fontSize === 'double_size') return Math.floor(lineWidth / 2);
+        if (fontSize === 'size_7' || fontSize === '7' || fontSize === 'large_7') return isStar ? Math.floor(lineWidth / 2) : Math.floor(lineWidth / 7);
+        return lineWidth;
+    };
+
+    // Fallback to "now" when the order has no (valid) created_at (e.g. direct POS print before DB insert)
+    const safeDate = (value) => {
+        const d = value ? new Date(value) : null;
+        return d && !isNaN(d.getTime()) ? d : new Date();
+    };
+
+    const ESCPOS_LOCAL = isStar ? {
         INIT: ESC + '@',
         SET_CODEPAGE_1252: '',
         CENTER: ESC + 'a' + '\x01', 
@@ -729,8 +806,8 @@ async function formatDynamicTicket(order, template) {
         FEED: ESC + 'd' + '\x03',
         FONT_A: ESC + 'M' + '\x00',
         FONT_B: ESC + 'M' + '\x01',
-        UPSIDE_ON:  ESC + '{' + '\x01',
-        UPSIDE_OFF: ESC + '{' + '\x00',
+        UPSIDE_ON:  '',
+        UPSIDE_OFF: '',
     };
 
     const getAlignCmdLocal = (align) => {
@@ -747,7 +824,7 @@ async function formatDynamicTicket(order, template) {
         else if (item.fontSize === 'double_width') cmd += ESCPOS_LOCAL.DOUBLE_WIDTH;
         else if (item.fontSize === 'double_size') cmd += ESCPOS_LOCAL.DOUBLE_SIZE;
         else if (item.fontSize === 'size_7' || item.fontSize === '7' || item.fontSize === 'large_7') {
-            cmd += isCounter ? ESCPOS_LOCAL.DOUBLE_SIZE : (GS + '!' + '\x66');
+            cmd += isStar ? ESCPOS_LOCAL.DOUBLE_SIZE : (GS + '!' + '\x66');
         }
         else cmd += ESCPOS_LOCAL.NORMAL_SIZE;
 
@@ -760,18 +837,8 @@ async function formatDynamicTicket(order, template) {
 
     const RESET_STYLE = (ESCPOS_LOCAL.FONT_A || '') + (ESCPOS_LOCAL.NORMAL_SIZE || '') + (ESCPOS_LOCAL.BOLD_OFF || '') + (ESCPOS_LOCAL.UNDERLINE_OFF || '') + (ESCPOS_LOCAL.INVERT_OFF || '');
 
-    const builder = new TicketBufferBuilder(isCounter);
+    const builder = new TicketBufferBuilder(isStar);
     builder.addText(ESCPOS_LOCAL.INIT);
-
-    // Upside down print for kitchen template
-    const isKitchen = template === ticketSettings.kitchenTemplate || 
-                     (template?.name || '').toLowerCase().includes('cuisine') || 
-                     (template?.name || '').toLowerCase().includes('kitchen');
-    if (isKitchen) {
-        builder.addText(ESCPOS_LOCAL.UPSIDE_ON);
-    } else {
-        builder.addText(ESCPOS_LOCAL.UPSIDE_OFF);
-    }
     builder.addText(ESCPOS_LOCAL.SET_CODEPAGE_1252);
 
     const sections = template?.sections && template.sections.length > 0 ? template.sections : DEFAULT_SECTIONS;
@@ -820,7 +887,7 @@ async function formatDynamicTicket(order, template) {
                 break;
             }
             case 'date_source': {
-                const orderDate = new Date(order.created_at);
+                const orderDate = safeDate(order.created_at);
                 const formattedDate = orderDate.toLocaleString('fr-FR', {
                     dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
                 });
@@ -878,10 +945,9 @@ async function formatDynamicTicket(order, template) {
                         const leftPart = bullet + qty + 'x ' + cleanedName;
                         const rightPart = price.toFixed(2) + 'E';
 
-                        const pSize = template?.itemFontSize || 'double_size';
+                        const pSize = template?.itemFontSize || 'normal';
                         const pBold = template?.itemBold !== false;
-
-                        visualItems.push({ text: padLine(leftPart, rightPart, lineWidth) + '\n', align: s.align, bold: pBold, underline: false, fontSize: pSize, fontType: 'A' });
+                        visualItems.push({ text: padLineFit(leftPart, rightPart, charsFor(pSize)) + '\n', align: s.align, bold: pBold, underline: false, fontSize: pSize, fontType: 'A' });
 
                         const c = ci.customization;
                         if (c) {
@@ -912,10 +978,10 @@ async function formatDynamicTicket(order, template) {
                 const tvaAmount = subtotalTTC - totalHT;
 
                 if (deliveryFee > 0) {
-                    visualItems.push({ text: padLine('Livraison:', deliveryFee.toFixed(2) + 'E', lineWidth) + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
+                    visualItems.push({ text: padLineFit('Livraison:', deliveryFee.toFixed(2) + 'E', charsFor(s.fontSize)) + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
                 }
-                visualItems.push({ text: padLine('TVA ' + TVA_RATE + '%:', tvaAmount.toFixed(2) + 'E', lineWidth) + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
-                visualItems.push({ text: padLine('TOTAL:', totalTTC.toFixed(2) + 'E', Math.floor(lineWidth * 0.6)) + '\n', align: s.align, bold: true, underline: false, fontSize: 'double_size', fontType: 'A' });
+                visualItems.push({ text: padLineFit('TVA ' + TVA_RATE + '%:', tvaAmount.toFixed(2) + 'E', charsFor(s.fontSize)) + '\n', align: s.align, bold: s.bold, underline: s.underline, fontSize: s.fontSize, fontType: s.fontType });
+                visualItems.push({ text: padLineFit('TOTAL:', totalTTC.toFixed(2) + 'E', charsFor('double_size')) + '\n', align: s.align, bold: true, underline: false, fontSize: 'double_size', fontType: 'A' });
                 break;
             }
             case 'payment': {
@@ -924,17 +990,17 @@ async function formatDynamicTicket(order, template) {
                 
                 if (isPaidOnline) {
                     visualItems.push({ text: '\n', align: 'center', bold: false, fontSize: 'normal', fontType: 'A' });
-                    visualItems.push({ text: '               PAYÉ               \n', align: 'center', bold: true, invert: true, fontSize: 'double_size', fontType: 'A' });
-                    visualItems.push({ text: '       PAIEMENT EN LIGNE VALIDÉ    \n', align: 'center', bold: true, invert: true, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: '   PAYÉ   \n', align: 'center', bold: true, invert: true, fontSize: 'double_size', fontType: 'A' });
+                    visualItems.push({ text: '  PAIEMENT EN LIGNE VALIDÉ  \n', align: 'center', bold: true, invert: true, fontSize: 'normal', fontType: 'A' });
                     visualItems.push({ text: 'NE PAS RE-FAIRE PAYER LE CLIENT\n\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
                 } else {
                     const payLabels = { 'cb': 'CB / TPE', 'especes': 'ESPÈCES' };
                     const payText = (payLabels[payMethod] || payMethod || 'EN CAISSE').toUpperCase();
-                    visualItems.push({ text: '\n------------------------------------------\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
-                    visualItems.push({ text: '[ ! ] À PAYER EN CAISSE [ ! ]\n', align: 'center', bold: true, fontSize: 'double_size', fontType: 'A' });
+                    visualItems.push({ text: '\n' + '-'.repeat(lineWidth) + '\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: 'À PAYER\nEN CAISSE\n', align: 'center', bold: true, fontSize: 'double_size', fontType: 'A' });
                     visualItems.push({ text: `SOLDE À ENCAISSER : ${(order.total || 0).toFixed(2)} €\n`, align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
                     visualItems.push({ text: `MODE DE RÈGLEMENT : ${payText}\n`, align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
-                    visualItems.push({ text: '------------------------------------------\n\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
+                    visualItems.push({ text: '-'.repeat(lineWidth) + '\n\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
                 }
 
                 const creditsSaved     = order.pizza_credits_saved || 0;
@@ -955,17 +1021,14 @@ async function formatDynamicTicket(order, template) {
                 const qrSize  = s.qrCodeSize || 120;
                 visualItems.push({ text: qrLabel + '\n', align: 'center', bold: true, underline: false, fontSize: 'normal', fontType: 'A' });
                 
-                if (isKitchen) {
-                    // Dot-matrix kitchen printer cannot print barcodes or graphics, use text fallback
-                    visualItems.push({ text: qrUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
-                } else if (isCounter) {
+                if (isStar) {
                     // Star TSP100 supports native QR code commands in Star Line Mode
                     const nativeStarQr = getStarQRCodeString(qrUrl, qrSize);
                     visualItems.push({ buffer: Buffer.from(nativeStarQr, 'binary') });
                 } else {
-                    // Standard ESC/POS QR code (fully offline & native)
-                    const nativeEscPosQr = getQRCodeString(qrUrl);
-                    visualItems.push({ buffer: Buffer.from(nativeEscPosQr, 'binary') });
+                    // Ethernet kitchen printer (dot-matrix) cannot print QR codes: print the short link as text
+                    const shortUrl = qrUrl.split('?')[0];
+                    visualItems.push({ text: shortUrl + '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
                 }
                 visualItems.push({ text: '\n', align: 'center', bold: false, underline: false, fontSize: 'normal', fontType: 'A' });
                 break;
@@ -989,10 +1052,6 @@ async function formatDynamicTicket(order, template) {
         }
     }
 
-    if (isKitchen) {
-        visualItems.reverse();
-    }
-
     for (const item of visualItems) {
         if (item.isSeparator) {
             builder.addText(getAlignCmdLocal(item.align));
@@ -1002,7 +1061,8 @@ async function formatDynamicTicket(order, template) {
         } else {
             builder.addText(getAlignCmdLocal(item.align));
             builder.addText(getStyleCmdLocal(item));
-            builder.addText(item.text);
+            // Wrap ourselves so the printer never auto-wraps (which split prices from names)
+            builder.addText(wrapText(item.text, charsFor(item.fontSize)));
             builder.addText(RESET_STYLE);
         }
     }
@@ -1200,7 +1260,7 @@ async function formatKitchenTicketClassic(order) {
 
     // ── DATE & SOURCE ──
     if (ticketSettings.kitchenTemplate?.showDateTime !== false) {
-        const orderDate = new Date(order.created_at);
+        const orderDate = new Date(order.created_at || Date.now());
         const displayLines = [
             'Date: ' + orderDate.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' }) + '\n',
             'Origine: ' + getSourceLabel(order) + '\n',
@@ -1250,7 +1310,7 @@ async function formatKitchenTicketClassic(order) {
 
     // ── ASSEMBLE using TicketBufferBuilder (handles both text and image buffers) ──
     const kb = new TicketBufferBuilder();
-    kb.addText(ESCPOS_KITCHEN.INIT + ESCPOS_KITCHEN.UPSIDE_ON + ESCPOS_KITCHEN.SET_CODEPAGE_1252);
+    kb.addText(ESCPOS_KITCHEN.INIT + ESCPOS_KITCHEN.SET_CODEPAGE_1252);
     for (const chunk of sections_k) {
         if (chunk.buffer) kb.addBuffer(chunk.buffer);
         else if (chunk.text) kb.addText(chunk.text);
@@ -1331,7 +1391,7 @@ async function formatCounterTicketClassic(order) {
     // 4. DATE/TIME + SOURCE
     let hasDateBlock = false;
     if (ticketSettings.counterTemplate?.showDateTime !== false) {
-        const orderDate = new Date(order.created_at);
+        const orderDate = new Date(order.created_at || Date.now());
         t += 'Date: ' + orderDate.toLocaleString('fr-FR', {
             dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris'
         }) + '\n';
@@ -1401,37 +1461,15 @@ async function formatCounterTicketClassic(order) {
             t += ESCPOS_COUNTER.BOLD_ON + padLine(leftPart, rightPart) + ESCPOS_COUNTER.BOLD_OFF + '\n';
 
             if (c) {
-                if (c.size) {
-                    t += ESCPOS_COUNTER.FONT_B + '   - ' + c.size.toUpperCase() + '\n' + ESCPOS_COUNTER.FONT_A;
+                const { sizeLabel, details, note } = formatCustomizationDetails(ci);
+                if (sizeLabel) {
+                    t += ESCPOS_COUNTER.FONT_B + '   - ' + sizeLabel + '\n' + ESCPOS_COUNTER.FONT_A;
                 }
-
-                const otherDetails = [];
-                if (c.meats?.length)  otherDetails.push(...c.meats.map(m => '+ ' + m));
-                if (c.meat)           otherDetails.push('+ ' + c.meat);
-                if (c.sauces?.length) otherDetails.push(...c.sauces.map(s => 'Sauce: ' + s));
-                if (c.sauce)          otherDetails.push('Sauce: ' + c.sauce);
-                if (c.garnitures?.length) otherDetails.push(...c.garnitures);
-                if (c.supplements?.length) otherDetails.push(...c.supplements.map(s => '+ ' + s));
-                if (c.removedIngredients?.length) otherDetails.push(...c.removedIngredients.map(r => 'Sans ' + r));
-                if (c.toppings?.length) otherDetails.push(...c.toppings.map(t => '+ ' + t));
-                if (c.menuOption && c.menuOption !== 'none' && c.menuOption !== '') {
-                    const parts  = c.menuOption.split(',').map(o => o.trim()).filter(Boolean);
-                    const ml2    = { frites: 'Frite', boisson: 'Boisson', supp_frites: 'Supp Frites', menu: 'Menu complet' };
-                    const labels = parts.map(p => ml2[p] || p);
-                    if (labels.length) otherDetails.push(labels.join(' + '));
-                } else if (c.menuOption === 'none' || c.menuOption === '') {
-                    const cat2 = (ci.item?.category || ci.category || '').toLowerCase();
-                    if (cat2 === 'panini' || name.toUpperCase().includes('SANDWICH') || name.toUpperCase().includes('PANINI'))
-                        otherDetails.push('Sans frite');
-                }
-                if (c.drink) otherDetails.push('Boisson: ' + c.drink);
-
-                otherDetails.forEach(d => {
+                details.forEach(d => {
                     t += '   - ' + d + '\n';
                 });
-
-                if (c.note) {
-                    t += ESCPOS_COUNTER.BOLD_ON + '   - Note: ' + c.note + ESCPOS_COUNTER.BOLD_OFF + '\n';
+                if (note) {
+                    t += ESCPOS_COUNTER.BOLD_ON + '   - Note: ' + note + ESCPOS_COUNTER.BOLD_OFF + '\n';
                 }
             }
         });
@@ -1499,18 +1537,18 @@ async function formatCounterTicketClassic(order) {
     return cb.toBuffer();
 }
 
-async function formatKitchenTicket(order) {
+async function formatKitchenTicket(order, isStar = false) {
     const layoutMode = ticketSettings?.kitchenLayoutMode || 'customizable';
     if (layoutMode === 'customizable') {
-        return formatDynamicTicket(order, ticketSettings.kitchenTemplate);
+        return formatDynamicTicket(order, ticketSettings.kitchenTemplate, isStar);
     }
     return formatKitchenTicketClassic(order);
 }
 
-async function formatCounterTicket(order) {
+async function formatCounterTicket(order, isStar = false) {
     const layoutMode = ticketSettings?.counterLayoutMode || 'customizable';
     if (layoutMode === 'customizable') {
-        return formatDynamicTicket(order, ticketSettings.counterTemplate);
+        return formatDynamicTicket(order, ticketSettings.counterTemplate, isStar);
     }
     return formatCounterTicketClassic(order);
 }
@@ -1662,6 +1700,8 @@ function sendToPrinter(data, targetIp) {
 // ============================================
 const printQueue = [];
 let printQueueProcessing = false;
+const PRINT_JOB_TIMEOUT_MS = 20000;
+const USB_PRINT_TIMEOUT_MS = 10000;
 
 function enqueuePrintJob(jobFn, label) {
     return new Promise((resolve) => {
@@ -1678,7 +1718,16 @@ async function processPrintQueue() {
         const { jobFn, label, resolve } = printQueue.shift();
         try {
             console.log(`🖨️  Queue: processing [${label}] (${printQueue.length} remaining)`);
-            const result = await jobFn();
+            // Hard cap per job so one stuck printer can never block the orders behind it
+            let timer;
+            const result = await Promise.race([
+                jobFn(),
+                new Promise(r => { timer = setTimeout(() => {
+                    console.error(`⏰ Queue job [${label}] exceeded ${PRINT_JOB_TIMEOUT_MS / 1000}s — skipping`);
+                    r(false);
+                }, PRINT_JOB_TIMEOUT_MS); }),
+            ]);
+            clearTimeout(timer);
             resolve(result);
         } catch (err) {
             console.error(`❌ Queue job [${label}] failed:`, err.message);
@@ -1712,15 +1761,15 @@ async function printToSinglePrinter(data, ip, orderLabel) {
 async function getActualWindowsPrinterName(requestedName) {
     const target = (requestedName || getCounterPrinterName()).trim();
     return new Promise((resolve) => {
-        exec('powershell -Command "Get-Printer | Select-Object Name | ConvertTo-Json"', (err, stdout) => {
-            if (err || !stdout) return resolve(target);
+        exec('powershell -Command "Get-Printer | Select-Object Name | ConvertTo-Json"', { timeout: 10000, windowsHide: true }, (err, stdout) => {
+            if (err || !stdout) return resolve(null);
             try {
                 const parsed = JSON.parse(stdout);
                 const printers = Array.isArray(parsed)
                     ? parsed.map(p => p.Name).filter(Boolean)
                     : (parsed && parsed.Name ? [parsed.Name] : []);
 
-                if (printers.length === 0) return resolve(target);
+                if (printers.length === 0) return resolve(null);
 
                 if (printers.includes(target)) return resolve(target);
 
@@ -1736,9 +1785,9 @@ async function getActualWindowsPrinterName(requestedName) {
                     return resolve(starMatch);
                 }
 
-                resolve(target);
+                resolve(null);
             } catch {
-                resolve(target);
+                resolve(null);
             }
         });
     });
@@ -1773,7 +1822,7 @@ function sendToUSBPrinter(data, printerName) {
                 ? `"${exeScript}" "${actualPrinterName}" "${tempFilePath}"`
                 : `powershell -ExecutionPolicy Bypass -File "${psScript}" -PrinterName "${actualPrinterName}" -FilePath "${tempFilePath}"`;
             
-            exec(command, async (error, stdout, stderr) => {
+            exec(command, { timeout: USB_PRINT_TIMEOUT_MS, windowsHide: true }, async (error, stdout, stderr) => {
                 try {
                     await fsPromises.unlink(tempFilePath);
                 } catch (err) {
@@ -1862,16 +1911,18 @@ async function printRawWithRetry(ticketData, label, target = 'ethernet_only') {
     }, label);
 }
 
-// ── DUAL PRINT (direct parallel execution — 0ms blocking) ──
+// ── DUAL / SINGLE PRINTER PRINT DISPATCH ──
 async function printDualTickets(order) {
-    let kitchenPromise = Promise.resolve(false);
-    let counterPromise = Promise.resolve(false);
+    const activeTemplate = ticketSettings?.activeTemplate || 'counter';
+    const targetCounterPrinter = cachedResolvedUsbPrinterName;
+    const hasUsbPrinter = Boolean(targetCounterPrinter && targetCounterPrinter !== 'Star TSP100 Cutter (TSP143)' && targetCounterPrinter.trim());
 
-    // ── 1. TICKET CUISINE → Ethernet (Parallel with USB) ──
-    if (PRINTER_IPS.length > 0) {
-        kitchenPromise = (async () => {
+    // Scenario 1: Both Ethernet and a real USB printer are available
+    if (PRINTER_IPS.length > 0 && hasUsbPrinter) {
+        console.log(`🖨️ Dual Print: Cuisine → Ethernet (${PRINTER_IPS.join(', ')}), Caisse → USB (${targetCounterPrinter})`);
+        let kitchenPromise = (async () => {
             try {
-                const data = await formatKitchenTicket(order);
+                const data = await formatKitchenTicket(order, false);
                 const results = await Promise.allSettled(
                     PRINTER_IPS.map(ip => printToSinglePrinter(data, ip, `Cuisine #${order.order_number}`))
                 );
@@ -1883,14 +1934,10 @@ async function printDualTickets(order) {
                 return false;
             }
         })();
-    }
 
-    // ── 2. TICKET CAISSE → Star TSP100 USB (Parallel with Ethernet) ──
-    const targetCounterPrinter = getCounterPrinterName();
-    if (targetCounterPrinter) {
-        counterPromise = (async () => {
+        let counterPromise = (async () => {
             try {
-                const data = await formatCounterTicket(order);
+                const data = await formatCounterTicket(order, true);
                 await sendToUSBPrinter(data, targetCounterPrinter);
                 console.log(`✅ Ticket caisse → "${targetCounterPrinter}"`);
                 return true;
@@ -1899,13 +1946,63 @@ async function printDualTickets(order) {
                 return false;
             }
         })();
+
+        const [kitchenRes, counterRes] = await Promise.allSettled([kitchenPromise, counterPromise]);
+        const kitchenOk = kitchenRes.status === 'fulfilled' && kitchenRes.value === true;
+        const counterOk = counterRes.status === 'fulfilled' && counterRes.value === true;
+        return kitchenOk || counterOk;
     }
 
-    const [kitchenRes, counterRes] = await Promise.allSettled([kitchenPromise, counterPromise]);
-    const kitchenOk = kitchenRes.status === 'fulfilled' && kitchenRes.value === true;
-    const counterOk = counterRes.status === 'fulfilled' && counterRes.value === true;
+    // Scenario 2: Single printer (Ethernet PRINTER_IPS 192.168.1.200)
+    if (PRINTER_IPS.length > 0) {
+        console.log(`🖨️ Ethernet Print (target: ${PRINTER_IPS.join(', ')}, template: ${activeTemplate})`);
+        try {
+            if (activeTemplate === 'kitchen') {
+                const data = await formatKitchenTicket(order, false);
+                const results = await Promise.allSettled(
+                    PRINTER_IPS.map(ip => printToSinglePrinter(data, ip, `Cuisine #${order.order_number}`))
+                );
+                return results.some(r => r.status === 'fulfilled' && r.value === true);
+            } else if (activeTemplate === 'both') {
+                const kitchenData = await formatKitchenTicket(order, false);
+                const counterData = await formatCounterTicket(order, false);
+                const results = await Promise.allSettled(
+                    PRINTER_IPS.map(async ip => {
+                        const ok1 = await printToSinglePrinter(kitchenData, ip, `Cuisine #${order.order_number}`);
+                        await new Promise(r => setTimeout(r, 400));
+                        const ok2 = await printToSinglePrinter(counterData, ip, `Client #${order.order_number}`);
+                        return ok1 || ok2;
+                    })
+                );
+                return results.some(r => r.status === 'fulfilled' && r.value === true);
+            } else {
+                // Default: Counter / Client ticket with complete layout (header, items, prices, totals, payment, QR)
+                const data = await formatCounterTicket(order, false);
+                const results = await Promise.allSettled(
+                    PRINTER_IPS.map(ip => printToSinglePrinter(data, ip, `Client #${order.order_number}`))
+                );
+                return results.some(r => r.status === 'fulfilled' && r.value === true);
+            }
+        } catch (err) {
+            console.error(`❌ Ethernet print error: ${err.message}`);
+            return false;
+        }
+    }
 
-    return kitchenOk || counterOk;
+    // Scenario 3: USB only
+    if (hasUsbPrinter) {
+        try {
+            const data = await formatCounterTicket(order, true);
+            await sendToUSBPrinter(data, targetCounterPrinter);
+            return true;
+        } catch (err) {
+            console.error(`❌ USB printer error: ${err.message}`);
+            return false;
+        }
+    }
+
+    console.warn('⚠️ Aucun périphérique d\'impression disponible');
+    return false;
 }
 
 const processingOrders = new Set();
@@ -1933,6 +2030,12 @@ async function handleNewOrder(order, force = false) {
     );
 
     if (isAlreadyPrinted) {
+        // POS prints arrive first without an id; remember the DB id too so polling stops re-catching it
+        if (idKey && numKey && printedOrders.has(numKey) && !printedOrders.has(idKey)) {
+            printedOrders.set(idKey, Date.now());
+            savePrintedOrders();
+            await markOrderPrinted(idKey);
+        }
         console.log(`⏩ Order #${order.order_number} already printed/processing (skipped duplicate)`);
         return true;
     }
@@ -2158,12 +2261,14 @@ async function setupRealtimeSubscription() {
                 console.log('✅ Connected to Supabase real-time!');
                 console.log('👂 Listening for orders + HACCP prints...\n');
                 reconnectAttempts = 0;
-            } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+            } else if (status === 'CHANNEL_ERROR') {
                 console.error(`❌ Channel status: ${status}`);
                 handleDisconnect();
             } else if (status === 'TIMED_OUT') {
                 console.error('⏰ Connection timed out');
                 handleDisconnect();
+            } else if (status === 'CLOSED') {
+                console.log('ℹ️ Channel closed.');
             }
         });
 }
@@ -2333,8 +2438,6 @@ function startHeartbeat() {
 // ============================================
 async function pollForUnprintedOrders(lookbackMs) {
     try {
-        // Sync templates & remote test print triggers
-        await fetchTicketSettings();
 
         const lookback = lookbackMs || 5 * 60 * 1000; // Default: last 5 minutes
         const since = new Date(Date.now() - lookback).toISOString();
@@ -2356,8 +2459,7 @@ async function pollForUnprintedOrders(lookbackMs) {
                 }
             }
             if (caught > 0) {
-                console.log(`⚠️ Poll caught ${caught} missed order(s) — forcing realtime reconnect...`);
-                handleDisconnect();
+                console.log(`ℹ️ Poll caught and processed ${caught} order(s).`);
             }
         }
 
@@ -2708,15 +2810,15 @@ function setupHttpServer() {
             console.log(`   Printer target: ${targetPrinter}`);
             console.log(`   Layout mode: ${targetLayoutMode}`);
 
-            const generateTicketData = async (type) => {
+            const generateTicketData = async (type, isStar) => {
                 if (type === 'kitchen') {
                     if (targetLayoutMode === 'customizable' && template) {
-                        return formatDynamicTicket(MOCK_TEST_ORDER, template);
+                        return formatDynamicTicket(MOCK_TEST_ORDER, template, isStar);
                     }
                     return formatKitchenTicketClassic(MOCK_TEST_ORDER);
                 } else {
                     if (targetLayoutMode === 'customizable' && template) {
-                        return formatDynamicTicket(MOCK_TEST_ORDER, template);
+                        return formatDynamicTicket(MOCK_TEST_ORDER, template, isStar);
                     }
                     return formatCounterTicketClassic(MOCK_TEST_ORDER);
                 }
@@ -2728,7 +2830,7 @@ function setupHttpServer() {
             if (targetPrinter === 'kitchen' || targetPrinter === 'both') {
                 if (PRINTER_IPS.length > 0) {
                     console.log(`🖨️  Printing test kitchen ticket to Ethernet IPs: ${PRINTER_IPS.join(', ')}`);
-                    const ticketData = await generateTicketData('kitchen');
+                    const ticketData = await generateTicketData('kitchen', false);
                     const results = await Promise.allSettled(
                         PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, `Test Kitchen`))
                     );
@@ -2741,14 +2843,25 @@ function setupHttpServer() {
             }
 
             if (targetPrinter === 'counter' || targetPrinter === 'both') {
-                const usbPrinterName = COUNTER_PRINTER_NAME || process.env.USB_PRINTER_NAME;
-                if (usbPrinterName && usbPrinterName.trim()) {
-                    console.log(`🖨️  Printing test client ticket to USB: "${usbPrinterName}"`);
-                    const ticketData = await generateTicketData('counter');
-                    await sendToUSBPrinter(ticketData, usbPrinterName);
+                const hasUsbPrinter = Boolean(cachedResolvedUsbPrinterName && 
+                                      cachedResolvedUsbPrinterName !== 'Star TSP100 Cutter (TSP143)' &&
+                                      cachedResolvedUsbPrinterName.trim().length > 0);
+                if (hasUsbPrinter) {
+                    console.log(`🖨️  Printing test client ticket to USB: "${cachedResolvedUsbPrinterName}"`);
+                    const ticketData = await generateTicketData('counter', true);
+                    await sendToUSBPrinter(ticketData, cachedResolvedUsbPrinterName);
                     success = true;
+                } else if (PRINTER_IPS.length > 0) {
+                    console.log(`🖨️  Printing test client ticket to Ethernet (no USB): ${PRINTER_IPS.join(', ')}`);
+                    const ticketData = await generateTicketData('counter', false);
+                    const results = await Promise.allSettled(
+                        PRINTER_IPS.map(ip => printToSinglePrinter(ticketData, ip, `Test Client`))
+                    );
+                    const ok = results.some(r => r.status === 'fulfilled' && r.value === true);
+                    if (ok) success = true;
+                    else errors.push('Failed to print to Ethernet printer');
                 } else if (targetPrinter === 'counter') {
-                    return res.status(400).json({ error: 'No USB printer name configured' });
+                    return res.status(400).json({ error: 'No printer configured or reachable' });
                 }
             }
 

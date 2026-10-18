@@ -32,5 +32,16 @@ export function resolveImg(url?: string | null): string | undefined {
   if (!url) return undefined;
   // Auto-rewrite deprecated Supabase cloud domain to self-hosted VPS
   const sanitizedUrl = url.replace('https://hsylnrzxeyqxczdalurj.supabase.co', 'https://supabase.twinpizza.fr');
-  return LOCAL_IMG[sanitizedUrl] || LOCAL_IMG[url] || sanitizedUrl;
+  return LOCAL_IMG[sanitizedUrl] || LOCAL_IMG[url] || toResizedUrl(sanitizedUrl);
+}
+
+// Original uploads are up to ~800 KB: serve a resized/compressed version through the
+// storage image transformer of the self-hosted VPS (≈40 KB). Idempotent.
+const STORAGE_PUBLIC = 'https://supabase.twinpizza.fr/storage/v1/object/public/';
+const STORAGE_RENDER = 'https://supabase.twinpizza.fr/storage/v1/render/image/public/';
+
+function toResizedUrl(url: string): string {
+  if (!url.startsWith(STORAGE_PUBLIC) || /\.(svg|gif)(\?|$)/i.test(url)) return url;
+  const resized = STORAGE_RENDER + url.slice(STORAGE_PUBLIC.length);
+  return resized + (resized.includes('?') ? '&' : '?') + 'width=800&quality=75&resize=contain';
 }
