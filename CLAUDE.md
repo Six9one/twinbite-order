@@ -45,3 +45,12 @@ npm run preview    # Prévisualise le build de production
 - **Layouts** : tout passe par `formatDynamicTicket` (texte coupé par nos soins via `wrapLine` / `padLineFit` / `charsFor` : 42 car. en taille normale, 21 en double taille, pour que l'imprimante ne coupe jamais elle-même les lignes). Les layouts « classiques » ne servent plus que pour l'USB Star TSP100 (`isStar`).
 - **File d'impression** : séquentielle, 20 s max par job, 10 s max pour l'impression USB et pour `Get-Printer`.
 - **Images du menu** : `src/utils/resolveImg.ts` sert les images du storage via `/storage/v1/render/image/public/…?width=800&quality=75` (imgproxy du VPS).
+
+## 💳 Paiement & promos (site web)
+- Paiement en ligne (myPOS / Apple Pay / Google Pay) **désactivé** : `ONLINE_PAYMENT_ENABLED = false` dans `src/components/NewCheckout.tsx`. Le client paie en caisse ou au livreur.
+- Champ code promo masqué (`PROMO_CODES_ENABLED = false`) : aucun moteur de promo n'existe, les codes n'étaient jamais appliqués.
+- Prix des pizzas : `applyPizzaPromotions` (`src/utils/promotions.ts`). Les extras = `calculatedPrice - prix de base`, jamais remisés par l'offre 1+1.
+
+## 🧩 Options des assistants (viandes, sauces, garnitures…)
+- Chargées par `src/hooks/useCustomizationOptions.ts` (toutes les lignes, actives ou non) puis dédoublonnées par nom (`dedupeOptionsByName`, la ligne active l'emporte). La base contient des doublons : les nettoyer dans l'admin plutôt que de retirer ce garde-fou.
+

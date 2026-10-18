@@ -2,6 +2,22 @@
 
 Les entrǸes les plus rǸcentes en haut.
 
+## 2026-10-18 — Claude Code — Audit + correctifs borne, site, assistants Makloub/Soufflet, paiement en ligne coupé
+**Fait :**
+- **Extras pizza jamais facturés** (ligne 19 €, total 18 €) sur la borne, le site et probablement la caisse : `applyPizzaPromotions` ne comptait que l'ancien champ `supplements`. Désormais extras = `calculatedPrice - prix de base` ; ils ne sont jamais remisés par l'offre 1+1. Le ticket cuisine imprime aussi `addedExtras`, et le total de chaque ligne = prix unitaire × quantité.
+- **Doublons dans les assistants** : `useCustomizationOptions` chargeait aussi les lignes inactives ; la base contient des doublons (crudités Salade/Tomate/Oignon actives en double, plus des copies inactives de viandes, sauces, garnitures et suppléments). Ajout de `dedupeOptionsByName` (la ligne active l'emporte). Les sauces, garnitures et suppléments inactifs sont masqués (viandes inactives = « Rupture »). Une garniture n'est plus jamais enregistrée deux fois.
+- `UnifiedProductWizard` : « Sans sauce » bloquait « Continuer » → autorisé, et envoyé en cuisine comme « Sans sauce ». Les garnitures retirées sont envoyées comme `removedIngredients` → « Sans X » sur le ticket. Les prix des options menu viennent de `menuOptionPrices`.
+- Borne : catégorie Salade ajoutée (elle ne faisait rien). Appel `print-order` supprimé (le VPS ne peut pas joindre l'imprimante du resto). Erreurs gérées : succès si la commande est enregistrée, sinon écran d'erreur + Réessayer, panier conservé. Protection contre le double appui sur « Confirmer ». Note réduite à `[BORNE]`. Le ticket indique « À CHOISIR EN CAISSE » pour le règlement. Noms et disponibilités des catégories mis en cache (plus de noms bruts ni de catégorie désactivée cliquable). Description « Eau minérale » et catégorie « boissons » attribuées par erreur : corrigé. Bandeau cookies masqué sur /kiosk.
+- Site : **paiement en ligne désactivé** (`ONLINE_PAYMENT_ENABLED = false` dans `NewCheckout.tsx`). Champ code promo factice masqué (`PROMO_CODES_ENABLED = false`, aucun moteur de promo). Le panier affiche extras et « Sans X ». Pluriels « article(s) » corrigés.
+- Vérifié dans le navigateur (borne + site, sans passer de vraie commande) ; build Vite OK ; rendu du ticket cuisine vérifié. Commit 8345504, codeVersion print-server `3ae565662177`.
+**Fichiers touchés :** `src/utils/promotions.ts`, `print-server/server.js`, `src/hooks/useCustomizationOptions.ts`, `src/hooks/useCategoryImages.ts`, `src/hooks/useDisabledCategories.ts`, `src/components/wizards/UnifiedProductWizard.tsx`, `src/components/wizards/StreamlinedPizzaWizard.tsx`, `src/pages/KioskPage.tsx`, `src/components/kiosk/KioskCategories.tsx`, `src/components/kiosk/KioskCart.tsx`, `src/components/CookieConsent.tsx`, `src/components/NewCheckout.tsx`, `src/components/NewCart.tsx`.
+**À savoir / Pièges :**
+- Les doublons sont toujours DANS la base (tables `crudites_options`, `meat_options`, `sauce_options`, `garniture_options`, `supplement_options`) : le code les masque, mais il faudrait les nettoyer dans l'admin.
+- Bug « 2 pizzas sur la borne → une seule reçue » NON reproduit : le panier contient bien les 2 pizzas. Aucune commande borne en base n'a 2 pizzas. Il faut un numéro de commande réel pour enquêter.
+- Le bouton panier flottant et l'en-tête des pizzas utilisent `getTotal()` (sans l'offre 1+1) : ils affichent 36 € pour 2 pizzas alors que le total réel est 18 €.
+- Le site public est déployé sur Vercel (`vercel.json`) : vérifier que le déploiement depuis `main` est passé.
+**Reste à faire :** METTRE_A_JOUR.bat au resto (codeVersion `3ae565662177`) ; nettoyer les doublons d'options dans l'admin ; obtenir un n° de commande pour le bug des 2 pizzas.
+
 ## 2026-10-18 — Claude Code — Mise à jour de la documentation
 **Fait :** `CLAUDE.md` : nouvelle section « Impression » (lancement et mise à jour au resto, vérification de `codeVersion`, imprimante ESC/POS montée à l'envers, layouts, file d'attente, images) + état des secrets VPS et neutralisation de l'ancien Supabase cloud. `AGENTS.md` rédigé (il était vide) : protocole de coordination et règles critiques. `.agents/EN-COURS.md` : points en attente de validation.
 **Fichiers touchés :** `CLAUDE.md`, `AGENTS.md`, `.agents/EN-COURS.md`, `.agents/JOURNAL.md`.
