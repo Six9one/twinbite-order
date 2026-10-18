@@ -423,7 +423,7 @@ async function runLocalTestPrint(printerType, layoutMode) {
             if (targetLayoutMode === 'customizable') {
                 return formatDynamicTicket(MOCK_TEST_ORDER, ticketSettings.counterTemplate, isStar);
             }
-            return formatCounterTicketClassic(MOCK_TEST_ORDER);
+            return formatCounterTicketClassic(MOCK_TEST_ORDER, isStar);
         }
     };
 
@@ -1087,6 +1087,14 @@ async function formatDynamicTicket(order, template, isStar = false) {
 }
 
 async function formatKitchenTicketClassic(order) {
+    // The classic kitchen layout reverses every block for an upside-down mounted printer,
+    // but upside-down mode (ESC {) is disabled: printed as-is it comes out in the wrong order.
+    // Use the dynamic layout (proper ESC/POS, wraps to the real line width) instead.
+    return formatDynamicTicket(order, ticketSettings.kitchenTemplate, false);
+}
+
+// Kept for reference (upside-down kitchen printer layout), no longer called
+async function formatKitchenTicketClassicUpsideDown(order) {
     // Star Line Mode formatting overrides for Star SP700 Ethernet printer
     const ESCPOS_KITCHEN = {
         INIT: ESC + '@',
@@ -1334,7 +1342,11 @@ async function formatKitchenTicketClassic(order) {
 
 
 
-async function formatCounterTicketClassic(order) {
+async function formatCounterTicketClassic(order, isStar = true) {
+    // This layout uses Star Line Mode commands (ESC i = size, Star QR). On the Ethernet
+    // ESC/POS printer, ESC i means PARTIAL CUT and no codepage is set → cut-up tickets,
+    // broken accents and the QR printed as text. Only use it on the Star USB printer.
+    if (!isStar) return formatDynamicTicket(order, ticketSettings.counterTemplate, false);
     // Star Line Mode formatting overrides for Star TSP100 USB printer
     const ESCPOS_COUNTER = {
         INIT: ESC + '@',
@@ -1564,7 +1576,7 @@ async function formatCounterTicket(order, isStar = false) {
     if (layoutMode === 'customizable') {
         return formatDynamicTicket(order, ticketSettings.counterTemplate, isStar);
     }
-    return formatCounterTicketClassic(order);
+    return formatCounterTicketClassic(order, isStar);
 }
 
 async function formatOrderForPrint(order, isKitchen = false) {
@@ -2834,7 +2846,7 @@ function setupHttpServer() {
                     if (targetLayoutMode === 'customizable' && template) {
                         return formatDynamicTicket(MOCK_TEST_ORDER, template, isStar);
                     }
-                    return formatCounterTicketClassic(MOCK_TEST_ORDER);
+                    return formatCounterTicketClassic(MOCK_TEST_ORDER, isStar);
                 }
             };
 
