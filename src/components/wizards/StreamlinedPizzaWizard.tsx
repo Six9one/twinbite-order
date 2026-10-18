@@ -200,7 +200,7 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
           <div className="text-right">
             <span className="text-sm font-semibold text-muted-foreground mr-2">Panier</span>
             <Badge variant="secondary" className="px-2.5 py-1 text-sm bg-primary/10 text-primary border-primary/20">
-              {getItemCount()} articles • {getTotal().toFixed(2)}€
+              {getItemCount()} article{getItemCount() > 1 ? 's' : ''} • {getTotal().toFixed(2)}€
             </Badge>
           </div>
         </div>

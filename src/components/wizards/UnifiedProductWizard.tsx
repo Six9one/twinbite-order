@@ -294,7 +294,7 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
   );
 
   const sauceOptions = dbSauces && dbSauces.length > 0
-    ? dbSauces.map(s => ({ id: s.id, name: s.name, price: Number(s.price), image_url: s.image_url }))
+    ? dbSauces.filter(s => s.is_active !== false).map(s => ({ id: s.id, name: s.name, price: Number(s.price), image_url: s.image_url }))
     : staticSauceOptions.map(s => ({ ...s, image_url: null }));
 
   // Re-resolve the preset's meat/sauce names against whichever option list is
@@ -322,7 +322,7 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
   }, [dbMeats, dbSauces]);
 
   const supplementOptions = dbSupplements && dbSupplements.length > 0
-    ? dbSupplements.map(s => ({ id: s.id, name: s.name, price: Number(s.price), image_url: s.image_url }))
+    ? dbSupplements.filter(s => s.is_active !== false).map(s => ({ id: s.id, name: s.name, price: Number(s.price), image_url: s.image_url }))
     : staticSupplements.map(s => ({ ...s, image_url: null }));
 
   // Garnitures from DB or static fallback, product-specific
@@ -339,11 +339,11 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
   const rawGarnitures = config.showGarniture
     ? (isCrudite
         ? (dbCrudites && dbCrudites.length > 0
-            ? dbCrudites.map(g => ({ id: g.id, name: g.name, price: Number(g.price), image_url: g.image_url }))
+            ? dbCrudites.filter(g => g.is_active !== false).map(g => ({ id: g.id, name: g.name, price: Number(g.price), image_url: g.image_url }))
             : getStaticGarnitures()
           )
         : (dbGarnitures && dbGarnitures.length > 0
-            ? dbGarnitures.map(g => ({ id: g.id, name: g.name, price: Number(g.price), image_url: g.image_url }))
+            ? dbGarnitures.filter(g => g.is_active !== false).map(g => ({ id: g.id, name: g.name, price: Number(g.price), image_url: g.image_url }))
             : getStaticGarnitures()
           )
       )
@@ -472,7 +472,7 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
   const canContinue = () => {
     if (step === 1) return true;
     if (step === 2) return selectedMeats.length > 0;
-    if (step === 3) return selectedSauces.length > 0;
+    // Step 3 always allows continuing: "Sans sauce" is a valid choice
     return true;
   };
 
@@ -482,10 +482,12 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
       return meat?.name || id;
     });
 
-    const sauceNames = selectedSauces.map(id => {
+    const selectedSauceNames = selectedSauces.map(id => {
       const sauce = sauceOptions.find(s => s.id === id);
       return sauce?.name || id;
     });
+    // Tell the kitchen explicitly when the customer chose no sauce
+    const sauceNames = selectedSauceNames.length > 0 ? selectedSauceNames : ['Sans sauce'];
 
     // Build final garnitures: defaults minus removed, plus extras
     const activeDefaults = defaultGarnitures
@@ -494,7 +496,11 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
     const activeExtras = extraGarnitures
       .filter(g => selectedExtra.includes(g.id))
       .map(g => g.name);
-    const garnitureNames = [...activeDefaults, ...activeExtras];
+    const garnitureNames = [...new Set([...activeDefaults, ...activeExtras])];
+    // Defaults the customer removed → printed as "Sans X" on the kitchen ticket
+    const removedGarnitureNames = [...new Set(defaultGarnitures
+      .filter(g => removedDefaults.includes(g.id))
+      .map(g => g.name))];
 
     const allGarnitureNotes = garnitureNames;
 
@@ -518,6 +524,7 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
       meats: meatNames,
       sauces: sauceNames,
       garnitures: allGarnitureNotes,
+      removedIngredients: removedGarnitureNames.length > 0 ? removedGarnitureNames : undefined,
       supplements: supplementNames,
       menuOption,
       note: note || undefined,
@@ -800,9 +807,9 @@ export function UnifiedProductWizard({ productType, onClose, initialSize, initia
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { id: 'none', label: 'Sans', price: 0, emoji: '🚫', imageUrl: null },
-                { id: 'frites', label: 'Frites', price: 1.5, emoji: '🍟', imageUrl: menuOptionImages?.frites || null },
-                { id: 'boisson', label: 'Boisson', price: 1.5, emoji: '🥤', imageUrl: menuOptionImages?.boisson || null },
-                { id: 'menu', label: 'Menu Complet', price: 2.5, desc: 'Frites + Boisson', emoji: '🍔', imageUrl: menuOptionImages?.menu || null },
+                { id: 'frites', label: 'Frites', price: menuOptionPrices.frites, emoji: '🍟', imageUrl: menuOptionImages?.frites || null },
+                { id: 'boisson', label: 'Boisson', price: menuOptionPrices.boisson, emoji: '🥤', imageUrl: menuOptionImages?.boisson || null },
+                { id: 'menu', label: 'Menu Complet', price: menuOptionPrices.menu, desc: 'Frites + Boisson', emoji: '🍔', imageUrl: menuOptionImages?.menu || null },
               ].map((option) => (
                 <OptionCard
                   key={option.id}

@@ -719,7 +719,9 @@ function formatCustomizationDetails(ci) {
     if (isPizza) {
         // FOR PIZZAS: DO NOT INCLUDE BASE TOMATE / BASE CRÈME
         // ONLY INCLUDE SUPPLEMENTS, REMOVED INGREDIENTS, TOPPINGS
-        const supps = dedup(c.supplements);
+        // Extras chosen in the pizza wizard live in addedExtras ({id,name,price} or plain names)
+        const extraNames = (Array.isArray(c.addedExtras) ? c.addedExtras : []).map(e => (e && typeof e === 'object') ? e.name : e);
+        const supps = dedup([...(c.supplements || []), ...extraNames]);
         const removed = dedup(c.removedIngredients);
         const toppings = dedup(c.toppings);
         const extraToppings = dedup(c.extraToppings);
@@ -948,7 +950,7 @@ async function formatDynamicTicket(order, template, isStar = false) {
                     catItems.forEach(ci => {
                         const name      = ci.item?.name || ci.name || 'Produit';
                         const qty       = ci.quantity || 1;
-                        const price     = ci.totalPrice || ci.calculatedPrice || ci.price || 0;
+                        const price     = ci.totalPrice || ((ci.calculatedPrice || ci.item?.price || ci.price || 0) * (ci.quantity || 1));
                         
                         let cleanedName = name.toUpperCase();
                         if (cat === 'pizza' || cat === 'pizzas' || cleanedName.startsWith('PIZZA ')) {
@@ -1009,7 +1011,10 @@ async function formatDynamicTicket(order, template, isStar = false) {
                     visualItems.push({ text: 'NE PAS RE-FAIRE PAYER LE CLIENT\n\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
                 } else {
                     const payLabels = { 'cb': 'CB / TPE', 'especes': 'ESPÈCES' };
-                    const payText = (payLabels[payMethod] || payMethod || 'EN CAISSE').toUpperCase();
+                    // Kiosk orders are saved as "especes" but the customer chooses how to pay at the counter
+                    const payText = detectOrderSource(order) === 'BORNE'
+                        ? 'À CHOISIR EN CAISSE'
+                        : (payLabels[payMethod] || payMethod || 'EN CAISSE').toUpperCase();
                     visualItems.push({ text: '\n' + '-'.repeat(lineWidth) + '\n', align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
                     visualItems.push({ text: 'À PAYER\nEN CAISSE\n', align: 'center', bold: true, fontSize: 'double_size', fontType: 'A' });
                     visualItems.push({ text: `SOLDE À ENCAISSER : ${(order.total || 0).toFixed(2)} €\n`, align: 'center', bold: true, fontSize: 'normal', fontType: 'A' });
@@ -1222,7 +1227,7 @@ async function formatKitchenTicketClassicUpsideDown(order) {
             grouped[cat].forEach(ci => {
                 const name  = ci.item?.name || ci.name || 'Produit';
                 const qty   = ci.quantity || 1;
-                const price = ci.totalPrice || ci.calculatedPrice || ci.price || 0;
+                const price = ci.totalPrice || ((ci.calculatedPrice || ci.item?.price || ci.price || 0) * (ci.quantity || 1));
                 const c     = ci.customization;
                 let cleanedName = name.toUpperCase();
                 if (cat === 'pizza' || cat === 'pizzas' || cleanedName.startsWith('PIZZA '))
@@ -1490,7 +1495,7 @@ async function formatCounterTicketClassic(order, isStar = true) {
         catItems.forEach(ci => {
             const name      = ci.item?.name || ci.name || 'Produit';
             const qty       = ci.quantity || 1;
-            const price     = ci.totalPrice || ci.calculatedPrice || ci.price || 0;
+            const price     = ci.totalPrice || ((ci.calculatedPrice || ci.item?.price || ci.price || 0) * (ci.quantity || 1));
             const c         = ci.customization;
 
             let cleanedName = name.toUpperCase();

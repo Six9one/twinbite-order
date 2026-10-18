@@ -79,6 +79,12 @@ export function KioskCart({ customerName, orderType, onConfirm }: KioskCartProps
                                                 {item.customization.sauces?.length > 0 && (
                                                     <span> • {item.customization.sauces.join(', ')}</span>
                                                 )}
+                                                {(item.customization as any).addedExtras?.length > 0 && (
+                                                    <span className="text-emerald-400"> • {(item.customization as any).addedExtras.map((e: any) => '+' + (typeof e === 'string' ? e : e.name)).join(', ')}</span>
+                                                )}
+                                                {(item.customization as any).removedIngredients?.length > 0 && (
+                                                    <span className="text-red-400"> • {(item.customization as any).removedIngredients.map((r: string) => 'Sans ' + r).join(', ')}</span>
+                                                )}
                                             </div>
                                         )}
                                     </div>

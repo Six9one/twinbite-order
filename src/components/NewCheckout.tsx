@@ -26,6 +26,12 @@ import { format, addMonths, isSunday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { initiateMyPosCheckout } from '@/services/mypos';
 
+// Online payment (myPOS / Apple Pay / Google Pay) is switched OFF on the website:
+// customers pay at the restaurant (cash or card). Set to true to bring it back.
+const ONLINE_PAYMENT_ENABLED = false;
+// No real promo code engine exists yet: keep the field hidden until one is implemented
+const PROMO_CODES_ENABLED = false;
+
 // Customer info validation schema
 const customerInfoSchema = z.object({
   name: z.string()
@@ -366,7 +372,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
     if (orderSubmitted || isProcessing) return;
 
     // If payment is online, Apple Pay, or Google Pay, redirect to myPOS Checkout
-    if (paymentMethod === 'en_ligne' || paymentMethod === 'mypos' || paymentMethod === 'apple_pay' || paymentMethod === 'google_pay') {
+    if (ONLINE_PAYMENT_ENABLED && (paymentMethod === 'en_ligne' || paymentMethod === 'mypos' || paymentMethod === 'apple_pay' || paymentMethod === 'google_pay')) {
       await handleMyPosPayment();
       return;
     }
@@ -684,7 +690,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   <span className="text-xs font-bold uppercase tracking-wider text-stone-500">Votre commande</span>
                 </div>
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
-                  {cart.reduce((sum, i) => sum + i.quantity, 0)} articles
+                  {(() => { const n = cart.reduce((sum, i) => sum + i.quantity, 0); return `${n} article${n > 1 ? 's' : ''}`; })()}
                 </span>
               </div>
 
@@ -851,7 +857,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="font-extrabold text-base block text-stone-900 dark:text-white">Espèces / CB</span>
-                    <span className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 block">Payer à la caisse du restaurant</span>
+                    <span className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 block">{orderType === 'livraison' ? 'Payer au livreur à la livraison' : 'Payer à la caisse du restaurant'}</span>
                   </div>
                   <div className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${
                     paymentMethod === 'especes' || paymentMethod === 'cb'
@@ -864,6 +870,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
               </div>
 
               {/* Option 2: Pay online (myPOS — Apple Pay / Google Pay / Carte auto-detected) */}
+              {ONLINE_PAYMENT_ENABLED && (
               <div
                 onClick={() => setPaymentMethod('en_ligne')}
                 className={`relative p-5 rounded-2xl cursor-pointer border-2 transition-all duration-200 ${
@@ -896,10 +903,12 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                   </div>
                 </div>
               </div>
+              )}
 
             </div>{/* end payment grid */}
 
-            {/* Promo Code Section */}
+            {/* Promo Code Section — hidden: codes were "activated" but never applied to the total */}
+            {PROMO_CODES_ENABLED && (
             <div className="space-y-3 pt-2">
               <div>
                 <h2 className="text-lg font-bold tracking-tight">Promo</h2>
@@ -937,12 +946,15 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 </div>
               )}
             </div>
+            )}
 
-            {/* Security Badge */}
+            {/* Security Badge (only meaningful when paying online) */}
+            {ONLINE_PAYMENT_ENABLED && (
             <div className="p-3.5 rounded-2xl bg-stone-100/70 dark:bg-stone-900 text-center flex items-center justify-center gap-2 text-xs text-stone-500 font-medium">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>Paiement 100% Sécurisé & Chiffré SSL</span>
             </div>
+            )}
 
           </div>
         )}
@@ -988,7 +1000,7 @@ export function NewCheckout({ onBack, onComplete }: NewCheckoutProps) {
                 ) : (
                   <>
                     <Lock className="w-4 h-4 text-[#3B2216]" />
-                    <span>Valider & Payer ({ttc.toFixed(2)} €)</span>
+                    <span>{ONLINE_PAYMENT_ENABLED ? 'Valider & Payer' : 'Valider la commande'} ({ttc.toFixed(2)} €)</span>
                   </>
                 )}
               </Button>

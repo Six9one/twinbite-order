@@ -57,7 +57,9 @@ export function CookieConsent() {
         // Essential cookies only - no tracking
     };
 
-    if (!showBanner) return null;
+    // Never on the in-store kiosk: the banner covers the on-screen keyboard and buttons
+    const isKioskScreen = typeof window !== 'undefined' && window.location.pathname.startsWith('/kiosk');
+    if (!showBanner || isKioskScreen) return null;
 
     return (
         <div className="fixed bottom-0 left-0 right-0 z-[9998] p-4 animate-in slide-in-from-bottom duration-500">

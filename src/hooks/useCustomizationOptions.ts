@@ -20,6 +20,21 @@ const QUERY_OPTS = {
   refetchOnMount: false,
 } as const;
 
+// The DB holds several rows with the same name (an active one + an old inactive copy,
+// or even two active copies): keep ONE row per name, preferring the active one, so the
+// wizards never show an option twice nor save it twice ("Pomme de terre, Pomme de terre").
+// Inactive-only options are kept: the wizards display them as "Rupture".
+export function dedupeOptionsByName<T extends { name: string; is_active?: boolean }>(options: T[]): T[] {
+  const byName = new Map<string, T>();
+  for (const opt of options) {
+    const key = (opt.name || '').trim().toLowerCase();
+    const existing = byName.get(key);
+    if (!existing || (existing.is_active === false && opt.is_active !== false)) byName.set(key, opt);
+  }
+  // Preserve the original display order
+  return options.filter(opt => byName.get((opt.name || '').trim().toLowerCase()) === opt);
+}
+
 function makeOptionHook(table: string) {
   return () => useQuery({
     queryKey: [table],
@@ -29,7 +44,7 @@ function makeOptionHook(table: string) {
         .select('*')
         .order('display_order', { ascending: true });
       if (error) throw error;
-      return (data as CustomizationOption[]).map(opt => ({
+      return dedupeOptionsByName(data as unknown as CustomizationOption[]).map(opt => ({
         ...opt,
         image_url: resolveImg(opt.image_url) || null
       }));

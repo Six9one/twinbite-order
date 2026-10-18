@@ -141,7 +141,7 @@ export function NewCart({ isOpen, onClose, onCheckout, onEditItem }: NewCartProp
     // Check if it's a Pizza customization
     if ('base' in custom && 'size' in custom && !('meats' in custom)) {
       const pizzaCustom = custom as PizzaCustomization;
-      parts.push(pizzaCustom.size === 'mega' ? 'Mega' : 'Senior');
+      parts.push(String(pizzaCustom.size || '').includes('mega') ? 'Mega' : 'Senior');
       parts.push(pizzaCustom.base === 'creme' ? 'Base crème' : 'Base tomate');
       if (pizzaCustom.isMenuMidi) parts.push('Menu Midi');
       // Show supplements with prices
@@ -151,6 +151,13 @@ export function NewCart({ isOpen, onClose, onCheckout, onEditItem }: NewCartProp
           return sup ? `+${sup.name} (${sup.price}€)` : null;
         }).filter(Boolean);
         if (supNames.length > 0) parts.push(supNames.join(', '));
+      }
+      // Extras chosen in the pizza customizer (priced)
+      if (pizzaCustom.addedExtras && pizzaCustom.addedExtras.length > 0) {
+        parts.push(pizzaCustom.addedExtras.map(e => typeof e === 'string' ? `+${e}` : `+${e.name} (${e.price}€)`).join(', '));
+      }
+      if (pizzaCustom.removedIngredients && pizzaCustom.removedIngredients.length > 0) {
+        parts.push(pizzaCustom.removedIngredients.map(r => `Sans ${r}`).join(', '));
       }
       if (pizzaCustom.note) {
         parts.push(`📝 "${pizzaCustom.note}"`);
@@ -365,15 +372,6 @@ export function NewCart({ isOpen, onClose, onCheckout, onEditItem }: NewCartProp
             {/* Bottom Summary Container (Matching Mockup 100%) */}
             <div className="p-4 sm:p-5 bg-stone-50 dark:bg-stone-900 border-t border-stone-200/60 dark:border-stone-800 space-y-3.5 rounded-t-[32px] shadow-xl">
               
-              {/* Promo Code Row (Matching Mockup) */}
-              <div className="bg-white dark:bg-stone-800 rounded-2xl p-3.5 flex items-center justify-between text-xs text-stone-500 font-medium shadow-2xs border border-stone-100 dark:border-stone-700 cursor-pointer hover:border-brand-300 transition-all">
-                <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-brand-600" />
-                  <span>Vous avez un code promo ?</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-stone-400" />
-              </div>
-
               {/* Subtotal & Total Rows */}
               <div className="space-y-1.5 px-1 pt-1 text-xs">
                 <div className="flex justify-between text-stone-500 font-medium">

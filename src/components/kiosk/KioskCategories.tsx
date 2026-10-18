@@ -38,13 +38,15 @@ const categoryLabels: Record<string, string> = {
 };
 
 export function KioskCategories({ onSelectCategory, onBack }: KioskCategoriesProps) {
-    const { getImageOrEmoji, getDisplayName } = useCategoryImages();
-    const { isCategoryDisabled } = useDisabledCategories();
+    const { images, getImageOrEmoji, getDisplayName } = useCategoryImages();
+    const { isCategoryDisabled, loading: disabledLoading } = useDisabledCategories();
 
     const renderCategoryCard = (category: string) => {
         const imageData = getImageOrEmoji(category);
-        const displayName = getDisplayName(category) || categoryLabels[category]?.split(' ').slice(1).join(' ');
-        const isUnavailable = isCategoryDisabled(category);
+        // Until the DB names are loaded, use our labels (never show raw slugs like "soufflets")
+        const displayName = (images[category] ? getDisplayName(category) : '') || categoryLabels[category]?.split(' ').slice(1).join(' ');
+        // While availability is loading, nothing is clickable (a disabled category must never be orderable)
+        const isUnavailable = disabledLoading || isCategoryDisabled(category);
 
         return (
             <Card
@@ -57,7 +59,7 @@ export function KioskCategories({ onSelectCategory, onBack }: KioskCategoriesPro
                 onClick={() => !isUnavailable && onSelectCategory(category)}
             >
                 {/* Unavailable badge */}
-                {isUnavailable && (
+                {isUnavailable && !disabledLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center">
                         <span className="bg-red-500/90 text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-lg">
                             Indisponible

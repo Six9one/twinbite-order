@@ -9,9 +9,13 @@ interface CategoryImage {
     display_name: string;
 }
 
+// Module-level cache: category screens remount often (kiosk menu ↔ wizard); serve the
+// last known images/names instantly instead of flashing slugs and placeholder emojis.
+let cachedImages: Record<string, CategoryImage> | null = null;
+
 export function useCategoryImages() {
-    const [images, setImages] = useState<Record<string, CategoryImage>>({});
-    const [loading, setLoading] = useState(true);
+    const [images, setImages] = useState<Record<string, CategoryImage>>(cachedImages || {});
+    const [loading, setLoading] = useState(!cachedImages);
 
     useEffect(() => {
         fetchImages();
@@ -32,6 +36,7 @@ export function useCategoryImages() {
                         image_url: resolveImg(img.image_url) || null
                     };
                 });
+                cachedImages = imagesMap;
                 setImages(imagesMap);
             }
         } catch (error) {

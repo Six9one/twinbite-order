@@ -10,9 +10,16 @@ const SETTING_KEY = 'disabled_categories';
  * Categories that are disabled will NOT appear on the client-facing menu.
  * Admins can toggle them on/off from the admin panel.
  */
+// Module-level cache so remounted menus never briefly show disabled categories as available
+let cachedDisabled: string[] | null = null;
+
 export function useDisabledCategories() {
-    const [disabledCategories, setDisabledCategories] = useState<string[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [disabledCategories, setDisabledCategoriesState] = useState<string[]>(cachedDisabled || []);
+    const [loading, setLoading] = useState(cachedDisabled === null);
+    const setDisabledCategories = useCallback((list: string[]) => {
+        cachedDisabled = list;
+        setDisabledCategoriesState(list);
+    }, []);
 
     const fetchDisabled = useCallback(async () => {
         try {
@@ -42,7 +49,7 @@ export function useDisabledCategories() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [setDisabledCategories]);
 
     useEffect(() => {
         fetchDisabled();

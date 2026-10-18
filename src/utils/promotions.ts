@@ -63,6 +63,19 @@ function getSupplementsTotal(customization: PizzaCustomization): number {
   }, 0);
 }
 
+// Extras paid on top of the pizza base price (never discounted by the 1+1 offer).
+// The wizards store priced extras in `addedExtras` and the final unit price in
+// `calculatedPrice`; the legacy `supplements` (cheese ids) are only a fallback.
+function getItemExtrasTotal(item: CartItem): number {
+  const customization = item.customization as PizzaCustomization;
+  if (!customization) return 0;
+  if (typeof item.calculatedPrice === 'number' && item.calculatedPrice > 0) {
+    return Math.max(0, Math.round((item.calculatedPrice - getBasePizzaPrice(customization)) * 100) / 100);
+  }
+  const priced = (customization.addedExtras || []).reduce((sum, e) => sum + (typeof e?.price === 'number' ? e.price : 0), 0);
+  return priced > 0 ? priced : getSupplementsTotal(customization);
+}
+
 // Apply pizza promotions based on order type
 export interface PromoResult {
   originalTotal: number;
@@ -117,7 +130,7 @@ export function applyPizzaPromotions(
     const customization = item.customization as PizzaCustomization;
     if (customization) {
       menuMidiTotal += getBasePizzaPrice(customization) * item.quantity;
-      menuMidiTotal += getSupplementsTotal(customization) * item.quantity;
+      menuMidiTotal += getItemExtrasTotal(item) * item.quantity;
     }
   });
 
@@ -126,7 +139,7 @@ export function applyPizzaPromotions(
   regularPizzas.forEach(item => {
     const customization = item.customization as PizzaCustomization;
     if (customization) {
-      supplementsTotal += getSupplementsTotal(customization) * item.quantity;
+      supplementsTotal += getItemExtrasTotal(item) * item.quantity;
     }
   });
 

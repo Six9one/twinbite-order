@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { useCreateOrder, generateOrderNumber, useDrinks } from '@/hooks/useSupabaseData';
 import { useIminPrinter, KioskOrderData } from '@/hooks/useIminPrinter';
-import { useNetworkPrinter } from '@/hooks/useNetworkPrinter';
 import { supabase } from '@/integrations/supabase/client';
 
 
@@ -30,7 +29,7 @@ import { crepes, gaufres, boissons, frites as staticFrites, croques as staticCro
 import { useProductsByCategory } from '@/hooks/useProducts';
 import { calculateTVA, applyPizzaPromotions } from '@/utils/promotions';
 
-type KioskScreen = 'welcome' | 'orderType' | 'name' | 'menu' | 'wizard' | 'upsell' | 'processing' | 'success';
+type KioskScreen = 'welcome' | 'orderType' | 'name' | 'menu' | 'wizard' | 'processing' | 'success' | 'error';
 
 function KioskContent() {
     const [screen, setScreen] = useState<KioskScreen>('welcome');
@@ -39,11 +38,11 @@ function KioskContent() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [orderNumber, setOrderNumber] = useState('');
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const [showUpsellAfterWizard, setShowUpsellAfterWizard] = useState(false);
-    const { setOrderType, cart, clearCart, getTotal, getItemCount } = useOrder();
+    // Guards against a double tap on "Confirmer" creating two orders
+    const submittingRef = useRef(false);
+    const { setOrderType, cart, clearCart } = useOrder();
     const createOrder = useCreateOrder();
     const { initPrinter, printKioskTicket } = useIminPrinter();
-    const { printOrder: networkPrintOrder } = useNetworkPrinter();
 
     // Fetch product data for simple wizards
     const { data: dbFrites } = useProductsByCategory('frites');
@@ -51,22 +50,25 @@ function KioskContent() {
     const { data: dbGaufres } = useProductsByCategory('gaufres');
     const { data: dbBoissons } = useDrinks();
     const { data: dbCroques } = useProductsByCategory('croques');
+    const { data: dbSalades } = useProductsByCategory('salades');
 
     // Convert DB products to MenuItem format
-    const toMenuItems = (products: any[] | undefined, fallback: any[]) => {
+    const toMenuItems = (products: any[] | undefined, fallback: any[], category: string) => {
         if (products && products.length > 0) {
-            return products.filter(p => p.is_active).map((p: any) => ({
-                id: p.id,
-                name: p.name,
-                description: p.description || (p.name.toLowerCase().includes('canette')
-                  ? "Ex: Coca-Cola, Fanta, Sprite…"
-                  : p.name.toLowerCase().includes('bouteille')
-                  ? "Ex: Coca 1.5L, eau gazeuse…"
-                  : "Eau minérale"),
-                price: p.base_price !== undefined ? Number(p.base_price) : Number(p.price),
-                category: p.category_slug || 'boissons',
-                imageUrl: p.image_url,
-            }));
+            return products.filter(p => p.is_active !== false).map((p: any) => {
+                const lower = p.name.toLowerCase();
+                const drinkHint = category === 'boissons'
+                    ? (lower.includes('canette') ? 'Ex: Coca-Cola, Fanta, Sprite…' : lower.includes('bouteille') ? 'Ex: Coca 1.5L, eau gazeuse…' : '')
+                    : '';
+                return {
+                    id: p.id,
+                    name: p.name,
+                    description: p.description || drinkHint,
+                    price: p.base_price !== undefined ? Number(p.base_price) : Number(p.price),
+                    category: p.category_slug || category,
+                    imageUrl: p.image_url,
+                };
+            });
         }
         return fallback;
     };
@@ -153,7 +155,7 @@ function KioskContent() {
         if (inactivityTimerRef.current) {
             clearTimeout(inactivityTimerRef.current);
         }
-        if (screen !== 'welcome' && screen !== 'success' && screen !== 'processing') {
+        if (screen !== 'welcome' && screen !== 'success' && screen !== 'processing' && screen !== 'error') {
             inactivityTimerRef.current = setTimeout(() => {
                 handleFullReset();
             }, 90000); // 90 seconds
@@ -181,7 +183,7 @@ function KioskContent() {
         setCustomerName('');
         setSelectedCategory(null);
         setOrderNumber('');
-        setShowUpsellAfterWizard(false);
+        submittingRef.current = false;
     };
 
     // --- Flow handlers ---
@@ -213,8 +215,11 @@ function KioskContent() {
     };
 
     const processOrder = async () => {
+        if (submittingRef.current || cart.length === 0) return;
+        submittingRef.current = true;
         setScreen('processing');
 
+        let orderSaved = false;
         try {
             // Generate order number
             const newOrderNumber = await generateOrderNumber();
@@ -237,8 +242,8 @@ function KioskContent() {
                 customer_name: customerName.trim(),
                 customer_phone: 'borne',
                 customer_address: null,
-                customer_notes: `[BORNE] ${orderType === 'surplace' ? 'Sur Place' : 'À Emporter'}`,
-                payment_method: 'especes' as any, // Pays at caisse
+                customer_notes: '[BORNE]',
+                payment_method: 'especes' as any, // Pays at caisse (the ticket says "à régler en caisse" for kiosk orders)
                 subtotal: ht,
                 tva: tva,
                 total: total,
@@ -247,6 +252,7 @@ function KioskContent() {
                 is_scheduled: false,
                 scheduled_for: null,
             });
+            orderSaved = true;
 
             // Send Telegram notification (non-blocking: never delay the kiosk on a slow/failing function)
             supabase.functions.invoke('send-telegram-notification', {
@@ -255,7 +261,7 @@ function KioskContent() {
                         customerName: customerName.trim(),
                         customerPhone: 'Borne',
                         customerAddress: null,
-                        customerNotes: `[BORNE] ${orderType === 'surplace' ? 'Sur Place' : 'À Emporter'}`,
+                        customerNotes: '[BORNE]',
                         orderType: orderType,
                         paymentMethod: 'A la caisse',
                         total: total,
@@ -295,45 +301,19 @@ function KioskContent() {
             };
             printKioskTicket(printData);
 
-            // Trigger print backup non-blockingly (electron print server auto-prints via Supabase realtime/polling)
-            supabase.functions.invoke('print-order', {
-                body: {
-                    order: {
-                        id: `kiosk-${Date.now()}`,
-                        order_number: newOrderNumber,
-                        order_type: orderType,
-                        status: 'pending',
-                        customer_name: customerName.trim(),
-                        customer_phone: 'Borne',
-                        customer_notes: `[BORNE] ${orderType === 'surplace' ? 'Sur Place' : 'À Emporter'}`,
-                        items: cart.map(item => ({
-                            name: item.item.name,
-                            quantity: item.quantity,
-                            totalPrice: (item.calculatedPrice || item.item.price) * item.quantity,
-                            customization: item.customization,
-                        })),
-                        subtotal: ht,
-                        tva: tva,
-                        delivery_fee: 0,
-                        total: total,
-                        payment_method: 'especes',
-                        created_at: new Date().toISOString(),
-                        isKiosk: true,
-                    },
-                },
-            }).catch(() => {});
-
             clearCart();
             setScreen('success');
 
         } catch (error) {
             console.error('[KIOSK] Order processing failed:', error);
-            // Still show success if we got an order number
-            if (orderNumber) {
+            if (orderSaved) {
+                // The order is in the database (it will print): don't lose the customer's number
+                clearCart();
                 setScreen('success');
             } else {
-                // Critical failure - reset
-                handleFullReset();
+                // Nothing was saved: keep the cart and tell the customer
+                submittingRef.current = false;
+                setScreen('error');
             }
         }
     };
@@ -342,7 +322,7 @@ function KioskContent() {
     const renderWizard = () => {
         if (!selectedCategory) return null;
 
-        const wizardOnClose = (wasAdded = false) => {
+        const wizardOnClose = () => {
             setSelectedCategory(null);
             setScreen('menu');
         };
@@ -369,7 +349,7 @@ function KioskContent() {
             case 'frites':
                 return (
                     <SimpleProductWizard
-                        items={toMenuItems(dbFrites, staticFrites)}
+                        items={toMenuItems(dbFrites, staticFrites, 'frites')}
                         title="🍟 Frites"
                         onClose={wizardOnClose}
                     />
@@ -377,7 +357,7 @@ function KioskContent() {
             case 'crepes':
                 return (
                     <SimpleProductWizard
-                        items={toMenuItems(dbCrepes, crepes)}
+                        items={toMenuItems(dbCrepes, crepes, 'crepes')}
                         title="🥞 Crêpes"
                         onClose={wizardOnClose}
                     />
@@ -385,7 +365,7 @@ function KioskContent() {
             case 'gaufres':
                 return (
                     <SimpleProductWizard
-                        items={toMenuItems(dbGaufres, gaufres)}
+                        items={toMenuItems(dbGaufres, gaufres, 'gaufres')}
                         title="🧇 Gaufres"
                         onClose={wizardOnClose}
                     />
@@ -393,7 +373,7 @@ function KioskContent() {
             case 'boissons':
                 return (
                     <SimpleProductWizard
-                        items={toMenuItems(dbBoissons, boissons)}
+                        items={toMenuItems(dbBoissons, boissons, 'boissons')}
                         title="🥤 Boissons"
                         onClose={wizardOnClose}
                     />
@@ -401,14 +381,20 @@ function KioskContent() {
             case 'croques':
                 return (
                     <SimpleProductWizard
-                        items={toMenuItems(dbCroques, staticCroques)}
+                        items={toMenuItems(dbCroques, staticCroques, 'croques')}
                         title="🧀 Croques"
                         onClose={wizardOnClose}
                     />
                 );
+            case 'salades':
+                return (
+                    <SimpleProductWizard
+                        items={toMenuItems(dbSalades, [], 'salades')}
+                        title="🥗 Salades"
+                        onClose={wizardOnClose}
+                    />
+                );
             default:
-                // Fallback: go back to menu
-                setScreen('menu');
                 return null;
         }
     };
@@ -435,6 +421,20 @@ function KioskContent() {
                 <div className="w-20 h-20 border-4 border-amber-400/30 border-t-amber-400 rounded-full animate-spin mb-6" />
                 <p className="text-2xl text-white font-medium">Préparation de votre ticket...</p>
                 <p className="text-lg text-white/50 mt-2">🖨️ Impression en cours</p>
+            </div>
+        );
+    }
+
+    if (screen === 'error') {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-center">
+                <p className="text-5xl mb-6">⚠️</p>
+                <p className="text-3xl text-white font-bold mb-3">La commande n'a pas pu être envoyée</p>
+                <p className="text-xl text-white/60 mb-10">Votre panier est conservé. Réessayez ou adressez-vous à la caisse.</p>
+                <div className="flex gap-4">
+                    <button onClick={() => setScreen('menu')} className="px-8 h-14 rounded-2xl bg-white/10 text-white text-lg font-bold">Retour au panier</button>
+                    <button onClick={processOrder} className="px-8 h-14 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-lg font-bold">Réessayer</button>
+                </div>
             </div>
         );
     }
