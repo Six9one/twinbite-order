@@ -1066,22 +1066,38 @@ async function formatDynamicTicket(order, template, isStar = false) {
         }
     }
 
+    // One chunk per PHYSICAL printed line (we wrap ourselves so the printer never auto-wraps,
+    // which used to split prices from names). Per-line chunks let us reverse the order safely.
+    const lineChunks = [];
     for (const item of visualItems) {
         if (item.isSeparator) {
-            builder.addText(getAlignCmdLocal(item.align));
-            builder.addText(getSeparatorLine(item.borderStyle, paperWidth));
+            lineChunks.push({ text: getAlignCmdLocal(item.align) + getSeparatorLine(item.borderStyle, paperWidth) });
         } else if (item.buffer) {
-            builder.addBuffer(item.buffer);
+            lineChunks.push({ buffer: item.buffer });
         } else {
-            builder.addText(getAlignCmdLocal(item.align));
-            builder.addText(getStyleCmdLocal(item));
-            // Wrap ourselves so the printer never auto-wraps (which split prices from names)
-            builder.addText(wrapText(item.text, charsFor(item.fontSize)));
-            builder.addText(RESET_STYLE);
+            const style = getAlignCmdLocal(item.align) + getStyleCmdLocal(item);
+            const body = item.text.endsWith('\n') ? item.text.slice(0, -1) : item.text;
+            for (const line of wrapText(body, charsFor(item.fontSize)).split('\n')) {
+                lineChunks.push({ text: style + line + '\n' + RESET_STYLE });
+            }
         }
     }
 
+    // The Ethernet kitchen printer is wall-mounted UPSIDE DOWN: rotate each character (ESC { 1)
+    // and print the lines last-to-first, so the hanging ticket reads top-to-bottom.
+    // Set PRINTER_UPSIDE_DOWN=false in print-server/.env if the printer is mounted normally.
+    const upsideDown = !isStar && process.env.PRINTER_UPSIDE_DOWN !== 'false';
+    if (upsideDown) {
+        builder.addText(ESC + '{' + '\x01');
+        lineChunks.reverse();
+    }
+    for (const chunk of lineChunks) {
+        if (chunk.buffer) builder.addBuffer(chunk.buffer);
+        else builder.addText(chunk.text);
+    }
+
     builder.addText(ESCPOS_LOCAL.FEED + ESCPOS_LOCAL.PARTIAL_CUT);
+    if (upsideDown) builder.addText(ESC + '{' + '\x00');
 
     return builder.toBuffer();
 }
