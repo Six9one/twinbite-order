@@ -2,6 +2,29 @@
 
 Les entrǸes les plus rǸcentes en haut.
 
+## 2026-10-18 — Claude Code — Mise à jour de la documentation
+**Fait :** `CLAUDE.md` : nouvelle section « Impression » (lancement et mise à jour au resto, vérification de `codeVersion`, imprimante ESC/POS montée à l'envers, layouts, file d'attente, images) + état des secrets VPS et neutralisation de l'ancien Supabase cloud. `AGENTS.md` rédigé (il était vide) : protocole de coordination et règles critiques. `.agents/EN-COURS.md` : points en attente de validation.
+**Fichiers touchés :** `CLAUDE.md`, `AGENTS.md`, `.agents/EN-COURS.md`, `.agents/JOURNAL.md`.
+**Reste à faire :** voir `.agents/EN-COURS.md`.
+
+## 2026-10-18 — Claude Code — Imprimante cuisine murale à l'envers : ESC { 1 + lignes inversées
+**Fait :** L'imprimante Ethernet (PARTNER, 192.168.1.200) est fixée au mur à l'envers. Les tickets #3049/#3052 sortaient en ordre inversé (CUISINE en bas) : le layout classique inversait ses blocs, mais l'agent précédent avait supprimé l'impression à l'envers (`ESC {`). Le layout dynamique construit maintenant un chunk par ligne physique, déjà coupée à la bonne largeur. Pour l'imprimante non-Star, il envoie `ESC { 1` puis les lignes de la dernière à la première, et le ticket suspendu se lit de haut en bas. Désactivable avec `PRINTER_UPSIDE_DOWN=false` dans `print-server/.env`. Commit 4a06b44, codeVersion `4388205ad77b`.
+**Fichiers touchés :** `print-server/server.js`.
+**À savoir / Pièges :** Ne plus retirer l'impression à l'envers : l'imprimante est montée à l'envers. Inverser par LIGNE PHYSIQUE (après le retour à la ligne), jamais par bloc de texte, sinon les lignes coupées se retrouvent inversées. Les tickets #3049/#3052 ont été imprimés AVANT la mise à jour (ancien code).
+**Reste à faire :** METTRE_A_JOUR.bat au resto → `/status` doit afficher codeVersion `4388205ad77b` → ticket test.
+
+## 2026-10-18 — Claude Code — Tickets découpés : plus de commandes Star vers l'imprimante Ethernet
+**Fait :** Le ticket test #3047 sortait coupé en morceaux. Il venait de `formatCounterTicketClassic` (counterLayoutMode = classic), écrit en Star Line Mode pour la TSP100 USB, mais envoyé à l'imprimante Ethernet 192.168.1.200, qui est en **ESC/POS**. Sur ESC/POS, `ESC i` (taille Star) = COUPE PARTIELLE ; il n'y a pas de `ESC t 16`, donc `É`→`╔` et `•`→`ò` ; le QR Star s'imprime en texte. Corrigé : le classique caisse n'est utilisé que si isStar, sinon c'est le layout dynamique ESC/POS. Le classique cuisine (blocs inversés pour une impression à l'envers désactivée) renvoie toujours vers le dynamique ; l'ancien code est gardé sous `formatKitchenTicketClassicUpsideDown`, qui n'est plus appelé. Rendu vérifié : 0 `ESC i`, 1 seule coupe, codepage OK. Commit 4d19c30, codeVersion attendu au resto : `f58fc5d3549b`.
+**Fichiers touchés :** `print-server/server.js`.
+**À savoir / Pièges :** L'imprimante Ethernet 192.168.1.200 est ESC/POS (GS !, GS V, ESC t 16). Ne JAMAIS lui envoyer de commandes Star Line (`ESC i`, `ESC d n` = coupe chez Star, QR Star).
+**Reste à faire :** Au resto : METTRE_A_JOUR.bat → vérifier que `/status` affiche codeVersion `f58fc5d3549b`, puis imprimer un ticket test.
+
+## 2026-10-18 — Claude Code — Hub : relance du print-server périmé + plus jamais l'ancien Supabase cloud
+**Fait :** « Rien n'a changé » au resto parce que (1) le Hub ne relance pas le print-server si le port 3001 répond, et `app.exit(0)` au relaunch laisse un process node orphelin qui tourne l'ancien code indéfiniment ; (2) la mise à jour fait `git checkout -- .env`, et le `.env` commité pointe encore vers l'ancien projet cloud `hsylnr…supabase.co` (toujours en ligne mais sans nouvelles commandes) → le print-server écoutait la mauvaise base. Corrigé : `/status` renvoie `codeVersion` (sha1 de server.js) + `supabaseUrl` ; le Hub compare au fichier, tue le process sur 3001 (netstat + taskkill) s'il est périmé et relance ; « Mettre à jour » relance toujours le print-server ; server.js remplace toute URL `*.supabase.co` par le VPS. Commit 48a93e0.
+**Fichiers touchés :** `print-server/server.js`, `twinpizzahub/main.js`.
+**À savoir / Pièges :** Le `.env` commité contient toujours l'URL cloud (commit refusé par les permissions) ; c'est neutralisé côté site (`client.ts`) et print-server. Pour vérifier au resto : `http://localhost:3001/status` doit montrer `codeVersion` et `supabaseUrl: https://supabase.twinpizza.fr`.
+**Reste à faire :** Au resto : Mettre à jour dans le Hub (ou fermer le Hub + `taskkill /IM node.exe /F` + relancer), puis commande test POS + borne.
+
 ## 2026-10-18 — Claude Code — Telegram rétabli sur le VPS
 **Fait :** L'utilisateur a rempli `.env.twinpizza-functions` (TELEGRAM_BOT_TOKEN + CHAT_ID_1 et _2) et recréé le conteneur. Vérifié : token valide (@Twinpizza_bot), `send-telegram-notification` renvoie `{"success":true}` sur une commande « TEST ».
 **Fichiers touchés :** aucun (config VPS uniquement).
