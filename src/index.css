@@ -1556,4 +1556,49 @@
   border-color: #0a84ff !important;
   background: rgba(255, 255, 255, 0.08) !important;
 }
-
+
+/* ========================================
+   POS — LIGHT & FAST (overrides everything above for .pos-root)
+   No animations, transitions, blur or glow: state changes are instant.
+   ======================================== */
+.pos-root {
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif !important;
+  transition: none !important;
+}
+.pos-root *,
+.pos-root *::before,
+.pos-root *::after {
+  transition: none !important;
+  animation: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.pos-root .pizza-card-hover,
+.pos-root .pizza-card-hover:hover,
+.pos-root .pizza-card-hover:active,
+.pos-root .pizza-card-hover:hover .pizza-card-img-container img,
+.pos-root .pizza-card-img-container img,
+.pos-root .pos-chip:hover,
+.pos-root .pos-chip:active,
+.pos-root .pos-category-btn:hover,
+.pos-root .pos-category-btn:active {
+  transform: none !important;
+  filter: none !important;
+  will-change: auto !important;
+}
+.pos-root .pizza-card-hover:active,
+.pos-root .pos-btn-interactive:active {
+  filter: brightness(0.94) !important;
+}
+.pos-root input:focus,
+.pos-root textarea:focus,
+.pos-root select:focus {
+  outline: 2px solid #f6b800 !important;
+  outline-offset: 0;
+}
+.pos-root input::placeholder,
+.pos-root textarea::placeholder {
+  color: #7a828e;
+}
+.pos-root input[type="range"] { background: #dfe3e8; }
+.pos-root input[type="range"]::-webkit-slider-thumb { background: #f6b800; box-shadow: none; }

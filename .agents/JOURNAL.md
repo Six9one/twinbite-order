@@ -2,6 +2,23 @@
 
 Les entrǸes les plus rǸcentes en haut.
 
+## 2026-10-31 — Claude Code — Caisse POS : thème clair, textes plus gros, plus rapide (branche `pos-clair-rapide`, PAS encore déployé)
+**Fait :**
+- `/pos` (POSPage.tsx) passe d'un thème bleu nuit/orange à un thème **clair** : fond blanc/gris très clair, texte foncé, accent jaune Twin Pizza `#f6b800`, bouton « Valider » vert (`PAY_GREEN`). Le thème « glassy » (bulles floues 120px, backdrop-filter, lueurs, dégradés) est supprimé ; `applyThemePreset` ne fait plus que charger les couleurs perso, stockées sous la nouvelle clé `pos-theme-v2` (les anciennes couleurs sombres sauvegardées sont ignorées).
+- Toutes les animations/transitions/flous sont coupés pour `.pos-root` (bloc « POS — LIGHT & FAST » à la fin de `src/index.css`, en `!important`). Police : Segoe UI au lieu de Comfortaa.
+- Lisibilité : textes des tuiles ≥15px, catégories 14px (grille régulière), tailles pizza 16px / 52px de haut, Espèces/Carte/Divisé 56px, TOTAL 32px, Valider 60px, champs de saisie 16px. Les petites polices (8–13px) des panneaux produits et de la caisse sont remontées (13–16px). Les modales secondaires (Historique, Réglages, Factures, Clôture, WhatsApp, MAJ) ont juste les couleurs claires, pas de nouvelles tailles. La modale « Éditer Menu » (POSEditModal) et la modale de personnalisation pizza restent sombres (composants admin/assistant au style sombre).
+- Vitesse : panneaux produits mémoïsés (`MemoPizzaPanel`, etc.), `handleAdd` et `onCustomize` stables (useCallback + ref). `handleTileClick` de PizzaPanel lit ses valeurs dans une ref : corrige aussi un bug existant (en mode « 1-Clic Direct », les tuiles mémoïsées gardaient l'ancien onClick → suppléments/note périmés). Images des tuiles en 240px au lieu de 800px (`resolveImg(url, width)`, défaut 800 inchangé pour le site).
+- Mesure (build de prod, ce PC, saisie dans « Téléphone ») : ~2,4–2,75 ms → ~1,8–2,1 ms par frappe (≈ -25 %). Le gros gain attendu sur le PC du resto vient surtout de la suppression des flous/animations et des images 800px.
+- Hub (`twinpizzahub/main.js`) : les `/assets/*.js|css` hashés par Vite sont servis en `max-age=31536000, immutable` (index.html reste no-store). Effet seulement après redémarrage du Hub.
+**Fichiers touchés :** `src/pages/POSPage.tsx`, `src/index.css`, `src/utils/resolveImg.ts`, `twinpizzahub/main.js`.
+**Infrastructure & Serveur :** aucun. Rien n'a été construit dans `dist/` (le Hub sert `dist/` en direct : un `npm run build` = déploiement immédiat). Les builds de test ont été faits dans un dossier temporaire avec `npx vite build --outDir <tmp>`.
+**À savoir / Pièges :**
+- Ne PAS faire `npm run build` dans le dossier du resto pour « tester » : ça déploie la caisse.
+- Logique prix/panier/promo/envoi de commande non modifiée.
+- Le thème ne repeint plus les panneaux mémoïsés quand on change une couleur dans Réglages (il faut changer de catégorie).
+- `src/index.css` est stocké en CRLF, `POSPage.tsx` en LF : committer avec `git -c core.autocrlf=false add` pour index.css sinon tout le fichier apparaît modifié.
+**Reste à faire / Prochaines étapes :** attendre le « go » du patron. Ensuite : merger `pos-clair-rapide` dans `main`, pousser, puis METTRE_A_JOUR.bat au resto (ou bouton MAJ du Hub). Retour arrière : `git checkout main` (avant merge) ou `git revert <commit>` (après merge), puis rebuild/MAJ.
+
 ## 2026-10-18 — Claude Code — Audit + correctifs borne, site, assistants Makloub/Soufflet, paiement en ligne coupé
 **Fait :**
 - **Extras pizza jamais facturés** (ligne 19 €, total 18 €) sur la borne, le site et probablement la caisse : `applyPizzaPromotions` ne comptait que l'ancien champ `supplements`. Désormais extras = `calculatedPrice - prix de base` ; ils ne sont jamais remisés par l'offre 1+1. Le ticket cuisine imprime aussi `addedExtras`, et le total de chaque ligne = prix unitaire × quantité.

@@ -56,87 +56,51 @@ const toItems = (products: any[] | undefined, fallback: any[]) =>
 // ── Theme palette (mutable + persisted) ──────────────────────────────────────
 // Colors are plain hex strings so `S.accent + '22'` (alpha) keeps working.
 const DEFAULT_THEME = {
-  bg:     '#070a13',
-  panel:  '#0f172a',
-  card:   '#1e293b',
-  border: '#334155',
-  muted:  '#64748b',
-  text:   '#f8fafc',
-  accent: '#f97316',
+  bg:     '#f4f5f7',
+  panel:  '#ffffff',
+  card:   '#ffffff',
+  border: '#dfe3e8',
+  muted:  '#545b66',
+  text:   '#1a1d23',
+  accent: '#f6b800', // Twin Pizza yellow — backgrounds/borders; use S.accentText for text
 };
 type ThemeKey = keyof typeof DEFAULT_THEME;
 const THEME_LABELS: Record<ThemeKey,string> = {
   bg:'Fond', panel:'Barres', card:'Cartes', border:'Bordures', muted:'Texte gris', text:'Texte', accent:'Couleur principale',
 };
 
+// Light theme. Saved colors live under a new key so old dark palettes are ignored.
+const THEME_STORAGE_KEY = 'pos-theme-v2';
+const PAY_GREEN = '#16a34a';
+
 const S = {
   ...DEFAULT_THEME,
-  btn:    { background:'#1f2937', border:'1px solid #2d3748', borderRadius:8, cursor:'pointer', color:'#e5e7eb' } as React.CSSProperties,
-  input:  { width:'100%', background:'#1f2937', border:'1px solid #2d3748', color:'#fff', padding:'8px 10px', borderRadius:8, fontSize:12 } as React.CSSProperties,
+  accentText: '#8a6100', // readable dark yellow for text on white
+  btn:    { background:'#eef0f3', border:'1px solid #dfe3e8', borderRadius:8, cursor:'pointer', color:'#1a1d23' } as React.CSSProperties,
+  input:  { width:'100%', background:'#ffffff', border:'1px solid #c9ced6', color:'#1a1d23', padding:'8px 10px', borderRadius:8, fontSize:16 } as React.CSSProperties,
 };
 
-let currentThemeMode = 'classic';
-try {
-  currentThemeMode = localStorage.getItem('pos-theme-preset') || 'classic';
-} catch {}
+// The glassy preset was removed: only the light "classic" theme remains.
+const currentThemeMode: string = 'classic';
 
-function applyThemePreset(mode: 'classic' | 'glassy') {
-  currentThemeMode = mode;
+function applyThemePreset(_mode?: 'classic' | 'glassy') {
+  let saved: any = {};
   try {
-    localStorage.setItem('pos-theme-preset', mode);
+    saved = JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) || '{}');
   } catch {}
-
-  if (mode === 'glassy') {
-    S.bg = 'transparent'; // Let the animated mesh gradient show through
-    S.panel = 'rgba(15, 23, 42, 0.45)';
-    S.card = 'rgba(30, 41, 59, 0.35)';
-    S.border = 'rgba(255, 255, 255, 0.08)';
-    S.muted = '#94a3b8';
-    S.text = '#f8fafc';
-    S.accent = '#0a84ff'; // Apple Blue
-    
-    if (S.btn) {
-      S.btn.background = 'rgba(255, 255, 255, 0.05)';
-      S.btn.border = '1px solid rgba(255, 255, 255, 0.08)';
-      S.btn.color = '#f8fafc';
-    }
-    if (S.input) {
-      S.input.background = 'rgba(255, 255, 255, 0.04)';
-      S.input.border = '1px solid rgba(255, 255, 255, 0.08)';
-      S.input.color = '#fff';
-    }
-  } else {
-    // Reset to classic (load saved colors or default colors)
-    let saved: any = {};
-    try {
-      saved = JSON.parse(localStorage.getItem('pos-theme') || '{}');
-    } catch {}
-    
-    const merged = { ...DEFAULT_THEME, ...saved };
-    (Object.keys(DEFAULT_THEME) as ThemeKey[]).forEach(k => {
-      (S as any)[k] = merged[k];
-    });
-
-    if (S.btn) {
-      S.btn.background = '#1f2937';
-      S.btn.border = '1px solid #2d3748';
-      S.btn.color = '#e5e7eb';
-    }
-    if (S.input) {
-      S.input.background = '#1f2937';
-      S.input.border = '1px solid #2d3748';
-      S.input.color = '#fff';
-    }
-  }
+  const merged = { ...DEFAULT_THEME, ...saved };
+  (Object.keys(DEFAULT_THEME) as ThemeKey[]).forEach(k => {
+    (S as any)[k] = merged[k];
+  });
 }
 
 // Initial apply
-applyThemePreset(currentThemeMode as 'classic' | 'glassy');
+applyThemePreset();
 
 function saveTheme() {
   const out: Record<string,string> = {};
   (Object.keys(DEFAULT_THEME) as ThemeKey[]).forEach(k => { out[k] = (S as any)[k]; });
-  localStorage.setItem('pos-theme', JSON.stringify(out));
+  try { localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(out)); } catch {}
 }
 
 // Simple global re-render bus so the settings panel repaints the whole POS
@@ -213,7 +177,7 @@ const ProductTile = memo(function ProductTile({
 }) {
   const [imgError, setImgError] = useState(false);
   const normalizedName = (item.name || '').trim().toLowerCase();
-  const img = resolveImg(item.imageUrl || item.image_url || LOCAL_PIZZA_IMAGES[normalizedName]);
+  const img = resolveImg(item.imageUrl || item.image_url || LOCAL_PIZZA_IMAGES[normalizedName], 240); // tiles are ~70px: no need for 800px images
 
   useEffect(() => {
     setImgError(false);
@@ -221,19 +185,16 @@ const ProductTile = memo(function ProductTile({
 
   // Scale parameters based on zoom factor
   const scale = zoom / 100;
-  const imgSize = Math.round((compact ? 44 : 64) * scale);
+  const imgSize = Math.round((compact ? 56 : 64) * scale);
   const padV = Math.round((compact ? 6 : 10) * scale);
   const padH = Math.round((compact ? 4 : 8) * scale);
-  const fontSize = Math.round((compact ? 10 : 11) * scale);
+  const fontSize = Math.max(15, Math.round((compact ? 12 : 13) * scale));
   const borderRadius = Math.round(10 * scale);
   const displayPrice = price !== undefined ? price : item.price;
 
-  const baseTint = tint || '#2d3748';
-  const borderColor = selected ? baseTint : '#2d3748';
-
-  const cardBg = selected 
-    ? `linear-gradient(135deg, ${S.card}, ${baseTint}33)` 
-    : `linear-gradient(135deg, ${S.card}, #111827)`;
+  const baseTint = tint || S.accent;
+  const borderColor = selected ? baseTint : '#e3e6eb';
+  const cardBg = selected ? `${baseTint}14` : S.card;
 
   return (
     <div
@@ -246,15 +207,14 @@ const ProductTile = memo(function ProductTile({
       }}
       style={{
         background: cardBg,
-        border: `${selected ? 2 : 1}px solid ${borderColor}`,
+        border: `2px solid ${borderColor}`,
         borderRadius: borderRadius,
         padding: `${padV}px ${padH}px`,
         cursor: 'pointer',
         textAlign: 'center',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
         width: '100%',
-        boxShadow: selected ? `0 0 12px ${baseTint}44` : 'none',
+        boxShadow: 'none',
         outline: 'none',
         display: 'flex',
         flexDirection: 'column',
@@ -287,11 +247,11 @@ const ProductTile = memo(function ProductTile({
             display: 'flex',
             alignItems: 'center',
             gap: 2,
-            background: '#0f172a',
+            background: '#ffffff',
             borderRadius: 99,
             padding: '2px 4px',
             border: `1.5px solid ${baseTint}`,
-            boxShadow: '0 4px 10px rgba(0,0,0,0.6)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
             zIndex: 15
           }}
         >
@@ -299,20 +259,20 @@ const ProductTile = memo(function ProductTile({
             onClick={(e) => { e.stopPropagation(); onDecrement(item); }}
             style={{
               background: '#ef4444', color: '#fff', border: 'none', borderRadius: 99,
-              width: Math.max(18, Math.round(20 * scale)), height: Math.max(18, Math.round(20 * scale)),
-              fontSize: 13, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1
+              width: 28, height: 28,
+              fontSize: 18, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1
             }}
             title="Diminuer la quantité (−1)"
           >
             −
           </button>
-          <span style={{ fontSize: Math.max(10, Math.round(11 * scale)), fontWeight: 900, color: '#fff', padding: '0 4px' }}>{count}</span>
+          <span style={{ fontSize: 16, fontWeight: 900, color: S.text, padding: '0 6px' }}>{count}</span>
           <button
             onClick={(e) => { e.stopPropagation(); onIncrement ? onIncrement(item) : onClick(item); }}
             style={{
               background: '#22c55e', color: '#fff', border: 'none', borderRadius: 99,
-              width: Math.max(18, Math.round(20 * scale)), height: Math.max(18, Math.round(20 * scale)),
-              fontSize: 13, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1
+              width: 28, height: 28,
+              fontSize: 18, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1
             }}
             title="Augmenter la quantité (+1)"
           >
@@ -334,7 +294,7 @@ const ProductTile = memo(function ProductTile({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+          boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
         }}>
           ✓
         </span>
@@ -344,7 +304,7 @@ const ProductTile = memo(function ProductTile({
         height: imgSize,
         borderRadius: borderRadius - 2,
         overflow: 'hidden',
-        background: '#111827',
+        background: '#f7f8fa',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -375,7 +335,7 @@ const ProductTile = memo(function ProductTile({
       <div style={{
         fontSize: fontSize,
         fontWeight: 700,
-        color: selected ? '#fff' : (tint === '#ef4444' ? '#ff6b6b' : tint === '#3b82f6' ? '#60a5fa' : S.text),
+        color: S.text,
         lineHeight: 1.15,
         marginBottom: 2,
         wordBreak: 'normal',
@@ -391,7 +351,7 @@ const ProductTile = memo(function ProductTile({
       {displayPrice !== undefined && displayPrice > 0 && (
         <div style={{
           fontSize: fontSize,
-          color: S.accent,
+          color: S.accentText,
           fontWeight: 800,
           marginTop: 'auto'
         }}>
@@ -408,12 +368,12 @@ const ProductTile = memo(function ProductTile({
           style={{
             marginTop: 6,
             width: '100%',
-            padding: '4px 0',
+            padding: '6px 0',
             borderRadius: 6,
-            background: selected ? 'rgba(255,255,255,0.15)' : 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            color: S.accent,
-            fontSize: Math.max(9, Math.round(9 * scale)),
+            background: '#f3f4f6',
+            border: '1px solid #dfe3e8',
+            color: '#3d434c',
+            fontSize: 13,
             fontWeight: 800,
             cursor: 'pointer',
             zIndex: 10,
@@ -448,14 +408,14 @@ function ResizeBar({ vertical }: { vertical?: boolean }) {
           ...(vertical
             ? { height: 8, width: '100%', cursor: 'row-resize' }
             : { width: 8, height: '100%', cursor: 'col-resize' }),
-          background: hover ? S.accent + '55' : '#1f2937',
+          background: hover ? S.accent + '55' : '#eef0f3',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'background .12s', flexShrink: 0,
         }}
       >
         <div style={{
           ...(vertical ? { width: 28, height: 3 } : { width: 3, height: 28 }),
-          borderRadius: 99, background: hover ? S.accent : '#4b5563',
+          borderRadius: 99, background: hover ? S.accent : '#b8bec7',
         }} />
       </div>
     </PanelResizeHandle>
@@ -466,10 +426,10 @@ function ResizeBar({ vertical }: { vertical?: boolean }) {
 function Chip({ label, active, onClick, extra }: { label:string; active:boolean; onClick:()=>void; extra?:string }) {
   return (
     <button onClick={onClick} style={{
-      padding:'5px 12px', borderRadius:99, border:'none', cursor:'pointer', fontSize:11, fontWeight:700, transition:'all .12s',
-      background: active ? '#22c55e22' : '#1f2937',
-      color:      active ? '#22c55e'   : S.muted,
-      outline:    active ? '1px solid #22c55e44' : 'none',
+      padding:'8px 14px', borderRadius:99, cursor:'pointer', fontSize:14, fontWeight:700,
+      background: active ? '#dcfce7' : '#eef0f3',
+      color:      active ? '#15803d' : S.text,
+      border:     active ? '1px solid #22c55e' : '1px solid #dfe3e8',
     }}>
       {active ? '✓ ' : ''}{label}{extra ? ` ${extra}` : ''}
     </button>
@@ -559,8 +519,12 @@ function PizzaPanel({
     });
   }, []);
 
+  // Tiles are memoized and keep their first onClick, so read live values from a ref.
+  const liveRef = useRef({ pizzaSelectMode, size, basePrice, supps, note, singlePrice, onAdd });
+  liveRef.current = { pizzaSelectMode, size, basePrice, supps, note, singlePrice, onAdd };
+
   const handleTileClick = useCallback((item: any) => {
-    const key = `${item._base}-${item.id}`;
+    const { pizzaSelectMode, size, basePrice, supps, note, singlePrice, onAdd } = liveRef.current;
     if (pizzaSelectMode === 'direct') {
       const sizeLabel = PIZZA_SIZES.find(s => s.id === size)!.label;
       onAdd(
@@ -574,7 +538,7 @@ function PizzaPanel({
       handleIncreaseCount(item);
       setSel(item);
     }
-  }, [pizzaSelectMode, size, basePrice, supps, note, singlePrice, onAdd, handleIncreaseCount]);
+  }, [handleIncreaseCount]);
 
   const handleCustomizeClick = useCallback((item: any) => {
     if (onCustomize) {
@@ -619,54 +583,50 @@ function PizzaPanel({
     setNote('');
   };
 
-  const minWidth = Math.round(95 * (zoom / 100));
+  const minWidth = Math.round(110 * (zoom / 100));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
       {/* ── Pizza Size Selector Bar (top of panel) ── */}
-      <div className={currentThemeMode === 'glassy' ? 'pos-segmented-container' : ''} style={{
-        display: 'flex', gap: 6, padding: '8px 12px',
-        background: currentThemeMode === 'glassy' ? 'transparent' : '#0a0f1e', borderBottom: currentThemeMode === 'glassy' ? 'none' : `1px solid ${S.border}`,
+      <div style={{
+        display: 'flex', gap: 8, padding: '10px 14px',
+        background: '#f7f8fa', borderBottom: `1px solid ${S.border}`,
         flexShrink: 0, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
-        ...(currentThemeMode === 'glassy' ? { margin: '8px 12px 0' } : {})
       }}>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {PIZZA_SIZES.map((s) => {
             const active = size === s.id;
             return (
               <button
                 key={s.id}
                 onClick={() => setSize(s.id)}
-                className={`pos-btn-interactive ${currentThemeMode === 'glassy' ? 'pos-segmented-btn' : ''} ${currentThemeMode === 'glassy' && active ? 'active' : ''}`}
+                className="pos-btn-interactive"
                 style={{
-                  padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
-                  fontWeight: 800, fontSize: 11, lineHeight: 1.3,
-                  border: currentThemeMode === 'glassy' ? 'none' : `1.5px solid ${s.color}`,
-                  background: currentThemeMode === 'glassy' ? (active ? 'rgba(255,255,255,0.12)' : 'transparent') : (active ? s.color : s.color + '18'),
-                  color: currentThemeMode === 'glassy' ? (active ? '#fff' : 'rgba(255,255,255,0.6)') : (active ? '#fff' : s.color),
-                  boxShadow: currentThemeMode === 'glassy' ? 'none' : (active ? `0 0 8px ${s.color}55` : 'none'),
-                  transition: 'all .1s',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  padding: '6px 18px', minHeight: 52, borderRadius: 10, cursor: 'pointer',
+                  fontWeight: 800, fontSize: 16, lineHeight: 1.25,
+                  border: `2px solid ${s.color}`,
+                  background: active ? s.color : '#ffffff',
+                  color: active ? '#fff' : s.color,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 }}
               >
                 <span>{s.label}</span>
-                <span style={{ fontSize: 10, opacity: 0.85 }}>{s.price}€</span>
+                <span style={{ fontSize: 14, opacity: 0.9 }}>{s.price}€</span>
               </button>
             );
           })}
         </div>
 
         {/* Mode Toggle: Multi-selection vs Direct 1-tap add */}
-        <div style={{ display: 'flex', gap: 4, background: '#111827', padding: '3px 4px', borderRadius: 8, border: `1px solid ${S.border}` }}>
+        <div style={{ display: 'flex', gap: 4, background: '#ffffff', padding: 4, borderRadius: 10, border: `1px solid ${S.border}` }}>
           <button
             onClick={() => setPizzaSelectMode('multi')}
             style={{
-              padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
-              fontSize: 10, fontWeight: 800,
-              background: pizzaSelectMode === 'multi' ? '#22c55e' : 'transparent',
-              color: pizzaSelectMode === 'multi' ? '#000' : S.muted,
-              transition: 'all .12s'
+              padding: '10px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              fontSize: 15, fontWeight: 800,
+              background: pizzaSelectMode === 'multi' ? PAY_GREEN : 'transparent',
+              color: pizzaSelectMode === 'multi' ? '#fff' : S.muted,
             }}
           >
             ☑️ Multiple ({totalMultiCount})
@@ -674,11 +634,10 @@ function PizzaPanel({
           <button
             onClick={() => setPizzaSelectMode('direct')}
             style={{
-              padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
-              fontSize: 10, fontWeight: 800,
+              padding: '10px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              fontSize: 15, fontWeight: 800,
               background: pizzaSelectMode === 'direct' ? S.accent : 'transparent',
               color: pizzaSelectMode === 'direct' ? '#000' : S.muted,
-              transition: 'all .12s'
             }}
           >
             ⚡ 1-Clic Direct
@@ -695,20 +654,17 @@ function PizzaPanel({
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            fontSize: 11,
+            fontSize: 16,
             fontWeight: 800,
-            color: '#ef4444',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            color: '#dc2626',
             marginBottom: 10,
-            paddingLeft: 4,
-            borderLeft: '3px solid #ef4444',
-            padding: '2px 8px',
-            background: 'rgba(239, 68, 68, 0.05)',
-            borderRadius: 4
+            borderLeft: '4px solid #ef4444',
+            padding: '6px 10px',
+            background: '#ef444412',
+            borderRadius: 6
           }}>
             🍅 Sauce Tomate
-            <span style={{ fontSize: 10, color: S.muted, fontWeight: 500, textTransform: 'none', marginLeft: 'auto' }}>
+            <span style={{ fontSize: 14, color: S.muted, fontWeight: 600, marginLeft: 'auto' }}>
               {pizzasTomate.length} Pizzas
             </span>
           </div>
@@ -743,20 +699,17 @@ function PizzaPanel({
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            fontSize: 11,
+            fontSize: 16,
             fontWeight: 800,
-            color: '#3b82f6',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            color: '#2563eb',
             marginBottom: 10,
-            paddingLeft: 4,
-            borderLeft: '3px solid #3b82f6',
-            padding: '2px 8px',
-            background: 'rgba(59, 130, 246, 0.05)',
-            borderRadius: 4
+            borderLeft: '4px solid #3b82f6',
+            padding: '6px 10px',
+            background: '#3b82f612',
+            borderRadius: 6
           }}>
             🥛 Crème Fraîche
-            <span style={{ fontSize: 10, color: S.muted, fontWeight: 500, textTransform: 'none', marginLeft: 'auto' }}>
+            <span style={{ fontSize: 14, color: S.muted, fontWeight: 600, marginLeft: 'auto' }}>
               {pizzasCreme.length} Pizzas
             </span>
           </div>
@@ -790,25 +743,25 @@ function PizzaPanel({
           <div style={{
             position: 'absolute', bottom: 8, right: 24, zIndex: 50,
             display: 'flex', alignItems: 'center', gap: 4,
-            background: '#111827cc', backdropFilter: 'blur(6px)',
+            background: '#ffffff',
             border: `1px solid ${S.border}`,
-            borderRadius: 99, padding: '3px 8px',
+            borderRadius: 99, padding: '4px 10px',
             width: 'fit-content',
           }}>
-            <button onClick={() => setZoom(z => Math.max(80, z - 5))} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: 15, fontWeight: 900, cursor: 'pointer', padding: '0 3px', lineHeight: 1 }}>−</button>
-            <span style={{ fontSize: 10, fontWeight: 800, color: S.accent, minWidth: 28, textAlign: 'center' }}>{zoom}%</span>
-            <button onClick={() => setZoom(z => Math.min(150, z + 5))} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: 15, fontWeight: 900, cursor: 'pointer', padding: '0 3px', lineHeight: 1 }}>+</button>
+            <button onClick={() => setZoom(z => Math.max(80, z - 5))} style={{ background: 'none', border: 'none', color: '#545b66', fontSize: 22, fontWeight: 900, cursor: 'pointer', padding: '0 6px', lineHeight: 1 }}>−</button>
+            <span style={{ fontSize: 14, fontWeight: 800, color: S.text, minWidth: 40, textAlign: 'center' }}>{zoom}%</span>
+            <button onClick={() => setZoom(z => Math.min(150, z + 5))} style={{ background: 'none', border: 'none', color: '#545b66', fontSize: 22, fontWeight: 900, cursor: 'pointer', padding: '0 6px', lineHeight: 1 }}>+</button>
           </div>
         )}
 
       </div>
 
       {/* Supplements + Add */}
-      <div style={{ background: '#111827', borderTop: `1px solid ${S.border}`, padding: '10px 14px', flexShrink: 0 }}>
+      <div style={{ background: '#f7f8fa', borderTop: `1px solid ${S.border}`, padding: '10px 14px', flexShrink: 0 }}>
         {(sel || totalMultiCount > 0) && (
           <>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8, alignItems: 'center' }}>
-              <span style={{ fontSize: 10, color: S.muted, fontWeight: 700, textTransform: 'uppercase' }}>Suppléments fromage:</span>
+              <span style={{ fontSize: 14, color: S.muted, fontWeight: 700 }}>Suppléments fromage :</span>
               {cheeseSupplementOptions.map(s => (
                 <Chip key={s.id} label={s.name} extra={`+${s.price}€`} active={supps.includes(s.id)} onClick={() => setSupps(p => p.includes(s.id) ? p.filter(x => x !== s.id) : [...p, s.id])} />
               ))}
@@ -821,8 +774,8 @@ function PizzaPanel({
             <button
               onClick={handleClearMulti}
               style={{
-                padding: '9px 14px', borderRadius: 9, border: '1px solid #ef444455',
-                background: '#ef444418', color: '#ef4444', fontSize: 12, fontWeight: 800, cursor: 'pointer'
+                padding: '12px 16px', minHeight: 52, borderRadius: 10, border: '1px solid #fca5a5',
+                background: '#fef2f2', color: '#dc2626', fontSize: 15, fontWeight: 800, cursor: 'pointer'
               }}
             >
               🗑️ Annuler ({totalMultiCount})
@@ -832,11 +785,10 @@ function PizzaPanel({
             onClick={handleAddBatch}
             disabled={totalMultiCount === 0 && !sel}
             style={{
-              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
-              background: (totalMultiCount > 0 || sel) ? 'linear-gradient(135deg,#22c55e,#16a34a)' : '#1f2937',
-              color: (totalMultiCount > 0 || sel) ? '#fff' : '#374151', fontSize: 13, fontWeight: 800,
+              flex: 1, padding: '12px', minHeight: 52, borderRadius: 10, border: 'none',
+              background: (totalMultiCount > 0 || sel) ? PAY_GREEN : '#eef0f3',
+              color: (totalMultiCount > 0 || sel) ? '#fff' : '#7a828e', fontSize: 16, fontWeight: 800,
               cursor: (totalMultiCount > 0 || sel) ? 'pointer' : 'not-allowed',
-              boxShadow: totalMultiCount > 0 ? '0 0 14px rgba(34, 197, 94, 0.4)' : 'none'
             }}
           >
             {totalMultiCount > 0
@@ -910,7 +862,7 @@ function CustomizablePanel({ categorySlug, title, onAdd }: { categorySlug:string
           <>
             {meats.length > 0 && (
               <div style={{ marginBottom:10 }}>
-                <div style={{ fontSize:10, color:S.muted, fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:1 }}>Viandes</div>
+                <div style={{ fontSize:14, color:S.muted, fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:1 }}>Viandes</div>
                 <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                   {meats.map((m:any) => <Chip key={m.id||m.name} label={m.name} active={selMeats.includes(m.name)} onClick={()=>toggle(m.name,selMeats,setMeats)} />)}
                 </div>
@@ -918,7 +870,7 @@ function CustomizablePanel({ categorySlug, title, onAdd }: { categorySlug:string
             )}
             {sauces.length > 0 && (
               <div style={{ marginBottom:10 }}>
-                <div style={{ fontSize:10, color:S.muted, fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:1 }}>Sauces</div>
+                <div style={{ fontSize:14, color:S.muted, fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:1 }}>Sauces</div>
                 <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                   {sauces.map((s:any) => <Chip key={s.id||s.name} label={s.name} active={selSauces.includes(s.name)} onClick={()=>toggle(s.name,selSauces,setSauces)} />)}
                 </div>
@@ -926,19 +878,19 @@ function CustomizablePanel({ categorySlug, title, onAdd }: { categorySlug:string
             )}
             {supps.length > 0 && (
               <div style={{ marginBottom:10 }}>
-                <div style={{ fontSize:10, color:S.muted, fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:1 }}>Suppléments</div>
+                <div style={{ fontSize:14, color:S.muted, fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:1 }}>Suppléments</div>
                 <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                   {supps.map((s:any) => <Chip key={s.id||s.name} label={s.name} active={selSupps.includes(s.name)} onClick={()=>toggle(s.name,selSupps,setSelSupps)} />)}
                 </div>
               </div>
             )}
             <div style={{ marginBottom:10 }}>
-              <div style={{ fontSize:10, color:S.muted, fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:1 }}>Menu</div>
+              <div style={{ fontSize:14, color:S.muted, fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:1 }}>Menu</div>
               <div style={{ display:'flex', gap:5 }}>
                 {(['none','frites','boisson'] as const).map(m => (
                   <button key={m} onClick={()=>setMenu(m)} style={{
-                    ...S.btn, padding:'5px 12px', fontSize:11, fontWeight:700,
-                    background: menu===m ? '#3b82f622' : '#1f2937',
+                    ...S.btn, padding:'5px 12px', fontSize:15, fontWeight:700,
+                    background: menu===m ? '#3b82f622' : '#eef0f3',
                     color:      menu===m ? '#3b82f6'   : S.muted,
                     outline:    menu===m ? '1px solid #3b82f644' : 'none',
                   }}>
@@ -950,15 +902,15 @@ function CustomizablePanel({ categorySlug, title, onAdd }: { categorySlug:string
             <input value={note} onChange={e=>setNote(e.target.value)} placeholder="Note..." style={S.input} />
           </>
         )}
-        {!sel && <div style={{ textAlign:'center', color:'#374151', fontSize:13, paddingTop:20 }}>Sélectionnez un produit ci-dessus</div>}
+        {!sel && <div style={{ textAlign:'center', color:'#9aa1ab', fontSize:16, paddingTop:20 }}>Sélectionnez un produit ci-dessus</div>}
       </div>
 
       {/* Add button */}
-      <div style={{ padding:'10px 14px', borderTop:`1px solid ${S.border}`, background:'#111827', flexShrink:0 }}>
+      <div style={{ padding:'10px 14px', borderTop:`1px solid ${S.border}`, background:'#f7f8fa', flexShrink:0 }}>
         <button onClick={handleAdd} disabled={!sel} style={{
           width:'100%', padding:'9px', borderRadius:9, border:'none',
-          background: sel ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : '#1f2937',
-          color: sel?'#000':'#374151', fontSize:14, fontWeight:800, cursor:sel?'pointer':'not-allowed',
+          background: sel ? '#f6b800' : '#eef0f3',
+          color: sel?'#000':'#9aa1ab', fontSize:14, fontWeight:800, cursor:sel?'pointer':'not-allowed',
         }}>
           {sel ? `➕ ${sel.name} — ${price.toFixed(2)}€` : 'Sélectionnez un produit'}
         </button>
@@ -993,7 +945,7 @@ const FREE_SAUCES = supplementPrices.freeSaucesCount, EXTRA_SAUCE = supplementPr
 // Small option tile with image/emoji (compact, dark)
 function OptTile({ name, img, emoji, selected, isDefaultRemovable, price, disabled, onClick }:
   { name:string; img?:string|null; emoji?:string; selected:boolean; isDefaultRemovable?:boolean; price?:number; disabled?:boolean; onClick:()=>void }) {
-  const ring = selected ? (isDefaultRemovable ? '#22c55e' : S.accent) : '#2d3748';
+  const ring = selected ? (isDefaultRemovable ? '#22c55e' : S.accent) : '#dfe3e8';
   return (
     <button onClick={disabled ? undefined : onClick} disabled={disabled} style={{
       background: selected ? (isDefaultRemovable ? '#22c55e18' : S.accent+'18') : S.card,
@@ -1002,13 +954,13 @@ function OptTile({ name, img, emoji, selected, isDefaultRemovable, price, disabl
       textAlign:'center', position:'relative',
     }}>
       {selected && <span style={{ position:'absolute', top:3, right:3, width:15, height:15, borderRadius:99,
-        background: isDefaultRemovable ? '#ef4444' : S.accent, color:'#fff', fontSize:9, fontWeight:800,
+        background: isDefaultRemovable ? '#ef4444' : S.accent, color:isDefaultRemovable ? '#fff' : '#000', fontSize:13, fontWeight:800,
         display:'flex', alignItems:'center', justifyContent:'center' }}>{isDefaultRemovable?'✕':'✓'}</span>}
       {img
-        ? <img src={img} alt={name} loading="lazy" style={{ width:46, height:46, borderRadius:7, objectFit:'cover', display:'block', margin:'0 auto 3px', background:'#1f2937' }} />
-        : <div style={{ width:46, height:46, borderRadius:7, background:'#0d1117', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, margin:'0 auto 3px' }}>{emoji||'•'}</div>}
-      <div style={{ fontSize:10, fontWeight:700, color: selected?(isDefaultRemovable?'#22c55e':S.accent):S.text, lineHeight:1.1 }}>{name}</div>
-      {price !== undefined && price > 0 && <div style={{ fontSize:9, color:S.accent, fontWeight:800 }}>+{price.toFixed(2)}€</div>}
+        ? <img src={img} alt={name} loading="lazy" style={{ width:46, height:46, borderRadius:7, objectFit:'cover', display:'block', margin:'0 auto 3px', background:'#eef0f3' }} />
+        : <div style={{ width:46, height:46, borderRadius:7, background:'#f7f8fa', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, margin:'0 auto 3px' }}>{emoji||'•'}</div>}
+      <div style={{ fontSize:14, fontWeight:700, color: selected?(isDefaultRemovable?'#22c55e':S.accentText):S.text, lineHeight:1.1 }}>{name}</div>
+      {price !== undefined && price > 0 && <div style={{ fontSize:13, color:S.accentText, fontWeight:800 }}>+{price.toFixed(2)}€</div>}
     </button>
   );
 }
@@ -1016,8 +968,8 @@ function OptTile({ name, img, emoji, selected, isDefaultRemovable, price, disabl
 function SectionTitle({ children, hint }: { children:React.ReactNode; hint?:string }) {
   return (
     <div style={{ display:'flex', alignItems:'baseline', gap:8, margin:'4px 0 6px' }}>
-      <span style={{ fontSize:11, fontWeight:800, color:S.accent, textTransform:'uppercase', letterSpacing:1 }}>{children}</span>
-      {hint && <span style={{ fontSize:10, color:S.muted }}>{hint}</span>}
+      <span style={{ fontSize:15, fontWeight:800, color:S.accentText, textTransform:'uppercase', letterSpacing:1 }}>{children}</span>
+      {hint && <span style={{ fontSize:14, color:S.muted }}>{hint}</span>}
     </div>
   );
 }
@@ -1101,12 +1053,12 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
       {/* Live size badge */}
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 14px', background:S.panel, borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
-        <span style={{ fontSize:13, fontWeight:800, color:S.text }}>{WIZ_TITLE[type]}</span>
-        <span style={{ background:S.accent, color:'#000', borderRadius:99, padding:'2px 12px', fontSize:12, fontWeight:800 }}>
+        <span style={{ fontSize:16, fontWeight:800, color:S.text }}>{WIZ_TITLE[type]}</span>
+        <span style={{ background:S.accent, color:'#000', borderRadius:99, padding:'2px 12px', fontSize:15, fontWeight:800 }}>
           {maxMeats > 1 ? `${sizeCfg.label} · ` : ''}{sizeCfg.price.toFixed(2)}€
         </span>
-        <span style={{ fontSize:11, color:S.muted }}>{selMeats.length}/{maxMeats} viande{maxMeats>1?'s':''}</span>
-        <button onClick={reset} style={{ ...S.btn, marginLeft:'auto', padding:'4px 10px', fontSize:11 }}>↺ Réinit.</button>
+        <span style={{ fontSize:15, color:S.muted }}>{selMeats.length}/{maxMeats} viande{maxMeats>1?'s':''}</span>
+        <button onClick={reset} style={{ ...S.btn, marginLeft:'auto', padding:'4px 10px', fontSize:15 }}>↺ Réinit.</button>
       </div>
 
       {/* 2-Column layout — all sections */}
@@ -1188,8 +1140,8 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
                 { id:'menu', label:`Menu +${menuOptionPrices.menu}€`, emoji:'🍔' },
               ] as const).map(o => (
                 <button key={o.id} onClick={()=>setMenu(o.id)} style={{
-                  padding:'8px 4px', borderRadius:8, cursor:'pointer', fontSize:10, fontWeight:700, lineHeight:1.2,
-                  border:`1.5px solid ${menu===o.id?'#3b82f6':'#2d3748'}`,
+                  padding:'8px 4px', borderRadius:8, cursor:'pointer', fontSize:14, fontWeight:700, lineHeight:1.2,
+                  border:`1.5px solid ${menu===o.id?'#3b82f6':'#dfe3e8'}`,
                   background: menu===o.id?'#3b82f622':S.card, color: menu===o.id?'#3b82f6':S.muted,
                 }}><div style={{ fontSize:16 }}>{o.emoji}</div>{o.label}</button>
               ))}
@@ -1204,8 +1156,8 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
       <div style={{ padding:'10px 14px', borderTop:`1px solid ${S.border}`, background:S.panel, flexShrink:0 }}>
         <button onClick={handleAdd} disabled={!selMeats.length || !selSauces.length} style={{
           width:'100%', padding:'11px', borderRadius:9, border:'none',
-          background:(selMeats.length && selSauces.length)?'linear-gradient(135deg,#f59e0b,#ef4444)':'#1f2937',
-          color:(selMeats.length && selSauces.length)?'#000':'#374151', fontSize:14, fontWeight:800,
+          background:(selMeats.length && selSauces.length)?'#f6b800':'#eef0f3',
+          color:(selMeats.length && selSauces.length)?'#000':'#9aa1ab', fontSize:14, fontWeight:800,
           cursor:(selMeats.length && selSauces.length)?'pointer':'not-allowed',
         }}>
           ➕ {WIZ_TITLE[type]} {maxMeats>1?sizeCfg.label:''} — {price.toFixed(2)}€
@@ -1297,7 +1249,7 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
       </div>
 
       <div style={{ flex:1, overflow:'auto', padding:'10px 14px' }}>
-        {!sel && <div style={{ textAlign:'center', color:'#374151', fontSize:13, paddingTop:24 }}>Choisissez un sandwich ci-dessus</div>}
+        {!sel && <div style={{ textAlign:'center', color:'#9aa1ab', fontSize:16, paddingTop:24 }}>Choisissez un sandwich ci-dessus</div>}
         {sel && (
           <>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
@@ -1347,8 +1299,8 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
                 { id:'menu', label:`Menu +${menuOptionPrices.menu}€`, emoji:'🍔' },
               ] as const).map(o => (
                 <button key={o.id} onClick={()=>setMenu(o.id)} style={{
-                  padding:'8px 4px', borderRadius:8, cursor:'pointer', fontSize:10, fontWeight:700, lineHeight:1.2,
-                  border:`1.5px solid ${menu===o.id?'#3b82f6':'#2d3748'}`,
+                  padding:'8px 4px', borderRadius:8, cursor:'pointer', fontSize:14, fontWeight:700, lineHeight:1.2,
+                  border:`1.5px solid ${menu===o.id?'#3b82f6':'#dfe3e8'}`,
                   background: menu===o.id?'#3b82f622':S.card, color: menu===o.id?'#3b82f6':S.muted,
                 }}><div style={{ fontSize:16 }}>{o.emoji}</div>{o.label}</button>
               ))}
@@ -1362,8 +1314,8 @@ function SandwichPanel({ onAdd }: { onAdd:(item:any,custom:any,price:number)=>vo
       <div style={{ padding:'10px 14px', borderTop:`1px solid ${S.border}`, background:S.panel, flexShrink:0 }}>
         <button onClick={handleAdd} disabled={!sel} style={{
           width:'100%', padding:'11px', borderRadius:9, border:'none',
-          background: sel?'linear-gradient(135deg,#f59e0b,#ef4444)':'#1f2937',
-          color: sel?'#000':'#374151', fontSize:14, fontWeight:800, cursor:sel?'pointer':'not-allowed',
+          background: sel?'#f6b800':'#eef0f3',
+          color: sel?'#000':'#9aa1ab', fontSize:14, fontWeight:800, cursor:sel?'pointer':'not-allowed',
         }}>{sel ? `➕ ${sel.name} — ${price.toFixed(2)}€` : 'Choisissez un sandwich'}</button>
       </div>
     </div>
@@ -1513,10 +1465,10 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
   };
 
   const catEmoji = (cat?:string) => cat==='menu_enfant' ? '👶' : cat==='frites' ? '🍟' : cat==='croque' ? '🥪' : '🌶️';
-  const catGrad  = (cat?:string) => cat==='menu_enfant' ? 'linear-gradient(135deg,#8b5cf6,#6366f1)'
-    : cat==='frites' ? 'linear-gradient(135deg,#f59e0b,#d97706)'
-    : cat==='croque' ? 'linear-gradient(135deg,#a16207,#78350f)'
-    : 'linear-gradient(135deg,#ef4444,#f97316)';
+  const catGrad  = (cat?:string) => cat==='menu_enfant' ? '#8b5cf6'
+    : cat==='frites' ? '#f6b800'
+    : cat==='croque' ? '#a16207'
+    : '#ef4444';
 
   // Single image tile
   const TxTile = ({ p }:{ p:TxProduct }) => {
@@ -1535,7 +1487,7 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
         transition:'border-color 0.15s, background 0.15s',
       }}>
         {/* Image area — 3:2 aspect ratio for food cards */}
-        <div style={{ position:'relative', width:'100%', paddingTop:'60%', overflow:'hidden', flexShrink:0, background:'#1e293b' }}>
+        <div style={{ position:'relative', width:'100%', paddingTop:'60%', overflow:'hidden', flexShrink:0, background:'#ffffff' }}>
           {imgSrc && !imgError ? (
             <img src={imgSrc} alt={p.name} onError={() => setImgError(true)} style={{
               position:'absolute', top:0, left:0, width:'100%', height:'100%', objectFit:'cover',
@@ -1553,14 +1505,14 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
               position:'absolute', top:4, right:4,
               background:'#f59e0b', color:'#000', borderRadius:'50%',
               width:20, height:20, display:'flex', alignItems:'center', justifyContent:'center',
-              fontSize:11, fontWeight:900, lineHeight:1, boxShadow:'0 2px 4px rgba(0,0,0,0.4)'
+              fontSize:15, fontWeight:900, lineHeight:1, boxShadow:'0 1px 3px rgba(0,0,0,0.15)'
             }}>{q}</div>
           )}
         </div>
         {/* Name + price */}
         <div style={{ padding:'4px 5px 3px', flex:1, display:'flex', flexDirection:'column', justifyContent:'center' }}>
-          <div style={{ fontSize:10, fontWeight:800, color:S.text, lineHeight:1.2, marginBottom:1, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{p.name}</div>
-          <div style={{ fontSize:9, color:S.accent, fontWeight:600 }}>
+          <div style={{ fontSize:14, fontWeight:800, color:S.text, lineHeight:1.2, marginBottom:1, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{p.name}</div>
+          <div style={{ fontSize:13, color:S.accentText, fontWeight:600 }}>
             {isFixed ? `${p.unit_price.toFixed(2)}€` : `${p.unit_price.toFixed(2)}€/p.`}
           </div>
         </div>
@@ -1570,7 +1522,7 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
             onClick={(e)=>{ e.stopPropagation(); change(p.id,-1); }}
             disabled={q===0}
             style={{ flex:1, padding:'4px 0', border:'none', background:'transparent',
-              color: q ? '#ef4444' : '#374151', cursor: q ? 'pointer' : 'not-allowed',
+              color: q ? '#ef4444' : '#9aa1ab', cursor: q ? 'pointer' : 'not-allowed',
               fontSize:14, fontWeight:900, borderRight:`1px solid ${S.border}`,
             }}>−</button>
           <button
@@ -1592,14 +1544,14 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
         <div style={{ display:'flex', flexDirection:'column', minHeight:0 }}>
           <div style={{
             display:'flex', alignItems:'center', gap:6,
-            fontSize:11, fontWeight:800, color:'#ef4444',
+            fontSize:15, fontWeight:800, color:'#ef4444',
             textTransform:'uppercase', letterSpacing:'0.05em',
             marginBottom:8, padding:'3px 8px',
             borderLeft:'3px solid #ef4444',
             background:'rgba(239, 68, 68, 0.06)', borderRadius:4
           }}>
             <span>🌶️ Snacks / Viandes</span>
-            <span style={{ fontSize:9, color:S.muted, fontWeight:500, marginLeft:'auto' }}>Prix Dégressifs</span>
+            <span style={{ fontSize:13, color:S.muted, fontWeight:500, marginLeft:'auto' }}>Prix Dégressifs</span>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:7 }}>
             {snacks.map(p=><TxTile key={p.id} p={p} />)}
@@ -1614,7 +1566,7 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
             <div>
               <div style={{
                 display:'flex', alignItems:'center', gap:6,
-                fontSize:11, fontWeight:800, color:'#a855f7',
+                fontSize:15, fontWeight:800, color:'#a855f7',
                 textTransform:'uppercase', letterSpacing:'0.05em',
                 marginBottom:6, padding:'3px 8px',
                 borderLeft:'3px solid #a855f7',
@@ -1642,9 +1594,9 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
                     }}
                   >
                     <span style={{ fontSize: 24, marginBottom: 4 }}>👶</span>
-                    <span style={{ fontSize: 12, fontWeight: 900, color: '#f8fafc' }}>{p.name}</span>
-                    <span style={{ fontSize: 11, color: '#a855f7', fontWeight: 800, marginTop: 2 }}>{(p.unit_price || 6.50).toFixed(2)}€</span>
-                    <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 800, marginTop: 4 }}>⚡ Clic Direct 1-Tap</span>
+                    <span style={{ fontSize: 15, fontWeight: 900, color: '#1a1d23' }}>{p.name}</span>
+                    <span style={{ fontSize: 15, color: '#a855f7', fontWeight: 800, marginTop: 2 }}>{(p.unit_price || 6.50).toFixed(2)}€</span>
+                    <span style={{ fontSize: 13, color: '#22c55e', fontWeight: 800, marginTop: 4 }}>⚡ Clic Direct 1-Tap</span>
                   </button>
                 ))}
               </div>
@@ -1656,7 +1608,7 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
             <div>
               <div style={{
                 display:'flex', alignItems:'center', gap:6,
-                fontSize:11, fontWeight:800, color:'#f59e0b',
+                fontSize:15, fontWeight:800, color:'#f59e0b',
                 textTransform:'uppercase', letterSpacing:'0.05em',
                 marginBottom:6, padding:'3px 8px',
                 borderLeft:'3px solid #f59e0b',
@@ -1675,7 +1627,7 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
             <div>
               <div style={{
                 display:'flex', alignItems:'center', gap:6,
-                fontSize:11, fontWeight:800, color:'#eab308',
+                fontSize:15, fontWeight:800, color:'#eab308',
                 textTransform:'uppercase', letterSpacing:'0.05em',
                 marginBottom:6, padding:'3px 8px',
                 borderLeft:'3px solid #eab308',
@@ -1696,16 +1648,16 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
       {/* Dégressif info + Add button */}
       <div style={{ padding:'7px 12px', borderTop:`1px solid ${S.border}`, background:S.panel, flexShrink:0 }}>
         {hasItems && (
-          <div style={{ fontSize:9, color:S.muted, marginBottom:4, textAlign:'center' }}>
+          <div style={{ fontSize:13, color:S.muted, marginBottom:4, textAlign:'center' }}>
             Snacks: A (Wings/Tenders/Nuggets) 1.40€ · 5=7€ · 10=13€ &nbsp;|&nbsp; B (autres) 1.20€ · 5=6€ · 10=10€
           </div>
         )}
         <button onClick={handleAdd} disabled={!hasItems} style={{
           width:'100%', padding:'10px', borderRadius:9, border:'none',
-          background:hasItems?'linear-gradient(135deg,#f59e0b,#ef4444)':'#1f2937',
-          color:hasItems?'#000':'#4b5563', fontSize:13, fontWeight:900, cursor:hasItems?'pointer':'not-allowed',
+          background:hasItems?'#f6b800':'#eef0f3',
+          color:hasItems?'#000':'#b8bec7', fontSize:16, fontWeight:900, cursor:hasItems?'pointer':'not-allowed',
           transition:'all 0.15s ease',
-          boxShadow:hasItems?'0 4px 12px rgba(245, 158, 11, 0.3)':'none',
+          boxShadow:'none',
         }}>➕ Ajouter au panier — {total.toFixed(2)}€</button>
       </div>
     </div>
@@ -1765,19 +1717,19 @@ function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void
             <div key={b.id} style={{ background:S.card, borderRadius:9, padding:'8px 12px', marginBottom:8, border:`1px solid ${q>0?S.accent:S.border}` }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom: b.hasNote?6:0 }}>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:S.text }}>{b.name}</div>
-                  <div style={{ fontSize:11, color:S.accent, fontWeight:800 }}>{b.price.toFixed(2)}€</div>
+                  <div style={{ fontSize:16, fontWeight:700, color:S.text }}>{b.name}</div>
+                  <div style={{ fontSize:15, color:S.accentText, fontWeight:800 }}>{b.price.toFixed(2)}€</div>
                 </div>
-                <button onClick={()=>changeQty(b.id,-1)} disabled={q===0} style={{ width:28,height:28,borderRadius:7,border:`1px solid ${S.border}`,background:S.panel,color:q?S.text:'#374151',cursor:q?'pointer':'not-allowed',fontSize:16,fontWeight:800 }}>−</button>
-                <span style={{ width:24, textAlign:'center', fontSize:13, fontWeight:800, color:q?S.accent:S.muted }}>{q||'·'}</span>
-                <button onClick={()=>changeQty(b.id,+1)} style={{ width:28,height:28,borderRadius:7,border:`1px solid ${q?S.accent:S.border}`,background:q?S.accent+'22':S.panel,color:S.accent,cursor:'pointer',fontSize:16,fontWeight:800 }}>+</button>
+                <button onClick={()=>changeQty(b.id,-1)} disabled={q===0} style={{ width:28,height:28,borderRadius:7,border:`1px solid ${S.border}`,background:S.panel,color:q?S.text:'#9aa1ab',cursor:q?'pointer':'not-allowed',fontSize:16,fontWeight:800 }}>−</button>
+                <span style={{ width:24, textAlign:'center', fontSize:16, fontWeight:800, color:q?S.accentText:S.muted }}>{q||'·'}</span>
+                <button onClick={()=>changeQty(b.id,+1)} style={{ width:28,height:28,borderRadius:7,border:`1px solid ${q?S.accent:S.border}`,background:q?S.accent+'22':S.panel,color:S.accentText,cursor:'pointer',fontSize:16,fontWeight:800 }}>+</button>
               </div>
               {b.hasNote && (
                 <input
                   value={notes[b.id]||''}
                   onChange={e=>setNotes(p=>({...p,[b.id]:e.target.value}))}
                   placeholder={b.name.toLowerCase().includes('canette')?'Ex: Coca-Cola, Fanta, Sprite…':'Ex: Coca 1.5L, eau gazeuse…'}
-                  style={{ ...S.input, fontSize:11, padding:'5px 8px', marginTop:2 }}
+                  style={{ ...S.input, fontSize:15, padding:'5px 8px', marginTop:2 }}
                 />
               )}
             </div>
@@ -1787,8 +1739,8 @@ function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void
       <div style={{ padding:'10px 14px', borderTop:`1px solid ${S.border}`, background:S.panel, flexShrink:0 }}>
         <button onClick={handleAdd} disabled={!hasItems} style={{
           width:'100%', padding:'11px', borderRadius:9, border:'none',
-          background:hasItems?'linear-gradient(135deg,#3b82f6,#06b6d4)':'#1f2937',
-          color:hasItems?'#fff':'#374151', fontSize:14, fontWeight:800, cursor:hasItems?'pointer':'not-allowed',
+          background:hasItems?'#3b82f6':'#eef0f3',
+          color:hasItems?'#fff':'#9aa1ab', fontSize:14, fontWeight:800, cursor:hasItems?'pointer':'not-allowed',
         }}>🥤 Ajouter — {total.toFixed(2)}€</button>
       </div>
     </div>
@@ -1864,16 +1816,16 @@ const FloatingToppingCircle = memo(({ name, emoji, active, onClick, onDragStart,
         width: 90,
         height: 90,
         borderRadius: '50%',
-        border: `2px solid ${active ? '#f59e0b' : '#374151'}`,
-        background: active ? 'rgba(245,158,11,0.15)' : 'rgba(31, 41, 55, 0.85)',
-        color: active ? '#f59e0b' : '#e5e7eb',
+        border: `2px solid ${active ? '#f59e0b' : '#9aa1ab'}`,
+        background: active ? 'rgba(245,158,11,0.15)' : '#ffffff',
+        color: active ? '#f59e0b' : '#1a1d23',
         cursor: 'grab',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 2,
-        boxShadow: active ? '0 0 12px rgba(245,158,11,0.3)' : '0 4px 8px rgba(0,0,0,0.3)',
+        boxShadow: 'none',
         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
         backdropFilter: 'blur(4px)',
         userSelect: 'none',
@@ -1881,13 +1833,13 @@ const FloatingToppingCircle = memo(({ name, emoji, active, onClick, onDragStart,
       }}
     >
       <ToppingMedia name={name} emoji={emoji} />
-      <span style={{ fontSize: 9, fontWeight: 900, textAlign: 'center', lineHeight: 1.1, maxWidth: '85%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+      <span style={{ fontSize: 13, fontWeight: 900, textAlign: 'center', lineHeight: 1.1, maxWidth: '85%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
       {active && (
         <span style={{
           position: 'absolute',
           top: 0,
           right: 0,
-          fontSize: 8,
+          fontSize: 13,
           background: '#f59e0b',
           color: '#000',
           borderRadius: '50%',
@@ -1897,7 +1849,7 @@ const FloatingToppingCircle = memo(({ name, emoji, active, onClick, onDragStart,
           alignItems: 'center',
           justifyContent: 'center',
           fontWeight: 900,
-          border: '1px solid #111827',
+          border: '1px solid #f7f8fa',
         }}>
           ✓
         </span>
@@ -2028,9 +1980,9 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
       <div style={{ flex: 1, overflow: 'auto', padding: '10px 14px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         
         {/* Info card */}
-        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, padding: '6px 12px', marginBottom: 10, flexShrink: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: '#f59e0b', marginBottom: 2 }}>🥛 Milkshake Personnalisé (5.00€)</div>
-          <div style={{ fontSize: 10, color: '#94a3b8' }}>Base vanille + Crème Chantilly et 1 topping inclus. Topping supplém. +0.50€.</div>
+        <div style={{ background: '#ffffff', border: '1px solid #dfe3e8', borderRadius: 12, padding: '6px 12px', marginBottom: 10, flexShrink: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#f59e0b', marginBottom: 2 }}>🥛 Milkshake Personnalisé (5.00€)</div>
+          <div style={{ fontSize: 14, color: '#545b66' }}>Base vanille + Crème Chantilly et 1 topping inclus. Topping supplém. +0.50€.</div>
         </div>
 
         {/* Circular Floating Builder Area */}
@@ -2040,7 +1992,7 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
           height: 390,
           background: 'rgba(15,23,42,0.15)',
           borderRadius: 20,
-          border: '1px solid rgba(255,255,255,0.05)',
+          border: '1px solid rgba(0,0,0,0.05)',
           overflow: 'hidden',
           flex: 1,
           display: 'flex',
@@ -2069,8 +2021,8 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
                 : (isDraggingTopping ? '2px dashed rgba(255,255,255,0.25)' : '2px dashed transparent'),
               background: isDragOverCup 
                 ? 'rgba(245,158,11,0.08)' 
-                : (isDraggingTopping ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.1)'),
-              boxShadow: isDragOverCup ? `0 0 30px rgba(245,158,11,0.3)` : 'none',
+                : (isDraggingTopping ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.1)'),
+              boxShadow: 'none',
               transform: isDragOverCup ? 'scale(1.05)' : 'scale(1)',
               transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               cursor: (selectedToppings.length > 0 || nappage.length > 0) ? 'grab' : 'default',
@@ -2160,12 +2112,12 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
                 borderRadius: '50%',
                 width: 20,
                 height: 20,
-                fontSize: 9,
+                fontSize: 13,
                 fontWeight: 900,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
                 zIndex: 10
               }}>
                 {selectedToppings.length + nappage.length}
@@ -2181,7 +2133,7 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
                 color: '#f59e0b',
                 padding: '3px 8px',
                 borderRadius: 99,
-                fontSize: 8,
+                fontSize: 13,
                 fontWeight: 800,
                 textTransform: 'uppercase',
                 zIndex: 10,
@@ -2197,10 +2149,10 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
                 color: '#fff',
                 padding: '3px 8px',
                 borderRadius: 99,
-                fontSize: 8,
+                fontSize: 13,
                 fontWeight: 800,
                 zIndex: 10,
-                border: '1px solid rgba(255,255,255,0.15)',
+                border: '1px solid rgba(0,0,0,0.15)',
                 whiteSpace: 'nowrap',
               }}>
                 Glisser vers la caisse 👈
@@ -2283,10 +2235,10 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
             transform: 'translateX(-50%)',
             display: 'flex',
             gap: 12,
-            background: 'rgba(0,0,0,0.3)',
+            background: '#f7f8fa',
             padding: '6px 10px',
             borderRadius: 14,
-            border: '1px solid rgba(255,255,255,0.05)',
+            border: '1px solid rgba(0,0,0,0.05)',
             zIndex: 15,
           }}>
             <button
@@ -2295,10 +2247,10 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
               style={{
                 padding: '6px 12px',
                 borderRadius: 8,
-                border: `1.5px solid ${nappage.includes('Chocolat') ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
-                background: nappage.includes('Chocolat') ? 'rgba(59,35,20,0.4)' : '#1e293b',
-                color: nappage.includes('Chocolat') ? '#f59e0b' : '#94a3b8',
-                fontSize: 10,
+                border: `1.5px solid ${nappage.includes('Chocolat') ? '#f59e0b' : 'rgba(0,0,0,0.1)'}`,
+                background: nappage.includes('Chocolat') ? 'rgba(59,35,20,0.4)' : '#ffffff',
+                color: nappage.includes('Chocolat') ? '#f59e0b' : '#545b66',
+                fontSize: 14,
                 fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
@@ -2314,10 +2266,10 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
               style={{
                 padding: '6px 12px',
                 borderRadius: 8,
-                border: `1.5px solid ${nappage.includes('Caramel') ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
-                background: nappage.includes('Caramel') ? 'rgba(180,83,9,0.3)' : '#1e293b',
-                color: nappage.includes('Caramel') ? '#f59e0b' : '#94a3b8',
-                fontSize: 10,
+                border: `1.5px solid ${nappage.includes('Caramel') ? '#f59e0b' : 'rgba(0,0,0,0.1)'}`,
+                background: nappage.includes('Caramel') ? 'rgba(180,83,9,0.3)' : '#ffffff',
+                color: nappage.includes('Caramel') ? '#f59e0b' : '#545b66',
+                fontSize: 14,
                 fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
@@ -2333,7 +2285,7 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
 
         {/* Notes input */}
         <div style={{ marginTop: 8, flexShrink: 0 }}>
-          <div style={{ fontSize: 9, color: S.muted, fontWeight: 800, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>NOTES / MODIFICATIONS</div>
+          <div style={{ fontSize: 13, color: S.muted, fontWeight: 800, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>NOTES / MODIFICATIONS</div>
           <input
             type="text"
             value={note}
@@ -2344,9 +2296,9 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
               padding: '6px 10px',
               borderRadius: 8,
               border: `1px solid ${S.border}`,
-              background: '#1f2937',
-              color: '#fff',
-              fontSize: 11,
+              background: '#eef0f3',
+              color: '#1a1d23',
+              fontSize: 15,
               outline: 'none'
             }}
           />
@@ -2355,15 +2307,15 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
       </div>
 
       {/* Quantity bar */}
-      <div style={{ padding: '6px 14px', borderTop: `1px solid ${S.border}`, background: '#111827', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <span style={{ fontSize: 11, color: S.muted, fontWeight: 700 }}>Qté:</span>
+      <div style={{ padding: '6px 14px', borderTop: `1px solid ${S.border}`, background: '#f7f8fa', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <span style={{ fontSize: 15, color: S.muted, fontWeight: 700 }}>Qté:</span>
         <button onClick={() => setQty(Math.max(1, qty - 1))} style={{ ...S.btn, padding: '3px 8px', fontWeight: 900 }}>−</button>
-        <span style={{ fontSize: 13, fontWeight: 800, minWidth: 20, textAlign: 'center' }}>{qty}</span>
+        <span style={{ fontSize: 16, fontWeight: 800, minWidth: 20, textAlign: 'center' }}>{qty}</span>
         <button onClick={() => setQty(qty + 1)} style={{ ...S.btn, padding: '3px 8px', fontWeight: 900 }}>+</button>
       </div>
 
       {/* Add CTA */}
-      <div style={{ padding: '8px 14px', borderTop: `1px solid ${S.border}`, background: '#111827', flexShrink: 0 }}>
+      <div style={{ padding: '8px 14px', borderTop: `1px solid ${S.border}`, background: '#f7f8fa', flexShrink: 0 }}>
         <button
           onClick={handleAdd}
           style={{
@@ -2371,16 +2323,16 @@ function MilkshakePanel({ onAdd }: { onAdd: (item: any, custom: any, price: numb
             padding: '9px',
             borderRadius: 8,
             border: 'none',
-            background: 'linear-gradient(135deg,#f59e0b,#ef4444)',
+            background: '#f6b800',
             color: '#000',
-            fontSize: 12,
+            fontSize: 15,
             fontWeight: 900,
             cursor: 'pointer',
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
             gap: 6,
-            boxShadow: '0 4px 12px rgba(245,158,11,0.2)',
+            boxShadow: 'none',
           }}
         >
           <span>Ajouter au panier</span>
@@ -2426,18 +2378,18 @@ function SimplePanel({ categorySlug, title, onAdd }: { categorySlug:string; titl
         </div>
       </div>
       {sel && (
-        <div style={{ padding:'8px 14px', borderTop:`1px solid ${S.border}`, background:'#111827', display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
-          <span style={{ fontSize:12, color:S.muted }}>Qté:</span>
+        <div style={{ padding:'8px 14px', borderTop:`1px solid ${S.border}`, background:'#f7f8fa', display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
+          <span style={{ fontSize:15, color:S.muted }}>Qté:</span>
           <button onClick={()=>setQty(Math.max(1,qty-1))} style={{...S.btn,padding:'4px 10px',fontWeight:800}}>−</button>
           <span style={{ fontSize:14, fontWeight:700, minWidth:24, textAlign:'center' }}>{qty}</span>
           <button onClick={()=>setQty(qty+1)} style={{...S.btn,padding:'4px 10px',fontWeight:800}}>+</button>
         </div>
       )}
-      <div style={{ padding:'10px 14px', borderTop:`1px solid ${S.border}`, background:'#111827', flexShrink:0 }}>
+      <div style={{ padding:'10px 14px', borderTop:`1px solid ${S.border}`, background:'#f7f8fa', flexShrink:0 }}>
         <button onClick={handleAdd} disabled={!sel} style={{
           width:'100%', padding:'9px', borderRadius:9, border:'none',
-          background: sel?'linear-gradient(135deg,#f59e0b,#ef4444)':'#1f2937',
-          color:sel?'#000':'#374151', fontSize:13, fontWeight:800, cursor:sel?'pointer':'not-allowed',
+          background: sel?'#f6b800':'#eef0f3',
+          color:sel?'#000':'#9aa1ab', fontSize:16, fontWeight:800, cursor:sel?'pointer':'not-allowed',
         }}>
           {sel?`➕ ${qty}x ${sel.name} — ${(sel.price*qty).toFixed(2)}€`:'Sélectionnez un produit'}
         </button>
@@ -2530,7 +2482,7 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
       cancelled: '#ef4444'
     };
     return (
-      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: (colors[status] || '#6b7280') + '22', color: colors[status] || '#6b7280' }}>
+      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: (colors[status] || '#545b66') + '22', color: colors[status] || '#545b66' }}>
         {labels[status] || status}
       </span>
     );
@@ -2544,7 +2496,7 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <div>
               <div style={{ fontSize:16, fontWeight:800, color:S.text }}>📊 Historique & Stats</div>
-              <div style={{ fontSize:11, color:S.accent, marginTop:2, fontWeight:700 }}>
+              <div style={{ fontSize:11, color:S.accentText, marginTop:2, fontWeight:700 }}>
                 {formatBusinessDateDisplay(selectedDate)} {selectedDate === currentBizDate ? "(Aujourd'hui, actif jusqu'à 04:00)" : ''}
               </div>
             </div>
@@ -2558,10 +2510,10 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
               type="date"
               value={selectedDate}
               onChange={e => e.target.value && setSelectedDate(e.target.value)}
-              style={{ ...S.input, width:'auto', padding:'4px 8px', fontSize:11, color:'#fff', cursor:'pointer' }}
+              style={{ ...S.input, width:'auto', padding:'4px 8px', fontSize:11, color:'#1a1d23', cursor:'pointer' }}
             />
             {selectedDate !== currentBizDate && (
-              <button onClick={() => setSelectedDate(currentBizDate)} style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:700, color:S.accent, borderColor:S.accent+'44' }}>
+              <button onClick={() => setSelectedDate(currentBizDate)} style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:700, color:S.accentText, borderColor:S.accent+'44' }}>
                 Aujourd'hui
               </button>
             )}
@@ -2579,7 +2531,7 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
                 <div style={{ background:S.card, border:`1px solid ${S.border}`, borderRadius:10, padding:'12px 14px' }}>
                   <div style={{ fontSize:10, color:S.muted, fontWeight:800, textTransform:'uppercase' }}>CA Global (Web+Borne+POS)</div>
-                  <div style={{ fontSize:22, fontWeight:900, color:S.accent, marginTop:4 }}>{totalSales.toFixed(2)}€</div>
+                  <div style={{ fontSize:22, fontWeight:900, color:S.accentText, marginTop:4 }}>{totalSales.toFixed(2)}€</div>
                 </div>
                 <div style={{ background:S.card, border:`1px solid ${S.border}`, borderRadius:10, padding:'12px 14px' }}>
                   <div style={{ fontSize:10, color:S.muted, fontWeight:800, textTransform:'uppercase' }}>Commandes Valides</div>
@@ -2704,10 +2656,10 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
                         {/* Row 2: Badges */}
                         <div style={{ display:'flex', gap:4, alignItems:'center', flexWrap:'wrap' }}>
                           {getStatusBadge(order.status)}
-                          <span style={{ fontSize:10, background:'#1f2937', color:'#e5e7eb', padding:'2px 6px', borderRadius:4, fontWeight:700 }}>
+                          <span style={{ fontSize:10, background:'#eef0f3', color:'#1a1d23', padding:'2px 6px', borderRadius:4, fontWeight:700 }}>
                             {TYPE_LABELS[order.order_type as OrderType] || order.order_type}
                           </span>
-                          <span style={{ fontSize:10, background:'#1f2937', color:'#e5e7eb', padding:'2px 6px', borderRadius:4, fontWeight:700 }}>
+                          <span style={{ fontSize:10, background:'#eef0f3', color:'#1a1d23', padding:'2px 6px', borderRadius:4, fontWeight:700 }}>
                             {PAY_LABELS[order.payment_method as PayMethod] || order.payment_method}
                           </span>
                         </div>
@@ -2719,7 +2671,7 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
 
                         {/* Row 4: Total + actions */}
                         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', borderTop:`1px solid ${S.border}44`, paddingTop:6, marginTop:2 }}>
-                          <span style={{ fontSize:14, fontWeight:800, color:S.accent }}>
+                          <span style={{ fontSize:14, fontWeight:800, color:S.accentText }}>
                             {order.total?.toFixed(2)}€
                           </span>
                           <div style={{ display:'flex', gap:6 }}>
@@ -2734,7 +2686,7 @@ function HistoryPanel({ onClose }: { onClose:()=>void }) {
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 2,
-                                background: actionState === 'reprint' ? '#1f2937' : undefined,
+                                background: actionState === 'reprint' ? '#eef0f3' : undefined,
                                 cursor: actionState ? 'wait' : 'pointer'
                               }}
                             >
@@ -3102,7 +3054,7 @@ function SettingsPanel({ onClose }: { onClose:()=>void }) {
           {/* Section 1: Colors */}
           <div style={{ fontSize:11, color:S.muted, textTransform:'uppercase', fontWeight:800, letterSpacing:'0.05em', marginBottom:10 }}>Thème de l'application</div>
           {currentThemeMode === 'glassy' ? (
-            <div style={{ fontSize:12, color:S.muted, padding:'14px 10px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, textAlign:'center', marginBottom:20 }}>
+            <div style={{ fontSize:12, color:S.muted, padding:'14px 10px', background:'rgba(0,0,0,0.03)', border:'1px solid rgba(0,0,0,0.06)', borderRadius:8, textAlign:'center', marginBottom:20 }}>
               ✨ Personnalisation des couleurs désactivée en mode Glassmorphism. Repassez en <b>Classique</b> pour éditer.
             </div>
           ) : (
@@ -3129,7 +3081,7 @@ function SettingsPanel({ onClose }: { onClose:()=>void }) {
           <div style={{ fontSize:11, color:S.muted, textTransform:'uppercase', fontWeight:800, letterSpacing:'0.05em', marginBottom:10 }}>Liaison Ligne Téléphonique Fixe</div>
           
           {!isElectron ? (
-            <div style={{ fontSize:12, color:S.muted, padding:10, background:'#1f293755', borderRadius:8 }}>
+            <div style={{ fontSize:12, color:S.muted, padding:10, background:'#eef0f355', borderRadius:8 }}>
               ⚠️ Non disponible en mode navigateur. Lancez l'application officielle pour connecter votre Box.
             </div>
           ) : (
@@ -3174,7 +3126,7 @@ function SettingsPanel({ onClose }: { onClose:()=>void }) {
                     </button>
                   </div>
                 ) : (
-                  <div style={{ background:'#1f293733', border:`1px solid ${S.border}`, borderRadius:10, padding:12 }}>
+                  <div style={{ background:'#eef0f333', border:`1px solid ${S.border}`, borderRadius:10, padding:12 }}>
                     <div style={{ fontSize:13, fontWeight:700, color:S.text, marginBottom:6 }}>Liaison Freebox</div>
                     <div style={{ fontSize:11, color:S.muted, lineHeight:1.3, marginBottom:12 }}>
                       Associez la caisse à votre Freebox locale pour pré-remplir automatiquement les coordonnées des clients lorsqu'ils vous appellent.
@@ -3230,7 +3182,7 @@ function SettingsPanel({ onClose }: { onClose:()=>void }) {
                     </button>
                   </div>
                 ) : (
-                  <div style={{ background:'#1f293733', border:`1px solid ${S.border}`, borderRadius:10, padding:12 }}>
+                  <div style={{ background:'#eef0f333', border:`1px solid ${S.border}`, borderRadius:10, padding:12 }}>
                     <div style={{ fontSize:13, fontWeight:700, color:S.text, marginBottom:6 }}>Liaison Livebox (Orange)</div>
                     <div style={{ fontSize:11, color:S.muted, lineHeight:1.3, marginBottom:12 }}>
                       Entrez le mot de passe d'administration de votre Livebox (par défaut, ce sont les **8 premiers caractères de votre clé de sécurité Wi-Fi** imprimée sur l'étiquette au dos ou sous la box).
@@ -3372,7 +3324,7 @@ function UpdatePanel({ onClose }: { onClose:()=>void }) {
               {updateInfo ? (
                 <div>
                   <div style={{ fontSize:13, fontWeight:700, color:S.text }}>Branche: {updateInfo.branch}</div>
-                  <div style={{ fontSize:11, fontFamily:'monospace', color:S.accent, marginTop:2 }}>Commit: {updateInfo.current?.hash}</div>
+                  <div style={{ fontSize:11, fontFamily:'monospace', color:S.accentText, marginTop:2 }}>Commit: {updateInfo.current?.hash}</div>
                   <div style={{ fontSize:12, color:S.text, marginTop:4 }}>"{updateInfo.current?.msg}"</div>
                   <div style={{ fontSize:11, color:S.muted, marginTop:4 }}>Par: {updateInfo.current?.author} ({updateInfo.current?.date})</div>
                 </div>
@@ -3390,10 +3342,10 @@ function UpdatePanel({ onClose }: { onClose:()=>void }) {
                 </div>
                 
                 <div style={{ fontSize:11, color:S.muted, textTransform:'uppercase', fontWeight:700 }}>Détails des modifications</div>
-                <div style={{ flex:1, overflow:'auto', border:`1px solid ${S.border}`, borderRadius:8, background:'#0d1117' }}>
+                <div style={{ flex:1, overflow:'auto', border:`1px solid ${S.border}`, borderRadius:8, background:'#f7f8fa' }}>
                   {updateInfo.aheadCommits.map((c: any) => (
                     <div key={c.hash} style={{ padding:'8px 10px', borderBottom:`1px solid ${S.border}`, fontSize:11 }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', color:S.accent, fontWeight:700 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', color:S.accentText, fontWeight:700 }}>
                         <span>Commit: {c.hash}</span>
                         <span style={{ color:S.muted }}>{c.date}</span>
                       </div>
@@ -3403,7 +3355,7 @@ function UpdatePanel({ onClose }: { onClose:()=>void }) {
                   ))}
                 </div>
 
-                <button onClick={triggerUpdate} style={{ ...S.btn, width:'100%', background:'linear-gradient(135deg,#f59e0b,#ef4444)', border:'none', color:'#000', padding:'12px', fontWeight:800, fontSize:13, borderRadius:9, cursor:'pointer', marginTop:'auto' }}>
+                <button onClick={triggerUpdate} style={{ ...S.btn, width:'100%', background:'#f6b800', border:'none', color:'#000', padding:'12px', fontWeight:800, fontSize:13, borderRadius:9, cursor:'pointer', marginTop:'auto' }}>
                   🚀 Installer la mise à jour
                 </button>
               </div>
@@ -3508,12 +3460,12 @@ function FactureHubModal({ onClose }: { onClose:()=>void }) {
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'#000a', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div className="pos-glassy-panel" onClick={e=>e.stopPropagation()} style={{ width:540, maxWidth:'95%', background:S.panel, border:`1px solid ${S.border}`, borderRadius:14, padding:'20px 22px', display:'flex', flexDirection:'column' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-          <div style={{ fontSize:17, fontWeight:800, color:S.accent }}>🧾 Factures Client</div>
+          <div style={{ fontSize:17, fontWeight:800, color:S.accentText }}>🧾 Factures Client</div>
           <button onClick={onClose} style={{ ...S.btn, padding:'3px 8px', fontSize:12 }}>✕</button>
         </div>
 
         {/* Tab Selection */}
-        <div style={{ display:'flex', gap:6, background:'#111827', padding:4, borderRadius:8, marginBottom:16 }}>
+        <div style={{ display:'flex', gap:6, background:'#f7f8fa', padding:4, borderRadius:8, marginBottom:16 }}>
           <button
             onClick={() => setActiveTab('recent')}
             style={{
@@ -3557,7 +3509,7 @@ function FactureHubModal({ onClose }: { onClose:()=>void }) {
                   >
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 12, fontWeight: 800, color: S.accent }}>#{o.order_number}</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: S.accentText }}>#{o.order_number}</span>
                         <span style={{ fontSize: 10, color: S.muted }}>{formatDate(o.created_at)}</span>
                       </div>
                       <div style={{ fontSize: 11, color: '#e2e8f0', marginTop: 2, textOverflow:'ellipsis', overflow:'hidden', whiteSpace:'nowrap' }}>
@@ -3571,7 +3523,7 @@ function FactureHubModal({ onClose }: { onClose:()=>void }) {
                         onClick={() => printOrderInvoice(o.order_number)}
                         style={{
                           ...S.btn, padding: '5px 8px', fontSize: 12, cursor: printingOrder ? 'wait' : 'pointer',
-                          borderColor: S.accent + '33', color: S.accent, background: printingOrder === o.order_number ? '#1f2937' : S.accent + '0a'
+                          borderColor: S.accent + '33', color: S.accentText, background: printingOrder === o.order_number ? '#eef0f3' : S.accent + '0a'
                         }}
                       >
                         {printingOrder === o.order_number ? '⏳' : '🖨️'}
@@ -3620,7 +3572,7 @@ function FactureHubModal({ onClose }: { onClose:()=>void }) {
             <div style={{ background:S.card, borderRadius:8, padding:'10px 12px', marginBottom:14, fontSize:12, color:S.muted }}>
               <div style={{ display:'flex', justifyContent:'space-between' }}><span>Total HT</span><span style={{marginLeft:'auto'}}>{totalHT.toFixed(2)} €</span></div>
               <div style={{ display:'flex', justifyContent:'space-between', marginTop:2 }}><span>TVA {tvaRate}%</span><span style={{marginLeft:'auto'}}>{tvaAmt.toFixed(2)} €</span></div>
-              <div style={{ display:'flex', justifyContent:'space-between', color:S.accent, fontWeight:800, fontSize:14, marginTop:4, paddingTop:4, borderTop:`1px solid ${S.border}33` }}>
+              <div style={{ display:'flex', justifyContent:'space-between', color:S.accentText, fontWeight:800, fontSize:14, marginTop:4, paddingTop:4, borderTop:`1px solid ${S.border}33` }}>
                 <span>TOTAL TTC</span><span style={{marginLeft:'auto'}}>{totalTTC.toFixed(2)} €</span>
               </div>
             </div>
@@ -3629,7 +3581,7 @@ function FactureHubModal({ onClose }: { onClose:()=>void }) {
               <button onClick={onClose} style={{ ...S.btn, flex:1, padding:'9px', fontWeight:700 }}>Annuler</button>
               <button onClick={printManualInvoice} disabled={printingManual} style={{
                 flex:2, padding:'9px', borderRadius:8, border:'none', fontWeight:800, cursor:printingManual?'wait':'pointer',
-                background: printingManual ? '#374151' : 'linear-gradient(135deg,#f59e0b,#ef4444)', color: printingManual?'#6b7280':'#000',
+                background: printingManual ? '#9aa1ab' : '#f6b800', color: printingManual?'#545b66':'#000',
               }}>
                 {printingManual ? '⏳ Impression...' : '🖨️ Imprimer la Facture'}
               </button>
@@ -3659,8 +3611,8 @@ function CartItemRow({ ci, onUpdate, onRemove }: { ci:any; onUpdate:(u:any)=>voi
     <button onClick={()=>toggleField(field, val)} title="Retirer" style={{
       display:'inline-flex', alignItems:'center', gap:3,
       padding:'2px 7px', borderRadius:99, border:`1px solid ${S.border}`,
-      background:'#22c55e18', color:'#22c55e', fontSize:10, fontWeight:700, cursor:'pointer',
-    }}>{val} <span style={{ color:'#ef4444', fontSize:10 }}>✕</span></button>
+      background:'#22c55e18', color:'#22c55e', fontSize:14, fontWeight:700, cursor:'pointer',
+    }}>{val} <span style={{ color:'#ef4444', fontSize:14 }}>✕</span></button>
   );
 
   // Summary line for closed state
@@ -3673,35 +3625,35 @@ function CartItemRow({ ci, onUpdate, onRemove }: { ci:any; onUpdate:(u:any)=>voi
   ].filter(Boolean).join(' · ') : ci.item.description || '';
 
   return (
-    <div style={{ borderBottom:`1px solid ${S.border}11` }}>
+    <div style={{ borderBottom:`1px solid ${S.border}` }}>
       {/* Collapsed row — click to expand/collapse */}
-      <div onClick={()=>setOpen(o=>!o)} style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 0', cursor:'pointer', userSelect:'none' }}>
-        <span style={{ fontSize:11, fontWeight:800, color:S.accent, minWidth:18 }}>{ci.quantity}×</span>
+      <div onClick={()=>setOpen(o=>!o)} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', cursor:'pointer', userSelect:'none' }}>
+        <span style={{ fontSize:16, fontWeight:800, color:S.text, minWidth:26 }}>{ci.quantity}×</span>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:11, fontWeight:700, color:S.text, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{ci.item.name}</div>
-          {summary && <div style={{ fontSize:9, color:S.muted, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{summary}</div>}
+          <div style={{ fontSize:16, fontWeight:700, color:S.text, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{ci.item.name}</div>
+          {summary && <div style={{ fontSize:16, color:S.muted, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{summary}</div>}
         </div>
-        <span style={{ fontSize:11, fontWeight:700, color:S.text, flexShrink:0 }}>{totalPrice.toFixed(2)}€</span>
-        <span style={{ fontSize:9, color:S.muted, flexShrink:0 }}>{open ? '▲' : '▼'}</span>
+        <span style={{ fontSize:16, fontWeight:800, color:S.text, flexShrink:0 }}>{totalPrice.toFixed(2)}€</span>
+        <span style={{ fontSize:16, color:S.muted, flexShrink:0 }}>{open ? '▲' : '▼'}</span>
       </div>
 
       {/* Expanded edit panel */}
       {open && (
-        <div style={{ background:'#111827', borderRadius:8, padding:'8px 10px', marginBottom:6 }}>
+        <div style={{ background:'#f7f8fa', borderRadius:8, padding:'8px 10px', marginBottom:6 }}>
 
           {/* Quantity + delete */}
           <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
-            <span style={{ fontSize:10, color:S.muted, flex:1 }}>Quantité</span>
-            <button onClick={()=>onUpdate({quantity:ci.quantity-1})} style={{ width:24,height:24,borderRadius:6,border:`1px solid ${S.border}`,background:S.card,color:S.text,cursor:'pointer',fontSize:14,fontWeight:800,lineHeight:1 }}>−</button>
-            <span style={{ fontSize:12,fontWeight:800,color:S.accent,minWidth:18,textAlign:'center' }}>{ci.quantity}</span>
-            <button onClick={()=>onUpdate({quantity:ci.quantity+1})} style={{ width:24,height:24,borderRadius:6,border:`1px solid ${S.accent}`,background:S.accent+'22',color:S.accent,cursor:'pointer',fontSize:14,fontWeight:800,lineHeight:1 }}>+</button>
-            <button onClick={onRemove} title="Supprimer" style={{ marginLeft:'auto',padding:'3px 8px',borderRadius:6,border:`1px solid #ef444444`,background:'#ef444411',color:'#ef4444',cursor:'pointer',fontSize:11,fontWeight:700 }}>🗑️</button>
+            <span style={{ fontSize:14, color:S.muted, flex:1 }}>Quantité</span>
+            <button onClick={()=>onUpdate({quantity:ci.quantity-1})} style={{ width:40,height:40,borderRadius:6,border:`1px solid ${S.border}`,background:S.card,color:S.text,cursor:'pointer',fontSize:14,fontWeight:800,lineHeight:1 }}>−</button>
+            <span style={{ fontSize:15,fontWeight:800,color:S.accentText,minWidth:18,textAlign:'center' }}>{ci.quantity}</span>
+            <button onClick={()=>onUpdate({quantity:ci.quantity+1})} style={{ width:40,height:40,borderRadius:6,border:`1px solid ${S.accent}`,background:S.accent,color:'#000',cursor:'pointer',fontSize:14,fontWeight:800,lineHeight:1 }}>+</button>
+            <button onClick={onRemove} title="Supprimer" style={{ marginLeft:'auto',padding:'3px 8px',borderRadius:6,border:`1px solid #ef444444`,background:'#ef444411',color:'#ef4444',cursor:'pointer',fontSize:15,fontWeight:700 }}>🗑️</button>
           </div>
 
           {/* Meats */}
           {c?.meats?.filter(Boolean).length > 0 && (
             <div style={{ marginBottom:6 }}>
-              <div style={{ fontSize:9,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Viandes</div>
+              <div style={{ fontSize:13,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Viandes</div>
               <div style={{ display:'flex',flexWrap:'wrap',gap:3 }}>
                 {c.meats.filter(Boolean).map((m:string)=><ChipEdit key={m} val={m} field="meats" />)}
               </div>
@@ -3711,7 +3663,7 @@ function CartItemRow({ ci, onUpdate, onRemove }: { ci:any; onUpdate:(u:any)=>voi
           {/* Sauces */}
           {c?.sauces?.filter(Boolean).length > 0 && (
             <div style={{ marginBottom:6 }}>
-              <div style={{ fontSize:9,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Sauces</div>
+              <div style={{ fontSize:13,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Sauces</div>
               <div style={{ display:'flex',flexWrap:'wrap',gap:3 }}>
                 {c.sauces.filter(Boolean).map((s:string)=><ChipEdit key={s} val={s} field="sauces" />)}
               </div>
@@ -3721,7 +3673,7 @@ function CartItemRow({ ci, onUpdate, onRemove }: { ci:any; onUpdate:(u:any)=>voi
           {/* Garnitures */}
           {c?.garnitures?.filter(Boolean).length > 0 && (
             <div style={{ marginBottom:6 }}>
-              <div style={{ fontSize:9,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Garnitures</div>
+              <div style={{ fontSize:13,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Garnitures</div>
               <div style={{ display:'flex',flexWrap:'wrap',gap:3 }}>
                 {c.garnitures.filter(Boolean).map((g:string)=><ChipEdit key={g} val={g} field="garnitures" />)}
               </div>
@@ -3731,7 +3683,7 @@ function CartItemRow({ ci, onUpdate, onRemove }: { ci:any; onUpdate:(u:any)=>voi
           {/* Supplements */}
           {c?.supplements?.filter(Boolean).length > 0 && (
             <div style={{ marginBottom:6 }}>
-              <div style={{ fontSize:9,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Suppléments</div>
+              <div style={{ fontSize:13,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Suppléments</div>
               <div style={{ display:'flex',flexWrap:'wrap',gap:3 }}>
                 {c.supplements.filter(Boolean).map((s:string)=><ChipEdit key={s} val={s} field="supplements" />)}
               </div>
@@ -3741,13 +3693,13 @@ function CartItemRow({ ci, onUpdate, onRemove }: { ci:any; onUpdate:(u:any)=>voi
           {/* Menu option */}
           {c?.menuOption !== undefined && (
             <div style={{ marginBottom:6 }}>
-              <div style={{ fontSize:9,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Option menu</div>
+              <div style={{ fontSize:13,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Option menu</div>
               <div style={{ display:'flex',gap:4 }}>
                 {(['none','frites','boisson','menu'] as const).map(opt=>(
                   <button key={opt} onClick={()=>onUpdate({customization:{...c,menuOption:opt}})} style={{
                     padding:'2px 7px',borderRadius:99,border:`1px solid ${c.menuOption===opt?S.accent:S.border}`,
                     background:c.menuOption===opt?S.accent+'22':'transparent',
-                    color:c.menuOption===opt?S.accent:S.muted,fontSize:9,fontWeight:700,cursor:'pointer',
+                    color:c.menuOption===opt?S.accentText:S.muted,fontSize:13,fontWeight:700,cursor:'pointer',
                   }}>{opt==='none'?'Sans':opt==='frites'?'🍟 Frites':opt==='boisson'?'🥤 Boisson':'🍔 Menu'}</button>
                 ))}
               </div>
@@ -3756,12 +3708,12 @@ function CartItemRow({ ci, onUpdate, onRemove }: { ci:any; onUpdate:(u:any)=>voi
 
           {/* Note */}
           <div>
-            <div style={{ fontSize:9,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Note</div>
+            <div style={{ fontSize:13,color:S.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:3 }}>Note</div>
             <input
               value={c?.note || ''}
               onChange={e=>onUpdate({customization:{...c,note:e.target.value}})}
               placeholder="Note, instruction spéciale..."
-              style={{ ...S.input, fontSize:10, padding:'4px 8px' }}
+              style={{ ...S.input, fontSize:14, padding:'4px 8px' }}
             />
           </div>
         </div>
@@ -3898,58 +3850,56 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
         flexDirection: 'column',
         background: S.panel,
         border: isDragOver ? `2px dashed ${S.accent}` : 'none',
-        boxShadow: isDragOver ? `0 0 20px rgba(245, 158, 11, 0.2)` : 'none',
+        boxShadow: 'none',
         transition: 'all 0.15s ease',
       }}
     >
       {/* Header — compact */}
-      <div style={{ padding:'7px 12px', borderBottom:`1px solid ${S.border}`, fontSize:13, fontWeight:800, display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
-        {leftCollapsed && <button onClick={toggleLeft} style={{ ...S.btn, padding:'3px 7px', fontSize:13 }}>⟩</button>}
+      <div style={{ padding:'10px 14px', borderBottom:`1px solid ${S.border}`, fontSize:18, fontWeight:800, display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+        {leftCollapsed && <button onClick={toggleLeft} style={{ ...S.btn, padding:'3px 7px', fontSize:16 }}>⟩</button>}
         🛒 Caisse
-        {cart.length > 0 && <span style={{ background:S.accent, color:'#000', borderRadius:99, fontSize:10, fontWeight:800, padding:'1px 7px' }}>{cart.reduce((s:number,i:any)=>s+i.quantity,0)}</span>}
+        {cart.length > 0 && <span style={{ background:S.accent, color:'#000', borderRadius:99, fontSize:15, fontWeight:800, padding:'2px 10px' }}>{cart.reduce((s:number,i:any)=>s+i.quantity,0)}</span>}
       </div>
 
       {/* Order Type Selector */}
-      <div className={currentThemeMode === 'glassy' ? 'pos-segmented-container' : ''} style={{
+      <div style={{
         display: 'flex',
         padding: '8px 10px',
         gap: 6,
-        background: currentThemeMode === 'glassy' ? 'transparent' : 'rgba(0,0,0,0.2)',
+        background: '#f7f8fa',
         borderBottom: `1px solid ${S.border}`,
         flexShrink: 0,
-        ...(currentThemeMode === 'glassy' ? { margin: '8px 10px' } : {})
       }}>
         {(['surplace','emporter','livraison'] as OrderType[]).map(t => {
           const active = orderType === t;
           
           // Vibrant colors for selected states
           const activeStyles: Record<OrderType, React.CSSProperties> = {
-            surplace: { background: '#0a84ff', color: '#fff', boxShadow: '0 2px 8px rgba(10,132,255,0.4)' },
-            emporter: { background: '#ff9f0a', color: '#fff', boxShadow: '0 2px 8px rgba(255,159,10,0.4)' },
-            livraison: { background: '#30d158', color: '#fff', boxShadow: '0 2px 8px rgba(48,209,88,0.4)' }
+            surplace: { background: '#2563eb', color: '#fff', border: '2px solid #2563eb' },
+            emporter: { background: '#ea580c', color: '#fff', border: '2px solid #ea580c' },
+            livraison: { background: PAY_GREEN, color: '#fff', border: `2px solid ${PAY_GREEN}` }
           };
 
           const inactiveStyles: React.CSSProperties = {
-            background: currentThemeMode === 'glassy' ? 'transparent' : '#1f2937',
-            color: S.muted,
-            border: currentThemeMode === 'glassy' ? 'none' : '1px solid rgba(255,255,255,0.05)'
+            background: '#ffffff',
+            color: S.text,
+            border: `2px solid ${S.border}`,
           };
 
           return (
             <button
               key={t}
               onClick={() => handleOrderType(t)}
-              className={`pos-btn-interactive ${currentThemeMode === 'glassy' ? 'pos-segmented-btn' : ''} ${currentThemeMode === 'glassy' && active ? 'active' : ''}`}
+              className="pos-btn-interactive"
               style={{
                 flex: 1,
                 padding: '6px 4px',
-                borderRadius: 8,
-                border: 'none',
+                minHeight: 56,
+                borderRadius: 10,
                 cursor: 'pointer',
-                fontSize: 10,
+                fontSize: 14,
                 fontWeight: 800,
                 textAlign: 'center',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -3958,8 +3908,8 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
                 ...(active ? activeStyles[t] : inactiveStyles)
               }}
             >
-              <span style={{ fontSize: 13 }}>{t === 'surplace' ? '🍽️' : t === 'emporter' ? '🛍️' : '🛵'}</span>
-              <span style={{ fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 18 }}>{t === 'surplace' ? '🍽️' : t === 'emporter' ? '🛍️' : '🛵'}</span>
+              <span style={{ fontSize: 14, whiteSpace: 'nowrap' }}>
                 {t === 'surplace' ? 'Sur Place' : t === 'emporter' ? 'Emporter' : 'Livraison'}
               </span>
             </button>
@@ -3970,7 +3920,7 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
       {/* Incoming Call Notification Card */}
       {incomingCall && (
         <div style={{
-          background: 'linear-gradient(135deg, #1e3a8a, #0f172a)',
+          background: '#1e3a8a',
           borderBottom: `2.5px solid ${S.accent}`,
           padding: '10px 14px',
           display: 'flex',
@@ -3978,11 +3928,11 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
           gap: 6,
           flexShrink: 0,
         }}>
-          <div style={{ fontSize: 11, fontWeight: 900, color: S.accent, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: S.accentText, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>📞 APPEL ENTRANT DEPUIS LIGNE</span>
             <span style={{ width: 6, height: 6, background: '#ef4444', borderRadius: '50%', display: 'inline-block' }} />
           </div>
-          <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>
             {incomingCall.phone} {incomingCall.name ? `(${incomingCall.name})` : ''}
           </div>
           <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
@@ -3990,7 +3940,7 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
               onClick={() => handleLinkIncomingCall(incomingCall)}
               style={{
                 background: S.accent, color: '#000', border: 'none', borderRadius: 6,
-                padding: '6px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', flex: 1
+                padding: '6px 10px', fontSize: 15, fontWeight: 800, cursor: 'pointer', flex: 1
               }}
             >
               🚀 Lancer la commande
@@ -3998,8 +3948,8 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
             <button
               onClick={() => setIncomingCall(null)}
               style={{
-                background: '#374151', color: S.muted, border: 'none', borderRadius: 6,
-                padding: '6px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                background: '#9aa1ab', color: S.muted, border: 'none', borderRadius: 6,
+                padding: '6px 8px', fontSize: 15, fontWeight: 700, cursor: 'pointer'
               }}
             >
               Ignorer
@@ -4009,16 +3959,16 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
       )}
 
       {/* Client info — compact */}
-      <div style={{ padding:'6px 12px', borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
-        {needsInfo && <input value={name} onChange={(e:any)=>setName(e.target.value)} placeholder="Nom *" style={{...S.input,marginBottom:4,padding:'4px 8px',fontSize:11}} />}
-        <input value={phone} onChange={(e:any)=>setPhone(e.target.value)} placeholder="Téléphone" style={{...S.input,marginBottom:needsInfo?4:0,padding:'4px 8px',fontSize:11}} />
+      <div style={{ padding:'8px 12px', borderBottom:`1px solid ${S.border}`, flexShrink:0 }}>
+        {needsInfo && <input value={name} onChange={(e:any)=>setName(e.target.value)} placeholder="Nom *" style={{...S.input,marginBottom:6}} />}
+        <input value={phone} onChange={(e:any)=>setPhone(e.target.value)} placeholder="Téléphone" style={{...S.input,marginBottom:needsInfo?6:0}} />
         {needsInfo && (
           <div style={{ position: 'relative' }}>
             <input
               value={address}
               onChange={(e:any)=>setAddress(e.target.value)}
               placeholder="Adresse *"
-              style={{...S.input, marginBottom: 4, padding: '4px 8px', fontSize: 11}}
+              style={{...S.input, marginBottom: 6}}
             />
             {addressSuggestions.length > 0 && (
               <div style={{
@@ -4032,7 +3982,7 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
                 zIndex: 100,
                 maxHeight: 180,
                 overflowY: 'auto',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
                 marginTop: -2
               }}>
                 {addressSuggestions.map((feat: any) => (
@@ -4049,32 +3999,31 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
                       border: 'none',
                       borderBottom: `1px solid ${S.border}`,
                       color: S.text,
-                      fontSize: 10,
+                      fontSize: 15,
                       textAlign: 'left',
                       cursor: 'pointer',
-                      transition: 'background 0.1s',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: 2
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#1f2937'}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#eef0f3'}
                     onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                   >
                     <span style={{ fontWeight: 700 }}>{feat.text}</span>
-                    <span style={{ color: S.muted, fontSize: 9 }}>{feat.place_name}</span>
+                    <span style={{ color: S.muted, fontSize: 16 }}>{feat.place_name}</span>
                   </button>
                 ))}
               </div>
             )}
           </div>
         )}
-        {needsInfo && <input value={notes} onChange={(e:any)=>setNotes(e.target.value)} placeholder="Notes livraison..." style={{...S.input,padding:'4px 8px',fontSize:11}} />}
+        {needsInfo && <input value={notes} onChange={(e:any)=>setNotes(e.target.value)} placeholder="Notes livraison..." style={S.input} />}
       </div>
 
       {/* Cart items — editable */}
       <div style={{ flex:1, overflow:'auto', padding:'4px 12px' }}>
         {cart.length === 0
-          ? <div style={{ textAlign:'center', color:'#374151', fontSize:11, paddingTop:16 }}>Panier vide</div>
+          ? <div style={{ textAlign:'center', color:S.muted, fontSize:16, paddingTop:20 }}>Panier vide</div>
           : cart.map((ci:any) => (
               <CartItemRow
                 key={ci.id}
@@ -4089,27 +4038,27 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
       {/* Totals + actions — compact */}
       <div style={{ padding:'8px 12px', borderTop:`1px solid ${S.border}`, flexShrink:0 }}>
         {pizzaPromo?.promoDescription && pizzaSaving > 0 && (
-          <div style={{ background:'#f59e0b11', border:'1px solid #f59e0b33', borderRadius:6, padding:'4px 8px', marginBottom:6, fontSize:10 }}>
-            <span style={{ color:S.accent, fontWeight:700 }}>🎁 {pizzaPromo.promoDescription} </span>
-            <span style={{ color:'#22c55e' }}>-{pizzaSaving.toFixed(2)}€</span>
+          <div style={{ background:'#fff8db', border:`1px solid ${S.accent}`, borderRadius:8, padding:'6px 10px', marginBottom:8, fontSize:14 }}>
+            <span style={{ color:S.accentText, fontWeight:700 }}>🎁 {pizzaPromo.promoDescription} </span>
+            <span style={{ color:'#15803d', fontWeight:700 }}>-{pizzaSaving.toFixed(2)}€</span>
           </div>
         )}
         {/* Remise & Offres Caissier */}
-        <div style={{ marginBottom:6, background:'rgba(0,0,0,0.15)', padding:'6px 8px', borderRadius:8, border:`1px solid ${S.border}` }}>
+        <div style={{ marginBottom:6, background:'#f7f8fa', padding:'6px 8px', borderRadius:8, border:`1px solid ${S.border}` }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
-            <span style={{ fontSize:10, color:S.muted, fontWeight:700 }}>Remise / Offre</span>
+            <span style={{ fontSize:14, color:S.muted, fontWeight:700 }}>Remise / Offre</span>
             <div style={{ display:'flex', gap:2 }}>
               <button
                 type="button"
                 onClick={() => setDiscountMode('percent')}
-                style={{ padding:'2px 6px', fontSize:9, fontWeight:800, borderRadius:4, border:'none', cursor:'pointer', background: discountMode === 'percent' ? S.accent : '#374151', color: discountMode === 'percent' ? '#000' : '#fff' }}
+                style={{ padding:'4px 12px', fontSize:15, fontWeight:800, borderRadius:6, border:'none', cursor:'pointer', background: discountMode === 'percent' ? S.accent : '#eef0f3', color: discountMode === 'percent' ? '#000' : '#1a1d23' }}
               >
                 %
               </button>
               <button
                 type="button"
                 onClick={() => setDiscountMode('euro')}
-                style={{ padding:'2px 6px', fontSize:9, fontWeight:800, borderRadius:4, border:'none', cursor:'pointer', background: discountMode === 'euro' ? S.accent : '#374151', color: discountMode === 'euro' ? '#000' : '#fff' }}
+                style={{ padding:'4px 12px', fontSize:15, fontWeight:800, borderRadius:6, border:'none', cursor:'pointer', background: discountMode === 'euro' ? S.accent : '#eef0f3', color: discountMode === 'euro' ? '#000' : '#1a1d23' }}
               >
                 €
               </button>
@@ -4122,13 +4071,13 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
               value={discountVal || ''}
               onChange={(e: any) => setDiscountVal(Math.max(0, parseFloat(e.target.value) || 0))}
               placeholder={`Valeur (${discountMode === 'percent' ? '%' : '€'})`}
-              style={{ ...S.input, flex: 1, textAlign: 'right', padding: '3px 6px', fontSize: 11 }}
+              style={{ ...S.input, flex: 1, textAlign: 'right', padding: '6px 10px' }}
             />
             {discountVal > 0 && (
               <button
                 type="button"
                 onClick={() => setDiscountVal(0)}
-                style={{ padding: '3px 6px', fontSize: 10, background: '#ef444422', color: '#ef4444', border: '1px solid #ef444444', borderRadius: 6, cursor: 'pointer' }}
+                style={{ padding: '4px 12px', fontSize: 15, background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer' }}
               >
                 ✕
               </button>
@@ -4151,8 +4100,8 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
                 type="button"
                 onClick={() => { setDiscountMode(p.mode as any); setDiscountVal(p.val); }}
                 style={{
-                  padding: '2px 5px', fontSize: 9, fontWeight: 700, borderRadius: 5, border: 'none', cursor: 'pointer',
-                  background: discountVal === p.val && discountMode === p.mode ? S.accent : '#1f2937',
+                  padding: '6px 9px', fontSize: 14, fontWeight: 700, borderRadius: 6, border: `1px solid ${S.border}`, cursor: 'pointer',
+                  background: discountVal === p.val && discountMode === p.mode ? S.accent : '#ffffff',
                   color: discountVal === p.val && discountMode === p.mode ? '#000' : S.text,
                 }}
               >
@@ -4163,20 +4112,20 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
         </div>
 
         {/* HT / TVA */}
-        <div style={{ fontSize:10, color:S.muted, display:'flex', justifyContent:'space-between', marginBottom:1 }}><span>HT</span><span>{ht.toFixed(2)}€</span></div>
-        <div style={{ fontSize:10, color:S.muted, display:'flex', justifyContent:'space-between', marginBottom:5 }}><span>TVA 10%</span><span>{tva.toFixed(2)}€</span></div>
+        <div style={{ fontSize:14, color:S.muted, display:'flex', justifyContent:'space-between', marginBottom:2 }}><span>HT</span><span>{ht.toFixed(2)}€</span></div>
+        <div style={{ fontSize:14, color:S.muted, display:'flex', justifyContent:'space-between', marginBottom:6 }}><span>TVA 10%</span><span>{tva.toFixed(2)}€</span></div>
         {/* TOTAL */}
-        <div style={{ fontSize:18, fontWeight:800, color:S.accent, display:'flex', justifyContent:'space-between', marginBottom:7, paddingTop:5, borderTop:`1px solid ${S.border}` }}>
+        <div style={{ fontSize:32, fontWeight:900, color:S.text, display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8, paddingTop:6, borderTop:`2px solid ${S.border}` }}>
           <span>TOTAL</span><span>{total.toFixed(2)}€</span>
         </div>
         {/* Payment methods */}
-        <div style={{ display:'flex', gap:4, marginBottom:7 }}>
+        <div style={{ display:'flex', gap:6, marginBottom:8 }}>
           {(['especes','cb','divise'] as PayMethod[]).map((m:PayMethod) => (
             <button key={m} onClick={()=>setPayMethod(m)} style={{
-              flex:1, padding:'5px 4px', borderRadius:7, border:'none', cursor:'pointer', fontSize:10, fontWeight:700,
-              background: payMethod===m ? '#3b82f622' : '#1f2937',
-              color:      payMethod===m ? '#3b82f6'   : S.muted,
-              outline:    payMethod===m ? '1px solid #3b82f644' : 'none',
+              flex:1, minHeight:56, padding:'6px 4px', borderRadius:10, cursor:'pointer', fontSize:16, fontWeight:800,
+              background: payMethod===m ? '#1e40af' : '#ffffff',
+              color:      payMethod===m ? '#fff'    : S.text,
+              border:     payMethod===m ? '2px solid #1e40af' : `2px solid ${S.border}`,
             }}>{PAY_LABELS[m]}</button>
           ))}
         </div>
@@ -4184,28 +4133,28 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
         {/* Split Payment details */}
         {payMethod === 'divise' && (
           <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '6px 8px', borderRadius: 8, marginBottom: 7 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, color: '#3b82f6', marginBottom: 4 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#1e40af', marginBottom: 6 }}>
               ⚖️ Paiement Divisé
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 4 }}>
               <div>
-                <span style={{ fontSize: 9, color: S.muted }}>💵 Espèces (€)</span>
+                <span style={{ fontSize: 14, color: S.muted }}>💵 Espèces (€)</span>
                 <input
                   type="number"
                   value={splitCash || ''}
                   onChange={(e: any) => setSplitCash(Math.max(0, parseFloat(e.target.value) || 0))}
                   placeholder="0.00"
-                  style={{ ...S.input, padding: '3px 6px', fontSize: 11, textAlign: 'right' }}
+                  style={{ ...S.input, padding: '6px 10px', textAlign: 'right' }}
                 />
               </div>
               <div>
-                <span style={{ fontSize: 9, color: S.muted }}>💳 Carte (€)</span>
+                <span style={{ fontSize: 14, color: S.muted }}>💳 Carte (€)</span>
                 <input
                   type="number"
                   value={splitCard || ''}
                   onChange={(e: any) => setSplitCard(Math.max(0, parseFloat(e.target.value) || 0))}
                   placeholder="0.00"
-                  style={{ ...S.input, padding: '3px 6px', fontSize: 11, textAlign: 'right' }}
+                  style={{ ...S.input, padding: '6px 10px', textAlign: 'right' }}
                 />
               </div>
             </div>
@@ -4213,11 +4162,11 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
               const paid = (splitCash || 0) + (splitCard || 0);
               const diff = total - paid;
               if (diff > 0.01) {
-                return <div style={{ fontSize: 10, fontWeight: 800, color: '#ef4444' }}>⚠️ Reste à payer: {diff.toFixed(2)}€</div>;
+                return <div style={{ fontSize: 15, fontWeight: 800, color: '#dc2626' }}>⚠️ Reste à payer: {diff.toFixed(2)}€</div>;
               } else if (diff < -0.01) {
-                return <div style={{ fontSize: 10, fontWeight: 800, color: '#22c55e' }}>💵 À rendre: {Math.abs(diff).toFixed(2)}€</div>;
+                return <div style={{ fontSize: 15, fontWeight: 800, color: '#15803d' }}>💵 À rendre: {Math.abs(diff).toFixed(2)}€</div>;
               } else {
-                return <div style={{ fontSize: 10, fontWeight: 800, color: '#22c55e' }}>✅ Total exact complété</div>;
+                return <div style={{ fontSize: 15, fontWeight: 800, color: '#15803d' }}>✅ Total exact complété</div>;
               }
             })()}
           </div>
@@ -4225,16 +4174,16 @@ function CaissePanel({ leftCollapsed, toggleLeft, cart, needsInfo, name, setName
 
         {/* Valider */}
         <button onClick={handleSubmit} disabled={submitting||cart.length===0} style={{
-          width:'100%', padding:'9px', borderRadius:8, border:'none',
-          background: cart.length ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : '#1f2937',
-          color: cart.length?'#000':'#374151', fontSize:12, fontWeight:800,
+          width:'100%', minHeight:60, padding:'12px', borderRadius:10, border:'none',
+          background: cart.length ? PAY_GREEN : '#eef0f3',
+          color: cart.length?'#fff':'#7a828e', fontSize:20, fontWeight:900,
           cursor:cart.length?'pointer':'not-allowed', opacity:submitting?0.6:1,
         }}>
           {submitting ? '⏳...' : cart.length ? `✅ Valider — ${total.toFixed(2)}€` : 'Panier vide'}
         </button>
         {/* Vider */}
         <div style={{ display:'flex', gap:4, marginTop:5 }}>
-          <button onClick={()=>{clearCart();setDiscountVal(0);setSplitCash(0);setSplitCard(0);}} style={{ flex:1, padding:'6px', borderRadius:7, border:`1px solid ${S.border}`, background:'none', color:S.muted, cursor:'pointer', fontSize:10 }}>
+          <button onClick={()=>{clearCart();setDiscountVal(0);setSplitCash(0);setSplitCard(0);}} style={{ flex:1, padding:'10px', borderRadius:8, border:`1px solid ${S.border}`, background:'#ffffff', color:S.muted, cursor:'pointer', fontSize:14 }}>
             🗑️ Vider le panier
           </button>
         </div>
@@ -4393,12 +4342,12 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: '#0f172a', borderRadius: 16, border: '1px solid #334155', width: '90vw', maxWidth: 520, padding: 24, display: 'flex', flexDirection: 'column', gap: 16, color: '#f8fafc', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+      <div style={{ background: '#ffffff', borderRadius: 16, border: '1px solid #dfe3e8', width: '90vw', maxWidth: 520, padding: 24, display: 'flex', flexDirection: 'column', gap: 16, color: '#1a1d23', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 18, fontWeight: 900, color: '#25D366', display: 'flex', alignItems: 'center', gap: 8 }}>
             💬 Connexion WhatsApp Web
           </span>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 20, cursor: 'pointer' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#545b66', fontSize: 20, cursor: 'pointer' }}>✕</button>
         </div>
 
         <div style={{ padding: '12px 16px', borderRadius: 10, background: isConnected ? 'rgba(34,197,94,0.1)' : (isQr ? 'rgba(249,115,22,0.1)' : 'rgba(239,68,68,0.1)'), border: `1px solid ${isConnected ? '#22c55e44' : (isQr ? '#f9731644' : '#ef444444')}`, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -4407,7 +4356,7 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
             <div style={{ fontWeight: 800, fontSize: 14, color: isConnected ? '#22c55e' : (isQr ? '#f97316' : '#f87171') }}>
               {isConnected ? '🟢 WhatsApp Connecté' : (isQr ? '📱 Scannez le QR Code' : '🔴 Déconnecté')}
             </div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: '#545b66', marginTop: 2 }}>
               {isConnected ? 'Les confirmations et avis (40 min) sont envoyés en direct aux clients.' : 'Scannez le QR code ci-dessous avec WhatsApp pour connecter le bot.'}
             </div>
           </div>
@@ -4416,7 +4365,7 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
         {isQr && qr && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 16, background: '#fff', borderRadius: 12 }}>
             <img src={qr} alt="WhatsApp QR Code" style={{ width: 220, height: 220 }} />
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#1e293b', textAlign: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#1a1d23', textAlign: 'center' }}>
               Ouvrez WhatsApp sur téléphone ➔ Réglages / Appareils connectés ➔ Connecter un appareil
             </span>
             <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 4 }}>
@@ -4435,7 +4384,7 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
                   borderRadius: 8,
                   background: '#f1f5f9',
                   border: '1px solid #cbd5e1',
-                  color: '#334155',
+                  color: '#dfe3e8',
                   fontSize: 12,
                   fontWeight: 700,
                   cursor: 'pointer'
@@ -4470,8 +4419,8 @@ function WhatsAppModal({ status, qr, onClose }: { status: string; qr: string | n
             style={{
               padding: '12px 16px',
               borderRadius: 10,
-              background: isConnected ? 'linear-gradient(135deg, #25D366, #128C7E)' : '#334155',
-              color: '#fff',
+              background: isConnected ? '#25D366' : '#dfe3e8',
+              color: isConnected ? '#fff' : '#545b66',
               fontWeight: 800,
               fontSize: 13,
               border: 'none',
@@ -4804,9 +4753,9 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
       <div style={{ background:S.panel, border:`1px solid ${S.border}`, borderRadius:18, width:'100%', maxWidth:680, maxHeight:'92vh', overflow:'hidden', display:'flex', flexDirection:'column', color:S.text, boxShadow:'0 16px 40px rgba(0,0,0,0.7)' }}>
         
         {/* Header */}
-        <div style={{ padding:'16px 20px', borderBottom:`1px solid ${S.border}`, display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(255,255,255,0.02)' }}>
+        <div style={{ padding:'16px 20px', borderBottom:`1px solid ${S.border}`, display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)' }}>
           <div>
-            <div style={{ fontSize:18, fontWeight:900, color:S.accent, display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ fontSize:18, fontWeight:900, color:S.accentText, display:'flex', alignItems:'center', gap:8 }}>
               🔒 Clôture de Caisse (Rapport X / Z)
             </div>
             <div style={{ fontSize:11, color:S.muted, marginTop:2 }}>
@@ -4817,7 +4766,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Date Selector Banner */}
-        <div style={{ padding:'10px 20px', background:'rgba(0,0,0,0.2)', borderBottom:`1px solid ${S.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+        <div style={{ padding:'10px 20px', background:'#f7f8fa', borderBottom:`1px solid ${S.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
           <div style={{ display:'flex', gap:6 }}>
             <button
               onClick={() => setBizDate(todayBiz)}
@@ -4826,7 +4775,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
                 padding: '4px 10px',
                 fontSize: 11,
                 fontWeight: 800,
-                background: bizDate === todayBiz ? S.accent : '#1f2937',
+                background: bizDate === todayBiz ? S.accent : '#eef0f3',
                 color: bizDate === todayBiz ? '#000' : S.text,
                 borderColor: bizDate === todayBiz ? S.accent : S.border
               }}
@@ -4840,7 +4789,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
                 padding: '4px 10px',
                 fontSize: 11,
                 fontWeight: 800,
-                background: bizDate === yesterdayBiz ? S.accent : '#1f2937',
+                background: bizDate === yesterdayBiz ? S.accent : '#eef0f3',
                 color: bizDate === yesterdayBiz ? '#000' : S.text,
                 borderColor: bizDate === yesterdayBiz ? S.accent : S.border
               }}
@@ -4861,7 +4810,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Tab Navigation */}
-        <div style={{ display:'flex', borderBottom:`1px solid ${S.border}`, background:'rgba(255,255,255,0.01)' }}>
+        <div style={{ display:'flex', borderBottom:`1px solid ${S.border}`, background:'rgba(0,0,0,0.01)' }}>
           <button
             onClick={() => setActiveTab('synthese')}
             style={{
@@ -4872,7 +4821,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
               border: 'none',
               cursor: 'pointer',
               background: activeTab === 'synthese' ? 'rgba(249,115,22,0.12)' : 'transparent',
-              color: activeTab === 'synthese' ? S.accent : S.muted,
+              color: activeTab === 'synthese' ? S.accentText : S.muted,
               borderBottom: `2px solid ${activeTab === 'synthese' ? S.accent : 'transparent'}`
             }}
           >
@@ -4888,7 +4837,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
               border: 'none',
               cursor: 'pointer',
               background: activeTab === 'articles' ? 'rgba(249,115,22,0.12)' : 'transparent',
-              color: activeTab === 'articles' ? S.accent : S.muted,
+              color: activeTab === 'articles' ? S.accentText : S.muted,
               borderBottom: `2px solid ${activeTab === 'articles' ? S.accent : 'transparent'}`
             }}
           >
@@ -4904,7 +4853,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
               border: 'none',
               cursor: 'pointer',
               background: activeTab === 'caisse' ? 'rgba(249,115,22,0.12)' : 'transparent',
-              color: activeTab === 'caisse' ? S.accent : S.muted,
+              color: activeTab === 'caisse' ? S.accentText : S.muted,
               borderBottom: `2px solid ${activeTab === 'caisse' ? S.accent : 'transparent'}`
             }}
           >
@@ -4924,12 +4873,12 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
               {activeTab === 'synthese' && (
                 <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
                   {/* Grand CA Banner */}
-                  <div style={{ background:'linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(15, 23, 42, 0.6))', border:`1.5px solid ${S.accent}`, borderRadius:14, padding:'16px 18px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div style={{ background:'rgba(249, 115, 22, 0.18)', border:`1.5px solid ${S.accent}`, borderRadius:14, padding:'16px 18px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div>
-                      <div style={{ fontSize:10, textTransform:'uppercase', color:S.accent, fontWeight:900, letterSpacing:1 }}>
+                      <div style={{ fontSize:10, textTransform:'uppercase', color:S.accentText, fontWeight:900, letterSpacing:1 }}>
                         Chiffre d'Affaires Global (TTC)
                       </div>
-                      <div style={{ fontSize:28, fontWeight:900, color:'#fff', marginTop:2 }}>
+                      <div style={{ fontSize:28, fontWeight:900, color:S.text, marginTop:2 }}>
                         {stats.totalRevenue.toFixed(2)} €
                       </div>
                       <div style={{ fontSize:11, color:S.muted, marginTop:2 }}>
@@ -4937,31 +4886,31 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
                       </div>
                     </div>
                     <div style={{ textAlign:'right' }}>
-                      <div style={{ fontSize:14, fontWeight:800, color:'#fff' }}>{stats.totalOrdersCount} commande{stats.totalOrdersCount > 1 ? 's' : ''}</div>
+                      <div style={{ fontSize:14, fontWeight:800, color:S.text }}>{stats.totalOrdersCount} commande{stats.totalOrdersCount > 1 ? 's' : ''}</div>
                       <div style={{ fontSize:11, color:S.muted }}>Panier moyen : {stats.avgOrderValue.toFixed(2)} €</div>
-                      <div style={{ fontSize:11, color:S.accent, fontWeight:700 }}>{stats.items.totalCount} articles vendus</div>
+                      <div style={{ fontSize:11, color:S.accentText, fontWeight:700 }}>{stats.items.totalCount} articles vendus</div>
                     </div>
                   </div>
 
                   {/* Multi-Channel Distribution (What we did) */}
                   <div>
-                    <div style={{ fontSize:11, fontWeight:800, color:S.accent, marginBottom:6, textTransform:'uppercase' }}>
+                    <div style={{ fontSize:11, fontWeight:800, color:S.accentText, marginBottom:6, textTransform:'uppercase' }}>
                       Répartition par Origine (Canal de Vente)
                     </div>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
                       <div style={{ background:'rgba(168,85,247,0.08)', padding:10, borderRadius:10, border:'1px solid rgba(168,85,247,0.25)' }}>
                         <div style={{ fontSize:10, color:'#a855f7', fontWeight:800 }}>📲 BORNE TACTILE</div>
-                        <div style={{ fontSize:17, fontWeight:900, color:'#fff', marginTop:2 }}>{stats.bySource.borne.revenue.toFixed(2)} €</div>
+                        <div style={{ fontSize:17, fontWeight:900, color:S.text, marginTop:2 }}>{stats.bySource.borne.revenue.toFixed(2)} €</div>
                         <div style={{ fontSize:10, color:S.muted }}>{stats.bySource.borne.count} cmd ({stats.bySource.borne.percentage.toFixed(0)}%)</div>
                       </div>
                       <div style={{ background:'rgba(16,185,129,0.08)', padding:10, borderRadius:10, border:'1px solid rgba(16,185,129,0.25)' }}>
                         <div style={{ fontSize:10, color:'#10b981', fontWeight:800 }}>💻 CAISSE (POS)</div>
-                        <div style={{ fontSize:17, fontWeight:900, color:'#fff', marginTop:2 }}>{stats.bySource.pos.revenue.toFixed(2)} €</div>
+                        <div style={{ fontSize:17, fontWeight:900, color:S.text, marginTop:2 }}>{stats.bySource.pos.revenue.toFixed(2)} €</div>
                         <div style={{ fontSize:10, color:S.muted }}>{stats.bySource.pos.count} cmd ({stats.bySource.pos.percentage.toFixed(0)}%)</div>
                       </div>
                       <div style={{ background:'rgba(59,130,246,0.08)', padding:10, borderRadius:10, border:'1px solid rgba(59,130,246,0.25)' }}>
                         <div style={{ fontSize:10, color:'#3b82f6', fontWeight:800 }}>🌐 SITE WEB (EN LIGNE)</div>
-                        <div style={{ fontSize:17, fontWeight:900, color:'#fff', marginTop:2 }}>{stats.bySource.web.revenue.toFixed(2)} €</div>
+                        <div style={{ fontSize:17, fontWeight:900, color:S.text, marginTop:2 }}>{stats.bySource.web.revenue.toFixed(2)} €</div>
                         <div style={{ fontSize:10, color:S.muted }}>{stats.bySource.web.count} cmd ({stats.bySource.web.percentage.toFixed(0)}%)</div>
                       </div>
                     </div>
@@ -4969,7 +4918,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
 
                   {/* Payments Breakdown */}
                   <div>
-                    <div style={{ fontSize:11, fontWeight:800, color:S.accent, marginBottom:6, textTransform:'uppercase' }}>
+                    <div style={{ fontSize:11, fontWeight:800, color:S.accentText, marginBottom:6, textTransform:'uppercase' }}>
                       Ventilation par Mode de Règlement
                     </div>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
@@ -4993,7 +4942,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
 
                   {/* Order Types */}
                   <div>
-                    <div style={{ fontSize:11, fontWeight:800, color:S.accent, marginBottom:6, textTransform:'uppercase' }}>
+                    <div style={{ fontSize:11, fontWeight:800, color:S.accentText, marginBottom:6, textTransform:'uppercase' }}>
                       Ventilation par Type de Service
                     </div>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
@@ -5038,7 +4987,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
                     ) : (
                       <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
                         <thead>
-                          <tr style={{ background:'rgba(255,255,255,0.03)', borderBottom:`1px solid ${S.border}`, textAlign:'left', color:S.muted, fontSize:10, textTransform:'uppercase' }}>
+                          <tr style={{ background:'rgba(0,0,0,0.03)', borderBottom:`1px solid ${S.border}`, textAlign:'left', color:S.muted, fontSize:10, textTransform:'uppercase' }}>
                             <th style={{ padding:'8px 12px' }}>Article</th>
                             <th style={{ padding:'8px 12px' }}>Catégorie</th>
                             <th style={{ padding:'8px 12px', textAlign:'center' }}>Qté</th>
@@ -5047,10 +4996,10 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
                         </thead>
                         <tbody>
                           {filteredItems.map((it, idx) => (
-                            <tr key={it.name} style={{ borderBottom:`1px solid ${S.border}33`, background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
+                            <tr key={it.name} style={{ borderBottom:`1px solid ${S.border}33`, background: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.01)' }}>
                               <td style={{ padding:'8px 12px', fontWeight:700, color:S.text }}>{it.name}</td>
                               <td style={{ padding:'8px 12px', color:S.muted, fontSize:11, textTransform:'capitalize' }}>{it.category}</td>
-                              <td style={{ padding:'8px 12px', textAlign:'center', fontWeight:800, color:S.accent }}>{it.quantity}</td>
+                              <td style={{ padding:'8px 12px', textAlign:'center', fontWeight:800, color:S.accentText }}>{it.quantity}</td>
                               <td style={{ padding:'8px 12px', textAlign:'right', fontWeight:800, color:S.text }}>{it.revenue.toFixed(2)} €</td>
                             </tr>
                           ))}
@@ -5064,8 +5013,8 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
               {/* TAB 3: RÉCONCILIATION TIROIR */}
               {activeTab === 'caisse' && (
                 <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                  <div style={{ background:'rgba(255,255,255,0.02)', border:`1px solid ${S.border}`, padding:16, borderRadius:12 }}>
-                    <div style={{ fontSize:12, fontWeight:800, color:S.accent, marginBottom:12, textTransform:'uppercase' }}>
+                  <div style={{ background:'rgba(0,0,0,0.02)', border:`1px solid ${S.border}`, padding:16, borderRadius:12 }}>
+                    <div style={{ fontSize:12, fontWeight:800, color:S.accentText, marginBottom:12, textTransform:'uppercase' }}>
                       Contrôle des Espèces Physiques
                     </div>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
@@ -5103,7 +5052,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
                       </div>
                       <div style={{ display:'flex', justifyContent:'space-between' }}>
                         <span style={{ color:S.muted }}>Espèces attendues au tiroir (Fond + Ventes) :</span>
-                        <span style={{ fontWeight:800, color:S.accent }}>{expectedCashInDrawer.toFixed(2)} €</span>
+                        <span style={{ fontWeight:800, color:S.accentText }}>{expectedCashInDrawer.toFixed(2)} €</span>
                       </div>
                       <div style={{ display:'flex', justifyContent:'space-between' }}>
                         <span style={{ color:S.muted }}>Espèces réelles dans le tiroir :</span>
@@ -5124,7 +5073,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Footer Actions */}
-        <div style={{ padding:'14px 20px', borderTop:`1px solid ${S.border}`, background:'rgba(0,0,0,0.3)', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+        <div style={{ padding:'14px 20px', borderTop:`1px solid ${S.border}`, background:'#f7f8fa', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
           <button
             disabled={printing || loading}
             onClick={() => handlePrintReport('X')}
@@ -5132,7 +5081,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
               ...S.btn,
               padding: '12px',
               fontWeight: 800,
-              background: '#1e293b',
+              background: '#ffffff',
               borderColor: '#3b82f644',
               color: '#3b82f6',
               fontSize: 12,
@@ -5148,7 +5097,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
               ...S.btn,
               padding: '12px',
               fontWeight: 800,
-              background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+              background: '#f6b800',
               border: 'none',
               color: '#000',
               fontSize: 12,
@@ -5164,6 +5113,17 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
 }
 
 // ── Main POS content ──────────────────────────────────────────────────────────
+// Memoized panels: typing in the caisse (phone, name…) re-renders POSContent,
+// but the product grids only re-render when their own props change.
+const MemoPizzaPanel        = memo(PizzaPanel);
+const MemoWizardPanel       = memo(WizardPanel);
+const MemoSandwichPanel     = memo(SandwichPanel);
+const MemoTexMexPanel       = memo(TexMexPanel);
+const MemoBoissonPanel      = memo(BoissonPanel);
+const MemoMilkshakePanel    = memo(MilkshakePanel);
+const MemoCustomizablePanel = memo(CustomizablePanel);
+const MemoSimplePanel       = memo(SimplePanel);
+
 function POSContent() {
   useThemeBump();
   const { cart, clearCart, getTotal, setOrderType: setCtxOrderType } = useOrder();
@@ -5526,23 +5486,39 @@ function POSContent() {
 
   // Add to cart handler (for all inline panels)
   const { addToCart } = useOrder();
-  const handleAdd = (item: any, customization: any, calculatedPrice: number, quantity = 1) => {
-    addToCart(item, quantity, customization, calculatedPrice);
+  // Stable identity so the memoized panels don't re-render; always calls the latest addToCart.
+  const addToCartRef = useRef(addToCart);
+  addToCartRef.current = addToCart;
+  const handleAdd = useCallback((item: any, customization: any, calculatedPrice: number, quantity = 1) => {
+    addToCartRef.current(item, quantity, customization, calculatedPrice);
     // No toast on add — the cart on the right already shows it instantly
-  };
+  }, []);
+
+  const pizzaSizeRef = useRef(pizzaSize);
+  pizzaSizeRef.current = pizzaSize;
+  const handleCustomizePizza = useCallback((pizza: any, base: 'tomate' | 'creme') => {
+    const sz = PIZZA_SIZES.find(s => s.id === pizzaSizeRef.current)!;
+    setCustomizingPizza({
+      item: pizza,
+      basePrice: sz.price,
+      formatLabel: sz.label,
+      size: sz.id,
+      initialBase: base
+    });
+  }, []);
 
   // Render the active category's inline panel
   const renderPanel = () => {
     if (!activeCategory) return (
       <div style={{ flex:1, minHeight:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:16, padding:24, color: S.text }}>
         <div style={{ fontSize:40 }}>🍕</div>
-        <div style={{ fontSize:16, fontWeight:800, color: S.accent }}>Veuillez choisir une catégorie ci-dessus</div>
+        <div style={{ fontSize:16, fontWeight:800, color: S.accentText }}>Veuillez choisir une catégorie ci-dessus</div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, justifyContent:'center', maxWidth:600 }}>
           {categories.map(c => (
             <button
               key={c.id}
               onClick={() => setActiveCat(c.slug)}
-              style={{ padding:'8px 16px', borderRadius:10, background:'#1e293b', border:`1px solid ${S.border}`, color:'#fff', fontWeight:700, cursor:'pointer', fontSize:13 }}
+              style={{ padding:'8px 16px', borderRadius:10, background:'#ffffff', border:`1px solid ${S.border}`, color:S.text, fontWeight:700, cursor:'pointer', fontSize:13 }}
             >
               {CAT_ICON[c.slug] || '🍽️'} {c.name}
             </button>
@@ -5551,38 +5527,30 @@ function POSContent() {
       </div>
     );
     if (activeCategory === 'pizzas') return (
-      <PizzaPanel
+      <MemoPizzaPanel
         orderType={orderType}
         onAdd={handleAdd}
         size={pizzaSize}
         setSize={setPizzaSize}
         zoom={pizzaZoom}
         setZoom={setPizzaZoom}
-        onCustomize={(pizza, base) => {
-          setCustomizingPizza({
-            item: pizza,
-            basePrice: PIZZA_SIZES.find(s => s.id === pizzaSize)!.price,
-            formatLabel: PIZZA_SIZES.find(s => s.id === pizzaSize)!.label,
-            size: pizzaSize,
-            initialBase: base
-          });
-        }}
+        onCustomize={handleCustomizePizza}
       />
     );
     // Build-it wizards (meat → size): Soufflet, Makloub, Mlawi, Tacos, Panini
-    if (WIZARD_MAP[activeCategory]) return <WizardPanel categorySlug={activeCategory} onAdd={handleAdd} />;
+    if (WIZARD_MAP[activeCategory]) return <MemoWizardPanel categorySlug={activeCategory} onAdd={handleAdd} />;
     // Sandwich: pick sandwich → sauce + crudités (no meat)
-    if (activeCategory === 'sandwiches') return <SandwichPanel onAdd={handleAdd} />;
+    if (activeCategory === 'sandwiches') return <MemoSandwichPanel onAdd={handleAdd} />;
     // Tex-Mex: dedicated panel with Snacks/Frites/Croques sections
-    if (activeCategory === 'texmex')   return <TexMexPanel  onAdd={handleAdd} />;
+    if (activeCategory === 'texmex')   return <MemoTexMexPanel  onAdd={handleAdd} />;
     // Boissons: canette/bouteille avec note + quantité
-    if (activeCategory === 'boissons') return <BoissonPanel onAdd={handleAdd} />;
+    if (activeCategory === 'boissons') return <MemoBoissonPanel onAdd={handleAdd} />;
     // Milkshakes customizable panel
-    if (activeCategory === 'milkshakes') return <MilkshakePanel onAdd={handleAdd} />;
+    if (activeCategory === 'milkshakes') return <MemoMilkshakePanel onAdd={handleAdd} />;
     // Product-based customizable (Croques): pick product then customize
     const CUSTOMIZABLE = ['croques'];
-    if (CUSTOMIZABLE.includes(activeCategory)) return <CustomizablePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
-    return <SimplePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
+    if (CUSTOMIZABLE.includes(activeCategory)) return <MemoCustomizablePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
+    return <MemoSimplePanel categorySlug={activeCategory} title={activeCategory} onAdd={handleAdd} />;
   };
 
   // ── Optimistic order queue ────────────────────────────────────────────────
@@ -5677,18 +5645,10 @@ function POSContent() {
   };
 
   return (
-    <div style={{ position:'relative', width:'100vw', height:'100vh', overflow:'hidden', background: currentThemeMode === 'glassy' ? '#090d16' : S.bg }}>
-      {currentThemeMode === 'glassy' && (
-        <div className="pos-glass-bg">
-          <div className="pos-glass-bg-blob blob-1"></div>
-          <div className="pos-glass-bg-blob blob-2"></div>
-          <div className="pos-glass-bg-blob blob-3"></div>
-          <div className="pos-glass-bg-blob blob-4"></div>
-        </div>
-      )}
+    <div style={{ position:'relative', width:'100vw', height:'100vh', overflow:'hidden', background: S.bg }}>
       <PanelGroup
         direction="horizontal"
-        className={`pos-root ${currentThemeMode === 'glassy' ? 'pos-theme-apple' : ''}`}
+        className="pos-root"
         style={{ height:'100%', background:'transparent', color:S.text }}
       >
       {/* Hide scrollbars (touch screen) — swipe still works */}
@@ -5705,17 +5665,18 @@ function POSContent() {
         {/* ── Top Header Bar: Logo + System Buttons + Last Order ── */}
         <div className="pos-glassy-panel" style={{
           display: 'flex',
+          flexWrap: 'wrap',
           alignItems: 'center',
-          gap: 8,
-          padding: '5px 10px',
+          gap: 6,
+          padding: '8px 12px',
           background: S.panel,
           borderBottom: `1px solid ${S.border}`,
           flexShrink: 0,
         }}>
-          <span style={{ fontSize: 13, fontWeight: 900, color: S.accent }}>TWIN PIZZA</span>
+          <span style={{ fontSize: 18, fontWeight: 900, color: S.text, background: S.accent, padding: '4px 10px', borderRadius: 8, whiteSpace: 'nowrap' }}>TWIN PIZZA</span>
 
           {lastOrder && (
-            <span style={{ background:'#22c55e11', color:'#22c55e', border:'1px solid #22c55e33', padding:'2px 8px', borderRadius:6, fontSize:9, fontWeight:700 }}>
+            <span style={{ background:'#dcfce7', color:'#15803d', border:'1px solid #86efac', padding:'4px 10px', borderRadius:6, fontSize:14, fontWeight:700 }}>
               ✅ #{lastOrder}
             </span>
           )}
@@ -5731,16 +5692,15 @@ function POSContent() {
               style={{
                 background: '#ef4444',
                 color: '#fff',
-                padding: '3px 8px',
+                padding: '6px 10px',
                 borderRadius: 6,
-                fontSize: 10,
+                fontSize: 14,
                 fontWeight: 900,
                 border: 'none',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                animation: 'pulse 1.5s infinite',
               }}
             >
               🔄 {pendingSyncCount} en attente (cliquer pour synchroniser)
@@ -5749,7 +5709,7 @@ function POSContent() {
 
           <div style={{ flex: 1 }} />
 
-          <button title="Éditer le menu en direct" onClick={() => setShowQuickEdit(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:'#38bdf8', borderColor:'#38bdf833', background:'#38bdf811', display:'flex', alignItems:'center', gap:3 }}>
+          <button title="Éditer le menu en direct" onClick={() => setShowQuickEdit(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:14, fontWeight:800, color:'#0369a1', borderColor:'#38bdf833', background:'#38bdf811', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
             ✏️ Éditer Menu
           </button>
           <button
@@ -5758,32 +5718,33 @@ function POSContent() {
             className="pos-btn-interactive"
             style={{
               ...S.btn,
-              padding: '4px 8px',
-              fontSize: 11,
+              padding: '8px 9px',
+              fontSize: 14,
               fontWeight: 800,
-              color: waStatus === 'connected' ? '#22c55e' : (waStatus === 'qr' ? '#f97316' : '#ef4444'),
+              color: waStatus === 'connected' ? '#15803d' : (waStatus === 'qr' ? '#c2410c' : '#dc2626'),
               borderColor: waStatus === 'connected' ? '#22c55e44' : (waStatus === 'qr' ? '#f9731644' : '#ef444444'),
               background: waStatus === 'connected' ? '#22c55e11' : (waStatus === 'qr' ? '#f9731611' : '#ef444411'),
               display: 'flex',
               alignItems: 'center',
-              gap: 3
+              gap: 4,
+              whiteSpace: 'nowrap',
             }}
           >
             {waStatus === 'connected' ? '🟢 WhatsApp' : (waStatus === 'qr' ? '📱 Scan QR WA' : '💬 WhatsApp Off')}
           </button>
-          <button title="Imprimer directement les 12 étiquettes d'ingrédients" onClick={handlePrintIngredientLabelsPOS} disabled={printingIngredientsPOS} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:'#22c55e', borderColor:'#22c55e33', background:'#22c55e11', display:'flex', alignItems:'center', gap:3 }}>
+          <button title="Imprimer directement les 12 étiquettes d'ingrédients" onClick={handlePrintIngredientLabelsPOS} disabled={printingIngredientsPOS} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:14, fontWeight:800, color:'#15803d', borderColor:'#22c55e33', background:'#22c55e11', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
             🏷️ 12 Étiquettes
           </button>
-          <button title="Ouvrir le clavier virtuel tactile" onClick={toggleKeyboard} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:'#f59e0b', borderColor:'#f59e0b33', background:'#f59e0b11', display:'flex', alignItems:'center', gap:3 }}>
+          <button title="Ouvrir le clavier virtuel tactile" onClick={toggleKeyboard} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:14, fontWeight:800, color:'#b45309', borderColor:'#f59e0b33', background:'#f59e0b11', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
             ⌨️ Clavier
           </button>
-          <button title="Clôture de Caisse X/Z" onClick={() => setShowCloture(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:'#a855f7', borderColor:'#a855f733', background:'#a855f711', display:'flex', alignItems:'center', gap:3 }}>
+          <button title="Clôture de Caisse X/Z" onClick={() => setShowCloture(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:14, fontWeight:800, color:'#7e22ce', borderColor:'#a855f733', background:'#a855f711', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
             🔒 Clôture
           </button>
-          <button title="Historique & Statistiques" onClick={() => setShowHistory(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:11, fontWeight:800, color:S.accent, borderColor:S.accent+'33', background:S.accent+'11', display:'flex', alignItems:'center', gap:3 }}>
+          <button title="Historique & Statistiques" onClick={() => setShowHistory(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:14, fontWeight:800, color:S.accentText, borderColor:S.accent+'33', background:S.accent+'11', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
             📊 Stats
           </button>
-          <button title="Factures" onClick={() => setShowFacture(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:12 }}>🧾</button>
+          <button title="Factures" onClick={() => setShowFacture(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:16 }}>🧾</button>
           {typeof window !== 'undefined' && 'twinHub' in window && (
             <button
               title="Clic = MAJ rapide · Clic droit = détails"
@@ -5792,29 +5753,29 @@ function POSContent() {
               disabled={quickUpdating}
               className="pos-btn-interactive"
               style={{
-                ...S.btn, padding:'4px 8px', fontSize:12, position:'relative',
+                ...S.btn, padding:'8px 9px', fontSize:16, position:'relative',
                 border: updateAvailable ? `1px solid ${S.accent}` : S.btn.border,
                 opacity: quickUpdating ? 0.5 : 1,
                 animation: quickUpdating ? 'spin 1s linear infinite' : 'none',
               }}
             >
               🔄
-              {updateAvailable && <span style={{ position:'absolute', top:-2, right:-2, background:'#ef4444', width:6, height:6, borderRadius:'50%', border:'1px solid #111827' }} />}
+              {updateAvailable && <span style={{ position:'absolute', top:-2, right:-2, background:'#ef4444', width:6, height:6, borderRadius:'50%', border:'1px solid #f7f8fa' }} />}
             </button>
           )}
-          <button title="Personnaliser" onClick={()=>setShowSettings(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:12 }}>⚙️</button>
-          <button title="Replier" onClick={toggleLeft} className="pos-btn-interactive" style={{ ...S.btn, padding:'4px 8px', fontSize:12 }}>⟨</button>
+          <button title="Personnaliser" onClick={()=>setShowSettings(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:16 }}>⚙️</button>
+          <button title="Replier" onClick={toggleLeft} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:16 }}>⟨</button>
         </div>
 
         {/* ── Horizontal Category Bar with Images ── */}
         <div className="pos-glassy-panel" style={{
-          display: 'flex',
-          padding: '6px 8px',
-          gap: 4,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))',
+          padding: '8px 10px',
+          gap: 6,
           background: S.panel,
           borderBottom: `1px solid ${S.border}`,
           flexShrink: 0,
-          overflow: 'hidden',
         }}>
           {categories.filter(cat => cat.slug !== 'salades').map(cat => {
             const active = activeCategory === cat.slug;
@@ -5825,34 +5786,29 @@ function POSContent() {
                 onClick={() => setActiveCat(active ? null : cat.slug)}
                 className={`pos-btn-interactive ${active ? 'pos-cat-top-active' : ''}`}
                 style={{
-                  flex: 1,
                   minWidth: 0,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 2,
-                  padding: '4px 2px',
+                  gap: 4,
+                  padding: '6px 4px',
                   borderRadius: 10,
-                  border: 'none',
                   cursor: 'pointer',
-                  transition: 'all .15s cubic-bezier(0.16, 1, 0.3, 1)',
-                  background: active ? S.accent + '22' : 'transparent',
-                  outline: active ? `2px solid ${S.accent}` : '2px solid transparent',
-                  outlineOffset: -1,
+                  background: active ? S.accent : '#f7f8fa',
+                  border: active ? `2px solid ${S.accent}` : `2px solid ${S.border}`,
                 }}
               >
                 <div style={{
-                  width: 36,
-                  height: 36,
+                  width: 44,
+                  height: 44,
                   borderRadius: 10,
                   overflow: 'hidden',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: active ? S.accent + '15' : (S.card || '#1f2937'),
+                  background: '#ffffff',
                   flexShrink: 0,
-                  border: `1px solid ${active ? S.accent + '44' : S.border}`,
                 }}>
                   {imgData.type === 'image'
                     ? <img
@@ -5868,15 +5824,13 @@ function POSContent() {
                           }
                         }}
                       />
-                    : <span style={{ fontSize: 18 }}>{imgData.value}</span>
+                    : <span style={{ fontSize: 24 }}>{imgData.value}</span>
                   }
                 </div>
                 <span style={{
-                  fontSize: 8,
+                  fontSize: 14,
                   fontWeight: 800,
-                  color: active ? S.accent : '#9ca3af',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.02em',
+                  color: S.text,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',

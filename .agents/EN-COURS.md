@@ -3,6 +3,7 @@
 *(Aucun chantier en cours)*
 
 ## À valider / en attente (aucun fichier verrouillé)
+- Caisse POS claire + rapide : branche `pos-clair-rapide`, NON déployée. Attendre le « go » du patron avant merge dans `main` / MAJ du Hub (voir JOURNAL 2026-10-31).
 - Bug borne « 2 pizzas choisies → 1 seule reçue » : non reproduit, attendre un n° de commande réel.
 - Doublons d'options en base (crudités actives en double, copies inactives ailleurs) : masqués par le code, à nettoyer dans l'admin.
 - Impression au resto : après `METTRE_A_JOUR.bat`, `/status` doit afficher codeVersion `3ae565662177`. Valider sur un vrai ticket POS + borne que le ticket suspendu au mur se lit dans le bon sens.

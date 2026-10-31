@@ -559,9 +559,12 @@ function startFileServer() {
         headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
         headers['Pragma'] = 'no-cache';
         headers['Expires'] = '0';
+      } else if (['.js', '.css'].includes(ext) && cleanUrl.startsWith('/assets/') && p.startsWith(distPath)) {
+        // Vite puts a content hash in every /assets/ filename: a new build gets new names
+        // (and index.html above is never cached), so these files can be cached for good.
+        headers['Cache-Control'] = 'public, max-age=31536000, immutable';
       } else if (['.js', '.css'].includes(ext)) {
-        // Do NOT use immutable — asset filenames change between builds.
-        // Always revalidate so the new bundle is fetched after a MAJ update.
+        // Unhashed scripts/styles: always revalidate.
         headers['Cache-Control'] = 'no-cache, must-revalidate, max-age=0';
         headers['Pragma'] = 'no-cache';
       } else if (['.woff', '.woff2'].includes(ext)) {

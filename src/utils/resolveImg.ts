@@ -28,11 +28,11 @@ loadImageCache();
  * Falls back to the original URL if not cached.
  * Automatically rewrites deprecated Supabase cloud URLs to the self-hosted VPS URL.
  */
-export function resolveImg(url?: string | null): string | undefined {
+export function resolveImg(url?: string | null, width = 800): string | undefined {
   if (!url) return undefined;
   // Auto-rewrite deprecated Supabase cloud domain to self-hosted VPS
   const sanitizedUrl = url.replace('https://hsylnrzxeyqxczdalurj.supabase.co', 'https://supabase.twinpizza.fr');
-  return LOCAL_IMG[sanitizedUrl] || LOCAL_IMG[url] || toResizedUrl(sanitizedUrl);
+  return LOCAL_IMG[sanitizedUrl] || LOCAL_IMG[url] || toResizedUrl(sanitizedUrl, width);
 }
 
 // Original uploads are up to ~800 KB: serve a resized/compressed version through the
@@ -40,8 +40,10 @@ export function resolveImg(url?: string | null): string | undefined {
 const STORAGE_PUBLIC = 'https://supabase.twinpizza.fr/storage/v1/object/public/';
 const STORAGE_RENDER = 'https://supabase.twinpizza.fr/storage/v1/render/image/public/';
 
-function toResizedUrl(url: string): string {
+function toResizedUrl(url: string, width: number): string {
+  // Some stored URLs are already render URLs (width=800): just swap the width.
+  if (url.startsWith(STORAGE_RENDER)) return url.replace(/([?&])width=\d+/, `$1width=${width}`);
   if (!url.startsWith(STORAGE_PUBLIC) || /\.(svg|gif)(\?|$)/i.test(url)) return url;
   const resized = STORAGE_RENDER + url.slice(STORAGE_PUBLIC.length);
-  return resized + (resized.includes('?') ? '&' : '?') + 'width=800&quality=75&resize=contain';
+  return resized + (resized.includes('?') ? '&' : '?') + `width=${width}&quality=75&resize=contain`;
 }
