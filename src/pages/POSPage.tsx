@@ -1,5 +1,6 @@
 import { useState, useEffect, useReducer, useRef, memo, useMemo, useCallback } from 'react';
-import { Pencil, Tag, Lock, BarChart3, Receipt, Keyboard, RefreshCw, Settings, ChevronLeft } from 'lucide-react';
+import { Pencil, Tag, Lock, BarChart3, Receipt, Keyboard, RefreshCw, Settings, ChevronLeft, Wallet } from 'lucide-react';
+import EncaisserModal from '@/components/pos/EncaisserModal';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { useCreateOrder, generateOrderNumber, useOrders, useDrinks } from '@/hooks/useSupabaseData';
 import {
@@ -11,7 +12,8 @@ import {
   getSourceBadgeProps,
   getSourceLabel,
 } from '@/lib/orderUtils';
-import { syncPendingPOSOrders } from '@/lib/orderSync';
+import { syncPendingPOSOrders, insertPOSOrder, removeFromPendingQueue } from '@/lib/orderSync';
+import { splitPayment, isFiscallyLocked } from '@/lib/fiscal';
 import { supabase } from '@/integrations/supabase/client';
 import { useCategories, useProductsByCategory } from '@/hooks/useProducts';
 import { useCategoryImages } from '@/hooks/useCategoryImages';
@@ -4605,6 +4607,8 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
       cbCount: stats.payments.cb.count,
       enLigneTotal: stats.payments.enLigne.total.toFixed(2),
       enLigneCount: stats.payments.enLigne.count,
+      discountTotal: stats.discounts.manual.toFixed(2),
+      promoDiscountTotal: stats.discounts.promo.toFixed(2),
       // Order types
       surPlaceCount: stats.byType.surplace?.count || 0,
       surPlaceTotal: (stats.byType.surplace?.revenue || 0).toFixed(2),
@@ -4687,6 +4691,22 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
               <div style="display:flex;justify-content:space-between;font-size:10px;color:#666;">
                 <span>Annulées (hors CA) :</span>
                 <span>${stats.cancelledOrdersCount} cmd (${stats.cancelledRevenue.toFixed(2)} €)</span>
+              </div>
+            ` : ''}
+            ${stats.payments.nonEncaisse.count > 0 ? `
+              <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:bold;">
+                <span>Non encaissées (borne/site) :</span>
+                <span>${stats.payments.nonEncaisse.count} cmd (${stats.payments.nonEncaisse.total.toFixed(2)} €)</span>
+              </div>
+            ` : ''}
+            ${(stats.discounts.manual + stats.discounts.promo) > 0 ? `
+              <div style="display:flex;justify-content:space-between;font-size:11px;">
+                <span>Remises caisse :</span>
+                <span>${stats.discounts.manual.toFixed(2)} €</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;">
+                <span>Offre pizzas :</span>
+                <span>${stats.discounts.promo.toFixed(2)} €</span>
               </div>
             ` : ''}
 
@@ -5236,6 +5256,7 @@ function POSContent() {
   const [showHistory, setShowHistory] = useState(false);
   const [showFacture,  setShowFacture]  = useState(false);
   const [showCloture,  setShowCloture]  = useState(false);
+  const [showEncaisser, setShowEncaisser] = useState(false);
   const [showQuickEdit, setShowQuickEdit] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [waStatus, setWaStatus] = useState<string>('disconnected');
@@ -5636,19 +5657,13 @@ function POSContent() {
   // A background loop retries failed Supabase writes indefinitely.
   const retryOrderToSupabase = async (payload: any, attempt = 1): Promise<void> => {
     try {
-      const { _savedAt, payment_details, ...cleanPayload } = payload;
-      const { error } = await (supabase as any)
-        .from('orders')
-        .insert(cleanPayload, { returning: 'minimal' });
-      if (error) throw error;
-      // Sync: remove from pending queue
-      try {
-        const pending = JSON.parse(localStorage.getItem('pos-pending-orders') || '[]');
-        const updated = pending.filter((o: any) => o.order_number !== payload.order_number);
-        localStorage.setItem('pos-pending-orders', JSON.stringify(updated));
-      } catch {}
+      const { ok, error } = await insertPOSOrder(payload);
+      if (!ok) throw error;
+      removeFromPendingQueue(payload.order_number);
     } catch {
-      // Exponential backoff: 1s, 2s, 4s … capped at 30s
+      // Exponential backoff: 1s, 2s, 4s … capped at 30s, stop after 10 tries
+      // (the 4 s background sync keeps retrying the pending queue anyway).
+      if (attempt >= 10) return;
       const delay = Math.min(1000 * Math.pow(2, attempt - 1), 30000);
       setTimeout(() => retryOrderToSupabase(payload, attempt + 1), delay);
     }
@@ -5669,6 +5684,7 @@ function POSContent() {
     try {
       const orderNumber = await generateOrderNumber();
       const { ht: fHt, tva: fTva } = calculateTVA(total);
+      const paid = splitPayment(payMethod, total, splitCash || 0, splitCard || 0);
       const splitNote = payMethod === 'divise' ? `[Divisé: Espèces ${Number(splitCash || 0).toFixed(2)}€ / CB ${Number(splitCard || 0).toFixed(2)}€]` : '';
       const finalNotes = [notes.trim(), splitNote].filter(Boolean).join(' ');
 
@@ -5685,6 +5701,12 @@ function POSContent() {
         tva: fTva,
         total,
         delivery_fee: 0,
+        // NF525 : montants encaissés et remises enregistrés à part
+        payment_cash: paid.cash,
+        payment_card: paid.card,
+        discount_amount: Math.round(discountAmt * 100) / 100,
+        promo_discount: Math.round(pizzaSaving * 100) / 100,
+        paid_at: new Date().toISOString(),
         status: 'pending',
         is_scheduled: false,
         scheduled_for: null,
@@ -5774,6 +5796,9 @@ function POSContent() {
 
           <div style={{ flex: 1 }} />
 
+          <button title="Encaisser les commandes borne et site" onClick={() => setShowEncaisser(true)} style={HDR_BTN}>
+            <Wallet size={16} /> À encaisser
+          </button>
           <button title="Éditer le menu en direct" onClick={() => setShowQuickEdit(true)} style={HDR_BTN}>
             <Pencil size={16} /> Menu
           </button>
@@ -5941,6 +5966,7 @@ function POSContent() {
       {showHistory && <HistoryPanel onClose={()=>setShowHistory(false)} />}
       {showFacture && <FactureHubModal onClose={()=>setShowFacture(false)} />}
       {showCloture && <ClotureCaisseModal onClose={() => setShowCloture(false)} />}
+      {showEncaisser && <EncaisserModal onClose={() => setShowEncaisser(false)} />}
       {showUpdateModal && <UpdatePanel onClose={()=>setShowUpdateModal(false)} />}
       {showWaModal && <WhatsAppModal status={waStatus} qr={waQr} onClose={() => setShowWaModal(false)} />}
       {customizingPizza && (

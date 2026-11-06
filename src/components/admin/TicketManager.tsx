@@ -21,6 +21,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { isFiscallyLocked } from '@/lib/fiscal';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -108,13 +109,16 @@ export function TicketManager() {
         try {
             const { error } = await supabase
                 .from('orders')
-                .update({
-                    customer_name: editName,
-                    customer_phone: editPhone,
-                    total: editTotal,
-                    status: editStatus as any,
-                    items: editItems as any
-                })
+                .update(isFiscallyLocked(editingOrder as any)
+                    // Commande encaissée : montants et articles verrouillés (NF525)
+                    ? { customer_name: editName, customer_phone: editPhone, status: editStatus as any }
+                    : {
+                        customer_name: editName,
+                        customer_phone: editPhone,
+                        total: editTotal,
+                        status: editStatus as any,
+                        items: editItems as any
+                    })
                 .eq('id', editingOrder.id);
 
             if (error) throw error;
@@ -459,7 +463,7 @@ export function TicketManager() {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="text-sm font-medium">Total (€)</label>
-                                <Input type="number" step="0.01" value={editTotal} onChange={(e) => setEditTotal(parseFloat(e.target.value))} />
+                                <Input type="number" step="0.01" value={editTotal} disabled={!!editingOrder && isFiscallyLocked(editingOrder as any)} onChange={(e) => setEditTotal(parseFloat(e.target.value))} />
                             </div>
                             <div>
                                 <label className="text-sm font-medium">Statut</label>
@@ -478,6 +482,12 @@ export function TicketManager() {
                             </div>
                         </div>
 
+                        {editingOrder && isFiscallyLocked(editingOrder as any) ? (
+                            <p className="text-sm rounded-lg border bg-muted/30 p-3">
+                                Commande encaissée : le total et les articles ne peuvent plus être modifiés (loi anti-fraude NF525).
+                                Pour corriger une erreur, annulez la commande avec un motif puis refaites-la en caisse.
+                            </p>
+                        ) : (
                         <div className="space-y-3">
                             <div className="flex justify-between items-center border-b pb-2">
                                 <label className="font-bold">Modifier les Articles</label>
@@ -524,6 +534,7 @@ export function TicketManager() {
                                 ))}
                             </div>
                         </div>
+                        )}
                     </div>
 
                     <DialogFooter className="bg-muted/30 p-4 -mx-6 -mb-6 mt-4">

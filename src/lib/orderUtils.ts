@@ -1,4 +1,5 @@
 import type { Order } from '@/hooks/useSupabaseData';
+import { getOrderPayment, isFiscallyLocked } from '@/lib/fiscal';
 
 export type OrderSource = 'pos' | 'borne' | 'web';
 
@@ -223,36 +224,28 @@ export function calculateBusinessStats(orders: Order[] = []) {
   let cbCount = 0;
   let enLigneCount = 0;
 
+  // Commandes borne / site pas encore passées par « À encaisser »
+  let unpaidTotal = 0;
+  let unpaidCount = 0;
+
   validOrders.forEach((o) => {
-    const pMethod = o.payment_method;
-    const tot = Number(o.total) || 0;
-    if (pMethod === 'especes') {
-      especesTotal += tot;
-      especesCount += 1;
-    } else if (pMethod === 'cb') {
-      cbTotal += tot;
-      cbCount += 1;
-    } else if (pMethod === 'en_ligne') {
-      enLigneTotal += tot;
-      enLigneCount += 1;
-    } else if (pMethod === 'divise') {
-      const details = (o as any).payment_details;
-      if (details) {
-        const esp = Number(details.especes) || 0;
-        const cb = Number(details.cb) || 0;
-        especesTotal += esp;
-        cbTotal += cb;
-        if (esp > 0) especesCount += 1;
-        if (cb > 0) cbCount += 1;
-      } else {
-        especesTotal += tot;
-        especesCount += 1;
-      }
-    } else {
-      especesTotal += tot;
-      especesCount += 1;
+    if (o.payment_method !== 'en_ligne' && !isFiscallyLocked(o as any)) {
+      unpaidTotal += Number(o.total) || 0;
+      unpaidCount += 1;
+      return;
     }
+    const { cash, card, online } = getOrderPayment(o as any);
+    especesTotal += cash;
+    cbTotal += card;
+    enLigneTotal += online;
+    if (cash > 0) especesCount += 1;
+    if (card > 0) cbCount += 1;
+    if (online > 0) enLigneCount += 1;
   });
+
+  // Remises (caisse) et offre pizzas, enregistrées depuis la migration NF525
+  const discountsTotal = validOrders.reduce((sum, o: any) => sum + (Number(o.discount_amount) || 0), 0);
+  const promoDiscountsTotal = validOrders.reduce((sum, o: any) => sum + (Number(o.promo_discount) || 0), 0);
 
   // Taxes
   const totalTVA = validOrders.reduce((sum, o) => sum + (Number(o.tva) || 0), 0);
@@ -316,6 +309,11 @@ export function calculateBusinessStats(orders: Order[] = []) {
       especes: { total: especesTotal, count: especesCount },
       cb: { total: cbTotal, count: cbCount },
       enLigne: { total: enLigneTotal, count: enLigneCount },
+      nonEncaisse: { total: unpaidTotal, count: unpaidCount },
+    },
+    discounts: {
+      manual: discountsTotal,
+      promo: promoDiscountsTotal,
     },
     taxes: {
       ht: totalHT,

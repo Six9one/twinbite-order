@@ -2,6 +2,23 @@
 
 Les entrǸes les plus rǸcentes en haut.
 
+## 2026-11-06 — Claude Code — NF525 étapes 1 et 2 : paiements justes + commandes encaissées verrouillées (branche `nf525-etape-1-2`, PAS encore déployé)
+**Fait :**
+- Migration `supabase/migrations/20261106000000_nf525_etape1_2_verrouillage.sql` (à appliquer AVANT le code) : enum `payment_method` + `divise` ; colonnes `orders.payment_cash`, `payment_card`, `discount_amount`, `promo_discount` ; `REVOKE INSERT/UPDATE/DELETE` sur `global_order_counter` pour anon/authenticated (le RPC SECURITY DEFINER marche toujours) ; trigger `orders_fiscal_guard` : suppression et TRUNCATE interdits, commande « encaissée » (`paid_at` rempli, ou saisie caisse `[POS]`/`pos`, historique compris) = montants, articles, paiement, numéro, date figés ; notes seulement complétables ; statut libre. Journal `fiscal_events` en ajout seul, chaîné SHA-256 (`fiscal_log_event`), vérifiable avec `SELECT * FROM fiscal_verify_events();` (0 ligne = intact).
+- Caisse : chaque vente envoie `payment_cash/card`, remise, économie offre pizzas, `paid_at`. Nouveau bouton « À encaisser » (`src/components/pos/EncaisserModal.tsx`) : encaisser une commande borne/site en Espèces, Carte ou Divisé. Z : les commandes borne/site non encaissées ne sont plus comptées en espèces (ligne « Non encaissées ») ; remises affichées.
+- `src/lib/fiscal.ts` : `isFiscallyLocked` (même règle que la base), `splitPayment`, `getOrderPayment` (colonnes, sinon note `[Divisé: …]`, sinon moyen de paiement). Utilisé par `calculateBusinessStats`.
+- Envoi caisse : `insertPOSOrder` (doublon = déjà envoyé ; base pas migrée = renvoi sans les colonnes NF525) ; la synchro ne fait plus jamais d'UPDATE d'une commande existante et ne tourne plus en double ; le retry s'arrête après 10 essais (la synchro 4 s prend le relais).
+- Admin `TicketManager` : total et articles non modifiables pour une commande encaissée.
+**Vérifié :** migration appliquée 2 fois sur un Postgres 16 local (schéma minimal) : refus modif total / paiement / notes / suppression / TRUNCATE / journal / compteur anon ; annulation et encaissement borne OK ; falsification du journal détectée par `fiscal_verify_events`. Tests de `fiscal.ts` OK. `vite build` OK (dans un dossier temporaire). Les erreurs `tsc` restantes existaient avant.
+**Fichiers touchés :** migration ci-dessus, `src/lib/fiscal.ts`, `src/lib/orderSync.ts`, `src/lib/orderUtils.ts`, `src/pages/POSPage.tsx`, `src/components/pos/EncaisserModal.tsx`, `src/components/admin/TicketManager.tsx`.
+**Infrastructure & Serveur :** rien appliqué. La migration n'a PAS été lancée sur le VPS.
+**À savoir / Pièges :**
+- Après la migration, toute tentative de modifier le total/les articles d'une commande caisse renvoie une erreur : c'est voulu (NF525). Corriger = annuler avec motif + refaire.
+- Les commandes borne/site doivent passer par « À encaisser », sinon elles apparaissent « Non encaissées » au Z.
+- TVA toujours à 10 % partout (`calculateTVA`) : taux boissons à emporter à confirmer par le comptable.
+- Ce n'est PAS la certification : il manque tickets signés, Z stockés, archives, mode hors ligne (plan : doc « Caisse TwinBite et loi anti-fraude (NF525) »).
+**Reste à faire :** go du patron → appliquer la migration sur le VPS → merger → METTRE_A_JOUR.bat → test : vente divisée, encaissement borne, tentative de modification refusée.
+
 ## 2026-10-31 — Claude Code — Caisse POS : thème clair, textes plus gros, plus rapide (branche `pos-clair-rapide`, PAS encore déployé)
 **Fait :**
 - `/pos` (POSPage.tsx) passe d'un thème bleu nuit/orange à un thème **clair** : fond blanc/gris très clair, texte foncé, accent jaune Twin Pizza `#f6b800`, bouton « Valider » vert (`PAY_GREEN`). Le thème « glassy » (bulles floues 120px, backdrop-filter, lueurs, dégradés) est supprimé ; `applyThemePreset` ne fait plus que charger les couleurs perso, stockées sous la nouvelle clé `pos-theme-v2` (les anciennes couleurs sombres sauvegardées sont ignorées).
