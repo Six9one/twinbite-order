@@ -977,19 +977,9 @@ function SectionTitle({ children, hint }: { children:React.ReactNode; hint?:stri
 function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item:any,custom:any,price:number)=>void }) {
   const type = WIZARD_MAP[categorySlug] || 'soufflet';
   const cfg = WIZ_CFG[type];
-  const { data: dbSizePrices = [] } = useProductSizePrices(type);
-  const fallbackSizes = (wizardSizePrices as any)[type] as { id:string; label:string; maxMeats:number; price:number }[];
-  const sizes = useMemo(() => {
-    if (dbSizePrices && dbSizePrices.length > 0) {
-      return dbSizePrices.map(s => ({
-        id: s.size_id,
-        label: s.size_label,
-        maxMeats: s.max_meats,
-        price: Number(s.price)
-      }));
-    }
-    return fallbackSizes;
-  }, [dbSizePrices, fallbackSizes]);
+  // Prix des tailles : toujours ceux du code (src/data/pricing.ts), comme le site,
+  // pour que caisse et site facturent pareil (la table des tailles en base était fausse).
+  const sizes = (wizardSizePrices as any)[type] as { id:string; label:string; maxMeats:number; price:number }[];
   const maxMeats = cfg.maxMeats;
   const hasGarniture = cfg.garniture;
   const isCrudite = cfg.crudite;
@@ -1407,11 +1397,18 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
           });
           const mergedSnacks = Array.from(snackMap.values());
 
+          // Prix décidés le 30/10 : frites 3 / 5 €, croque monsieur 3 €, madame 5 €.
+          const fixedPrice = (p:TxProduct):TxProduct => {
+            const n = p.name.toLowerCase();
+            if (p.category==='frites') return { ...p, unit_price: n.includes('grande') ? 5 : n.includes('petite') ? 3 : p.unit_price };
+            if (p.category==='croque') return { ...p, unit_price: n.includes('madame') ? 5 : n.includes('monsieur') ? 3 : p.unit_price };
+            return p;
+          };
           setProducts([
             ...mergedSnacks,
             ...(hasMenu   ? raw.filter(p=>p.category==='menu_enfant')       : TX_MENUS),
-            ...(hasFrites ? raw.filter(p=>p.category==='frites')           : TX_FRITES),
-            ...(hasCroque ? raw.filter(p=>p.category==='croque')           : TX_CROQUES),
+            ...(hasFrites ? raw.filter(p=>p.category==='frites').map(fixedPrice) : TX_FRITES),
+            ...(hasCroque ? raw.filter(p=>p.category==='croque').map(fixedPrice) : TX_CROQUES),
           ]);
         });
     });
@@ -1665,38 +1662,34 @@ function TexMexPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void 
 }
 
 // ── Boissons panel — canette/bouteille avec note + quantité ──────────────────
+// Boissons de la caisse (prix décidés par safouane le 06/11/2026).
+// `match` sert à reprendre la photo de la boisson en base si elle existe.
 const BOISSON_ITEMS = [
-  { id:'canette',   name:'Canette au choix (33cl)',   price:1.50, hasNote:true  },
-  { id:'eau-mini',  name:'Eau (50cl)',               price:1.00, hasNote:false },
-  { id:'bouteille', name:'Grande Bouteille (1.5L)',   price:3.50, hasNote:true  },
-  { id:'eau-grand', name:'Eau Grand (1.5L)',          price:1.50, hasNote:false },
+  { id:'eau-50',       name:'Eau 50 cl',          price:1.00, hasNote:false, emoji:'💧', match:['eau'] },
+  { id:'canette',      name:'Canette 33 cl',      price:1.50, hasNote:true,  emoji:'🥫', match:['canette'] },
+  { id:'capri-sun',    name:'Capri-Sun',          price:1.00, hasNote:true,  emoji:'🧃', match:['capri'] },
+  { id:'bouteille-15', name:'Bouteille 1,5 L',    price:3.00, hasNote:true,  emoji:'🍾', match:['1.5','1,5','bouteille'] },
+  { id:'bouteille-2',  name:'Bouteille 2 L',      price:3.50, hasNote:true,  emoji:'🍾', match:['2l','2 l','2 litres'] },
 ];
 function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void }) {
   const { data: dbDrinks } = useDrinks();
   const [qtys,  setQtys]  = useState<Record<string,number>>({});
   const [notes, setNotes] = useState<Record<string,string>>({});
 
-  const displayDrinks = dbDrinks && dbDrinks.length > 0
-    ? dbDrinks.map(d => ({
-        id: d.id,
-        name: d.name,
-        price: Number(d.price),
-        hasNote: !d.name.toLowerCase().includes('eau')
-      }))
-    : BOISSON_ITEMS;
+  const displayDrinks = useMemo(() => BOISSON_ITEMS.map(b => {
+    const img = (dbDrinks || []).find((d:any) => d.image_url && b.match.some(m => d.name.toLowerCase().includes(m)))?.image_url || null;
+    return { ...b, img };
+  }), [dbDrinks]);
 
   const changeQty = (id:string, d:number) =>
     setQtys(p => { const n=Math.max(0,(p[id]||0)+d); const r={...p}; if(n===0) delete r[id]; else r[id]=n; return r; });
 
   const total = displayDrinks.reduce((s,b)=>s+(qtys[b.id]||0)*b.price, 0);
   const hasItems = Object.values(qtys).some(q=>q>0);
+  const selectedWithNote = displayDrinks.filter(b => b.hasNote && (qtys[b.id]||0) > 0);
 
   const handleAdd = () => {
     if (!hasItems) { toast.error('Sélectionnez au moins une boisson'); return; }
-    const lines = displayDrinks
-      .filter(b=>(qtys[b.id]||0)>0)
-      .map(b=>{ const n=notes[b.id]; return `${qtys[b.id]}x ${b.name}${n?` (${n})`:''}`; });
-    // Add each boisson as separate cart item for clarity
     displayDrinks.filter(b=>(qtys[b.id]||0)>0).forEach(b=>{
       const q = qtys[b.id]; const n = notes[b.id];
       onAdd(
@@ -1710,37 +1703,53 @@ function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void
 
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
-      <div style={{ flex:1, overflow:'auto', padding:'10px 14px' }}>
-        {displayDrinks.map(b=>{
-          const q = qtys[b.id]||0;
-          return (
-            <div key={b.id} style={{ background:S.card, borderRadius:9, padding:'8px 12px', marginBottom:8, border:`1px solid ${q>0?S.accent:S.border}` }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom: b.hasNote?6:0 }}>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:16, fontWeight:700, color:S.text }}>{b.name}</div>
-                  <div style={{ fontSize:15, color:S.accentText, fontWeight:800 }}>{b.price.toFixed(2)}€</div>
-                </div>
-                <button onClick={()=>changeQty(b.id,-1)} disabled={q===0} style={{ width:28,height:28,borderRadius:7,border:`1px solid ${S.border}`,background:S.panel,color:q?S.text:'#9aa1ab',cursor:q?'pointer':'not-allowed',fontSize:16,fontWeight:800 }}>−</button>
-                <span style={{ width:24, textAlign:'center', fontSize:16, fontWeight:800, color:q?S.accentText:S.muted }}>{q||'·'}</span>
-                <button onClick={()=>changeQty(b.id,+1)} style={{ width:28,height:28,borderRadius:7,border:`1px solid ${q?S.accent:S.border}`,background:q?S.accent+'22':S.panel,color:S.accentText,cursor:'pointer',fontSize:16,fontWeight:800 }}>+</button>
+      <div style={{ flex:1, overflow:'auto', padding:'12px 14px' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:10 }}>
+          {displayDrinks.map(b=>{
+            const q = qtys[b.id]||0;
+            return (
+              <div key={b.id} style={{ position:'relative' }}>
+                <button onClick={()=>changeQty(b.id,+1)} style={{
+                  width:'100%', display:'flex', flexDirection:'column', alignItems:'center', gap:6,
+                  padding:'12px 8px', borderRadius:12, cursor:'pointer',
+                  background: q>0 ? S.accent+'22' : S.card,
+                  border:`2px solid ${q>0?S.accent:S.border}`,
+                }}>
+                  {b.img
+                    ? <img src={b.img} alt="" style={{ width:72, height:72, objectFit:'contain' }} />
+                    : <span style={{ fontSize:48, lineHeight:'72px' }}>{b.emoji}</span>}
+                  <span style={{ fontSize:16, fontWeight:700, color:S.text, textAlign:'center' }}>{b.name}</span>
+                  <span style={{ fontSize:17, fontWeight:800, color:S.accentText }}>{b.price.toFixed(2)}€</span>
+                </button>
+                {q>0 && (
+                  <>
+                    <span style={{ position:'absolute', top:6, right:6, minWidth:30, height:30, borderRadius:15, background:S.accent, color:'#fff', fontSize:16, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 6px' }}>{q}</span>
+                    <button onClick={()=>changeQty(b.id,-1)} aria-label="Retirer une" style={{ position:'absolute', top:6, left:6, width:30, height:30, borderRadius:15, border:`1px solid ${S.border}`, background:'#fff', color:S.text, fontSize:18, fontWeight:800, cursor:'pointer' }}>−</button>
+                  </>
+                )}
               </div>
-              {b.hasNote && (
-                <input
-                  value={notes[b.id]||''}
-                  onChange={e=>setNotes(p=>({...p,[b.id]:e.target.value}))}
-                  placeholder={b.name.toLowerCase().includes('canette')?'Ex: Coca-Cola, Fanta, Sprite…':'Ex: Coca 1.5L, eau gazeuse…'}
-                  style={{ ...S.input, fontSize:15, padding:'5px 8px', marginTop:2 }}
-                />
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+        {selectedWithNote.length > 0 && (
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:8, marginTop:12 }}>
+            {selectedWithNote.map(b => (
+              <input
+                key={b.id}
+                value={notes[b.id]||''}
+                onChange={e=>setNotes(p=>({...p,[b.id]:e.target.value}))}
+                placeholder={`${b.name} : parfum (Coca, Fanta…)`}
+                style={{ ...S.input, fontSize:15, padding:'8px 10px' }}
+              />
+            ))}
+          </div>
+        )}
       </div>
       <div style={{ padding:'10px 14px', borderTop:`1px solid ${S.border}`, background:S.panel, flexShrink:0 }}>
         <button onClick={handleAdd} disabled={!hasItems} style={{
-          width:'100%', padding:'11px', borderRadius:9, border:'none',
+          width:'100%', padding:'12px', borderRadius:9, border:'none',
           background:hasItems?'#3b82f6':'#eef0f3',
-          color:hasItems?'#fff':'#9aa1ab', fontSize:14, fontWeight:800, cursor:hasItems?'pointer':'not-allowed',
+          color:hasItems?'#fff':'#9aa1ab', fontSize:15, fontWeight:800, cursor:hasItems?'pointer':'not-allowed',
         }}>🥤 Ajouter — {total.toFixed(2)}€</button>
       </div>
     </div>
@@ -5124,10 +5133,14 @@ const MemoMilkshakePanel    = memo(MilkshakePanel);
 const MemoCustomizablePanel = memo(CustomizablePanel);
 const MemoSimplePanel       = memo(SimplePanel);
 
+const POS_HIDDEN_CATS = ['salades', 'mlawi', 'crepes', 'gaufres', 'frites', 'croques'];
+
 function POSContent() {
   useThemeBump();
   const { cart, clearCart, getTotal, setOrderType: setCtxOrderType } = useOrder();
-  const { data: categories = [] } = useCategories();
+  const { data: allCategories = [] } = useCategories();
+  // Onglets retirés de la caisse : frites et croques sont dans Tex-Mex.
+  const categories = useMemo(() => allCategories.filter(c => !POS_HIDDEN_CATS.includes(c.slug)), [allCategories]);
   const { getImageOrEmoji, getDisplayName } = useCategoryImages();
   const createOrder = useCreateOrder();
 
@@ -5770,14 +5783,14 @@ function POSContent() {
         {/* ── Horizontal Category Bar with Images ── */}
         <div className="pos-glassy-panel" style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))',
+          gridTemplateColumns: `repeat(${Math.max(1, categories.length)}, minmax(0, 1fr))`,
           padding: '8px 10px',
           gap: 6,
           background: S.panel,
           borderBottom: `1px solid ${S.border}`,
           flexShrink: 0,
         }}>
-          {categories.filter(cat => cat.slug !== 'salades').map(cat => {
+          {categories.map(cat => {
             const active = activeCategory === cat.slug;
             const imgData = getImageOrEmoji(cat.slug);
             return (

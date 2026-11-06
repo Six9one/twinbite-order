@@ -24,15 +24,18 @@ const QUERY_OPTS = {
 // or even two active copies): keep ONE row per name, preferring the active one, so the
 // wizards never show an option twice nor save it twice ("Pomme de terre, Pomme de terre").
 // Inactive-only options are kept: the wizards display them as "Rupture".
+const optionKey = (name: string) =>
+  (name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
 export function dedupeOptionsByName<T extends { name: string; is_active?: boolean }>(options: T[]): T[] {
   const byName = new Map<string, T>();
   for (const opt of options) {
-    const key = (opt.name || '').trim().toLowerCase();
+    const key = optionKey(opt.name);
     const existing = byName.get(key);
     if (!existing || (existing.is_active === false && opt.is_active !== false)) byName.set(key, opt);
   }
   // Preserve the original display order
-  return options.filter(opt => byName.get((opt.name || '').trim().toLowerCase()) === opt);
+  return options.filter(opt => byName.get(optionKey(opt.name)) === opt);
 }
 
 function makeOptionHook(table: string) {
