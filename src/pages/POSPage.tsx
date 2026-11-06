@@ -1,4 +1,5 @@
 import { useState, useEffect, useReducer, useRef, memo, useMemo, useCallback } from 'react';
+import { Pencil, Tag, Lock, BarChart3, Receipt, Keyboard, RefreshCw, Settings, ChevronLeft } from 'lucide-react';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { useCreateOrder, generateOrderNumber, useOrders, useDrinks } from '@/hooks/useSupabaseData';
 import {
@@ -72,6 +73,14 @@ const THEME_LABELS: Record<ThemeKey,string> = {
 // Light theme. Saved colors live under a new key so old dark palettes are ignored.
 const THEME_STORAGE_KEY = 'pos-theme-v2';
 const PAY_GREEN = '#16a34a';
+
+// Boutons de la barre du haut : tous identiques (même hauteur, même couleur).
+const HDR_BTN: React.CSSProperties = {
+  height: 40, padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: 6,
+  background: '#ffffff', border: '1px solid #d6dae0', borderColor: '#d6dae0', borderRadius: 8,
+  color: '#1a1d23', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer', flexShrink: 0,
+};
+const HDR_ICON: React.CSSProperties = { ...HDR_BTN, width: 40, padding: 0, justifyContent: 'center' };
 
 const S = {
   ...DEFAULT_THEME,
@@ -5731,109 +5740,85 @@ function POSContent() {
         onCollapse={()=>setLeftCollapsed(true)} onExpand={()=>setLeftCollapsed(false)}>
       <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, overflow:'hidden' }}>
 
-        {/* ── Top Header Bar: Logo + System Buttons + Last Order ── */}
-        <div className="pos-glassy-panel" style={{
+        {/* ── Top Header Bar: one row, identical buttons ── */}
+        <div style={{
           display: 'flex',
-          flexWrap: 'wrap',
+          flexWrap: 'nowrap',
           alignItems: 'center',
-          gap: 6,
-          padding: '8px 12px',
+          gap: 5,
+          padding: '6px 10px',
           background: S.panel,
           borderBottom: `1px solid ${S.border}`,
           flexShrink: 0,
+          overflowX: 'auto',
         }}>
-          <span style={{ fontSize: 18, fontWeight: 900, color: S.text, background: S.accent, padding: '4px 10px', borderRadius: 8, whiteSpace: 'nowrap' }}>TWIN PIZZA</span>
-
           {lastOrder && (
-            <span style={{ background:'#dcfce7', color:'#15803d', border:'1px solid #86efac', padding:'4px 10px', borderRadius:6, fontSize:14, fontWeight:700 }}>
-              ✅ #{lastOrder}
+            <span title="Dernière commande" style={{ ...HDR_BTN, cursor:'default', fontWeight:700, color:'#15803d', borderColor:'#bbf7d0', background:'#f0fdf4' }}>
+              #{lastOrder}
             </span>
           )}
 
           {pendingSyncCount > 0 && (
             <button
-              title="Commandes en attente de synchronisation sur cette caisse"
+              title="Commandes en attente de synchronisation sur cette caisse (cliquer pour synchroniser)"
               onClick={async () => {
                 const res = await syncPendingPOSOrders();
                 checkPendingCount();
                 if (res.synced > 0) toast.success(`✅ ${res.synced} commande(s) synchronisée(s) !`);
               }}
-              style={{
-                background: '#ef4444',
-                color: '#fff',
-                padding: '6px 10px',
-                borderRadius: 6,
-                fontSize: 14,
-                fontWeight: 900,
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-              }}
+              style={{ ...HDR_BTN, background:'#dc2626', borderColor:'#dc2626', color:'#fff' }}
             >
-              🔄 {pendingSyncCount} en attente (cliquer pour synchroniser)
+              <RefreshCw size={16} /> {pendingSyncCount} en attente
             </button>
           )}
 
           <div style={{ flex: 1 }} />
 
-          <button title="Éditer le menu en direct" onClick={() => setShowQuickEdit(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:14, fontWeight:800, color:'#0369a1', borderColor:'#38bdf833', background:'#38bdf811', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
-            ✏️ Éditer Menu
+          <button title="Éditer le menu en direct" onClick={() => setShowQuickEdit(true)} style={HDR_BTN}>
+            <Pencil size={16} /> Menu
           </button>
           <button
-            title={waStatus === 'connected' ? 'WhatsApp Connecté (cliquez pour détails)' : 'WhatsApp Déconnecté / QR Code (cliquez pour scanner)'}
+            title={waStatus === 'connected' ? 'WhatsApp connecté' : (waStatus === 'qr' ? 'WhatsApp : QR code à scanner' : 'WhatsApp déconnecté')}
             onClick={() => setShowWaModal(true)}
-            className="pos-btn-interactive"
-            style={{
-              ...S.btn,
-              padding: '8px 9px',
-              fontSize: 14,
-              fontWeight: 800,
-              color: waStatus === 'connected' ? '#15803d' : (waStatus === 'qr' ? '#c2410c' : '#dc2626'),
-              borderColor: waStatus === 'connected' ? '#22c55e44' : (waStatus === 'qr' ? '#f9731644' : '#ef444444'),
-              background: waStatus === 'connected' ? '#22c55e11' : (waStatus === 'qr' ? '#f9731611' : '#ef444411'),
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              whiteSpace: 'nowrap',
-            }}
+            style={HDR_BTN}
           >
-            {waStatus === 'connected' ? '🟢 WhatsApp' : (waStatus === 'qr' ? '📱 Scan QR WA' : '💬 WhatsApp Off')}
+            <span style={{ width:9, height:9, borderRadius:5, background: waStatus === 'connected' ? '#16a34a' : (waStatus === 'qr' ? '#ea580c' : '#dc2626') }} />
+            WhatsApp
           </button>
-          <button title="Imprimer directement les 12 étiquettes d'ingrédients" onClick={handlePrintIngredientLabelsPOS} disabled={printingIngredientsPOS} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:14, fontWeight:800, color:'#15803d', borderColor:'#22c55e33', background:'#22c55e11', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
-            🏷️ 12 Étiquettes
+          <button title="Imprimer les 12 étiquettes d'ingrédients" onClick={handlePrintIngredientLabelsPOS} disabled={printingIngredientsPOS} style={{ ...HDR_BTN, opacity: printingIngredientsPOS ? 0.5 : 1 }}>
+            <Tag size={16} /> Étiquettes
           </button>
-          <button title="Ouvrir le clavier virtuel tactile" onClick={toggleKeyboard} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:14, fontWeight:800, color:'#b45309', borderColor:'#f59e0b33', background:'#f59e0b11', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
-            ⌨️ Clavier
+          <button title="Clôture de caisse X/Z" onClick={() => setShowCloture(true)} style={HDR_BTN}>
+            <Lock size={16} /> Clôture
           </button>
-          <button title="Clôture de Caisse X/Z" onClick={() => setShowCloture(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:14, fontWeight:800, color:'#7e22ce', borderColor:'#a855f733', background:'#a855f711', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
-            🔒 Clôture
+          <button title="Historique et statistiques" onClick={() => setShowHistory(true)} style={HDR_BTN}>
+            <BarChart3 size={16} /> Stats
           </button>
-          <button title="Historique & Statistiques" onClick={() => setShowHistory(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:14, fontWeight:800, color:S.accentText, borderColor:S.accent+'33', background:S.accent+'11', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
-            📊 Stats
+          <button title="Factures" onClick={() => setShowFacture(true)} style={HDR_BTN}>
+            <Receipt size={16} /> Factures
           </button>
-          <button title="Factures" onClick={() => setShowFacture(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:16 }}>🧾</button>
+          <button title="Clavier tactile" aria-label="Clavier tactile" onClick={toggleKeyboard} style={HDR_ICON}>
+            <Keyboard size={18} />
+          </button>
           {typeof window !== 'undefined' && 'twinHub' in window && (
             <button
-              title="Clic = MAJ rapide · Clic droit = détails"
+              title="Mettre à jour (clic droit : détails)"
+              aria-label="Mettre à jour"
               onClick={quickUpdate}
               onContextMenu={(e) => { e.preventDefault(); setShowUpdateModal(true); setUpdateAvailable(false); }}
               disabled={quickUpdating}
-              className="pos-btn-interactive"
-              style={{
-                ...S.btn, padding:'8px 9px', fontSize:16, position:'relative',
-                border: updateAvailable ? `1px solid ${S.accent}` : S.btn.border,
-                opacity: quickUpdating ? 0.5 : 1,
-                animation: quickUpdating ? 'spin 1s linear infinite' : 'none',
-              }}
+              style={{ ...HDR_ICON, position:'relative', opacity: quickUpdating ? 0.5 : 1, borderColor: updateAvailable ? S.accent : HDR_ICON.borderColor }}
             >
-              🔄
-              {updateAvailable && <span style={{ position:'absolute', top:-2, right:-2, background:'#ef4444', width:6, height:6, borderRadius:'50%', border:'1px solid #f7f8fa' }} />}
+              <RefreshCw size={18} />
+              {updateAvailable && <span style={{ position:'absolute', top:4, right:4, background:'#dc2626', width:7, height:7, borderRadius:'50%' }} />}
             </button>
           )}
-          <button title="Personnaliser" onClick={()=>setShowSettings(true)} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:16 }}>⚙️</button>
-          <button title="Replier" onClick={toggleLeft} className="pos-btn-interactive" style={{ ...S.btn, padding:'8px 9px', fontSize:16 }}>⟨</button>
+          <button title="Réglages" aria-label="Réglages" onClick={()=>setShowSettings(true)} style={HDR_ICON}>
+            <Settings size={18} />
+          </button>
+          <button title="Replier" aria-label="Replier" onClick={toggleLeft} style={HDR_ICON}>
+            <ChevronLeft size={18} />
+          </button>
         </div>
 
         {/* ── Horizontal Category Bar with Images ── */}
