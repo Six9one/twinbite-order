@@ -943,8 +943,8 @@ const WIZ_CFG: Record<WizType, { maxMeats:number; garniture:boolean; supplements
 const FREE_SAUCES = supplementPrices.freeSaucesCount, EXTRA_SAUCE = supplementPrices.extraSauce;
 
 // Small option tile with image/emoji (compact, dark)
-function OptTile({ name, img, emoji, selected, isDefaultRemovable, price, disabled, onClick }:
-  { name:string; img?:string|null; emoji?:string; selected:boolean; isDefaultRemovable?:boolean; price?:number; disabled?:boolean; onClick:()=>void }) {
+function OptTile({ name, img, emoji, selected, isDefaultRemovable, price, disabled, forbidden, onClick }:
+  { name:string; img?:string|null; emoji?:string; selected:boolean; isDefaultRemovable?:boolean; price?:number; disabled?:boolean; forbidden?:boolean; onClick:()=>void }) {
   const ring = selected ? (isDefaultRemovable ? '#22c55e' : S.accent) : '#dfe3e8';
   return (
     <button onClick={disabled ? undefined : onClick} disabled={disabled} style={{
@@ -956,9 +956,17 @@ function OptTile({ name, img, emoji, selected, isDefaultRemovable, price, disabl
       {selected && <span style={{ position:'absolute', top:3, right:3, width:15, height:15, borderRadius:99,
         background: isDefaultRemovable ? '#ef4444' : S.accent, color:isDefaultRemovable ? '#fff' : '#000', fontSize:13, fontWeight:800,
         display:'flex', alignItems:'center', justifyContent:'center' }}>{isDefaultRemovable?'✕':'✓'}</span>}
-      {img
-        ? <img src={img} alt={name} loading="lazy" style={{ width:46, height:46, borderRadius:7, objectFit:'cover', display:'block', margin:'0 auto 3px', background:'#eef0f3' }} />
-        : <div style={{ width:46, height:46, borderRadius:7, background:'#f7f8fa', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, margin:'0 auto 3px' }}>{emoji||'•'}</div>}
+      <div style={{ position:'relative', width:46, height:46, margin:'0 auto 3px' }}>
+        {img
+          ? <img src={img} alt={name} loading="lazy" style={{ width:46, height:46, borderRadius:7, objectFit:'cover', display:'block', background:'#eef0f3' }} />
+          : <div style={{ width:46, height:46, borderRadius:7, background:'#f7f8fa', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}>{emoji||'•'}</div>}
+        {forbidden && (
+          <svg viewBox="0 0 46 46" width={46} height={46} style={{ position:'absolute', inset:0, pointerEvents:'none' }} aria-hidden="true">
+            <circle cx="23" cy="23" r="19" fill="none" stroke="#dc2626" strokeWidth="4" />
+            <line x1="10" y1="36" x2="36" y2="10" stroke="#dc2626" strokeWidth="4" />
+          </svg>
+        )}
+      </div>
       <div style={{ fontSize:14, fontWeight:700, color: selected?(isDefaultRemovable?'#22c55e':S.accentText):S.text, lineHeight:1.1 }}>{name}</div>
       {price !== undefined && price > 0 && <div style={{ fontSize:13, color:S.accentText, fontWeight:800 }}>+{price.toFixed(2)}€</div>}
     </button>
@@ -972,6 +980,47 @@ function SectionTitle({ children, hint }: { children:React.ReactNode; hint?:stri
       {hint && <span style={{ fontSize:14, color:S.muted }}>{hint}</span>}
     </div>
   );
+}
+
+// ── Viandes / sauces / suppléments des wraps (décidé par safouane le 06/11/2026) ──
+const normName = (n:string) => (n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const SANS_SAUCE = '__sans_sauce';
+const SANS_FROMAGERE = '__sans_sauce_fromagere';
+// Viandes affichées, dans cet ordre. Le Panini propose aussi « 4 Fromages ».
+const WRAP_MEATS: { key:string; label:string; emoji:string }[] = [
+  { key:'escalope',      label:'Escalope',      emoji:'🍗' },
+  { key:'tenders',       label:'Tenders',       emoji:'🍗' },
+  { key:'viande hachee', label:'Viande hachée', emoji:'🥩' },
+  { key:'merguez',       label:'Merguez',       emoji:'🌭' },
+  { key:'cordon bleu',   label:'Cordon bleu',   emoji:'🍗' },
+  { key:'nuggets',       label:'Nuggets',       emoji:'🍗' },
+  { key:'jambon',        label:'Jambon',        emoji:'🥓' },
+];
+function buildWrapMeats(type:string, dbMeats:any[], dbSupps:any[]) {
+  const list = type === 'panini' ? [...WRAP_MEATS, { key:'4 fromages', label:'4 Fromages', emoji:'🧀' }] : WRAP_MEATS;
+  return list.map(w => {
+    const m = dbMeats.find((x:any) => normName(x.name) === w.key);
+    // Jambon et 4 Fromages ne sont pas dans la table des viandes : photo prise dans les suppléments.
+    const imgKey = w.key === '4 fromages' ? 'mozzarella' : w.key;
+    const img = m?.image_url || dbSupps.find((x:any) => normName(x.name).includes(imgKey))?.image_url || null;
+    return { id: m?.id || `meat-${w.key}`, name: w.label, img, emoji: w.emoji, is_active: m ? m.is_active !== false : true };
+  });
+}
+// Suppléments des wraps : fromage 1 €, viande 1,50 €, garnitures incluses (0 €).
+const SUPP_MEAT_WORDS = ['jambon','lardon','bacon','viande','poulet','escalope','merguez','chorizo','thon','kebab','steak','dinde','tenders','nuggets','cordon'];
+const SUPP_CHEESE_WORDS = ['fromage','chevre','raclette','reblochon','mozzarella','cheddar','boursin','emmental','gruyere','feta','brie'];
+function wrapSupplementPrice(name:string):number {
+  const n = normName(name);
+  if (SUPP_MEAT_WORDS.some(w => n.includes(w))) return supplementPrices.viande;
+  if (SUPP_CHEESE_WORDS.some(w => n.includes(w))) return supplementPrices.fromage;
+  return 0;
+}
+// « Sans sauce » exclut les autres sauces ; « Sans sauce fromagère » se combine avec elles.
+function toggleSauce(prev:string[], id:string):string[] {
+  if (prev.includes(id)) return prev.filter(x => x !== id);
+  if (id === SANS_SAUCE) return prev.includes(SANS_FROMAGERE) ? [SANS_FROMAGERE, SANS_SAUCE] : [SANS_SAUCE];
+  if (id === SANS_FROMAGERE) return [...prev, id];
+  return [...prev.filter(x => x !== SANS_SAUCE), id];
 }
 
 function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item:any,custom:any,price:number)=>void }) {
@@ -990,9 +1039,15 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
   const { data: dbGarn = [] }    = useGarnitureOptions();
   const { data: dbCrud = [] }    = useCruditesOptions();
 
-  const meats  = dbMeats.map((m:any) => ({ id:m.id, name:m.name, img:m.image_url, price:Number(m.price)||0, is_active: m.is_active !== false }));
-  const sauces = dbSauces.map((s:any) => ({ id:s.id, name:s.name, img:s.image_url }));
-  const supps  = dbSupps.map((s:any) => ({ id:s.id, name:s.name, img:s.image_url, price:Number(s.price)||0 }));
+  const supps  = dbSupps.map((s:any) => ({ id:s.id, name:s.name, img:s.image_url, price:wrapSupplementPrice(s.name) }));
+  const meats  = useMemo(() => buildWrapMeats(type, dbMeats, dbSupps), [type, dbMeats, dbSupps]);
+  const dbSauceList = dbSauces.map((s:any) => ({ id:s.id, name:s.name, img:s.image_url }));
+  const fromagere = dbSauceList.find(s => normName(s.name).includes('fromag'));
+  const sauces = [
+    { id:SANS_SAUCE, name:'Sans sauce', img:null as string|null, forbidden:false, emoji:'🚫' },
+    { id:SANS_FROMAGERE, name:'Sans sauce fromagère', img:fromagere?.img || null, forbidden:true, emoji:'🧀' },
+    ...dbSauceList.map(s => ({ ...s, forbidden:false, emoji:'🥫' })),
+  ];
   const garnSrc = (isCrudite ? dbCrud : dbGarn).map((g:any) => ({ id:g.id, name:g.name, img:g.image_url, price:Number(g.price)||0 }));
 
   const defaults = WIZ_GARN_DEFAULTS[type];
@@ -1009,7 +1064,8 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
 
   const meatCount = Math.max(1, selMeats.length);
   const sizeCfg = sizes.find(s => s.maxMeats === meatCount) || sizes[Math.min(meatCount,sizes.length)-1] || sizes[0];
-  const sauceSurcharge = Math.max(0, selSauces.length - FREE_SAUCES) * EXTRA_SAUCE;
+  const realSauceCount = selSauces.filter(id => id !== SANS_SAUCE && id !== SANS_FROMAGERE).length;
+  const sauceSurcharge = Math.max(0, realSauceCount - FREE_SAUCES) * EXTRA_SAUCE;
   const suppTotal = selSupps.reduce((t,id) => t + (supps.find(s=>s.id===id)?.price||0), 0);
   const extraGarnTotal = selExtra.reduce((t,id) => t + (extraGarn.find(g=>g.id===id)?.price||0), 0);
   const price = sizeCfg.price + menuOptionPrices[menu] + suppTotal + sauceSurcharge + extraGarnTotal;
@@ -1062,7 +1118,7 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
               {meats.map(m => {
                 const outOfStock = m.is_active === false;
                 return (
-                  <OptTile key={m.id} name={outOfStock ? `${m.name} (RUPTURE)` : m.name} img={m.img} emoji="🥩"
+                  <OptTile key={m.id} name={outOfStock ? `${m.name} (RUPTURE)` : m.name} img={m.img} emoji={m.emoji}
                     selected={selMeats.includes(m.id)}
                     disabled={outOfStock || (selMeats.length >= maxMeats && !selMeats.includes(m.id))}
                     onClick={()=>toggle(m.id, selMeats, setMeats, maxMeats)} />
@@ -1096,9 +1152,9 @@ function WizardPanel({ categorySlug, onAdd }: { categorySlug:string; onAdd:(item
             <SectionTitle hint={`${FREE_SAUCES} gratuites, +${EXTRA_SAUCE.toFixed(2)}€ ensuite`}>Sauces</SectionTitle>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(68px,1fr))', gap:6, marginBottom:12 }}>
               {sauces.map(s => (
-                <OptTile key={s.id} name={s.name} img={s.img} emoji="🥫"
+                <OptTile key={s.id} name={s.name} img={s.img} emoji={s.emoji} forbidden={s.forbidden}
                   selected={selSauces.includes(s.id)}
-                  onClick={()=>toggle(s.id, selSauces, setSauces)} />
+                  onClick={()=>setSauces(prev => toggleSauce(prev, s.id))} />
               ))}
             </div>
 
@@ -1677,8 +1733,8 @@ function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void
   const [notes, setNotes] = useState<Record<string,string>>({});
 
   const displayDrinks = useMemo(() => BOISSON_ITEMS.map(b => {
-    const img = (dbDrinks || []).find((d:any) => d.image_url && b.match.some(m => d.name.toLowerCase().includes(m)))?.image_url || null;
-    return { ...b, img };
+    // Dessins de bouteilles / canettes fournis dans public/drinks.
+    return { ...b, img: `/drinks/${b.id}.svg` };
   }), [dbDrinks]);
 
   const changeQty = (id:string, d:number) =>
@@ -1716,7 +1772,7 @@ function BoissonPanel({ onAdd }:{ onAdd:(item:any,custom:any,price:number)=>void
                   border:`2px solid ${q>0?S.accent:S.border}`,
                 }}>
                   {b.img
-                    ? <img src={b.img} alt="" style={{ width:72, height:72, objectFit:'contain' }} />
+                    ? <img src={b.img} alt="" style={{ width:84, height:96, objectFit:'contain' }} />
                     : <span style={{ fontSize:48, lineHeight:'72px' }}>{b.emoji}</span>}
                   <span style={{ fontSize:16, fontWeight:700, color:S.text, textAlign:'center' }}>{b.name}</span>
                   <span style={{ fontSize:17, fontWeight:800, color:S.accentText }}>{b.price.toFixed(2)}€</span>
