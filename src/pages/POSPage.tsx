@@ -1,5 +1,6 @@
 import { useState, useEffect, useReducer, useRef, memo, useMemo, useCallback } from 'react';
-import { Pencil, Tag, Lock, BarChart3, Receipt, Keyboard, RefreshCw, Settings, ChevronLeft } from 'lucide-react';
+import { Pencil, Tag, Lock, BarChart3, Receipt, Keyboard, RefreshCw, Settings, ChevronLeft, Wallet } from 'lucide-react';
+import EncaisserModal from '@/components/pos/EncaisserModal';
 import { OrderProvider, useOrder } from '@/context/OrderContext';
 import { useCreateOrder, generateOrderNumber, useOrders, useDrinks } from '@/hooks/useSupabaseData';
 import {
@@ -11,7 +12,8 @@ import {
   getSourceBadgeProps,
   getSourceLabel,
 } from '@/lib/orderUtils';
-import { syncPendingPOSOrders } from '@/lib/orderSync';
+import { syncPendingPOSOrders, insertPOSOrder, removeFromPendingQueue } from '@/lib/orderSync';
+import { splitPayment, isFiscallyLocked } from '@/lib/fiscal';
 import { supabase } from '@/integrations/supabase/client';
 import { useCategories, useProductsByCategory } from '@/hooks/useProducts';
 import { useCategoryImages } from '@/hooks/useCategoryImages';
@@ -4571,6 +4573,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
   }, [stats.items.list, itemSearch]);
 
   const handlePrintReport = async (type: 'X' | 'Z') => {
+    if (type === 'Z' && !window.confirm('La clôture Z est définitive : elle fige toutes les ventes depuis le dernier Z. Continuer ?')) return;
     setPrinting(true);
     const nowStr = new Date().toLocaleString('fr-FR');
     const reportTitle = type === 'X' ? 'RAPPORT X (POINTAGE INTERMÉDIAIRE)' : 'RAPPORT Z (CLÔTURE DE JOURNÉE)';
@@ -4605,6 +4608,8 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
       cbCount: stats.payments.cb.count,
       enLigneTotal: stats.payments.enLigne.total.toFixed(2),
       enLigneCount: stats.payments.enLigne.count,
+      discountTotal: stats.discounts.manual.toFixed(2),
+      promoDiscountTotal: stats.discounts.promo.toFixed(2),
       // Order types
       surPlaceCount: stats.byType.surplace?.count || 0,
       surPlaceTotal: (stats.byType.surplace?.revenue || 0).toFixed(2),
@@ -4628,6 +4633,52 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
     };
 
     try {
+      // 0. Z : enregistrer d'abord la clôture fiscale figée en base (NF525).
+      //    Elle couvre tous les tickets depuis le Z précédent, avec le grand total perpétuel.
+      let fiscalHtml = '';
+      if (type === 'Z') {
+        const { data: z, error: zErr } = await (supabase as any).rpc('fiscal_close_day', { p_business_date: bizDate });
+        if (zErr && zErr.code !== 'PGRST202' && zErr.code !== '42883') {
+          toast.error(`Clôture fiscale non enregistrée : ${zErr.message}`);
+          return;
+        }
+        if (zErr) {
+          toast.warning('Base pas encore mise à jour : Z imprimé sans clôture fiscale');
+        } else if (z) {
+          const vat = Object.entries(z.vat_breakdown || {}).map(([rate, v]: [string, any]) => ({
+            rate, ht: Number(v.ht).toFixed(2), tva: Number(v.tva).toFixed(2),
+          }));
+          (printPayload as any).fiscal = {
+            closureNumber: z.closure_number,
+            firstTicket: z.first_ticket,
+            lastTicket: z.last_ticket,
+            ticketCount: z.ticket_count,
+            salesTtc: Number(z.sales_ttc).toFixed(2),
+            avoirsTtc: Number(z.avoirs_ttc).toFixed(2),
+            netTtc: Number(z.net_ttc).toFixed(2),
+            netHt: Number(z.net_ht).toFixed(2),
+            vat,
+            cash: Number(z.payment_cash).toFixed(2),
+            card: Number(z.payment_card).toFixed(2),
+            grandTotal: Number(z.grand_total_ttc).toFixed(2),
+            hash: z.hash,
+          };
+          const f = (printPayload as any).fiscal;
+          fiscalHtml = `
+            <div style="font-weight:bold;font-size:12px;margin-bottom:3px;">CLÔTURE FISCALE Z N° ${f.closureNumber}</div>
+            <div style="font-size:11px;">
+              <div>Tickets ${f.firstTicket} à ${f.lastTicket} (${f.ticketCount})</div>
+              <div>Ventes TTC : ${f.salesTtc} € · Avoirs : ${f.avoirsTtc} €</div>
+              <div><strong>Net TTC : ${f.netTtc} €</strong> · HT : ${f.netHt} €</div>
+              ${vat.map(v => `<div>TVA ${v.rate} % : ${v.tva} € (HT ${v.ht} €)</div>`).join('')}
+              <div>Espèces : ${f.cash} € · Carte : ${f.card} €</div>
+              <div><strong>Grand total perpétuel : ${f.grandTotal} €</strong></div>
+              <div style="word-break:break-all;font-size:9px;">Empreinte : ${f.hash}</div>
+            </div>
+            <hr style="border:none;border-top:1px dashed #000;margin:6px 0;" />`;
+        }
+      }
+
       // 1. Try sending directly to print-server
       let printedServer = false;
       try {
@@ -4687,6 +4738,22 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
               <div style="display:flex;justify-content:space-between;font-size:10px;color:#666;">
                 <span>Annulées (hors CA) :</span>
                 <span>${stats.cancelledOrdersCount} cmd (${stats.cancelledRevenue.toFixed(2)} €)</span>
+              </div>
+            ` : ''}
+            ${stats.payments.nonEncaisse.count > 0 ? `
+              <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:bold;">
+                <span>Non encaissées (borne/site) :</span>
+                <span>${stats.payments.nonEncaisse.count} cmd (${stats.payments.nonEncaisse.total.toFixed(2)} €)</span>
+              </div>
+            ` : ''}
+            ${(stats.discounts.manual + stats.discounts.promo) > 0 ? `
+              <div style="display:flex;justify-content:space-between;font-size:11px;">
+                <span>Remises caisse :</span>
+                <span>${stats.discounts.manual.toFixed(2)} €</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;">
+                <span>Offre pizzas :</span>
+                <span>${stats.discounts.promo.toFixed(2)} €</span>
               </div>
             ` : ''}
 
@@ -4770,13 +4837,13 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
             </div>
             ${itemsRowsHtml || '<div style="font-size:10px;color:#777;">Aucun article</div>'}
 
+            <!--FISCAL-->
             <hr style="border:none;border-top:1px dashed #000;margin:8px 0;" />
             <div style="text-align:center;font-size:10px;color:#444;">
-              Document certifié - TWIN PIZZA<br/>
               Fin de rapport
             </div>
           </div>
-        `;
+        `.replace('<!--FISCAL-->', fiscalHtml);
 
         const iframe = document.createElement('iframe');
         iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
@@ -4803,7 +4870,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
             turnover: stats.totalRevenue
           }));
         } catch {}
-        toast.success('🔒 Clôture de journée Z enregistrée avec succès');
+        toast.success((printPayload as any).fiscal ? `🔒 Clôture Z n° ${(printPayload as any).fiscal.closureNumber} enregistrée` : '🔒 Rapport Z imprimé');
         onClose();
       }
     } catch (e: any) {
@@ -5236,6 +5303,7 @@ function POSContent() {
   const [showHistory, setShowHistory] = useState(false);
   const [showFacture,  setShowFacture]  = useState(false);
   const [showCloture,  setShowCloture]  = useState(false);
+  const [showEncaisser, setShowEncaisser] = useState(false);
   const [showQuickEdit, setShowQuickEdit] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [waStatus, setWaStatus] = useState<string>('disconnected');
@@ -5636,19 +5704,13 @@ function POSContent() {
   // A background loop retries failed Supabase writes indefinitely.
   const retryOrderToSupabase = async (payload: any, attempt = 1): Promise<void> => {
     try {
-      const { _savedAt, payment_details, ...cleanPayload } = payload;
-      const { error } = await (supabase as any)
-        .from('orders')
-        .insert(cleanPayload, { returning: 'minimal' });
-      if (error) throw error;
-      // Sync: remove from pending queue
-      try {
-        const pending = JSON.parse(localStorage.getItem('pos-pending-orders') || '[]');
-        const updated = pending.filter((o: any) => o.order_number !== payload.order_number);
-        localStorage.setItem('pos-pending-orders', JSON.stringify(updated));
-      } catch {}
+      const { ok, error } = await insertPOSOrder(payload);
+      if (!ok) throw error;
+      removeFromPendingQueue(payload.order_number);
     } catch {
-      // Exponential backoff: 1s, 2s, 4s … capped at 30s
+      // Exponential backoff: 1s, 2s, 4s … capped at 30s, stop after 10 tries
+      // (the 4 s background sync keeps retrying the pending queue anyway).
+      if (attempt >= 10) return;
       const delay = Math.min(1000 * Math.pow(2, attempt - 1), 30000);
       setTimeout(() => retryOrderToSupabase(payload, attempt + 1), delay);
     }
@@ -5669,6 +5731,7 @@ function POSContent() {
     try {
       const orderNumber = await generateOrderNumber();
       const { ht: fHt, tva: fTva } = calculateTVA(total);
+      const paid = splitPayment(payMethod, total, splitCash || 0, splitCard || 0);
       const splitNote = payMethod === 'divise' ? `[Divisé: Espèces ${Number(splitCash || 0).toFixed(2)}€ / CB ${Number(splitCard || 0).toFixed(2)}€]` : '';
       const finalNotes = [notes.trim(), splitNote].filter(Boolean).join(' ');
 
@@ -5685,6 +5748,12 @@ function POSContent() {
         tva: fTva,
         total,
         delivery_fee: 0,
+        // NF525 : montants encaissés et remises enregistrés à part
+        payment_cash: paid.cash,
+        payment_card: paid.card,
+        discount_amount: Math.round(discountAmt * 100) / 100,
+        promo_discount: Math.round(pizzaSaving * 100) / 100,
+        paid_at: new Date().toISOString(),
         status: 'pending',
         is_scheduled: false,
         scheduled_for: null,
@@ -5774,6 +5843,9 @@ function POSContent() {
 
           <div style={{ flex: 1 }} />
 
+          <button title="Encaisser les commandes borne et site" onClick={() => setShowEncaisser(true)} style={HDR_BTN}>
+            <Wallet size={16} /> À encaisser
+          </button>
           <button title="Éditer le menu en direct" onClick={() => setShowQuickEdit(true)} style={HDR_BTN}>
             <Pencil size={16} /> Menu
           </button>
@@ -5941,6 +6013,7 @@ function POSContent() {
       {showHistory && <HistoryPanel onClose={()=>setShowHistory(false)} />}
       {showFacture && <FactureHubModal onClose={()=>setShowFacture(false)} />}
       {showCloture && <ClotureCaisseModal onClose={() => setShowCloture(false)} />}
+      {showEncaisser && <EncaisserModal onClose={() => setShowEncaisser(false)} />}
       {showUpdateModal && <UpdatePanel onClose={()=>setShowUpdateModal(false)} />}
       {showWaModal && <WhatsAppModal status={waStatus} qr={waQr} onClose={() => setShowWaModal(false)} />}
       {customizingPizza && (

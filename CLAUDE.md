@@ -54,3 +54,9 @@ npm run preview    # Prévisualise le build de production
 ## 🧩 Options des assistants (viandes, sauces, garnitures…)
 - Chargées par `src/hooks/useCustomizationOptions.ts` (toutes les lignes, actives ou non) puis dédoublonnées par nom (`dedupeOptionsByName`, la ligne active l'emporte). La base contient des doublons : les nettoyer dans l'admin plutôt que de retirer ce garde-fou.
 
+
+## 🔒 Loi anti-fraude (NF525)
+- Une commande encaissée (`paid_at` rempli, ou saisie en caisse `[POS]`) est verrouillée par le trigger `orders_fiscal_guard` : montants, articles, paiement, numéro et date ne changent plus, aucune commande ne se supprime. Corriger = annuler avec motif, puis refaire.
+- Paiement : `payment_cash` / `payment_card` (lus par `getOrderPayment`, `src/lib/fiscal.ts`). Commandes borne/site encaissées via « À encaisser » dans la caisse.
+- Journal en ajout seul `fiscal_events`, chaîné SHA-256 ; contrôle : `SELECT * FROM fiscal_verify_events();`.
+- Tickets fiscaux `fiscal_tickets` (VENTE à l'encaissement, AVOIR négatif à l'annulation, jamais d'UPDATE), Z figés `fiscal_closures` via `fiscal_close_day` (bouton Z de la caisse) avec grand total perpétuel. Contrôle complet : `SELECT * FROM fiscal_verify_all();` ou `node scripts/nf525-verifier.mjs`.
