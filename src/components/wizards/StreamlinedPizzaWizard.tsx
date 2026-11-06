@@ -345,6 +345,7 @@ export function StreamlinedPizzaWizard({ onClose, lockedSize }: StreamlinedPizza
                   : `${selectedSize === 'mega' ? 'Mega 40cm' : 'Senior 31cm'}`
               }
               isKiosk={false}
+              isMega={selectedSize === 'mega' && !selectedIsMenuMidi}
               initialBase={customizingPizza.base || activeBase}
               onBack={() => setCustomizingPizza(null)}
             onConfirm={(removed, extras, noteText, chosenBase) => {

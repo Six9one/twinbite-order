@@ -5903,6 +5903,7 @@ function POSContent() {
               basePrice={customizingPizza.basePrice}
               formatLabel={customizingPizza.formatLabel}
               initialBase={customizingPizza.initialBase}
+              isMega={customizingPizza.size === 'mega'}
               onConfirm={(removedIngredients, addedExtras, note, base) => {
                 const sizeLabel = customizingPizza.formatLabel;
                 const extrasTotal = addedExtras.reduce((sum, e) => sum + e.price, 0);

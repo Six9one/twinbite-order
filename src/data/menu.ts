@@ -352,25 +352,46 @@ export const supplementOptions = [
 ];
 
 // ============= PIZZA INGREDIENT SUPPLEMENTS =============
-// Extras that can be added to any pizza during customization
-export const pizzaIngredientSupplements = [
-  { id: "pi-fromage", name: "Extra Fromage", emoji: "🧀", price: 1.00 },
-  { id: "pi-viande", name: "Extra Viande", emoji: "🥩", price: 1.50 },
-  { id: "pi-sauce", name: "Sauce Supplémentaire", emoji: "🫙", price: 0.50 },
-  { id: "pi-champignons", name: "Champignons", emoji: "🍄", price: 0.50 },
-  { id: "pi-olives", name: "Olives", emoji: "🫒", price: 0.50 },
-  { id: "pi-poivrons", name: "Poivrons", emoji: "🫑", price: 0.30 },
-  { id: "pi-oignons", name: "Oignons", emoji: "🧅", price: 0.30 },
-  { id: "pi-oeuf", name: "Œuf", emoji: "🥚", price: 1.00 },
-  { id: "pi-mozzarella", name: "Mozzarella extra", emoji: "⚪", price: 1.00 },
-  { id: "pi-jambon", name: "Jambon", emoji: "🥓", price: 1.00 },
-  { id: "pi-lardons", name: "Lardons", emoji: "🥓", price: 1.00 },
-  { id: "pi-merguez", name: "Merguez", emoji: "🌭", price: 1.00 },
-  { id: "pi-poulet", name: "Poulet", emoji: "🍗", price: 1.00 },
-  { id: "pi-chorizo", name: "Chorizo", emoji: "🌶️", price: 1.00 },
-  { id: "pi-thon", name: "Thon", emoji: "🐟", price: 1.00 },
-  { id: "pi-chevre", name: "Chèvre", emoji: "🧀", price: 1.00 },
+// Extras that can be added to any pizza during customization.
+// Prix Senior (et Menu Midi) : viande 1,50 €, fromage 1,00 €, garniture 1,00 €, sauce 0,30 €.
+// Pizza Mega (hors Menu Midi) : le double, sauf la sauce (0,30 €).
+export type PizzaExtraKind = 'viande' | 'fromage' | 'garniture' | 'sauce';
+export const pizzaExtraPrices: Record<PizzaExtraKind, number> = {
+  viande: 1.5,
+  fromage: 1,
+  garniture: 1,
+  sauce: 0.3,
+};
+const PIZZA_EXTRA_LIST: { id: string; name: string; emoji: string; kind: PizzaExtraKind }[] = [
+  { id: "pi-fromage", name: "Extra Fromage", emoji: "🧀", kind: 'fromage' },
+  { id: "pi-viande", name: "Extra Viande", emoji: "🥩", kind: 'viande' },
+  { id: "pi-sauce", name: "Sauce Supplémentaire", emoji: "🫙", kind: 'sauce' },
+  { id: "pi-champignons", name: "Champignons", emoji: "🍄", kind: 'garniture' },
+  { id: "pi-olives", name: "Olives", emoji: "🫒", kind: 'garniture' },
+  { id: "pi-poivrons", name: "Poivrons", emoji: "🫑", kind: 'garniture' },
+  { id: "pi-oignons", name: "Oignons", emoji: "🧅", kind: 'garniture' },
+  { id: "pi-oeuf", name: "Œuf", emoji: "🥚", kind: 'garniture' },
+  { id: "pi-mozzarella", name: "Mozzarella extra", emoji: "⚪", kind: 'fromage' },
+  { id: "pi-jambon", name: "Jambon", emoji: "🥓", kind: 'viande' },
+  { id: "pi-lardons", name: "Lardons", emoji: "🥓", kind: 'viande' },
+  { id: "pi-merguez", name: "Merguez", emoji: "🌭", kind: 'viande' },
+  { id: "pi-poulet", name: "Poulet", emoji: "🍗", kind: 'viande' },
+  { id: "pi-chorizo", name: "Chorizo", emoji: "🌶️", kind: 'viande' },
+  { id: "pi-thon", name: "Thon", emoji: "🐟", kind: 'viande' },
+  { id: "pi-chevre", name: "Chèvre", emoji: "🧀", kind: 'fromage' },
 ];
+
+export function getPizzaIngredientSupplements(isMega = false) {
+  return PIZZA_EXTRA_LIST.map(e => ({
+    id: e.id,
+    name: e.name,
+    emoji: e.emoji,
+    price: pizzaExtraPrices[e.kind] * (isMega && e.kind !== 'sauce' ? 2 : 1),
+  }));
+}
+
+// Senior prices (kept for existing imports)
+export const pizzaIngredientSupplements = getPizzaIngredientSupplements(false);
 
 // ============= CATEGORY CONFIG =============
 export const categoryLabels: Record<MenuCategory, string> = {

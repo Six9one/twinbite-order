@@ -486,6 +486,7 @@ export function PizzaWizard({ onClose, lockedSize, initialPizzaId }: PizzaWizard
         basePrice={format.basePrice}
         formatLabel={formatLabel}
         isKiosk={isKiosk}
+        isMega={format.size === 'mega' && !format.isMenuMidi}
         initialBase={base}
         onBack={() => presetPizza ? onClose() : setStep('SELECT_PIZZA')}
         onConfirm={(removed, extras, noteText, chosenBase) => {

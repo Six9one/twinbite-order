@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { MenuItem } from '@/types/order';
-import { pizzaIngredientSupplements } from '@/data/menu';
+import { pizzaIngredientSupplements, getPizzaIngredientSupplements } from '@/data/menu';
 import { Button } from '@/components/ui/button';
 import { X, Plus, Check, Pizza } from 'lucide-react';
 import { resolveImg } from '@/utils/resolveImg';
@@ -26,6 +26,8 @@ interface PizzaIngredientCustomizerProps {
   onConfirm: (removedIngredients: string[], addedExtras: PizzaExtra[], note: string, base: 'tomate' | 'creme') => void;
   onBack: () => void;
   isKiosk?: boolean;
+  /** Pizza Mega hors Menu Midi : suppléments au double du prix Senior */
+  isMega?: boolean;
 }
 
 const LOCAL_PIZZA_IMAGES: Record<string, string> = {
@@ -184,7 +186,9 @@ export function PizzaIngredientCustomizer({
   onConfirm,
   onBack,
   isKiosk = false,
+  isMega = false,
 }: PizzaIngredientCustomizerProps) {
+  const extrasList = useMemo(() => getPizzaIngredientSupplements(isMega), [isMega]);
   const ingredients = parseIngredients(pizza.description || '');
   const [removedIngredients, setRemovedIngredients] = useState<string[]>([]);
   const [addedExtras, setAddedExtras] = useState<PizzaExtra[]>([]);
@@ -373,7 +377,7 @@ export function PizzaIngredientCustomizer({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 overflow-y-auto max-h-[400px] p-1">
-            {pizzaIngredientSupplements.map(extra => {
+            {extrasList.map(extra => {
               const selected = isExtraSelected(extra.id);
               const imgUrl = findDbImage(extra.name, dbImageMap) || SUPPLEMENT_FALLBACKS[extra.id];
               return (
