@@ -780,7 +780,7 @@ function AdminZReportDialog({ open, onClose, orders }: {
                         ${itemsRowsHtml || '<div style="font-size:10px;color:#777;">Aucun article</div>'}
                         <hr style="border:none;border-top:1px dashed #000;margin:8px 0;" />
                         <div style="text-align:center;font-size:10px;color:#444;">
-                            Document certifié - TWIN PIZZA<br/>Fin de rapport
+                            Fin de rapport
                         </div>
                     </div>
                 `;

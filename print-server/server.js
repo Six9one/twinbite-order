@@ -1695,7 +1695,26 @@ function formatReportTicket(report) {
         t += DASH_42;
     }
 
-    t += ESCPOS_COUNTER.CENTER + 'Document certifie - TWIN PIZZA\n';
+    // Cloture fiscale enregistree en base (NF525) : numero, totaux des tickets, grand total perpetuel
+    if (report.fiscal) {
+        const f = report.fiscal;
+        t += ESCPOS_COUNTER.BOLD_ON + `CLOTURE FISCALE Z N. ${f.closureNumber}\n` + ESCPOS_COUNTER.BOLD_OFF;
+        t += `  Tickets:        ${f.firstTicket} a ${f.lastTicket} (${f.ticketCount})\n`;
+        t += `  Ventes TTC:     ${f.salesTtc} EUR\n`;
+        t += `  Avoirs TTC:     ${f.avoirsTtc} EUR\n`;
+        t += `  Net TTC:        ${f.netTtc} EUR\n`;
+        t += `  Net HT:         ${f.netHt} EUR\n`;
+        (f.vat || []).forEach(v => {
+            t += `  TVA ${v.rate}%:      ${v.tva} EUR (HT ${v.ht})\n`;
+        });
+        t += `  Especes:        ${f.cash} EUR\n`;
+        t += `  Carte:          ${f.card} EUR\n`;
+        t += ESCPOS_COUNTER.BOLD_ON + `  Grand total:    ${f.grandTotal} EUR\n` + ESCPOS_COUNTER.BOLD_OFF;
+        t += `  Empreinte: ${String(f.hash || '').slice(0, 32)}\n`;
+        t += `             ${String(f.hash || '').slice(32, 64)}\n`;
+        t += DASH_42;
+    }
+
     t += ESCPOS_COUNTER.CENTER + '--- Fin de Rapport ---\n\n\n\n';
     t += ESCPOS_COUNTER.PARTIAL_CUT;
 

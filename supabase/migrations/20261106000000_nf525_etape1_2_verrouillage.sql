@@ -89,7 +89,7 @@ REVOKE ALL ON FUNCTION public.fiscal_log_event(TEXT, UUID, TEXT, JSONB) FROM PUB
 CREATE OR REPLACE FUNCTION public.fiscal_events_append_only()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
-  RAISE EXCEPTION 'Journal fiscal : modification et suppression interdites (NF525)';
+  RAISE EXCEPTION 'Données fiscales : modification et suppression interdites (NF525)';
 END;
 $$;
 

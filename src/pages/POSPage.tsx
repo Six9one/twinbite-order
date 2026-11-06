@@ -4573,6 +4573,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
   }, [stats.items.list, itemSearch]);
 
   const handlePrintReport = async (type: 'X' | 'Z') => {
+    if (type === 'Z' && !window.confirm('La clôture Z est définitive : elle fige toutes les ventes depuis le dernier Z. Continuer ?')) return;
     setPrinting(true);
     const nowStr = new Date().toLocaleString('fr-FR');
     const reportTitle = type === 'X' ? 'RAPPORT X (POINTAGE INTERMÉDIAIRE)' : 'RAPPORT Z (CLÔTURE DE JOURNÉE)';
@@ -4632,6 +4633,52 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
     };
 
     try {
+      // 0. Z : enregistrer d'abord la clôture fiscale figée en base (NF525).
+      //    Elle couvre tous les tickets depuis le Z précédent, avec le grand total perpétuel.
+      let fiscalHtml = '';
+      if (type === 'Z') {
+        const { data: z, error: zErr } = await (supabase as any).rpc('fiscal_close_day', { p_business_date: bizDate });
+        if (zErr && zErr.code !== 'PGRST202' && zErr.code !== '42883') {
+          toast.error(`Clôture fiscale non enregistrée : ${zErr.message}`);
+          return;
+        }
+        if (zErr) {
+          toast.warning('Base pas encore mise à jour : Z imprimé sans clôture fiscale');
+        } else if (z) {
+          const vat = Object.entries(z.vat_breakdown || {}).map(([rate, v]: [string, any]) => ({
+            rate, ht: Number(v.ht).toFixed(2), tva: Number(v.tva).toFixed(2),
+          }));
+          (printPayload as any).fiscal = {
+            closureNumber: z.closure_number,
+            firstTicket: z.first_ticket,
+            lastTicket: z.last_ticket,
+            ticketCount: z.ticket_count,
+            salesTtc: Number(z.sales_ttc).toFixed(2),
+            avoirsTtc: Number(z.avoirs_ttc).toFixed(2),
+            netTtc: Number(z.net_ttc).toFixed(2),
+            netHt: Number(z.net_ht).toFixed(2),
+            vat,
+            cash: Number(z.payment_cash).toFixed(2),
+            card: Number(z.payment_card).toFixed(2),
+            grandTotal: Number(z.grand_total_ttc).toFixed(2),
+            hash: z.hash,
+          };
+          const f = (printPayload as any).fiscal;
+          fiscalHtml = `
+            <div style="font-weight:bold;font-size:12px;margin-bottom:3px;">CLÔTURE FISCALE Z N° ${f.closureNumber}</div>
+            <div style="font-size:11px;">
+              <div>Tickets ${f.firstTicket} à ${f.lastTicket} (${f.ticketCount})</div>
+              <div>Ventes TTC : ${f.salesTtc} € · Avoirs : ${f.avoirsTtc} €</div>
+              <div><strong>Net TTC : ${f.netTtc} €</strong> · HT : ${f.netHt} €</div>
+              ${vat.map(v => `<div>TVA ${v.rate} % : ${v.tva} € (HT ${v.ht} €)</div>`).join('')}
+              <div>Espèces : ${f.cash} € · Carte : ${f.card} €</div>
+              <div><strong>Grand total perpétuel : ${f.grandTotal} €</strong></div>
+              <div style="word-break:break-all;font-size:9px;">Empreinte : ${f.hash}</div>
+            </div>
+            <hr style="border:none;border-top:1px dashed #000;margin:6px 0;" />`;
+        }
+      }
+
       // 1. Try sending directly to print-server
       let printedServer = false;
       try {
@@ -4790,13 +4837,13 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
             </div>
             ${itemsRowsHtml || '<div style="font-size:10px;color:#777;">Aucun article</div>'}
 
+            <!--FISCAL-->
             <hr style="border:none;border-top:1px dashed #000;margin:8px 0;" />
             <div style="text-align:center;font-size:10px;color:#444;">
-              Document certifié - TWIN PIZZA<br/>
               Fin de rapport
             </div>
           </div>
-        `;
+        `.replace('<!--FISCAL-->', fiscalHtml);
 
         const iframe = document.createElement('iframe');
         iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
@@ -4823,7 +4870,7 @@ function ClotureCaisseModal({ onClose }: { onClose: () => void }) {
             turnover: stats.totalRevenue
           }));
         } catch {}
-        toast.success('🔒 Clôture de journée Z enregistrée avec succès');
+        toast.success((printPayload as any).fiscal ? `🔒 Clôture Z n° ${(printPayload as any).fiscal.closureNumber} enregistrée` : '🔒 Rapport Z imprimé');
         onClose();
       }
     } catch (e: any) {

@@ -2,6 +2,24 @@
 
 Les entrǸes les plus rǸcentes en haut.
 
+## 2026-11-06 — Claude Code — NF525 étapes 3 à 5 : tickets chaînés, avoirs, Z figé + grand total (même branche `nf525-etape-1-2`, PAS déployé)
+**Fait :**
+- Migration `20261106010000_nf525_etape3_5_tickets_avoirs_z.sql` (après celle des étapes 1-2) :
+  - `fiscal_tickets` : un ticket VENTE par commande encaissée (insert caisse, ou `paid_at` rempli via « À encaisser »), numéro sans trou, TTC/HT/TVA par taux (`vat_rate` par ligne si présent, sinon 10 %), espèces/carte/en ligne, empreinte des articles, grand total perpétuel, chaîné SHA-256 (`fiscal_ticket_payload` = texte canonique unique, utilisé à l'écriture et à la vérification).
+  - Annulation d'une vente encaissée = ticket AVOIR négatif lié (motif = texte ajouté aux notes), jamais d'UPDATE des montants. RPC `fiscal_cancel_order(order_id, motif)`. Une vente annulée par avoir ne peut plus être réactivée. Une commande borne annulée avant encaissement ne crée aucun ticket.
+  - `fiscal_closures` : `fiscal_close_day(date)` fige tous les tickets depuis le dernier Z (rien ne se perd après minuit), totaux, TVA, paiements, grand total perpétuel, chaîné. `fiscal_close_period('M'|'A')` cumule les Z journaliers.
+  - `fiscal_verify_all()` : journal + tickets + Z (empreintes, trous, chaînage, totaux recalculés, grand totaux).
+  - Tables fiscales en ajout seul (UPDATE/DELETE/TRUNCATE refusés). Lecture et RPC ouverts à anon car la caisse tourne avec la clé publique.
+- Caisse : « Valider & Imprimer Rapport Z » demande confirmation, appelle `fiscal_close_day`, imprime le bloc « CLÔTURE FISCALE Z N° … » (net, TVA, paiements, grand total, empreinte). Si la base n'est pas migrée : Z imprimé sans clôture, avec avertissement.
+- `print-server/server.js` : bloc fiscal dans le rapport Z (`report.fiscal`) → nouveau codeVersion. Mention trompeuse « Document certifié » retirée (caisse, admin, print-server).
+- `scripts/nf525-verifier.mjs` : appelle `fiscal_verify_all` et revérifie lui-même numéros, chaînage et grands totaux.
+**Vérifié :** Postgres 16 local : ventes, encaissement borne, TVA 10 % + 5,5 %, avoir, double annulation et réactivation refusées, 3 Z (dont un vide) + Z mensuel, falsification détectée (9 problèmes signalés). `vite build` OK, `node --check` OK. Le script de vérification n'a pas été lancé contre une vraie API.
+**À savoir / Pièges :**
+- Aucune vente n'est encore signée par une clé (empreintes SHA-256 seulement) : une signature asymétrique sera probablement demandée par l'auditeur.
+- La clé anon est publique : n'importe qui peut lire les tickets/Z et créer de fausses commandes caisse. Prévoir une connexion caissier.
+- Le premier Z après déploiement démarre au ticket 1 (les ventes d'avant ne sont pas dans la chaîne).
+**Reste à faire :** archives signées + export contrôleur, mode hors ligne (tickets signés au Hub), mode formation, version sur les tickets, connexion caissier, signature asymétrique, dossier de certification.
+
 ## 2026-11-06 — Claude Code — NF525 étapes 1 et 2 : paiements justes + commandes encaissées verrouillées (branche `nf525-etape-1-2`, PAS encore déployé)
 **Fait :**
 - Migration `supabase/migrations/20261106000000_nf525_etape1_2_verrouillage.sql` (à appliquer AVANT le code) : enum `payment_method` + `divise` ; colonnes `orders.payment_cash`, `payment_card`, `discount_amount`, `promo_discount` ; `REVOKE INSERT/UPDATE/DELETE` sur `global_order_counter` pour anon/authenticated (le RPC SECURITY DEFINER marche toujours) ; trigger `orders_fiscal_guard` : suppression et TRUNCATE interdits, commande « encaissée » (`paid_at` rempli, ou saisie caisse `[POS]`/`pos`, historique compris) = montants, articles, paiement, numéro, date figés ; notes seulement complétables ; statut libre. Journal `fiscal_events` en ajout seul, chaîné SHA-256 (`fiscal_log_event`), vérifiable avec `SELECT * FROM fiscal_verify_events();` (0 ligne = intact).

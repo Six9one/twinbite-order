@@ -59,3 +59,4 @@ npm run preview    # Prévisualise le build de production
 - Une commande encaissée (`paid_at` rempli, ou saisie en caisse `[POS]`) est verrouillée par le trigger `orders_fiscal_guard` : montants, articles, paiement, numéro et date ne changent plus, aucune commande ne se supprime. Corriger = annuler avec motif, puis refaire.
 - Paiement : `payment_cash` / `payment_card` (lus par `getOrderPayment`, `src/lib/fiscal.ts`). Commandes borne/site encaissées via « À encaisser » dans la caisse.
 - Journal en ajout seul `fiscal_events`, chaîné SHA-256 ; contrôle : `SELECT * FROM fiscal_verify_events();`.
+- Tickets fiscaux `fiscal_tickets` (VENTE à l'encaissement, AVOIR négatif à l'annulation, jamais d'UPDATE), Z figés `fiscal_closures` via `fiscal_close_day` (bouton Z de la caisse) avec grand total perpétuel. Contrôle complet : `SELECT * FROM fiscal_verify_all();` ou `node scripts/nf525-verifier.mjs`.
